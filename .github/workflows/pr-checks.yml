@@ -1,0 +1,63 @@
+name: PR checks
+
+# Roda em todo Pull Request para develop ou main.
+# "edited" garante nova validação quando o título do PR é corrigido.
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+    branches: [develop, main]
+
+# Princípio do menor privilégio: estes jobs não precisam de permissão nenhuma.
+permissions: {}
+
+# Se o PR recebe novo push, cancela a execução anterior.
+concurrency:
+  group: pr-checks-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  pr-title:
+    name: pr-title
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validar título (Conventional Commits)
+        # O título passa por variável de ambiente, nunca direto no script,
+        # para que um título malicioso não consiga injetar comandos.
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          regex='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9-]+\))?!?: .{1,100}$'
+          if [[ "$PR_TITLE" =~ $regex ]]; then
+            echo "Título válido: $PR_TITLE"
+          else
+            echo "::error::Título inválido: '$PR_TITLE'"
+            echo "Formato: tipo(escopo): descrição"
+            echo "Tipos: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert"
+            exit 1
+          fi
+
+  branch-policy:
+    name: branch-policy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validar origem e destino do PR
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          echo "Destino: $BASE_REF | Origem: $HEAD_REF"
+          if [[ "$BASE_REF" == "main" ]]; then
+            if [[ "$HEAD_REF" == "develop" || "$HEAD_REF" == hotfix/* ]]; then
+              echo "OK: PR para main vindo de $HEAD_REF."
+            else
+              echo "::error::PR para main só é aceito vindo de develop ou hotfix/*. Origem atual: $HEAD_REF"
+              exit 1
+            fi
+          elif [[ "$BASE_REF" == "develop" ]]; then
+            if [[ "$HEAD_REF" =~ ^(feature|fix|chore|docs|hotfix)/.+ || "$HEAD_REF" =~ ^dependabot/.+ ]]; then
+              echo "OK: PR para develop vindo de $HEAD_REF."
+            else
+              echo "::error::PR para develop deve vir de feature/*, fix/*, chore/*, docs/* ou hotfix/*. Origem atual: $HEAD_REF"
+              exit 1
+            fi
+          fi
