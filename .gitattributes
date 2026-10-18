@@ -1,0 +1,20 @@
+# Normaliza quebras de linha: o repositório guarda sempre LF, em qualquer sistema.
+# Scripts shell e Dockerfiles quebram dentro de containers Linux se vierem com CRLF.
+* text=auto eol=lf
+
+# A solution do Visual Studio costuma usar CRLF
+*.sln text eol=crlf
+
+# Binários: o Git não tenta converter nem mostrar diff de texto
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.pdf binary
+*.zip binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
