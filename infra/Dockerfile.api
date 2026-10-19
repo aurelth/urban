@@ -4,12 +4,13 @@
 # Contexto de build: a RAIZ do repositorio.
 #   docker build -f infra/Dockerfile.api -t urban-api:local .
 
-ARG DOTNET_VERSION=10.0
+# As tags das imagens ficam escritas direto no FROM de proposito: o Dependabot so le
+# imagens literais (ele nao resolve ARG). Para trocar de versao, edite as duas linhas FROM.
 
 # ---------------------------------------------------------------------------
 # Estagio 1: build. Usa o SDK completo (grande); nada deste estagio vai para producao.
 # ---------------------------------------------------------------------------
-FROM mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION} AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 # 1) Arquivos de configuracao da solucao. Mudam raramente.
@@ -53,7 +54,7 @@ RUN dotnet publish src/Urban.Api/Urban.Api.csproj \
 # gerenciador de pacotes, usuario nao-root). O sufixo "-extra" inclui ICU e tzdata,
 # necessarios para cultura pt-BR (moeda, datas) e fusos horarios.
 # ---------------------------------------------------------------------------
-FROM mcr.microsoft.com/dotnet/aspnet:${DOTNET_VERSION}-noble-chiseled-extra AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra AS final
 WORKDIR /app
 COPY --from=build /app/publish .
 
@@ -65,3 +66,4 @@ EXPOSE 8080
 USER $APP_UID
 
 ENTRYPOINT ["dotnet", "Urban.Api.dll"]
+
