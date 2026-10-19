@@ -1,0 +1,15 @@
+<mat-toolbar class="border-b border-outline-variant">
+  <span class="text-xl font-bold tracking-tight">Urban</span>
+  <span class="flex-1"></span>
+  <button
+    mat-icon-button
+    type="button"
+    [attr.aria-label]="theme.isDark() ? 'Usar tema claro' : 'Usar tema escuro'"
+    (click)="theme.toggle()"
+  >
+    <mat-icon [svgIcon]="theme.isDark() ? 'light_mode' : 'dark_mode'" />
+  </button>
+</mat-toolbar>
+<main>
+  <router-outlet />
+</main>
