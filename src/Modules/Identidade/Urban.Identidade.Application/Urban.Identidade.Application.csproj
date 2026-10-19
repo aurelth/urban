@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\Urban.Identidade.Domain\Urban.Identidade.Domain.csproj" />
+  </ItemGroup>
+</Project>

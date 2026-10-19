@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="FluentAssertions" />
+    <PackageReference Include="NetArchTest.Rules" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Modules\Identidade\Urban.Identidade.Domain\Urban.Identidade.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Identidade\Urban.Identidade.Application\Urban.Identidade.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Identidade\Urban.Identidade.Infrastructure\Urban.Identidade.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Condominio\Urban.Condominio.Domain\Urban.Condominio.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Condominio\Urban.Condominio.Application\Urban.Condominio.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Condominio\Urban.Condominio.Infrastructure\Urban.Condominio.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Financeiro\Urban.Financeiro.Domain\Urban.Financeiro.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Financeiro\Urban.Financeiro.Application\Urban.Financeiro.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Financeiro\Urban.Financeiro.Infrastructure\Urban.Financeiro.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Operacoes\Urban.Operacoes.Domain\Urban.Operacoes.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Operacoes\Urban.Operacoes.Application\Urban.Operacoes.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Operacoes\Urban.Operacoes.Infrastructure\Urban.Operacoes.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Urban.SharedKernel\Urban.SharedKernel.csproj" />
+  </ItemGroup>
+</Project>

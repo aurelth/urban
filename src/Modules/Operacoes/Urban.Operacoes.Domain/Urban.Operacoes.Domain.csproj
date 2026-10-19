@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\Urban.SharedKernel\Urban.SharedKernel.csproj" />
+  </ItemGroup>
+</Project>

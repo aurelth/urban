@@ -1,0 +1,44 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Urban.Api/Urban.Api.csproj" />
+    <Project Path="src/Urban.Gateway/Urban.Gateway.csproj" />
+    <Project Path="src/Urban.SharedKernel/Urban.SharedKernel.csproj" />
+    <Project Path="src/Urban.Workers/Urban.Workers.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/" />
+  <Folder Name="/src/Modules/Condominio/">
+    <Project Path="src/Modules/Condominio/Urban.Condominio.Application/Urban.Condominio.Application.csproj" />
+    <Project Path="src/Modules/Condominio/Urban.Condominio.Domain/Urban.Condominio.Domain.csproj" />
+    <Project Path="src/Modules/Condominio/Urban.Condominio.Infrastructure/Urban.Condominio.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Financeiro/">
+    <Project Path="src/Modules/Financeiro/Urban.Financeiro.Application/Urban.Financeiro.Application.csproj" />
+    <Project Path="src/Modules/Financeiro/Urban.Financeiro.Domain/Urban.Financeiro.Domain.csproj" />
+    <Project Path="src/Modules/Financeiro/Urban.Financeiro.Infrastructure/Urban.Financeiro.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Identidade/">
+    <Project Path="src/Modules/Identidade/Urban.Identidade.Application/Urban.Identidade.Application.csproj" />
+    <Project Path="src/Modules/Identidade/Urban.Identidade.Domain/Urban.Identidade.Domain.csproj" />
+    <Project Path="src/Modules/Identidade/Urban.Identidade.Infrastructure/Urban.Identidade.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Operacoes/">
+    <Project Path="src/Modules/Operacoes/Urban.Operacoes.Application/Urban.Operacoes.Application.csproj" />
+    <Project Path="src/Modules/Operacoes/Urban.Operacoes.Domain/Urban.Operacoes.Domain.csproj" />
+    <Project Path="src/Modules/Operacoes/Urban.Operacoes.Infrastructure/Urban.Operacoes.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Urban.ArchTests/Urban.ArchTests.csproj" />
+    <Project Path="tests/Urban.IntegrationTests/Urban.IntegrationTests.csproj" />
+    <Project Path="tests/Urban.UnitTests/Urban.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path="global.json" />
+    <File Path="nuget.config" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="tests/Directory.Build.props" />
+    <File Path=".editorconfig" />
+    <File Path=".gitignore" />
+    <File Path=".gitattributes" />
+  </Folder>
+</Solution>
