@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "module": "ES2022",
+    "esModuleInterop": true,
+    "types": ["jest"]
+  },
+  "include": ["src/**/*.spec.ts", "src/**/*.d.ts", "setup-jest.ts"]
+}

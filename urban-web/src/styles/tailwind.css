@@ -1,0 +1,21 @@
+@import 'tailwindcss';
+
+/* O tema escuro e ativado pela classe .app-dark no <html> (ver _material-theme.scss). */
+@custom-variant dark (&:where(.app-dark, .app-dark *));
+
+/*
+ * As cores do Tailwind vem do tema do Angular Material (tokens --mat-sys-*).
+ * Assim "bg-surface", "text-on-surface-variant", "border-outline-variant" etc. seguem a paleta
+ * e o tema claro/escuro automaticamente. Trocar a paleta em _material-theme.scss muda tudo.
+ */
+@theme inline {
+  --color-primary: var(--mat-sys-primary);
+  --color-on-primary: var(--mat-sys-on-primary);
+  --color-surface: var(--mat-sys-surface);
+  --color-on-surface: var(--mat-sys-on-surface);
+  --color-on-surface-variant: var(--mat-sys-on-surface-variant);
+  --color-surface-container: var(--mat-sys-surface-container);
+  --color-outline: var(--mat-sys-outline);
+  --color-outline-variant: var(--mat-sys-outline-variant);
+  --color-error: var(--mat-sys-error);
+}
