@@ -1,0 +1,23 @@
+# Contexto de build enxuto: nada disto precisa ir para o Docker.
+# Sem isto, bin/ e obj/ do Windows (com caminhos absolutos) quebrariam o restore no Linux.
+**/bin/
+**/obj/
+**/.vs/
+**/.vscode/
+**/.idea/
+**/*.user
+
+.git/
+.github/
+docs/
+tests/
+
+# Frontend: nao entra na imagem da API.
+**/node_modules/
+urban-web/
+
+# Segredos e infra local
+infra/.env
+**/.env
+**/*.pem
+**/*.key
