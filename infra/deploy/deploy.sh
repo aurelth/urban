@@ -29,8 +29,7 @@ ENVFILE
 
 # Saudavel = o web responde pela porta publicada E a API responde por dentro da rede.
 wait_healthy() {
-  local attempt
-  for attempt in $(seq 1 30); do
+  for _ in $(seq 1 30); do
     if curl -fsS "http://127.0.0.1:${PORT}/healthz" >/dev/null 2>&1 \
       && docker compose exec -T web wget -qO- http://api:8080/health >/dev/null 2>&1; then
       return 0
