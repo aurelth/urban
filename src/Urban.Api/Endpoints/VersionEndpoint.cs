@@ -15,18 +15,22 @@ public static class VersionEndpoint
     }
 
     // A versao vem de -p:Version no build da imagem (Release: 0.1.0, staging: 0.0.0-sha-abc1234).
-    // O .NET pode acrescentar "+<commit>" depois da versao; aqui ficamos so com a versao.
-    private static string ReadVersion()
-    {
-        var informational = typeof(VersionEndpoint).Assembly
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+    private static string ReadVersion() =>
+        NormalizeVersion(typeof(VersionEndpoint).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion);
 
-        if (string.IsNullOrWhiteSpace(informational))
+    /// <summary>
+    /// Remove o sufixo "+commit" que o .NET pode acrescentar depois da versao.
+    /// Sem versao informada, devolve 0.0.0.
+    /// </summary>
+    public static string NormalizeVersion(string? informationalVersion)
+    {
+        if (string.IsNullOrWhiteSpace(informationalVersion))
         {
             return "0.0.0";
         }
 
-        var plus = informational.IndexOf('+', StringComparison.Ordinal);
-        return plus < 0 ? informational : informational[..plus];
+        int plus = informationalVersion.IndexOf('+', StringComparison.Ordinal);
+        return plus < 0 ? informationalVersion : informationalVersion[..plus];
     }
 }
