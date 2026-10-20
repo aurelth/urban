@@ -136,3 +136,24 @@ updates:
       # (grafana/grafana-jaeger-datasource#87). Reavaliar quando a issue fechar.
       - dependency-name: "jaegertracing/jaeger"
         versions: [">=2.21.0"]
+
+  # --- npm: ferramentas do Semantic Release (.github/release) ---
+  - package-ecosystem: npm
+    directory: /.github/release
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      release-tools:
+        update-types: [minor, patch]
+    ignore:
+      # O preset 10.x exige o conventional-changelog-writer 9, que o
+      # release-notes-generator atual ainda nao usa (erro "Missing helper").
+      - dependency-name: conventional-changelog-conventionalcommits
+        update-types: ["version-update:semver-major"]
