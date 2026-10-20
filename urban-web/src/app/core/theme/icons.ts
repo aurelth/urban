@@ -10,8 +10,13 @@ import { MatIconRegistry } from '@angular/material/icon';
 export function provideUrbanIcons(): EnvironmentProviders {
   return provideAppInitializer(() => {
     const sanitizer = inject(DomSanitizer);
-    inject(MatIconRegistry).addSvgIconResolver((nome) =>
-      sanitizer.bypassSecurityTrustResourceUrl(`icons/${nome}.svg`),
-    );
+    inject(MatIconRegistry).addSvgIconResolver((nome) => {
+      // O nome vem do template, nunca de entrada do usuario. A regex garante que a URL nao sai de /icons.
+      if (!/^[a-z0-9_]+$/.test(nome)) {
+        return null;
+      }
+      // O Angular Material exige SafeResourceUrl neste ponto; a URL e local e validada acima.
+      return sanitizer.bypassSecurityTrustResourceUrl(`icons/${nome}.svg`); // NOSONAR
+    });
   });
 }
