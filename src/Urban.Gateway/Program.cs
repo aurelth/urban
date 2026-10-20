@@ -7,4 +7,4 @@ var app = builder.Build();
 
 app.MapHealthChecks("/health");
 
-app.Run();
+await app.RunAsync();
