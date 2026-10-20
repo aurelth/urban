@@ -1,0 +1,41 @@
+# Stack de deploy do Urban. Staging e producao usam este mesmo arquivo; o que
+# muda entre eles vem do arquivo .env ao lado, escrito pelo deploy.sh:
+#   URBAN_ENV               staging | production (nome do projeto e da rede)
+#   URBAN_TAG               tag das imagens no GHCR
+#   WEB_PORT                porta em 127.0.0.1 onde o nginx do servidor encontra o web
+#   ASPNETCORE_ENVIRONMENT  Staging | Production
+name: urban-${URBAN_ENV:?defina URBAN_ENV}
+
+# Padroes de todos os servicos: reiniciam sozinhos, sem privilegios extras e com
+# log limitado (sem isso o log do Docker cresce ate encher o disco).
+x-service-defaults: &service-defaults
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+services:
+  api:
+    <<: *service-defaults
+    image: ghcr.io/aurelth/urban/api:${URBAN_TAG:?defina URBAN_TAG}
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Production}
+    mem_limit: 512m
+
+  web:
+    <<: *service-defaults
+    image: ghcr.io/aurelth/urban/web:${URBAN_TAG:?defina URBAN_TAG}
+    depends_on:
+      - api
+    environment:
+      # Ate o Gateway existir, o nginx fala direto com a API.
+      API_UPSTREAM: http://api:8080
+    ports:
+      - 127.0.0.1:${WEB_PORT:?defina WEB_PORT}:8080
+    mem_limit: 64m

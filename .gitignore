@@ -1,0 +1,66 @@
+# ===== .NET / Visual Studio =====
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+.vs/
+*.user
+*.suo
+*.userprefs
+*.DotSettings.user
+TestResults/
+BenchmarkDotNet.Artifacts/
+*.nupkg
+*.snupkg
+project.lock.json
+# Cobertura de testes
+coverage/
+*.coverage
+*.coveragexml
+coverage.cobertura.xml
+
+# ===== Configuração local e segredos (NUNCA versionar: o repositório é público) =====
+appsettings.Local.json
+appsettings.*.local.json
+secrets.json
+*.pfx
+*.pem
+*.key
+.env
+.env.*
+!.env.example
+!.env.dev
+
+# ===== Node / Angular =====
+node_modules/
+.angular/
+dist/
+out-tsc/
+.sass-cache/
+npm-debug.log*
+yarn-error.log*
+*.tsbuildinfo
+# Jest e Cypress
+cypress/videos/
+cypress/screenshots/
+cypress/downloads/
+
+# ===== Docker (dados dos volumes locais) =====
+infra/data/
+infra/**/data/
+*.log
+
+# ===== IDEs e editores =====
+.idea/
+*.swp
+*.swo
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# ===== Sistema operacional =====
+.DS_Store
+Thumbs.db
+Desktop.ini

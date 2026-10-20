@@ -1,0 +1,63 @@
+name: Deploy
+
+# Workflow reutilizavel: atualiza um ambiente no VPS por SSH (infra/deploy/deploy.sh).
+# O Environment do GitHub (staging | production) aplica as regras de aprovacao e de branch.
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: staging ou production
+        required: true
+        type: string
+      tag:
+        description: Tag das imagens a publicar
+        required: true
+        type: string
+      web-port:
+        description: Porta local (127.0.0.1) do container web neste ambiente
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: ${{ inputs.environment }}
+    # Nunca dois deploys ao mesmo tempo no mesmo ambiente.
+    concurrency:
+      group: deploy-${{ inputs.environment }}
+      cancel-in-progress: false
+    env:
+      VPS_HOST: ${{ vars.VPS_HOST }}
+      VPS_USER: ${{ vars.VPS_USER }}
+      ENVIRONMENT: ${{ inputs.environment }}
+      TAG: ${{ inputs.tag }}
+      WEB_PORT: ${{ inputs.web-port }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Preparar SSH
+        env:
+          SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          KNOWN_HOSTS: ${{ vars.VPS_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Enviar arquivos de deploy
+        run: |
+          scp -i ~/.ssh/id_deploy -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            infra/deploy/docker-compose.yml infra/deploy/deploy.sh \
+            "${VPS_USER}@${VPS_HOST}:urban/${ENVIRONMENT}/"
+
+      - name: Executar deploy
+        run: |
+          ssh -i ~/.ssh/id_deploy -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            "${VPS_USER}@${VPS_HOST}" \
+            "bash ~/urban/${ENVIRONMENT}/deploy.sh ${ENVIRONMENT} ${TAG} ${WEB_PORT}"

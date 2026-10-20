@@ -1,0 +1,159 @@
+# Dependabot: atualizacoes automaticas de dependencias, sempre via PR para a develop.
+# IMPORTANTE: o Dependabot le este arquivo da branch padrao (main). As mudancas daqui so
+# passam a valer depois que a develop for promovida para a main.
+#
+# Titulos dos PRs seguem Conventional Commits (exigido pelo check "pr-title"):
+#   build(deps): bump ...   /   build(deps-dev): bump ...   /   ci: bump ...
+version: 2
+
+updates:
+  # --- GitHub Actions (workflows em .github/workflows) ---
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    commit-message:
+      prefix: ci
+    groups:
+      github-actions:
+        patterns: ["*"]
+
+  # --- NuGet (.NET) ---
+  # Versoes centralizadas em Directory.Packages.props, na raiz.
+  - package-ecosystem: nuget
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      nuget-minor-patch:
+        update-types: [minor, patch]
+    ignore:
+      # Congelados de proposito (mudanca de licenca nas versoes novas). Ver Directory.Packages.props.
+      - dependency-name: MediatR
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "MassTransit*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: FluentAssertions
+        update-types: ["version-update:semver-major"]
+      - dependency-name: Moq
+        update-types: ["version-update:semver-major"]
+
+  # --- npm (Angular) ---
+  - package-ecosystem: npm
+    directory: /urban-web
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      # Pacotes do Angular precisam subir juntos (mesma versao).
+      angular:
+        patterns: ["@angular/*", "@angular-devkit/*", "@schematics/*"]
+        update-types: [minor, patch]
+      npm-minor-patch:
+        update-types: [minor, patch]
+    ignore:
+      # Troca de versao maior do Angular se faz com "ng update", que migra o codigo junto.
+      - dependency-name: "@angular/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@angular-devkit/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@schematics/*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@ngrx/*"
+        update-types: ["version-update:semver-major"]
+      # O Angular exige uma faixa especifica do TypeScript (hoje 6.0.x).
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # Os tipos do Node acompanham o Node do projeto (24 LTS).
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
+
+  # --- Docker: Dockerfiles em infra/ ---
+  - package-ecosystem: docker
+    directory: /infra
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    commit-message:
+      prefix: build
+      include: scope
+    ignore:
+      # Mudar de .NET / Node (versao maior) e decisao do projeto, nao automatica.
+      - dependency-name: "mcr.microsoft.com/dotnet/sdk"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "mcr.microsoft.com/dotnet/aspnet"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
+      # Fica na linha estavel do nginx (1.30.x): so correcoes.
+      - dependency-name: "nginxinc/nginx-unprivileged"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+
+  # --- Docker Compose: imagens de infra/docker-compose.yml ---
+  - package-ecosystem: docker-compose
+    directory: /infra
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      compose-minor-patch:
+        update-types: [minor, patch]
+    ignore:
+      # Versao maior de banco/fila exige migracao de dados: so manualmente.
+      - dependency-name: postgres
+        update-types: ["version-update:semver-major"]
+      - dependency-name: redis
+        update-types: ["version-update:semver-major"]
+      - dependency-name: rabbitmq
+        update-types: ["version-update:semver-major"]
+      # A partir da 2.21 o Jaeger removeu a API /api/services usada pelo Grafana
+      # (grafana/grafana-jaeger-datasource#87). Reavaliar quando a issue fechar.
+      - dependency-name: "jaegertracing/jaeger"
+        versions: [">=2.21.0"]
+
+  # --- npm: ferramentas do Semantic Release (.github/release) ---
+  - package-ecosystem: npm
+    directory: /.github/release
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: America/Sao_Paulo
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      release-tools:
+        update-types: [minor, patch]
+    ignore:
+      # O preset 10.x exige o conventional-changelog-writer 9, que o
+      # release-notes-generator atual ainda nao usa (erro "Missing helper").
+      - dependency-name: conventional-changelog-conventionalcommits
+        update-types: ["version-update:semver-major"]

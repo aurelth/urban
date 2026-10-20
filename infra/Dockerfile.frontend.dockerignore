@@ -1,0 +1,19 @@
+# Contexto de build do frontend: so urban-web/ e infra/nginx/ interessam.
+**/node_modules/
+**/.git/
+.github/
+docs/
+src/
+tests/
+infra/garage/
+infra/grafana/
+infra/pgadmin/
+infra/prometheus/
+infra/.env
+infra/.env.dev
+**/.env
+
+urban-web/dist/
+urban-web/coverage/
+urban-web/.angular/
+urban-web/cypress/

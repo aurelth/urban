@@ -1,0 +1,42 @@
+# syntax=docker/dockerfile:1.7
+
+# Imagem do frontend do Urban: build do Angular + nginx.
+# Contexto de build: a RAIZ do repositorio.
+#   docker build -f infra/Dockerfile.frontend -t urban-web:local .
+
+# As tags das imagens ficam escritas direto no FROM de proposito: o Dependabot so le
+# imagens literais (ele nao resolve ARG). Para trocar de versao, edite as duas linhas FROM.
+
+# ---------------------------------------------------------------------------
+# Estagio 1: build do Angular. Nada deste estagio vai para producao.
+# ---------------------------------------------------------------------------
+FROM node:24-alpine AS build
+WORKDIR /app
+
+# Dependencias primeiro: so reinstala quando package.json/package-lock.json mudam.
+# O cache de montagem guarda os downloads do npm entre builds (nao entra na imagem).
+COPY urban-web/package.json urban-web/package-lock.json ./
+RUN --mount=type=cache,target=/root/.npm npm ci --ignore-scripts
+
+COPY urban-web/ ./
+RUN npm run build
+
+# ---------------------------------------------------------------------------
+# Estagio 2: imagem final. So nginx + os arquivos estaticos; sem Node, sem codigo-fonte.
+# A variante "unprivileged" roda como usuario comum e escuta na porta 8080.
+# ---------------------------------------------------------------------------
+FROM nginxinc/nginx-unprivileged:1.30-alpine AS final
+
+# Valores padrao para o Docker Compose; podem ser trocados com -e / environment.
+ENV API_UPSTREAM=http://gateway:8080 \
+    DNS_RESOLVER=127.0.0.11
+
+COPY infra/nginx/default.conf.template /etc/nginx/templates/default.conf.template
+COPY --from=build /app/dist/urban-web/browser /usr/share/nginx/html
+
+EXPOSE 8080
+
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget -q -O /dev/null http://127.0.0.1:8080/healthz || exit 1
+
+

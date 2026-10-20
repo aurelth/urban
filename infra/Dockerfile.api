@@ -1,0 +1,69 @@
+# syntax=docker/dockerfile:1.7
+
+# Imagem da API do Urban (ASP.NET Core / .NET 10).
+# Contexto de build: a RAIZ do repositorio.
+#   docker build -f infra/Dockerfile.api -t urban-api:local .
+
+# As tags das imagens ficam escritas direto no FROM de proposito: o Dependabot so le
+# imagens literais (ele nao resolve ARG). Para trocar de versao, edite as duas linhas FROM.
+
+# ---------------------------------------------------------------------------
+# Estagio 1: build. Usa o SDK completo (grande); nada deste estagio vai para producao.
+# ---------------------------------------------------------------------------
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+WORKDIR /src
+
+# 1) Arquivos de configuracao da solucao. Mudam raramente.
+COPY global.json nuget.config Directory.Build.props Directory.Packages.props ./
+
+# 2) So os .csproj, para o restore ficar numa camada propria. Enquanto nenhum .csproj
+#    ou pacote mudar, o Docker reaproveita o restore em cache e so recompila o codigo.
+COPY src/Urban.SharedKernel/Urban.SharedKernel.csproj src/Urban.SharedKernel/
+COPY src/Modules/Identidade/Urban.Identidade.Domain/Urban.Identidade.Domain.csproj src/Modules/Identidade/Urban.Identidade.Domain/
+COPY src/Modules/Identidade/Urban.Identidade.Application/Urban.Identidade.Application.csproj src/Modules/Identidade/Urban.Identidade.Application/
+COPY src/Modules/Identidade/Urban.Identidade.Infrastructure/Urban.Identidade.Infrastructure.csproj src/Modules/Identidade/Urban.Identidade.Infrastructure/
+COPY src/Modules/Condominio/Urban.Condominio.Domain/Urban.Condominio.Domain.csproj src/Modules/Condominio/Urban.Condominio.Domain/
+COPY src/Modules/Condominio/Urban.Condominio.Application/Urban.Condominio.Application.csproj src/Modules/Condominio/Urban.Condominio.Application/
+COPY src/Modules/Condominio/Urban.Condominio.Infrastructure/Urban.Condominio.Infrastructure.csproj src/Modules/Condominio/Urban.Condominio.Infrastructure/
+COPY src/Modules/Financeiro/Urban.Financeiro.Domain/Urban.Financeiro.Domain.csproj src/Modules/Financeiro/Urban.Financeiro.Domain/
+COPY src/Modules/Financeiro/Urban.Financeiro.Application/Urban.Financeiro.Application.csproj src/Modules/Financeiro/Urban.Financeiro.Application/
+COPY src/Modules/Financeiro/Urban.Financeiro.Infrastructure/Urban.Financeiro.Infrastructure.csproj src/Modules/Financeiro/Urban.Financeiro.Infrastructure/
+COPY src/Modules/Operacoes/Urban.Operacoes.Domain/Urban.Operacoes.Domain.csproj src/Modules/Operacoes/Urban.Operacoes.Domain/
+COPY src/Modules/Operacoes/Urban.Operacoes.Application/Urban.Operacoes.Application.csproj src/Modules/Operacoes/Urban.Operacoes.Application/
+COPY src/Modules/Operacoes/Urban.Operacoes.Infrastructure/Urban.Operacoes.Infrastructure.csproj src/Modules/Operacoes/Urban.Operacoes.Infrastructure/
+COPY src/Urban.Api/Urban.Api.csproj src/Urban.Api/
+RUN dotnet restore src/Urban.Api/Urban.Api.csproj
+
+# 3) Codigo-fonte (so o que a API precisa) e publicacao.
+COPY .editorconfig ./
+COPY src/Urban.SharedKernel/ src/Urban.SharedKernel/
+COPY src/Modules/ src/Modules/
+COPY src/Urban.Api/ src/Urban.Api/
+
+# VERSION vem do pipeline (ex.: 1.4.2). Local, fica 0.0.0.
+ARG VERSION=0.0.0
+RUN dotnet publish src/Urban.Api/Urban.Api.csproj \
+    --configuration Release \
+    --no-restore \
+    --output /app/publish \
+    -p:Version=${VERSION} \
+    -p:UseAppHost=false
+
+# ---------------------------------------------------------------------------
+# Estagio 2: imagem final. Runtime ASP.NET "chiseled" (Ubuntu minimo, sem shell, sem
+# gerenciador de pacotes, usuario nao-root). O sufixo "-extra" inclui ICU e tzdata,
+# necessarios para cultura pt-BR (moeda, datas) e fusos horarios.
+# ---------------------------------------------------------------------------
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled-extra AS final
+WORKDIR /app
+COPY --from=build /app/publish .
+
+# Porta 8080 (as portas < 1024 exigem root). A porta publicada ao mundo fica no compose/proxy.
+ENV ASPNETCORE_HTTP_PORTS=8080
+EXPOSE 8080
+
+# Nao roda como root: a imagem define o usuario "app" (UID 1654).
+USER $APP_UID
+
+ENTRYPOINT ["dotnet", "Urban.Api.dll"]
+

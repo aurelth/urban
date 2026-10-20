@@ -1,0 +1,57 @@
+name: Build images
+
+# Workflow reutilizavel: constroi e publica as imagens api e web no GHCR.
+# Chamado pelo CD (develop -> staging) e pela Release (main -> producao).
+on:
+  workflow_call:
+    inputs:
+      tag:
+        description: Tag das imagens no GHCR
+        required: true
+        type: string
+      version:
+        description: Versao embutida na API (-p:Version)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  images:
+    name: Publicar imagens (GHCR)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    env:
+      TAG: ${{ inputs.tag }}
+      VERSION: ${{ inputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Definir nome das imagens
+        run: echo "PREFIX=ghcr.io/${GITHUB_REPOSITORY,,}" >> "$GITHUB_ENV"
+
+      - name: Login no GHCR
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GHCR_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+
+      - name: Build e push da API
+        run: |
+          docker build -f infra/Dockerfile.api \
+            --build-arg "VERSION=${VERSION}" \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            -t "${PREFIX}/api:${TAG}" .
+          docker push "${PREFIX}/api:${TAG}"
+
+      - name: Build e push do frontend
+        run: |
+          docker build -f infra/Dockerfile.frontend \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            -t "${PREFIX}/web:${TAG}" .
+          docker push "${PREFIX}/web:${TAG}"

@@ -1,0 +1,49 @@
+name: CD
+
+# A cada push no develop: publica as imagens no GHCR e atualiza o staging no VPS.
+# (A producao e atualizada pelo workflow Release, a partir do main.)
+on:
+  push:
+    branches: [develop]
+
+# Um deploy por vez por branch; o seguinte espera o atual terminar.
+concurrency:
+  group: cd-${{ github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  meta:
+    name: Definir tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+    steps:
+      - id: meta
+        run: echo "tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+  images:
+    name: Imagens
+    needs: meta
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/build-images.yml
+    with:
+      tag: ${{ needs.meta.outputs.tag }}
+      version: 0.0.0-${{ needs.meta.outputs.tag }}
+
+  deploy:
+    name: Staging
+    needs: [meta, images]
+    permissions:
+      contents: read
+    uses: ./.github/workflows/deploy.yml
+    with:
+      environment: staging
+      tag: ${{ needs.meta.outputs.tag }}
+      web-port: "5210"
+    secrets: inherit

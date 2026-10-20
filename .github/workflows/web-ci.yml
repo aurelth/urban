@@ -1,0 +1,57 @@
+name: Web CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+
+# Cancela execucoes antigas do mesmo PR quando chega um commit novo.
+concurrency:
+  group: web-ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Principio do menor privilegio: o workflow so le o repositorio.
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: urban-web
+
+jobs:
+  web-build-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Instala o Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: urban-web/.nvmrc
+          cache: npm
+          cache-dependency-path: urban-web/package-lock.json
+
+      - name: Instala as dependencias
+        run: npm ci --ignore-scripts
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Testes unitarios (Jest)
+        run: npm run test:ci
+
+      - name: Build de producao
+        run: npm run build
+
+      - name: Publica a cobertura
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: web-coverage
+          path: urban-web/coverage/cobertura-coverage.xml
+          if-no-files-found: warn
+          retention-days: 7
+

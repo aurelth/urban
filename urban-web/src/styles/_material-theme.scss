@@ -1,0 +1,28 @@
+@use 'sass:string';
+@use '@angular/material' as mat;
+
+// Tema Material 3 do Urban.
+// PROVISORIO: a paleta oficial ainda nao foi definida. Para trocar as cores do sistema inteiro,
+// altere apenas as duas paletas abaixo (ex.: mat.$green-palette, mat.$violet-palette, mat.$rose-palette).
+html {
+  color-scheme: light;
+
+  @include mat.theme(
+    (
+      color: (
+        primary: mat.$azure-palette,
+        tertiary: mat.$blue-palette,
+      ),
+      typography: (
+        plain-family: string.unquote("system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"),
+        brand-family: string.unquote("system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"),
+      ),
+      density: 0,
+    )
+  );
+}
+
+// Tema escuro: ativado pela classe .app-dark no <html> (ThemeStore).
+html.app-dark {
+  color-scheme: dark;
+}
