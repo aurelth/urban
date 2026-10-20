@@ -55,3 +55,36 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+  # E2E (Cypress) em job separado: por enquanto nao e check obrigatorio do ruleset.
+  web-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Instala o Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: urban-web/.nvmrc
+          cache: npm
+          cache-dependency-path: urban-web/package-lock.json
+
+      - name: Instala as dependencias
+        run: npm ci --ignore-scripts
+
+      # O --ignore-scripts impede o postinstall do Cypress de baixar o binario; baixamos de forma explicita.
+      - name: Baixa o binario do Cypress
+        run: ./node_modules/.bin/cypress install
+
+      - name: Testes E2E (Cypress no Chrome)
+        run: npm run e2e:ci
+
+      - name: Publica os screenshots das falhas
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: cypress-screenshots
+          path: urban-web/cypress/screenshots
+          if-no-files-found: ignore
+          retention-days: 7
