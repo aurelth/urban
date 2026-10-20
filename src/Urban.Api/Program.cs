@@ -11,7 +11,7 @@ app.MapControllers();
 app.MapHealthChecks("/health");
 app.MapVersionEndpoint();
 
-app.Run();
+await app.RunAsync();
 
 // Necessário para o WebApplicationFactory<Program> dos testes de integração.
 public partial class Program;
