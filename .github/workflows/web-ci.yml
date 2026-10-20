@@ -35,7 +35,7 @@ jobs:
           cache-dependency-path: urban-web/package-lock.json
 
       - name: Instala as dependencias
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Lint
         run: npm run lint
@@ -54,3 +54,4 @@ jobs:
           path: urban-web/coverage/cobertura-coverage.xml
           if-no-files-found: warn
           retention-days: 7
+
