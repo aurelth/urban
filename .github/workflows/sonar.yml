@@ -65,7 +65,7 @@ jobs:
       - name: Testes do frontend (Jest)
         working-directory: urban-web
         run: |
-          npm ci
+          npm ci --ignore-scripts
           npm run test:ci
 
       - name: Inicia a analise
@@ -100,3 +100,4 @@ jobs:
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: ./.sonar/scanner/dotnet-sonarscanner end /d:sonar.token="$SONAR_TOKEN"
+
