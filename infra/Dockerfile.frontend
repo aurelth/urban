@@ -16,7 +16,7 @@ WORKDIR /app
 # Dependencias primeiro: so reinstala quando package.json/package-lock.json mudam.
 # O cache de montagem guarda os downloads do npm entre builds (nao entra na imagem).
 COPY urban-web/package.json urban-web/package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm npm ci
+RUN --mount=type=cache,target=/root/.npm npm ci --ignore-scripts
 
 COPY urban-web/ ./
 RUN npm run build
@@ -38,4 +38,5 @@ EXPOSE 8080
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD wget -q -O /dev/null http://127.0.0.1:8080/healthz || exit 1
+
 

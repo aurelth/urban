@@ -1,0 +1,103 @@
+name: Sonar
+
+# Analise estatica (qualidade, bugs, vulnerabilidades, duplicacao) e cobertura de testes,
+# enviadas ao SonarQube Cloud (ex-SonarCloud). Cobre .NET e Angular num unico projeto.
+# Nao e check obrigatorio: serve para enxergar e, depois, decidir o que exigir.
+
+on:
+  pull_request:
+    branches: [develop, main]
+    types: [opened, synchronize, reopened]
+  push:
+    # O plano gratuito analisa apenas a branch principal (main) e os PRs.
+    branches: [main]
+
+concurrency:
+  group: sonar-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+
+jobs:
+  sonar:
+    name: sonar
+    # PRs do Dependabot nao recebem os secrets normais do repositorio, entao nao rodam aqui.
+    if: github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # Historico completo: o Sonar usa o git blame para atribuir codigo novo e antigo.
+          fetch-depth: 0
+
+      - name: Instala o .NET SDK
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+          cache: true
+          cache-dependency-path: Directory.Packages.props
+
+      - name: Instala o Java (exigido pelo scanner)
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Instala o Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: urban-web/.nvmrc
+          cache: npm
+          cache-dependency-path: urban-web/package-lock.json
+
+      - name: Instala o scanner do Sonar para .NET
+        run: dotnet tool install --tool-path ./.sonar/scanner dotnet-sonarscanner
+
+      # Testes do Angular ANTES de iniciar o scanner: gera urban-web/coverage/lcov.info.
+      - name: Testes do frontend (Jest)
+        working-directory: urban-web
+        run: |
+          npm ci --ignore-scripts
+          npm run test:ci
+
+      - name: Inicia a analise
+        env:
+          # O token fica so nos passos que o usam (nao no npm ci, por exemplo).
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: >
+          ./.sonar/scanner/dotnet-sonarscanner begin
+          /k:"${{ vars.SONAR_PROJECT_KEY }}"
+          /o:"${{ vars.SONAR_ORGANIZATION }}"
+          /d:sonar.token="$SONAR_TOKEN"
+          /d:sonar.cs.opencover.reportsPaths="TestResults/**/coverage.opencover.xml"
+          /d:sonar.javascript.lcov.reportPaths="urban-web/coverage/lcov.info"
+          /d:sonar.exclusions="urban-web/node_modules/**,urban-web/dist/**,urban-web/coverage/**,urban-web/.angular/**,**/bin/**,**/obj/**"
+          /d:sonar.coverage.exclusions="tests/**,**/Program.cs,urban-web/src/main.ts,urban-web/src/app/app.config.ts,urban-web/cypress/**,urban-web/*.config.*,urban-web/setup-jest.ts"
+          /d:sonar.test.inclusions="urban-web/**/*.spec.ts,urban-web/cypress/**/*.cy.ts"
+
+      - name: Build
+        run: dotnet build Urban.slnx --configuration Release
+
+      # Formato opencover: e o que o Sonar le para C# (o cobertura do CI normal nao serve).
+      - name: Testes do backend (.NET)
+        run: >
+          dotnet test Urban.slnx
+          --configuration Release
+          --no-build
+          --collect:"XPlat Code Coverage"
+          --results-directory ./TestResults
+          -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+
+      - name: Finaliza e envia a analise
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: ./.sonar/scanner/dotnet-sonarscanner end /d:sonar.token="$SONAR_TOKEN"
+
