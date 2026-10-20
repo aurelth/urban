@@ -41,7 +41,7 @@ jobs:
         working-directory: .github/release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx semantic-release
+        run: ./node_modules/.bin/semantic-release
 
       - name: Ler a versao publicada
         id: result
