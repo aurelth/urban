@@ -72,7 +72,7 @@ O modo escuro é gerado pelo Material 3 a partir da cor-semente (destaque mais c
 - PR de trabalho para `develop`: squash e apagar a branch. `develop` para `main`: merge commit, sem apagar a `develop`.
 - Checks obrigatórios: `pr-title`, `branch-policy`, `build-test`, `web-build-test`. Também rodam `web-e2e` e o Sonar. Só faça o merge com todos verdes e confira que a lista está completa.
 - Em CI use `npm ci --ignore-scripts` e binários locais (`./node_modules/.bin/...`) em vez de `npx`.
-- Commits e PRs levam as linhas de co-autoria e de sessão definidas pelo ambiente.
+- Commits e PRs não levam rodapés de co-autoria, links de sessão nem menção a ferramentas de IA.
 
 ## Entrega e infraestrutura
 
