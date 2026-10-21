@@ -1,6 +1,6 @@
 // Tokens de design do Urban (CSS custom properties).
-// As cores vem do tema Material (src/styles/_material-theme.scss). Aqui ficam apenas medidas,
-// sombras e animacoes proprias do Urban.
+// As cores base vem do tema Material (src/styles/_material-theme.scss). Aqui ficam medidas,
+// sombras, animacoes e as cores semanticas que o Material nao tem (sucesso e alerta).
 :root {
   --urban-radius-sm: 0.375rem;
   --urban-radius-md: 0.625rem;
@@ -9,4 +9,16 @@
   --urban-duration-fast: 150ms;
   --urban-duration-base: 300ms;
   --urban-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  // Sucesso (pago) e alerta (pendente): claro #248A3D e #B25000; no escuro, versoes mais luminosas.
+  // Erro (atrasado) usa o papel "error" do proprio Material. Use sempre junto com texto ou icone.
+  --urban-success: light-dark(#248a3d, #30d158);
+  --urban-success-container: color-mix(in srgb, var(--urban-success) 12%, transparent);
+  --urban-warning: light-dark(#b25000, #ff9f0a);
+  --urban-warning-container: color-mix(in srgb, var(--urban-warning) 14%, transparent);
+}
+
+// No escuro a sombra some contra o fundo grafite: troca por borda fina mais sombra forte.
+html.app-dark {
+  --urban-shadow-card: 0 0 0 1px rgb(255 255 255 / 8%), 0 8px 24px rgb(0 0 0 / 40%);
 }

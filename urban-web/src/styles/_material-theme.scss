@@ -1,23 +1,46 @@
 @use 'sass:string';
 @use '@angular/material' as mat;
+@use 'theme-colors' as custom;
 
-// Tema Material 3 do Urban.
-// PROVISORIO: a paleta oficial ainda nao foi definida. Para trocar as cores do sistema inteiro,
-// altere apenas as duas paletas abaixo (ex.: mat.$green-palette, mat.$violet-palette, mat.$rose-palette).
+// Tema Material 3 do Urban: paleta "Indigo suave" (cor-semente #5856D6).
+// As paletas tonais ficam em _theme-colors.scss (gerado por `ng generate @angular/material:m3-theme`).
+// Os modos claro e escuro saem das mesmas paletas: o Material usa light-dark() e o color-scheme do <html>.
 html {
   color-scheme: light;
 
   @include mat.theme(
     (
       color: (
-        primary: mat.$azure-palette,
-        tertiary: mat.$blue-palette,
+        primary: custom.$primary-palette,
+        tertiary: custom.$tertiary-palette,
       ),
       typography: (
         plain-family: string.unquote("system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"),
         brand-family: string.unquote("system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"),
       ),
       density: 0,
+    )
+  );
+}
+
+// Modo claro: fixa os valores exatos da identidade visual (fundo cinza suave, cards brancos,
+// destaque #5856D6). O modo escuro nao entra aqui e segue 100% gerado pelo Material.
+html:not(.app-dark) {
+  @include mat.theme-overrides(
+    (
+      primary: #5856d6,
+      on-primary: #ffffff,
+      error: #d70015,
+      on-error: #ffffff,
+      surface: #f6f6fa,
+      surface-container-lowest: #ffffff,
+      surface-container-low: #ffffff,
+      surface-container: #ffffff,
+      surface-container-high: #ffffff,
+      surface-container-highest: #ececf3,
+      on-surface: #1c1c1e,
+      on-surface-variant: #65657a,
+      outline-variant: #e6e6ef,
     )
   );
 }
