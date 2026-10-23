@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\Urban.Condominium.Application\Urban.Condominium.Application.csproj" />
+  </ItemGroup>
+</Project>

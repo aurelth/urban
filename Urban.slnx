@@ -6,25 +6,25 @@
     <Project Path="src/Urban.Workers/Urban.Workers.csproj" />
   </Folder>
   <Folder Name="/src/Modules/" />
-  <Folder Name="/src/Modules/Condominio/">
-    <Project Path="src/Modules/Condominio/Urban.Condominio.Application/Urban.Condominio.Application.csproj" />
-    <Project Path="src/Modules/Condominio/Urban.Condominio.Domain/Urban.Condominio.Domain.csproj" />
-    <Project Path="src/Modules/Condominio/Urban.Condominio.Infrastructure/Urban.Condominio.Infrastructure.csproj" />
+  <Folder Name="/src/Modules/Condominium/">
+    <Project Path="src/Modules/Condominium/Urban.Condominium.Application/Urban.Condominium.Application.csproj" />
+    <Project Path="src/Modules/Condominium/Urban.Condominium.Domain/Urban.Condominium.Domain.csproj" />
+    <Project Path="src/Modules/Condominium/Urban.Condominium.Infrastructure/Urban.Condominium.Infrastructure.csproj" />
   </Folder>
-  <Folder Name="/src/Modules/Financeiro/">
-    <Project Path="src/Modules/Financeiro/Urban.Financeiro.Application/Urban.Financeiro.Application.csproj" />
-    <Project Path="src/Modules/Financeiro/Urban.Financeiro.Domain/Urban.Financeiro.Domain.csproj" />
-    <Project Path="src/Modules/Financeiro/Urban.Financeiro.Infrastructure/Urban.Financeiro.Infrastructure.csproj" />
+  <Folder Name="/src/Modules/Finance/">
+    <Project Path="src/Modules/Finance/Urban.Finance.Application/Urban.Finance.Application.csproj" />
+    <Project Path="src/Modules/Finance/Urban.Finance.Domain/Urban.Finance.Domain.csproj" />
+    <Project Path="src/Modules/Finance/Urban.Finance.Infrastructure/Urban.Finance.Infrastructure.csproj" />
   </Folder>
-  <Folder Name="/src/Modules/Identidade/">
-    <Project Path="src/Modules/Identidade/Urban.Identidade.Application/Urban.Identidade.Application.csproj" />
-    <Project Path="src/Modules/Identidade/Urban.Identidade.Domain/Urban.Identidade.Domain.csproj" />
-    <Project Path="src/Modules/Identidade/Urban.Identidade.Infrastructure/Urban.Identidade.Infrastructure.csproj" />
+  <Folder Name="/src/Modules/Identity/">
+    <Project Path="src/Modules/Identity/Urban.Identity.Application/Urban.Identity.Application.csproj" />
+    <Project Path="src/Modules/Identity/Urban.Identity.Domain/Urban.Identity.Domain.csproj" />
+    <Project Path="src/Modules/Identity/Urban.Identity.Infrastructure/Urban.Identity.Infrastructure.csproj" />
   </Folder>
-  <Folder Name="/src/Modules/Operacoes/">
-    <Project Path="src/Modules/Operacoes/Urban.Operacoes.Application/Urban.Operacoes.Application.csproj" />
-    <Project Path="src/Modules/Operacoes/Urban.Operacoes.Domain/Urban.Operacoes.Domain.csproj" />
-    <Project Path="src/Modules/Operacoes/Urban.Operacoes.Infrastructure/Urban.Operacoes.Infrastructure.csproj" />
+  <Folder Name="/src/Modules/Operations/">
+    <Project Path="src/Modules/Operations/Urban.Operations.Application/Urban.Operations.Application.csproj" />
+    <Project Path="src/Modules/Operations/Urban.Operations.Domain/Urban.Operations.Domain.csproj" />
+    <Project Path="src/Modules/Operations/Urban.Operations.Infrastructure/Urban.Operations.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Urban.ArchTests/Urban.ArchTests.csproj" />

@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\Urban.Finance.Application\Urban.Finance.Application.csproj" />
+  </ItemGroup>
+</Project>

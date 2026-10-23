@@ -10,14 +10,14 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Modules\Identidade\Urban.Identidade.Domain\Urban.Identidade.Domain.csproj" />
-    <ProjectReference Include="..\..\src\Modules\Identidade\Urban.Identidade.Application\Urban.Identidade.Application.csproj" />
-    <ProjectReference Include="..\..\src\Modules\Condominio\Urban.Condominio.Domain\Urban.Condominio.Domain.csproj" />
-    <ProjectReference Include="..\..\src\Modules\Condominio\Urban.Condominio.Application\Urban.Condominio.Application.csproj" />
-    <ProjectReference Include="..\..\src\Modules\Financeiro\Urban.Financeiro.Domain\Urban.Financeiro.Domain.csproj" />
-    <ProjectReference Include="..\..\src\Modules\Financeiro\Urban.Financeiro.Application\Urban.Financeiro.Application.csproj" />
-    <ProjectReference Include="..\..\src\Modules\Operacoes\Urban.Operacoes.Domain\Urban.Operacoes.Domain.csproj" />
-    <ProjectReference Include="..\..\src\Modules\Operacoes\Urban.Operacoes.Application\Urban.Operacoes.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Identity\Urban.Identity.Domain\Urban.Identity.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Identity\Urban.Identity.Application\Urban.Identity.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Condominium\Urban.Condominium.Domain\Urban.Condominium.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Condominium\Urban.Condominium.Application\Urban.Condominium.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Finance\Urban.Finance.Domain\Urban.Finance.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Finance\Urban.Finance.Application\Urban.Finance.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Operations\Urban.Operations.Domain\Urban.Operations.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Operations\Urban.Operations.Application\Urban.Operations.Application.csproj" />
     <ProjectReference Include="..\..\src\Urban.SharedKernel\Urban.SharedKernel.csproj" />
   </ItemGroup>
 </Project>

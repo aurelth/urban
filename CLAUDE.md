@@ -4,7 +4,7 @@ Leia este arquivo inteiro antes de criar ou alterar qualquer coisa neste reposit
 
 ## O que é
 
-Urban (https://urban-pro.io) é um sistema de gestão condominial que substitui as planilhas da síndica do condomínio do Aurel. Ela será a beta-tester do MVP. Roadmap em 3 fases, com recursos de IA na fase 2. O primeiro módulo é Identidade (autenticação).
+Urban (https://urban-pro.io) é um sistema de gestão condominial que substitui as planilhas da síndica do condomínio do Aurel. Ela será a beta-tester do MVP. Roadmap em 3 fases, com recursos de IA na fase 2. O primeiro módulo é Identity (identidade e autenticação).
 
 ## Como trabalhar com o Aurel
 
@@ -33,7 +33,7 @@ SOLID, Clean Code, padrões de projeto, CQRS, Clean Architecture, desempenho, es
 
 - Solução `Urban.slnx`, versões de pacotes centralizadas em `Directory.Packages.props`, SDK fixado em `global.json`.
 - Projetos de entrada: `Urban.Api`, `Urban.Gateway`, `Urban.Workers`, mais `Urban.SharedKernel`.
-- Módulos em `src/Modules/<Modulo>/Urban.<Modulo>.{Domain,Application,Infrastructure}`: Identidade, Condominio, Financeiro, Operacoes.
+- Módulos em `src/Modules/<Module>/Urban.<Module>.{Domain,Application,Infrastructure}`: Identity, Condominium, Finance, Operations.
 - Regras de dependência (verificadas por NetArchTest em `tests/Urban.ArchTests`): Domain não depende de nada; Application depende só de Domain; Infrastructure depende de Application; módulos não referenciam as camadas internas uns dos outros e se comunicam por contratos e eventos de integração (RabbitMQ).
 - CQRS: comandos e consultas separados (MediatR), validação com FluentValidation em pipeline, regras de negócio no Domain.
 - Testes: `tests/Urban.UnitTests`, `tests/Urban.IntegrationTests` (WebApplicationFactory), `tests/Urban.ArchTests`; E2E do frontend em `urban-web/cypress`.
@@ -44,8 +44,13 @@ SOLID, Clean Code, padrões de projeto, CQRS, Clean Architecture, desempenho, es
 - Cobertura de código novo mínima de 80% (gate do Sonar). Arquivos sem lógica (`Program.cs`, `AssemblyReference.cs`, `*.routes.ts`) já estão excluídos da cobertura.
 - Angular: zoneless, componentes OnPush e standalone, estado com NgRx Signals. Tailwind só para o layout dos próprios elementos; a aparência dos componentes do Material vem dos tokens do tema, nunca de CSS por cima.
 - Textos da interface em português do Brasil, em sentença (só a primeira letra maiúscula), verbo no começo dos botões, sem ponto final em rótulos e títulos.
-- Idioma dos identificadores no código (português ou inglês): a decidir no início do módulo Identidade e registrar aqui.
+- Identificadores do código em inglês (classes, métodos, tabelas, endpoints, módulos e pastas do frontend). Interface, documentação, commits e PRs seguem em português do Brasil. Termos do negócio sem tradução óbvia entram no glossário abaixo.
 - Nunca desative o sanitizador do Angular sem validar a entrada e documentar o motivo (ver `core/theme/icons.ts`).
+
+## Glossário: negócio e código
+
+- Condomínio = `Condominium`; unidade = `Unit`; morador = `Resident`; proprietário = `Owner`; síndico = `Manager`.
+- Termos novos entram aqui no início de cada módulo, antes de virar código.
 
 ## Interface (identidade visual)
 
@@ -70,7 +75,7 @@ O modo escuro é gerado pelo Material 3 a partir da cor-semente (destaque mais c
 - `main` (produção) e `develop` (integração) protegidas. Branches de trabalho saem da `develop` e seguem `^(feature|fix|chore|docs|hotfix)/.+`. Nunca use `ci/…`.
 - Commits e títulos de PR em Conventional Commits: `^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9-]+\))?!?: .{1,100}$` (escopo em minúsculas).
 - PR de trabalho para `develop`: squash e apagar a branch. `develop` para `main`: merge commit, sem apagar a `develop`.
-- Checks obrigatórios: `pr-title`, `branch-policy`, `build-test`, `web-build-test`. Também rodam `web-e2e` e o Sonar. Só faça o merge com todos verdes e confira que a lista está completa.
+- Checks obrigatórios: `pr-title`, `branch-policy`, `build-test`, `web-build-test` e `web-e2e`. O Sonar também roda, mas não é obrigatório. Só faça o merge com todos verdes e confira que a lista está completa.
 - Em CI use `npm ci --ignore-scripts` e binários locais (`./node_modules/.bin/...`) em vez de `npx`.
 - Commits e PRs não levam rodapés de co-autoria, links de sessão nem menção a ferramentas de IA.
 
