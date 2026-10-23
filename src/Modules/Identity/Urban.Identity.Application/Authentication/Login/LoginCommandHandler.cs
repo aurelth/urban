@@ -42,6 +42,6 @@ public sealed class LoginCommandHandler(
         RefreshToken refreshToken = RefreshToken.Issue(user.Id, secret.Hash, now);
         await refreshTokens.AddAsync(refreshToken, cancellationToken);
 
-        return Result.Success(new AuthTokens(accessToken.Value, accessToken.ExpiresAt, secret.Value, refreshToken.ExpiresAt));
+        return Result.Success(AuthTokens.From(accessToken, secret, refreshToken));
     }
 }

@@ -11,4 +11,6 @@ public interface IUserAccounts
 {
     /// <returns>O usuário quando a senha confere; senão falha com <c>LoginErrors.InvalidCredentials</c> ou <c>LoginErrors.LockedOut</c>.</returns>
     Task<Result<User>> CheckCredentialsAsync(Email email, string password, CancellationToken cancellationToken);
+
+    Task<User?> FindByIdAsync(Guid userId, CancellationToken cancellationToken);
 }
