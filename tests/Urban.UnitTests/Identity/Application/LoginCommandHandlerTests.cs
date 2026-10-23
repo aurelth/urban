@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Moq;
 using Urban.Identity.Application.Abstractions;
+using Urban.Identity.Application.Authentication;
 using Urban.Identity.Application.Authentication.Login;
 using Urban.Identity.Domain.Tokens;
 using Urban.Identity.Domain.Users;
@@ -30,14 +31,6 @@ public class LoginCommandHandlerTests
         _handler = new LoginCommandHandler(_accounts.Object, _issuer.Object, _generator.Object, _tokens.Object, _clock.Object);
     }
 
-    public static TheoryData<AccountStatus, string> BlockedStates => new()
-    {
-        { AccountStatus.PendingVerification, UserErrors.EmailNotVerified.Code },
-        { AccountStatus.Deactivated, UserErrors.AccountDeactivated.Code },
-        { AccountStatus.Suspended, UserErrors.AccountSuspended.Code },
-        { AccountStatus.Deleted, UserErrors.AccountDeleted.Code },
-    };
-
     [Fact]
     public async Task Handle_WithValidCredentials_ReturnsTokensAndStoresOnlyTheRefreshHash()
     {
@@ -45,7 +38,7 @@ public class LoginCommandHandlerTests
         GivenCredentialsResult(Result.Success(user));
         _issuer.Setup(i => i.IssueAccessToken(user, Now)).Returns(new AccessToken("access-jwt", Now.AddMinutes(15)));
 
-        Result<LoginResult> result = await _handler.Handle(new LoginCommand("ana@example.com", Password), CancellationToken.None);
+        Result<AuthTokens> result = await _handler.Handle(new LoginCommand("ana@example.com", Password), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.AccessToken.Should().Be("access-jwt");
@@ -64,7 +57,7 @@ public class LoginCommandHandlerTests
     {
         GivenCredentialsResult(Result.Failure<User>(LoginErrors.InvalidCredentials));
 
-        Result<LoginResult> result = await _handler.Handle(new LoginCommand("ana@example.com", "outra-senha-1"), CancellationToken.None);
+        Result<AuthTokens> result = await _handler.Handle(new LoginCommand("ana@example.com", "outra-senha-1"), CancellationToken.None);
 
         result.Error.Should().Be(LoginErrors.InvalidCredentials);
         NothingWasIssued();
@@ -76,7 +69,7 @@ public class LoginCommandHandlerTests
     [InlineData("not-an-email")]
     public async Task Handle_WithMalformedEmail_FailsWithTheSameErrorWithoutTouchingTheAccounts(string email)
     {
-        Result<LoginResult> result = await _handler.Handle(new LoginCommand(email, Password), CancellationToken.None);
+        Result<AuthTokens> result = await _handler.Handle(new LoginCommand(email, Password), CancellationToken.None);
 
         result.Error.Should().Be(LoginErrors.InvalidCredentials);
         _accounts.VerifyNoOtherCalls();
@@ -88,19 +81,19 @@ public class LoginCommandHandlerTests
     {
         GivenCredentialsResult(Result.Failure<User>(LoginErrors.LockedOut));
 
-        Result<LoginResult> result = await _handler.Handle(new LoginCommand("ana@example.com", Password), CancellationToken.None);
+        Result<AuthTokens> result = await _handler.Handle(new LoginCommand("ana@example.com", Password), CancellationToken.None);
 
         result.Error.Should().Be(LoginErrors.LockedOut);
         NothingWasIssued();
     }
 
     [Theory]
-    [MemberData(nameof(BlockedStates))]
+    [MemberData(nameof(BlockedAccounts.States), MemberType = typeof(BlockedAccounts))]
     public async Task Handle_WithCorrectPasswordOnABlockedAccount_RevealsTheStateAndIssuesNothing(AccountStatus status, string expectedCode)
     {
         GivenCredentialsResult(Result.Success(UserBuilder.InStatus(status)));
 
-        Result<LoginResult> result = await _handler.Handle(new LoginCommand("ana@example.com", Password), CancellationToken.None);
+        Result<AuthTokens> result = await _handler.Handle(new LoginCommand("ana@example.com", Password), CancellationToken.None);
 
         result.Error.Code.Should().Be(expectedCode);
         NothingWasIssued();

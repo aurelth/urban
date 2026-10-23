@@ -12,20 +12,20 @@ public sealed class LoginCommandHandler(
     ITokenIssuer tokenIssuer,
     IRefreshTokenGenerator refreshTokenGenerator,
     IRefreshTokenRepository refreshTokens,
-    IClock clock) : IRequestHandler<LoginCommand, Result<LoginResult>>
+    IClock clock) : IRequestHandler<LoginCommand, Result<AuthTokens>>
 {
-    public async Task<Result<LoginResult>> Handle(LoginCommand request, CancellationToken cancellationToken)
+    public async Task<Result<AuthTokens>> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
         Result<Email> email = Email.Create(request.Email);
         if (email.IsFailure)
         {
-            return Result.Failure<LoginResult>(LoginErrors.InvalidCredentials);
+            return Result.Failure<AuthTokens>(LoginErrors.InvalidCredentials);
         }
 
         Result<User> credentials = await accounts.CheckCredentialsAsync(email.Value, request.Password, cancellationToken);
         if (credentials.IsFailure)
         {
-            return Result.Failure<LoginResult>(credentials.Error);
+            return Result.Failure<AuthTokens>(credentials.Error);
         }
 
         // O estado da conta só é revelado depois da senha correta (CheckCanSignIn).
@@ -33,7 +33,7 @@ public sealed class LoginCommandHandler(
         Result canSignIn = user.CheckCanSignIn();
         if (canSignIn.IsFailure)
         {
-            return Result.Failure<LoginResult>(canSignIn.Error);
+            return Result.Failure<AuthTokens>(canSignIn.Error);
         }
 
         DateTimeOffset now = clock.UtcNow;
@@ -42,6 +42,6 @@ public sealed class LoginCommandHandler(
         RefreshToken refreshToken = RefreshToken.Issue(user.Id, secret.Hash, now);
         await refreshTokens.AddAsync(refreshToken, cancellationToken);
 
-        return Result.Success(new LoginResult(accessToken.Value, accessToken.ExpiresAt, secret.Value, refreshToken.ExpiresAt));
+        return Result.Success(new AuthTokens(accessToken.Value, accessToken.ExpiresAt, secret.Value, refreshToken.ExpiresAt));
     }
 }
