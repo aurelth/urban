@@ -4,36 +4,55 @@ Leia este arquivo inteiro antes de criar ou alterar qualquer coisa neste reposit
 
 ## O que é
 
-Urban (https://urban-pro.io) é um sistema de gestão condominial que substitui as planilhas da síndica do condomínio do Aurel. Ela será a beta-tester do MVP. Roadmap em 3 fases (75 módulos, ver "Escopo e roadmap"), com recursos de IA na fase 2. O primeiro módulo é Identity (identidade e autenticação).
+Urban (https://urban-pro.io) é um sistema de gestão condominial que substitui as planilhas da síndica do condomínio do Aurel e é uma plataforma para vários condomínios (multi-condomínio desde o MVP). Ela será a beta-tester do MVP. Roadmap em 3 fases (77 módulos, ver "Escopo e roadmap"), com recursos de IA na fase 2. O primeiro módulo é Identity (identidade e autenticação).
 
-## Escopo e roadmap (75 módulos em 3 fases)
+## Escopo e roadmap (77 módulos em 3 fases)
 
-A síndica é a beta-tester. A Fase 1 (MVP) tem que permitir abandonar as planilhas no dia 1, e cada fase termina com release em produção. O plano original tinha 66 módulos (documento Urban-03). Em 22/10/2026 o Aurel decidiu mover 4 módulos da Fase 3 para a Fase 1 (modo escuro, backup, consentimento LGPD e log de auditoria) e acrescentar 9 novos: importação das planilhas na Fase 1, 4 na Fase 2 e 4 na Fase 3. Total: Fase 1 com 25, Fase 2 com 27 e Fase 3 com 23.
+A síndica é a beta-tester. A Fase 1 (MVP) tem que permitir abandonar as planilhas no dia 1, e cada fase termina com release em produção. O plano original tinha 66 módulos (documento Urban-03). Em 22/10/2026 o Aurel decidiu mover 4 módulos da Fase 3 para a Fase 1 (modo escuro, backup, consentimento LGPD e log de auditoria) e acrescentar 9 novos: importação das planilhas na Fase 1, 4 na Fase 2 e 4 na Fase 3. Total naquela data: Fase 1 com 25, Fase 2 com 27 e Fase 3 com 23. Em 23/10/2026 ele pediu que os síndicos possam se cadastrar sozinhos (multi-condomínio desde o MVP), fatura em PDF com envio automático, chamados e reclamações dos moradores e um painel da plataforma para ele: multi-condomínio sai da Fase 3, registro de ocorrências sai da Fase 2, e fatura em PDF e painel da plataforma entram como módulos novos. Total atual: Fase 1 com 29, Fase 2 com 26 e Fase 3 com 22 (77 módulos).
 
-Papéis do MVP: Admin (a síndica, acesso total) e Morador (só os próprios dados, comunicados, reservas e a versão simplificada do dashboard). A inadimplência é visível só ao Admin.
+Papéis do MVP: `SuperAdmin` (o Aurel, dono da plataforma), `Manager` (síndico) e `Resident` (morador). Detalhes na seção "Papéis, condomínios e acesso". A inadimplência é visível só ao `Manager`.
 
-**Fase 1: MVP (25 módulos)**
-- Infraestrutura e autenticação: autenticação (Identity + JWT, access token de 15 min, refresh token de 7 dias com rotação, logout invalida no Redis); perfis e permissões; gestão de usuários (redefinição de senha com token de 1 h); API Gateway (YARP).
+**Fase 1: MVP (29 módulos)**
+- Infraestrutura e autenticação: autenticação (Identity + JWT, access token de 15 min, refresh token de 7 dias com rotação, logout invalida no Redis); perfis e permissões (`SuperAdmin`, `Manager` e `Resident`); gestão de usuários (cadastro do síndico, convite de moradores, suspensão e exclusão, redefinição de senha com token de 1 h); API Gateway (YARP).
 - Condomínio: cadastro do condomínio; cadastro de unidades; cadastro de moradores; histórico de ocupação; dependentes; veículos.
-- Financeiro: lançamento de despesas (com comprovante); categorias de despesa; competência mensal; geração de cobranças (rateio por fração ideal); registro manual de pagamentos; dashboard financeiro (navegação entre meses e versão do morador); controle de inadimplência; fornecedores (básico).
-- Operações: agendamento de manutenção (alertas D-3 e D-1); comunicados internos (SignalR e e-mail).
-- Plataforma e compliance: importação das planilhas (CSV e Excel); backup automático diário; LGPD (consentimento com data e versão); log de auditoria imutável; modo escuro (tema claro e escuro à escolha do usuário).
+- Financeiro: lançamento de despesas (com comprovante); categorias de despesa; competência mensal; geração de cobranças (rateio por fração ideal); fatura em PDF com envio automático por e-mail; registro manual de pagamentos; dashboard financeiro (navegação entre meses e versão do morador); controle de inadimplência; fornecedores (básico).
+- Operações: agendamento de manutenção (alertas D-3 e D-1); comunicados internos (categorias manutenção, importante e geral; SignalR e e-mail); registro de ocorrências (chamados de conserto e reclamações de barulho; quem reclama não aparece para o reclamado).
+- Plataforma e compliance: importação das planilhas (CSV e Excel); backup automático diário; LGPD (consentimento com data e versão); log de auditoria imutável; modo escuro (tema claro e escuro à escolha do usuário); multi-condomínio (isolamento por tenant); painel da plataforma (SuperAdmin: condomínios e síndicos, suspender, reativar e excluir).
 
-**Fase 2: Essencial, automatizar o manual e IA (27 módulos)**
+A Fase 1 sai em duas releases. A 1a leva o que a síndica precisa para largar as planilhas: identidade, cadastro do síndico, condomínio, unidades, moradores, despesas, cobranças, fatura em PDF, comunicados e o isolamento por tenant. A 1b leva ocorrências, painel da plataforma, importação das planilhas, backup e log de auditoria.
+
+**Fase 2: Essencial, automatizar o manual e IA (26 módulos)**
 - Financeiro avançado: boleto e PIX automático (Asaas ou Pagar.me); conciliação automática por webhook; multa e juros automáticos; relatório de inadimplência (aging); exportação de relatórios (PDF e Excel); rateio configurável; acordos e parcelamento de dívidas; prestação de contas (balancete mensal e anual).
-- Operações avançadas: registro de ocorrências; ordem de serviço; fornecedores (completo); reserva de áreas comuns; cancelamento e fila de espera; contratos (básico); documentos e vencimentos (convenção, regimento, AVCB e seguro, com alertas de validade); encomendas e visitantes (pré-autorização por QR code).
+- Operações avançadas: ordem de serviço; fornecedores (completo); reserva de áreas comuns; cancelamento e fila de espera; contratos (básico); documentos e vencimentos (convenção, regimento, AVCB e seguro, com alertas de validade); encomendas e visitantes (pré-autorização por QR code).
 - Comunicação avançada: notificações multicanal; WhatsApp Business API; mural digital.
 - Condomínio avançado: animais de estimação; checklist de vistoria; painel do morador.
 - Inteligência artificial (Claude API): assistente para a síndica; previsão de inadimplência; comunicados gerados por IA; análise preditiva de manutenção; relatório mensal por IA.
 
-**Fase 3: Avançado, condomínio 100% digital (23 módulos)**
+**Fase 3: Avançado, condomínio 100% digital (22 módulos)**
 - Governança: votações e enquetes; assembleia digital; ata automática; painel do conselho; procuração digital.
 - Financeiro completo: fundo de reserva; previsão orçamentária anual; conciliação bancária (OFX e CSV); DRE simplificado; nota fiscal eletrônica; consumo individual (água e gás); contas a pagar com aprovação do conselho.
 - Operações completas: plano de manutenção preventiva (ABNT NBR 5674); contratos (completo); controle de acesso da portaria; assinatura digital de documentos (ICP-Brasil); infrações e multas; gestão de funcionários; mudanças e obras.
-- Segurança e compliance: LGPD (portabilidade e exclusão); 2FA (TOTP, obrigatório para o Admin).
-- Plataforma: app mobile (PWA); multi-condomínio (isolamento por tenant; as tabelas de negócio já levam `condominium_id`).
+- Segurança e compliance: LGPD (portabilidade e exclusão); 2FA (TOTP, obrigatório para o `SuperAdmin` e o `Manager`).
+- Plataforma: app mobile (PWA).
 
 Documentos de planejamento, fora do repositório (pasta `Urban` da Área de Trabalho do Aurel): Urban-01 a Urban-07 (arquitetura, mensageria, módulos, stack, estrutura, CI/CD e modelo de dados). Estão em português e parcialmente desatualizados (PrimeNG virou Angular Material; nomes de módulos, schemas e tabelas em português viram inglês). Em caso de conflito vale este arquivo.
+
+## Papéis, condomínios e acesso
+
+Decidido com o Aurel em 22 e 23/10/2026.
+
+- Papéis no código (e na interface): `SuperAdmin` (Super administrador, o Aurel, dono da plataforma, sem condomínio), `Manager` (Síndico) e `Resident` (Morador).
+- `Manager` pode tudo o que `Resident` pode: as políticas da área do morador aceitam os dois papéis. O que aparece nessa área (faturas, chamados) vem da ocupação da pessoa, não do papel. A fatura é por unidade, então a unidade do síndico entra no rateio e na emissão como qualquer outra, sem regra especial. Síndico profissional pode não morar no prédio: a unidade no cadastro é opcional.
+- Multi-condomínio (tenant) desde o MVP: todo usuário, exceto o `SuperAdmin`, pertence a um condomínio. `condominium_id` fica em toda tabela de negócio e no JWT, e um filtro global do EF Core aplica o tenant atual. Cache, jobs do Hangfire e eventos carregam o tenant. Cada módulo de negócio tem teste de isolamento: o usuário do condomínio A não enxerga nada do B.
+- Cadastro do síndico (por conta própria, sem convite): (1) Identity: nome, e-mail, senha e aceite dos termos e da política de privacidade (alimenta o consentimento LGPD); a conta nasce `pending_verification`; (2) confirmação por e-mail torna a conta `active`, com acesso imediato; (3) depois do login, o módulo Condominium pede nome, CNPJ e endereço do condomínio (CNPJ já cadastrado dá conflito: pedir convite ao síndico atual); (4) unidade do síndico, opcional. O endpoint de cadastro tem limite de requisições. O `SuperAdmin` também pode criar síndicos.
+- Moradores são cadastrados pelo síndico, que dispara um convite com link para definir a senha (token de 1 h, com reenvio).
+- Estados da conta: `pending_verification`, `active`, `deactivated` (feito pelo síndico, que também reativa) e `suspended` (feito pelo `SuperAdmin`, só ele reativa). Excluir é anonimizar o login: e-mail trocado, hash da senha apagado e `deleted_at` preenchido; o `id` permanece para a auditoria e o e-mail fica livre. Mudanças de estado gravam `status_changed_at`, `status_changed_by` e `status_reason`.
+- Quem age sobre quem é uma função pura no Domain, `AccessPolicy.CanManage(actor, target)`, que considera o tenant. `SuperAdmin`: cria síndicos e suspende, reativa e exclui síndicos e moradores. `Manager`: cria, desativa, reativa e exclui moradores do próprio condomínio. `Resident`: nenhum. Ninguém age sobre si mesmo. O `SuperAdmin` nasce só no bootstrap (primeiro start, com link para definir a senha), nunca pela API.
+- Excluir ou suspender o síndico age só na conta dele: o condomínio e seus dados financeiros ficam, e os moradores continuam acessando. Status de condomínio e troca de síndico (`ChangeManager`) são módulos futuros, ainda sem fase.
+- Login: e-mail inexistente e senha errada dão o mesmo erro. O estado da conta só aparece depois da senha correta (`email_not_verified`, `account_deactivated`, `account_suspended`). Cinco falhas bloqueiam a conta por 15 min (423). Senha com no mínimo 10 caracteres, com pelo menos 1 letra e 1 dígito.
+- Tokens: access token de 15 min, guardado só em memória no frontend; refresh token de 7 dias em cookie `HttpOnly; Secure; SameSite=Strict` com path `/api/auth`, com rotação e detecção de reuso (reuso revoga todos os tokens do usuário). Logout e suspensão revogam pelo Redis (`jti` do token e instante de revogação por usuário).
+- O `SuperAdmin` não acessa dados de negócio dos condomínios (menor privilégio); as rotas de finanças e moradores exigem `Manager` ou `Resident`. Suporte por "assumir sessão", com auditoria, é módulo futuro.
+- Painel da plataforma: módulo `Platform`, só leitura, que lista cada condomínio com o síndico associado a partir de contratos de Identity e Condominium. As ações de suspender, reativar e excluir ficam nele.
 
 ## Como trabalhar com o Aurel
 
@@ -47,6 +66,21 @@ Documentos de planejamento, fora do repositório (pasta `Urban` da Área de Trab
 ## Princípios de engenharia
 
 SOLID, Clean Code, padrões de projeto, CQRS, Clean Architecture, desempenho, escala, reuso e facilidade de manutenção e de troca de tecnologia. Prefira soluções simples e justificadas a soluções genéricas demais.
+
+## Qualidade do código: sem duplicação, reuso e extensibilidade
+
+O Aurel pediu que estas regras sejam seguidas à risca em todo PR.
+
+- Um lugar para cada coisa: o que mais de um módulo usa mora em `Urban.SharedKernel` (`Entity`, `AggregateRoot`, `ValueObject`, `Result<T>` e `Error`, `IClock`, `ICurrentUser`, `ITenantContext`, `PagedQuery` e `PagedResult<T>`). Antes de criar um tipo ou helper, procure se já existe.
+- Preocupações transversais são escritas e testadas uma vez: behaviors do MediatR (validação, log, transação nos comandos, cache nas consultas), filtro global de tenant, tradução de `Result` para HTTP (ProblemDetails), paginação e auditoria. Handlers e endpoints não repetem esse código.
+- Regra dos três: na terceira repetição, extraia. Em Domain e Application a duplicação nunca passa de duas ocorrências; o teto de 3% do Sonar não é meta.
+- Organização por funcionalidade dentro de cada camada: `Features/<Feature>/` com comando ou consulta, handler e validator juntos. Funcionalidade nova é pasta nova, sem mexer no que já existe (aberto para extensão, fechado para modificação). Handlers e validators são registrados por varredura do assembly, cada módulo expõe um único `Add<Module>Module(...)`, os endpoints ficam em `Map<Module>Endpoints(...)` e as políticas de autorização usam constantes.
+- Endpoints finos: só traduzem HTTP para comando ou consulta e de volta; nenhuma regra de negócio neles.
+- Testes também sem duplicação: builders e fakes compartilhados (`FakeClock`, builders de entidades), uma única fábrica da API e containers do Testcontainers iniciados uma vez por coleção.
+- Desempenho por padrão: as metas de "Qualidade da interface e desempenho" valem em cada consulta e tela (paginação, projeção, índices, sem N+1, cache). Otimização se decide medindo, não supondo.
+- Frontend: componentes reutilizáveis em `shared/ui`, um único cliente HTTP com interceptors (token, erros), stores por feature, nenhum componente copiado entre features e estilos só pelos tokens do tema.
+- Reuso sim, abstração genérica demais não (ver "Princípios de engenharia").
+- Checklist no corpo de todo PR de código: existe algo parecido que dava para reaproveitar? Houve duplicação? Alguma consulta sem paginação ou com N+1? A funcionalidade exigiu mexer em código antigo? O comportamento novo nasceu de um teste?
 
 ## Desenvolvimento orientado a testes (TDD)
 
@@ -74,10 +108,11 @@ Decidido em 22/10/2026: todo comportamento novo nasce de um teste que falha.
 
 - Solução `Urban.slnx`, versões de pacotes centralizadas em `Directory.Packages.props`, SDK fixado em `global.json`.
 - Projetos de entrada: `Urban.Api`, `Urban.Gateway`, `Urban.Workers`, mais `Urban.SharedKernel`.
-- Módulos em `src/Modules/<Module>/Urban.<Module>.{Domain,Application,Infrastructure}`: Identity, Condominium, Finance, Operations.
+- Módulos em `src/Modules/<Module>/Urban.<Module>.{Domain,Application,Infrastructure}`: Identity, Condominium, Finance, Operations e, quando começar o painel da plataforma, Platform (só leitura, sem tabelas próprias).
 - Regras de dependência (verificadas por NetArchTest em `tests/Urban.ArchTests`): Domain não depende de nada; Application depende só de Domain; Infrastructure depende de Application; módulos não referenciam as camadas internas uns dos outros e se comunicam por contratos e eventos de integração (RabbitMQ).
 - CQRS: comandos e consultas separados (MediatR), validação com FluentValidation em pipeline, regras de negócio no Domain.
 - Testes: `tests/Urban.UnitTests`, `tests/Urban.IntegrationTests` (WebApplicationFactory), `tests/Urban.ArchTests`; E2E do frontend em `urban-web/cypress`.
+- Identity: ASP.NET Identity (`UserManager`, bloqueio, token de redefinição), BCrypt e JWT ficam na Infrastructure, atrás de portas definidas na Application (`IUserAccounts`, `IRefreshTokenRepository`, `ITokenIssuer`, `ISessionRevocations`, `IEmailSender`, `IClock`). O Domain não referencia nenhum deles (NetArchTest).
 
 ## Modelo de dados
 
@@ -87,6 +122,7 @@ Decidido em 22/10/2026: todo comportamento novo nasce de um teste que falha.
 - Cada módulo que publica eventos tem suas tabelas `outbox_message`, `outbox_state` e `inbox_state` (MassTransit EF Core Outbox).
 - Pessoa e usuário são conceitos separados: nem toda pessoa tem acesso ao sistema (`person` 1 : 0..1 `user`, ligados por ID entre módulos).
 - O histórico de ocupação da unidade fica em `occupancy` (data de início e fim por vínculo); nunca apague o registro de quem saiu.
+- Multi-condomínio: toda tabela de negócio leva `condominium_id` (tenant), aplicado por filtro global do EF Core. `identity.user` leva `condominium_id` (nulo só para o `SuperAdmin`), `status`, `status_changed_at`, `status_changed_by`, `status_reason` e `deleted_at`.
 
 ## Convenções de código
 
@@ -99,7 +135,8 @@ Decidido em 22/10/2026: todo comportamento novo nasce de um teste que falha.
 
 ## Glossário: negócio e código
 
-- Condomínio = `Condominium`; unidade = `Unit`; morador = `Resident`; proprietário = `Owner`; síndico = `Manager`.
+- Condomínio = `Condominium`; unidade = `Unit`; morador = `Resident`; proprietário = `Owner`; síndico = `Manager`; super administrador (dono da plataforma) = `SuperAdmin`.
+- Cobrança = `Charge`; fatura (PDF da cobrança) = `Invoice`; ocorrência (chamado, reclamação) = `Incident`; comunicado = `Announcement`; condomínio como inquilino do sistema = tenant.
 - Termos novos entram aqui no início de cada módulo, antes de virar código.
 
 ## Interface (identidade visual)
