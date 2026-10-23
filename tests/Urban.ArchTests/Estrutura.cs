@@ -4,7 +4,7 @@ namespace Urban.ArchTests;
 
 internal static class Estrutura
 {
-    public static readonly string[] Modulos = ["Identidade", "Condominio", "Financeiro", "Operacoes"];
+    public static readonly string[] Modulos = ["Identity", "Condominium", "Finance", "Operations"];
 
     public static readonly string[] Camadas = ["Domain", "Application", "Infrastructure"];
 
