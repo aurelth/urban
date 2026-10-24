@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Testcontainers.PostgreSql;
+using Urban.Identity.Application.Abstractions;
 using Urban.Identity.Domain.Access;
 using Urban.Identity.Domain.Users;
 using Urban.Identity.Infrastructure.Persistence;
+using Urban.Identity.Infrastructure.Security;
 using Urban.TestSupport.Identity;
 
 namespace Urban.IntegrationTests.Identity.Persistence;
@@ -13,6 +15,9 @@ namespace Urban.IntegrationTests.Identity.Persistence;
 /// </summary>
 public sealed class PostgresFixture : IAsyncLifetime
 {
+    /// <summary>BCrypt com o custo mínimo: os testes verificam as regras, não a lentidão do algoritmo.</summary>
+    public static readonly IPasswordHasher Hasher = new PasswordHasher(new PasswordHashingOptions { WorkFactor = PasswordHashingOptions.MinimumWorkFactor });
+
     private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:18").Build();
 
     public async Task InitializeAsync()
@@ -38,6 +43,27 @@ public sealed class PostgresFixture : IAsyncLifetime
         await db.SaveChangesAsync();
 
         return user;
+    }
+
+    /// <summary>Grava um usuário ativo junto com a credencial dele (senha em BCrypt) e devolve o usuário.</summary>
+    public async Task<User> SeedUserWithPasswordAsync(string password)
+    {
+        User user = UserBuilder.InStatus(AccountStatus.Active, UserRole.Resident, $"{Guid.NewGuid():N}@example.com");
+
+        await using IdentityDbContext db = CreateContext();
+        db.Users.Add(user);
+        db.UserCredentials.Add(UserCredential.Create(user.Id, Hasher.Hash(password)));
+        await db.SaveChangesAsync();
+
+        return user;
+    }
+
+    /// <summary>Lê a credencial direto do banco, com um contexto novo.</summary>
+    public async Task<UserCredential?> ReadCredentialAsync(Guid userId)
+    {
+        await using IdentityDbContext db = CreateContext();
+
+        return await db.UserCredentials.AsNoTracking().SingleOrDefaultAsync(c => c.UserId == userId);
     }
 }
 

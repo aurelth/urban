@@ -4,7 +4,7 @@ using Urban.SharedKernel;
 namespace Urban.Identity.Application.Abstractions;
 
 /// <summary>
-/// Porta para o armazenamento de contas e senhas (ASP.NET Identity na Infrastructure).
+/// Porta para o armazenamento de contas e senhas.
 /// Quem implementa conta as falhas de senha e bloqueia a conta; e-mail inexistente e senha errada devolvem o mesmo erro.
 /// </summary>
 public interface IUserAccounts
