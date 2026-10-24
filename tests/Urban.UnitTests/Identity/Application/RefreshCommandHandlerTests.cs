@@ -7,7 +7,7 @@ using Urban.Identity.Domain.Tokens;
 using Urban.Identity.Domain.Users;
 using Urban.SharedKernel;
 using Urban.SharedKernel.Abstractions;
-using Urban.UnitTests.Identity.Domain;
+using Urban.TestSupport.Identity;
 
 namespace Urban.UnitTests.Identity.Application;
 

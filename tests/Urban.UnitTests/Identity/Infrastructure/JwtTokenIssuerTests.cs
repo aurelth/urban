@@ -6,7 +6,7 @@ using Urban.Identity.Application.Abstractions;
 using Urban.Identity.Domain.Access;
 using Urban.Identity.Domain.Users;
 using Urban.Identity.Infrastructure.Tokens;
-using Urban.UnitTests.Identity.Domain;
+using Urban.TestSupport.Identity;
 
 namespace Urban.UnitTests.Identity.Infrastructure;
 

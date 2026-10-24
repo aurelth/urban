@@ -2,6 +2,7 @@ using FluentAssertions;
 using Urban.Identity.Domain.Access;
 using Urban.Identity.Domain.Users;
 using Urban.SharedKernel;
+using Urban.TestSupport.Identity;
 
 namespace Urban.UnitTests.Identity.Domain;
 

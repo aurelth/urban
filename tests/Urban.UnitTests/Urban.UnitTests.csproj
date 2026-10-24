@@ -20,5 +20,6 @@
     <ProjectReference Include="..\..\src\Modules\Operations\Urban.Operations.Domain\Urban.Operations.Domain.csproj" />
     <ProjectReference Include="..\..\src\Modules\Operations\Urban.Operations.Application\Urban.Operations.Application.csproj" />
     <ProjectReference Include="..\..\src\Urban.SharedKernel\Urban.SharedKernel.csproj" />
+    <ProjectReference Include="..\Urban.TestSupport\Urban.TestSupport.csproj" />
   </ItemGroup>
 </Project>
