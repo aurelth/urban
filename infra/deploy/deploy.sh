@@ -19,12 +19,32 @@ esac
 # Trabalha sempre na pasta do ambiente (~/urban/<ambiente>).
 cd "$(dirname "$0")"
 
+# O workflow envia o compose novo como docker-compose.next.yml. Guardamos o que esta em uso para
+# poder voltar a ele: o compose faz parte da versao, e voltar so a tag das imagens nao basta
+# quando o defeito esta no proprio compose.
+COMPOSE_FILE="docker-compose.yml"
+NEXT_COMPOSE_FILE="docker-compose.next.yml"
+PREVIOUS_COMPOSE_FILE="docker-compose.previous.yml"
+if [[ ! -s "$NEXT_COMPOSE_FILE" ]]; then
+  echo "Falta o arquivo $NEXT_COMPOSE_FILE. O workflow de deploy o envia." >&2
+  exit 2
+fi
+
 # secrets.env e escrito pelo workflow de deploy a partir dos secrets do Environment do GitHub.
 SECRETS_FILE="secrets.env"
 if [[ ! -s "$SECRETS_FILE" ]]; then
   echo "Falta o arquivo $SECRETS_FILE (segredos do ambiente). O workflow de deploy o envia." >&2
   exit 2
 fi
+
+# Troca o compose em uso pelo novo, guardando o anterior (se houver).
+install_new_compose() {
+  if [[ -f "$COMPOSE_FILE" ]]; then
+    cp "$COMPOSE_FILE" "$PREVIOUS_COMPOSE_FILE"
+  fi
+  mv "$NEXT_COMPOSE_FILE" "$COMPOSE_FILE"
+  return 0
+}
 
 write_env() {
   local tag="$1"
@@ -59,12 +79,16 @@ fi
 restore_previous() {
   if [[ -n "$PREVIOUS_TAG" && "$PREVIOUS_TAG" != "$TAG" ]]; then
     echo "Voltando para a versao anterior: $PREVIOUS_TAG" >&2
+    if [[ -f "$PREVIOUS_COMPOSE_FILE" ]]; then
+      cp "$PREVIOUS_COMPOSE_FILE" "$COMPOSE_FILE"
+    fi
     write_env "$PREVIOUS_TAG"
     docker compose up -d --remove-orphans
   fi
   return 0
 }
 
+install_new_compose
 write_env "$TAG"
 if ! docker compose pull; then
   echo "Nao foi possivel baixar as imagens da tag $TAG" >&2

@@ -53,7 +53,10 @@ jobs:
       - name: Enviar arquivos de deploy
         run: |
           scp -i ~/.ssh/id_deploy -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
-            infra/deploy/docker-compose.yml infra/deploy/deploy.sh \
+            infra/deploy/docker-compose.yml \
+            "${VPS_USER}@${VPS_HOST}:urban/${ENVIRONMENT}/docker-compose.next.yml"
+          scp -i ~/.ssh/id_deploy -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            infra/deploy/deploy.sh \
             "${VPS_USER}@${VPS_HOST}:urban/${ENVIRONMENT}/"
 
       # Os segredos viajam pela entrada padrao do ssh (nunca na linha de comando, onde apareceriam
