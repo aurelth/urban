@@ -11,7 +11,6 @@ namespace Urban.IntegrationTests.Api;
 public sealed class AuthEndpointsTests(ApiFixture fixture) : IDisposable
 {
     private const string Password = "Senha-segura-123";
-    private const string RefreshCookieName = "__Secure-urban-refresh";
 
     // Cookies tratados à mão: o cookie é Secure e o cliente de teste fala HTTP, então o contêiner de cookies não o enviaria.
     private readonly HttpClient _client = fixture.Factory.CreateClient(new() { HandleCookies = false });
@@ -23,7 +22,7 @@ public sealed class AuthEndpointsTests(ApiFixture fixture) : IDisposable
     {
         User user = await fixture.Postgres.SeedUserWithPasswordAsync(Password);
 
-        HttpResponseMessage response = await LoginAsync(user.Email.Value, Password);
+        HttpResponseMessage response = await _client.LoginAsync(user.Email.Value, Password);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -40,10 +39,10 @@ public sealed class AuthEndpointsTests(ApiFixture fixture) : IDisposable
     {
         User user = await fixture.Postgres.SeedUserWithPasswordAsync(Password);
 
-        HttpResponseMessage response = await LoginAsync(user.Email.Value, Password);
+        HttpResponseMessage response = await _client.LoginAsync(user.Email.Value, Password);
 
         string raw = await response.Content.ReadAsStringAsync();
-        string refreshValue = CookieValue(response)!;
+        string refreshValue = response.RefreshCookieValue()!;
         raw.Should().NotContain(refreshValue);
         raw.ToLowerInvariant().Should().NotContain("refresh");
     }
@@ -53,10 +52,10 @@ public sealed class AuthEndpointsTests(ApiFixture fixture) : IDisposable
     {
         User user = await fixture.Postgres.SeedUserWithPasswordAsync(Password);
 
-        HttpResponseMessage response = await LoginAsync(user.Email.Value, Password);
+        HttpResponseMessage response = await _client.LoginAsync(user.Email.Value, Password);
 
         // Só os atributos: o nome do cookie também contém a palavra "secure".
-        string[] attributes = SetCookieHeader(response)!.ToLowerInvariant().Split(';').Skip(1).Select(a => a.Trim()).ToArray();
+        string[] attributes = response.RefreshCookieHeader()!.ToLowerInvariant().Split(';').Skip(1).Select(a => a.Trim()).ToArray();
         attributes.Should().Contain("httponly");
         attributes.Should().Contain("secure");
         attributes.Should().Contain("samesite=strict");
@@ -69,7 +68,7 @@ public sealed class AuthEndpointsTests(ApiFixture fixture) : IDisposable
     {
         User user = await fixture.Postgres.SeedUserWithPasswordAsync(Password);
 
-        HttpResponseMessage response = await LoginAsync(user.Email.Value, Password);
+        HttpResponseMessage response = await _client.LoginAsync(user.Email.Value, Password);
 
         response.Headers.CacheControl!.NoStore.Should().BeTrue();
     }
@@ -79,11 +78,11 @@ public sealed class AuthEndpointsTests(ApiFixture fixture) : IDisposable
     {
         User user = await fixture.Postgres.SeedUserWithPasswordAsync(Password);
 
-        HttpResponseMessage response = await LoginAsync(user.Email.Value, "outra-senha-999");
+        HttpResponseMessage response = await _client.LoginAsync(user.Email.Value, "outra-senha-999");
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-        (await CodeOf(response)).Should().Be("identity.login.invalid_credentials");
-        SetCookieHeader(response).Should().BeNull();
+        (await response.CodeAsync()).Should().Be("identity.login.invalid_credentials");
+        response.RefreshCookieHeader().Should().BeNull();
     }
 
     [Fact]
@@ -91,8 +90,8 @@ public sealed class AuthEndpointsTests(ApiFixture fixture) : IDisposable
     {
         User user = await fixture.Postgres.SeedUserWithPasswordAsync(Password);
 
-        HttpResponseMessage wrongPassword = await LoginAsync(user.Email.Value, "outra-senha-999");
-        HttpResponseMessage unknownEmail = await LoginAsync($"{Guid.NewGuid():N}@example.com", Password);
+        HttpResponseMessage wrongPassword = await _client.LoginAsync(user.Email.Value, "outra-senha-999");
+        HttpResponseMessage unknownEmail = await _client.LoginAsync($"{Guid.NewGuid():N}@example.com", Password);
 
         unknownEmail.StatusCode.Should().Be(wrongPassword.StatusCode);
         JsonElement a = await wrongPassword.Content.ReadFromJsonAsync<JsonElement>();
@@ -108,7 +107,7 @@ public sealed class AuthEndpointsTests(ApiFixture fixture) : IDisposable
         HttpResponseMessage response = await _client.PostAsJsonAsync("/api/auth/login", new { });
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-        (await CodeOf(response)).Should().Be("identity.login.invalid_credentials");
+        (await response.CodeAsync()).Should().Be("identity.login.invalid_credentials");
     }
 
     [Fact]
@@ -118,14 +117,14 @@ public sealed class AuthEndpointsTests(ApiFixture fixture) : IDisposable
 
         for (int attempt = 1; attempt <= 4; attempt++)
         {
-            (await LoginAsync(user.Email.Value, "outra-senha-999")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+            (await _client.LoginAsync(user.Email.Value, "outra-senha-999")).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
         }
 
-        HttpResponseMessage fifth = await LoginAsync(user.Email.Value, "outra-senha-999");
-        HttpResponseMessage rightPassword = await LoginAsync(user.Email.Value, Password);
+        HttpResponseMessage fifth = await _client.LoginAsync(user.Email.Value, "outra-senha-999");
+        HttpResponseMessage rightPassword = await _client.LoginAsync(user.Email.Value, Password);
 
         fifth.StatusCode.Should().Be(HttpStatusCode.Locked);
-        (await CodeOf(fifth)).Should().Be("identity.login.locked_out");
+        (await fifth.CodeAsync()).Should().Be("identity.login.locked_out");
         rightPassword.StatusCode.Should().Be(HttpStatusCode.Locked);
     }
 
@@ -137,12 +136,12 @@ public sealed class AuthEndpointsTests(ApiFixture fixture) : IDisposable
     {
         User user = await fixture.Postgres.SeedUserWithPasswordAsync(Password, status);
 
-        HttpResponseMessage rightPassword = await LoginAsync(user.Email.Value, Password);
-        HttpResponseMessage wrongPassword = await LoginAsync(user.Email.Value, "outra-senha-999");
+        HttpResponseMessage rightPassword = await _client.LoginAsync(user.Email.Value, Password);
+        HttpResponseMessage wrongPassword = await _client.LoginAsync(user.Email.Value, "outra-senha-999");
 
         rightPassword.StatusCode.Should().Be(HttpStatusCode.Forbidden);
-        (await CodeOf(rightPassword)).Should().Be(code);
-        SetCookieHeader(rightPassword).Should().BeNull();
+        (await rightPassword.CodeAsync()).Should().Be(code);
+        rightPassword.RefreshCookieHeader().Should().BeNull();
         wrongPassword.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
     }
 
@@ -150,83 +149,52 @@ public sealed class AuthEndpointsTests(ApiFixture fixture) : IDisposable
     public async Task Refresh_with_the_cookie_rotates_the_token_and_returns_a_new_access_token()
     {
         User user = await fixture.Postgres.SeedUserWithPasswordAsync(Password);
-        HttpResponseMessage login = await LoginAsync(user.Email.Value, Password);
-        string oldCookie = CookieValue(login)!;
+        HttpResponseMessage login = await _client.LoginAsync(user.Email.Value, Password);
+        string oldCookie = login.RefreshCookieValue()!;
 
-        HttpResponseMessage refresh = await RefreshAsync(oldCookie);
+        HttpResponseMessage refresh = await _client.RefreshAsync(oldCookie);
 
         refresh.StatusCode.Should().Be(HttpStatusCode.OK);
         JsonElement body = await refresh.Content.ReadFromJsonAsync<JsonElement>();
         new JsonWebTokenHandler().ReadJsonWebToken(body.GetProperty("accessToken").GetString()).Subject
             .Should().Be(user.Id.ToString());
-        string newCookie = CookieValue(refresh)!;
+        string newCookie = refresh.RefreshCookieValue()!;
         newCookie.Should().NotBe(oldCookie);
     }
 
     [Fact]
     public async Task Refresh_without_cookie_returns_401_and_clears_the_cookie()
     {
-        HttpResponseMessage response = await RefreshAsync(cookie: null);
+        HttpResponseMessage response = await _client.RefreshAsync(cookie: null);
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-        (await CodeOf(response)).Should().Be("identity.refresh.invalid_session");
-        CookieValue(response).Should().BeEmpty();
-        SetCookieHeader(response)!.ToLowerInvariant().Should().Contain("path=/api/auth");
+        (await response.CodeAsync()).Should().Be("identity.refresh.invalid_session");
+        response.RefreshCookieValue().Should().BeEmpty();
+        response.RefreshCookieHeader()!.ToLowerInvariant().Should().Contain("path=/api/auth");
     }
 
     [Fact]
     public async Task Refresh_with_an_unknown_token_returns_401()
     {
-        HttpResponseMessage response = await RefreshAsync("token-que-nunca-existiu");
+        HttpResponseMessage response = await _client.RefreshAsync("token-que-nunca-existiu");
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-        (await CodeOf(response)).Should().Be("identity.refresh.invalid_session");
+        (await response.CodeAsync()).Should().Be("identity.refresh.invalid_session");
     }
 
     [Fact]
     public async Task Reusing_a_rotated_refresh_token_returns_401_and_kills_the_whole_family()
     {
         User user = await fixture.Postgres.SeedUserWithPasswordAsync(Password);
-        string first = CookieValue(await LoginAsync(user.Email.Value, Password))!;
-        string second = CookieValue(await RefreshAsync(first))!;
+        string first = (await _client.LoginAsync(user.Email.Value, Password)).RefreshCookieValue()!;
+        string second = (await _client.RefreshAsync(first)).RefreshCookieValue()!;
 
-        HttpResponseMessage reuse = await RefreshAsync(first);
-        HttpResponseMessage legitimateHolder = await RefreshAsync(second);
+        HttpResponseMessage reuse = await _client.RefreshAsync(first);
+        HttpResponseMessage legitimateHolder = await _client.RefreshAsync(second);
 
         reuse.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-        (await CodeOf(reuse)).Should().Be("identity.refresh_token.reused");
-        CookieValue(reuse).Should().BeEmpty();
+        (await reuse.CodeAsync()).Should().Be("identity.refresh_token.reused");
+        reuse.RefreshCookieValue().Should().BeEmpty();
         legitimateHolder.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
-    }
-
-    private Task<HttpResponseMessage> LoginAsync(string email, string password) =>
-        _client.PostAsJsonAsync("/api/auth/login", new { email, password });
-
-    private Task<HttpResponseMessage> RefreshAsync(string? cookie)
-    {
-        HttpRequestMessage request = new(HttpMethod.Post, "/api/auth/refresh");
-        if (cookie is not null)
-        {
-            request.Headers.Add("Cookie", $"{RefreshCookieName}={cookie}");
-        }
-
-        return _client.SendAsync(request);
-    }
-
-    private static async Task<string> CodeOf(HttpResponseMessage response)
-    {
-        JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        return body.GetProperty("code").GetString()!;
-    }
-
-    private static string? SetCookieHeader(HttpResponseMessage response) =>
-        response.Headers.TryGetValues("Set-Cookie", out IEnumerable<string>? values)
-            ? values.SingleOrDefault(v => v.StartsWith($"{RefreshCookieName}=", StringComparison.Ordinal))
-            : null;
-
-    private static string? CookieValue(HttpResponseMessage response)
-    {
-        string? header = SetCookieHeader(response);
-        return header is null ? null : header[(RefreshCookieName.Length + 1)..].Split(';')[0];
     }
 }

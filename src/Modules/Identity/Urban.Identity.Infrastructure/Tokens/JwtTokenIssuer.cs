@@ -23,14 +23,14 @@ public sealed class JwtTokenIssuer : ITokenIssuer
         DateTimeOffset expiresAt = now + _options.AccessTokenLifetime;
         Dictionary<string, object> claims = new()
         {
-            ["sub"] = user.Id.ToString(),
-            ["jti"] = Guid.CreateVersion7().ToString(),
-            ["role"] = user.Role.ToString(),
+            [AccessTokenClaims.Subject] = user.Id.ToString(),
+            [AccessTokenClaims.TokenId] = Guid.CreateVersion7().ToString(),
+            [AccessTokenClaims.Role] = user.Role.ToString(),
         };
 
         if (user.CondominiumId is { } condominiumId)
         {
-            claims["condominium_id"] = condominiumId.ToString();
+            claims[AccessTokenClaims.CondominiumId] = condominiumId.ToString();
         }
 
         SecurityTokenDescriptor descriptor = new()

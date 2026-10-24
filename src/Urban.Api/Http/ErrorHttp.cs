@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.WebUtilities;
+using Urban.Identity.Application.Authentication;
 using Urban.Identity.Application.Authentication.Login;
 using Urban.Identity.Application.Authentication.Refresh;
 using Urban.Identity.Domain.Tokens;
@@ -17,6 +18,8 @@ public static class ErrorHttp
         [RefreshTokenErrors.Expired.Code] = StatusCodes.Status401Unauthorized,
         [RefreshTokenErrors.Reused.Code] = StatusCodes.Status401Unauthorized,
         [LoginErrors.LockedOut.Code] = StatusCodes.Status423Locked,
+        [SessionErrors.Unauthenticated.Code] = StatusCodes.Status401Unauthorized,
+        [SessionErrors.StoreUnavailable.Code] = StatusCodes.Status503ServiceUnavailable,
 
         [UserErrors.EmailNotVerified.Code] = StatusCodes.Status403Forbidden,
         [UserErrors.AccountDeactivated.Code] = StatusCodes.Status403Forbidden,

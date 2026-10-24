@@ -2,6 +2,7 @@ using System.Reflection;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Urban.Api.Http;
+using Urban.Identity.Application.Authentication;
 using Urban.Identity.Application.Authentication.Login;
 using Urban.Identity.Application.Authentication.Refresh;
 using Urban.Identity.Domain.Tokens;
@@ -24,6 +25,8 @@ public sealed class ErrorHttpMappingTests
         { UserErrors.AccountSuspended.Code, 403 },
         { UserErrors.AccountDeleted.Code, 403 },
         { UserErrors.InvalidTransition.Code, 409 },
+        { SessionErrors.Unauthenticated.Code, 401 },
+        { SessionErrors.StoreUnavailable.Code, 503 },
     };
 
     [Fact]

@@ -1,8 +1,10 @@
+using System.Security.Claims;
 using MediatR;
 using Urban.Api.Http;
 using Urban.Api.Mapping;
 using Urban.Identity.Application.Authentication;
 using Urban.Identity.Application.Authentication.Login;
+using Urban.Identity.Application.Authentication.Logout;
 using Urban.Identity.Application.Authentication.Refresh;
 using Urban.SharedKernel;
 
@@ -36,6 +38,17 @@ public static class AuthEndpoints
             .Produces<AccessTokenResponse>()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden);
+
+        auth.MapPost("/logout", LogoutAsync)
+            .RequireAuthorization()
+            .WithName("Logout")
+            .WithSummary("Encerra a sessão atual")
+            .WithDescription(
+                "Exige o token de acesso no cabeçalho Authorization. Revoga o token de acesso e o token de renovação "
+                + "do cookie e apaga o cookie. Sempre responde 204 para quem está autenticado, exista ou não o token de renovação.")
+            .Produces(StatusCodes.Status204NoContent)
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
 
         return app;
     }
@@ -72,6 +85,26 @@ public static class AuthEndpoints
         }
 
         return Issue(response, result.Value);
+    }
+
+    private static async Task<IResult> LogoutAsync(
+        ClaimsPrincipal user,
+        HttpRequest request,
+        HttpResponse response,
+        ISender sender,
+        CancellationToken cancellationToken)
+    {
+        if (!AccessTokenSession.TryRead(user, out AccessTokenSession? session))
+        {
+            return ErrorHttp.ToProblem(SessionErrors.Unauthenticated);
+        }
+
+        await sender.Send(
+            new LogoutCommand(session.UserId, session.TokenId, session.ExpiresAt, RefreshTokenCookie.Read(request)),
+            cancellationToken);
+        RefreshTokenCookie.Delete(response);
+
+        return Results.NoContent();
     }
 
     private static IResult Issue(HttpResponse response, AuthTokens tokens)
