@@ -79,8 +79,8 @@ jobs:
           /d:sonar.token="$SONAR_TOKEN"
           /d:sonar.cs.opencover.reportsPaths="TestResults/**/coverage.opencover.xml"
           /d:sonar.javascript.lcov.reportPaths="urban-web/coverage/lcov.info"
-          /d:sonar.exclusions="urban-web/node_modules/**,urban-web/dist/**,urban-web/coverage/**,urban-web/.angular/**,**/bin/**,**/obj/**"
-          /d:sonar.coverage.exclusions="tests/**,**/Program.cs,**/AssemblyReference.cs,urban-web/src/app/**/*.routes.ts,urban-web/src/main.ts,urban-web/src/app/app.config.ts,urban-web/cypress/**,urban-web/*.config.*,urban-web/setup-jest.ts"
+          /d:sonar.exclusions="urban-web/node_modules/**,urban-web/dist/**,urban-web/coverage/**,urban-web/.angular/**,**/bin/**,**/obj/**,**/Persistence/Migrations/**"
+          /d:sonar.coverage.exclusions="tests/**,**/Program.cs,**/AssemblyReference.cs,**/*DbContextFactory.cs,urban-web/src/app/**/*.routes.ts,urban-web/src/main.ts,urban-web/src/app/app.config.ts,urban-web/cypress/**,urban-web/*.config.*,urban-web/setup-jest.ts"
           /d:sonar.test.inclusions="urban-web/**/*.spec.ts,urban-web/cypress/**/*.cy.ts"
 
       - name: Build
