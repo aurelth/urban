@@ -30,8 +30,10 @@ public sealed class PostgresFixture : IAsyncLifetime
 
     public async Task DisposeAsync() => await _container.DisposeAsync();
 
+    public string ConnectionString => _container.GetConnectionString();
+
     /// <summary>Cria um contexto novo. Ler com outro contexto garante que o dado veio do banco e não do rastreamento.</summary>
-    public IdentityDbContext CreateContext() => new(IdentityPersistence.CreateOptions(_container.GetConnectionString()));
+    public IdentityDbContext CreateContext() => new(IdentityPersistence.CreateOptions(ConnectionString));
 
     /// <summary>Grava um usuário com e-mail único e devolve o que foi gravado.</summary>
     public async Task<User> SeedUserAsync(AccountStatus status = AccountStatus.Active, UserRole role = UserRole.Resident)
@@ -45,10 +47,10 @@ public sealed class PostgresFixture : IAsyncLifetime
         return user;
     }
 
-    /// <summary>Grava um usuário ativo junto com a credencial dele (senha em BCrypt) e devolve o usuário.</summary>
-    public async Task<User> SeedUserWithPasswordAsync(string password)
+    /// <summary>Grava um usuário (ativo, por padrão) junto com a credencial dele (senha em BCrypt) e devolve o usuário.</summary>
+    public async Task<User> SeedUserWithPasswordAsync(string password, AccountStatus status = AccountStatus.Active)
     {
-        User user = UserBuilder.InStatus(AccountStatus.Active, UserRole.Resident, $"{Guid.NewGuid():N}@example.com");
+        User user = UserBuilder.InStatus(status, UserRole.Resident, $"{Guid.NewGuid():N}@example.com");
 
         await using IdentityDbContext db = CreateContext();
         db.Users.Add(user);

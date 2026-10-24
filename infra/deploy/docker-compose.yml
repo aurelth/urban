@@ -83,6 +83,7 @@ services:
       ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=urban;Username=urban;Password=${POSTGRES_PASSWORD}
       ConnectionStrings__Redis: redis:6379,password=${REDIS_PASSWORD}
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?defina JWT_SIGNING_KEY}
+      Database__MigrateOnStartup: "true"
     mem_limit: 512m
 
   web:

@@ -1,0 +1,48 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
+using FluentAssertions;
+
+namespace Urban.IntegrationTests.Api;
+
+public sealed class OpenApiDocumentationTests
+{
+    [Fact]
+    public async Task Development_serves_the_contract_with_the_auth_endpoints()
+    {
+        await using ApiFactory factory = new() { EnvironmentName = "Development" };
+        using HttpClient client = factory.CreateClient();
+
+        HttpResponseMessage response = await client.GetAsync("/openapi/v1.json");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        JsonElement paths = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("paths");
+        paths.TryGetProperty("/api/auth/login", out _).Should().BeTrue();
+        paths.TryGetProperty("/api/auth/refresh", out _).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Development_serves_the_scalar_page()
+    {
+        await using ApiFactory factory = new() { EnvironmentName = "Development" };
+        using HttpClient client = factory.CreateClient();
+
+        HttpResponseMessage response = await client.GetAsync("/scalar/v1");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        response.Content.Headers.ContentType!.MediaType.Should().Be("text/html");
+    }
+
+    [Theory]
+    [InlineData("/openapi/v1.json")]
+    [InlineData("/scalar/v1")]
+    public async Task Production_does_not_expose_the_documentation(string path)
+    {
+        await using ApiFactory factory = new() { EnvironmentName = "Production" };
+        using HttpClient client = factory.CreateClient();
+
+        HttpResponseMessage response = await client.GetAsync(path);
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+}
