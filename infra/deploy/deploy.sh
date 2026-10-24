@@ -3,6 +3,9 @@
 # Uso: bash deploy.sh <staging|production> <tag-da-imagem> <porta-local-do-web>
 set -euo pipefail
 
+# Os arquivos com segredos nascem legiveis so pelo dono.
+umask 077
+
 ENVIRONMENT="${1:?uso: deploy.sh <staging|production> <tag> <porta>}"
 TAG="${2:?informe a tag da imagem}"
 PORT="${3:?informe a porta local do web}"
@@ -16,6 +19,13 @@ esac
 # Trabalha sempre na pasta do ambiente (~/urban/<ambiente>).
 cd "$(dirname "$0")"
 
+# secrets.env e escrito pelo workflow de deploy a partir dos secrets do Environment do GitHub.
+SECRETS_FILE="secrets.env"
+if [[ ! -s "$SECRETS_FILE" ]]; then
+  echo "Falta o arquivo $SECRETS_FILE (segredos do ambiente). O workflow de deploy o envia." >&2
+  exit 2
+fi
+
 write_env() {
   local tag="$1"
   cat > .env <<ENVFILE
@@ -24,6 +34,7 @@ URBAN_TAG=$tag
 WEB_PORT=$PORT
 ASPNETCORE_ENVIRONMENT=$ASPNET_ENV
 ENVFILE
+  cat "$SECRETS_FILE" >> .env
   return 0
 }
 
@@ -60,7 +71,14 @@ if ! docker compose pull; then
   restore_previous
   exit 1
 fi
-docker compose up -d --remove-orphans
+
+# --wait espera Postgres e Redis ficarem saudaveis (healthcheck) antes de dar a subida por concluida.
+if ! docker compose up -d --remove-orphans --wait --wait-timeout 120; then
+  echo "Falhou ao subir os servicos. Ultimos logs:" >&2
+  docker compose logs --tail 50 >&2 || true
+  restore_previous
+  exit 1
+fi
 
 if wait_healthy; then
   echo "Deploy ok: $ENVIRONMENT -> $TAG"

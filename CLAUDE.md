@@ -189,6 +189,7 @@ A interface tem que ser extremamente bonita e rápida. Isso é critério de acei
 - Push na `develop` publica imagens `sha-<7>` no GHCR e faz deploy em https://staging.urban-pro.io. Push na `main` roda o Semantic Release (tags `vX.Y.Z`, começando em 0.x) e, com versão nova, faz deploy em https://urban-pro.io depois de aprovação manual.
 - Código de deploy em `infra/deploy/` (compose, `deploy.sh` com health check e rollback, modelos de nginx). Portas do Urban no VPS: 5200 (produção) e 5210 (staging), só em 127.0.0.1.
 - Dockerfiles em `infra/`; compose local em `infra/docker-compose.yml` com perfis `tools` e `observability`.
+- Segredos do deploy (`POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `JWT_SIGNING_KEY`) ficam nos secrets do Environment do GitHub (`staging`, `production`), entram por `gh secret set --env`, viajam por ssh (entrada padrão) até `secrets.env` no VPS e o `deploy.sh` os junta ao `.env`. Postgres e Redis do deploy não publicam portas; os dados ficam nos volumes `postgres-data` e `redis-data`, então nunca use `docker compose down -v` nesses ambientes.
 - Endpoints de apoio: `GET /health` e `GET /api/version`.
 
 ## PowerShell 5.1 (terminal do Aurel)
