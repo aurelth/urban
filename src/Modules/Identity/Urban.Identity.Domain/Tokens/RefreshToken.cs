@@ -10,13 +10,13 @@ public sealed class RefreshToken
 {
     public static readonly TimeSpan Lifetime = TimeSpan.FromDays(7);
 
-    private RefreshToken(Guid id, Guid userId, string tokenHash, DateTimeOffset now)
+    private RefreshToken(Guid id, Guid userId, string tokenHash, DateTimeOffset createdAt)
     {
         Id = id;
         UserId = userId;
         TokenHash = tokenHash;
-        CreatedAt = now;
-        ExpiresAt = now + Lifetime;
+        CreatedAt = createdAt;
+        ExpiresAt = createdAt + Lifetime;
     }
 
     public Guid Id { get; }

@@ -9,15 +9,15 @@ namespace Urban.Identity.Domain.Users;
 /// </summary>
 public sealed class User
 {
-    private User(Guid id, Email email, UserRole role, Guid? condominiumId, DateTimeOffset now)
+    private User(Guid id, Email email, UserRole role, Guid? condominiumId, DateTimeOffset createdAt)
     {
         Id = id;
         Email = email;
         Role = role;
         CondominiumId = condominiumId;
         Status = AccountStatus.PendingVerification;
-        CreatedAt = now;
-        StatusChangedAt = now;
+        CreatedAt = createdAt;
+        StatusChangedAt = createdAt;
     }
 
     public Guid Id { get; }

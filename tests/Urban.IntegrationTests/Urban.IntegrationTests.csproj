@@ -7,9 +7,11 @@
     <PackageReference Include="coverlet.collector" />
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Urban.Api\Urban.Api.csproj" />
+    <ProjectReference Include="..\Urban.TestSupport\Urban.TestSupport.csproj" />
   </ItemGroup>
 </Project>
