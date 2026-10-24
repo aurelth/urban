@@ -29,6 +29,7 @@
   <Folder Name="/tests/">
     <Project Path="tests/Urban.ArchTests/Urban.ArchTests.csproj" />
     <Project Path="tests/Urban.IntegrationTests/Urban.IntegrationTests.csproj" />
+    <Project Path="tests/Urban.TestSupport/Urban.TestSupport.csproj" />
     <Project Path="tests/Urban.UnitTests/Urban.UnitTests.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">

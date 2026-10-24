@@ -62,6 +62,7 @@ Decidido com o Aurel em 22 e 23/10/2026.
 - Dê o resultado esperado de cada comando (por exemplo, número de linhas de um `git diff --stat`) e peça para ele colar a saída quando algo divergir.
 - Nunca peça nem aceite chaves, tokens ou senhas no chat. Segredos entram só por `gh secret set` ou pelo ambiente do GitHub.
 - Não mexa nos outros apps do VPS (Orizon e FinanceFlow) sem pedido explícito.
+- Fatias verticais: cada funcionalidade é entregue por inteiro, com o backend primeiro (contrato e testes, documentado no Scalar) e a tela logo em seguida, contra a API real. Nunca um módulo inteiro de backend e só depois todo o frontend.
 
 ## Princípios de engenharia
 
@@ -96,7 +97,7 @@ Decidido em 22/10/2026: todo comportamento novo nasce de um teste que falha.
 
 ## Stack (lista oficial)
 
-- Backend: .NET 10 / C# 14, monolito modular, EF Core 10 + PostgreSQL 18, MediatR 12.5.0 + FluentValidation (CQRS), ASP.NET Identity + JWT, BCrypt.Net, Hangfire, SignalR, Redis 8, RabbitMQ + MassTransit 8.5.10, Garage (S3), YARP (gateway), Scalar (documentação da API), Brevo (e-mail).
+- Backend: .NET 10 / C# 14, monolito modular, EF Core 10 + PostgreSQL 18, MediatR 12.5.0 + FluentValidation (CQRS), JWT (sem ASP.NET Identity), BCrypt.Net, Mapperly, Hangfire, SignalR, Redis 8, RabbitMQ + MassTransit 8.5.10, Garage (S3), YARP (gateway), Scalar (documentação da API), Brevo (e-mail).
 - Observabilidade: Serilog + Seq/Loki, OpenTelemetry, Jaeger, Prometheus, Grafana.
 - Frontend: Angular 22 + TypeScript 6, Angular Material 22 (Material 3), NgRx Signals, Tailwind 4, SCSS, GSAP, ícones Material Symbols locais.
 - Testes: xUnit + Moq + FluentAssertions 7.2.2, NetArchTest, Testcontainers, Jest 30, Cypress 16.
@@ -112,12 +113,14 @@ Decidido em 22/10/2026: todo comportamento novo nasce de um teste que falha.
 - Regras de dependência (verificadas por NetArchTest em `tests/Urban.ArchTests`): Domain não depende de nada; Application depende só de Domain; Infrastructure depende de Application; módulos não referenciam as camadas internas uns dos outros e se comunicam por contratos e eventos de integração (RabbitMQ).
 - CQRS: comandos e consultas separados (MediatR), validação com FluentValidation em pipeline, regras de negócio no Domain.
 - Testes: `tests/Urban.UnitTests`, `tests/Urban.IntegrationTests` (WebApplicationFactory), `tests/Urban.ArchTests`; E2E do frontend em `urban-web/cypress`.
-- Identity: ASP.NET Identity (`UserManager`, bloqueio, token de redefinição), BCrypt e JWT ficam na Infrastructure, atrás de portas definidas na Application (`IUserAccounts`, `IRefreshTokenRepository`, `ITokenIssuer`, `ISessionRevocations`, `IEmailSender`, `IClock`). O Domain não referencia nenhum deles (NetArchTest).
+- Identity: o EF Core mapeia direto o `User` do Domain, sem ASP.NET Identity (`IdentityUser`/`UserManager`). Motivo: o Domain não depende de framework, e o que o ASP.NET Identity traria (hash de senha, bloqueio por tentativas, token de redefinição) é pouco e fica em código nosso, pequeno e testado. BCrypt, bloqueio e JWT ficam na Infrastructure, atrás de portas definidas na Application (`IUserAccounts`, `IRefreshTokenRepository`, `ITokenIssuer`, `ISessionRevocations`, `IEmailSender`, `IClock`). Domain e Application não referenciam EF Core, Npgsql nem essas bibliotecas (NetArchTest).
 
 ## Modelo de dados
 
 - PostgreSQL 18 com um schema por módulo (`identity`, `condominium`, `finance`, `operations`) e o do `hangfire`; tabelas e colunas em `snake_case` e em inglês.
 - Chaves primárias `uuid` geradas no .NET com `Guid.CreateVersion7()`; dinheiro em `numeric(14,2)`; datas em `timestamptz` (UTC).
+- Migrations: ferramenta local `dotnet ef` (manifesto `dotnet-tools.json` na raiz, restaurado com `dotnet tool restore`). Cada módulo guarda as suas em `Persistence/Migrations` da Infrastructure e o histórico em `<schema>.__ef_migrations_history`. Para criar: `dotnet ef migrations add <Nome> --project <Infrastructure do módulo> --startup-project src/Urban.Api --output-dir Persistence/Migrations`. Migrations são código gerado (fora do Sonar e das regras de estilo); nunca edite uma já publicada, crie outra.
+- Enums são gravados como texto (o nome do valor), nunca como número; a forma `snake_case` dos estados (`pending_verification`) é só a da API.
 - Referência entre módulos só por ID, sem chave estrangeira física; dentro do módulo, chaves estrangeiras normais.
 - Cada módulo que publica eventos tem suas tabelas `outbox_message`, `outbox_state` e `inbox_state` (MassTransit EF Core Outbox).
 - Pessoa e usuário são conceitos separados: nem toda pessoa tem acesso ao sistema (`person` 1 : 0..1 `user`, ligados por ID entre módulos).
@@ -132,6 +135,7 @@ Decidido em 22/10/2026: todo comportamento novo nasce de um teste que falha.
 - Textos da interface em português do Brasil, em sentença (só a primeira letra maiúscula), verbo no começo dos botões, sem ponto final em rótulos e títulos.
 - Identificadores do código em inglês (classes, métodos, tabelas, endpoints, módulos e pastas do frontend). Interface, documentação, commits e PRs seguem em português do Brasil. Termos do negócio sem tradução óbvia entram no glossário abaixo.
 - Nunca desative o sanitizador do Angular sem validar a entrada e documentar o motivo (ver `core/theme/icons.ts`).
+- Mapeamento entre objetos (entidade para DTO, comando para entidade): Mapperly, que gera o código na compilação, sem reflexão. Não use AutoMapper (licença comercial nas versões novas, o mesmo motivo do MediatR congelado). Mapeadores ficam na camada que conhece os dois tipos, são `partial` e têm teste; nas consultas de leitura prefira `Select` direto para o DTO. O pacote entra junto com o primeiro DTO.
 
 ## Glossário: negócio e código
 
