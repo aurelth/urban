@@ -134,6 +134,38 @@ namespace Urban.Identity.Infrastructure.Persistence.Migrations
                     b.ToTable("user", "identity");
                 });
 
+            modelBuilder.Entity("Urban.Identity.Domain.Users.UserCredential", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<int>("FailedAttempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("failed_attempts");
+
+                    b.Property<DateTimeOffset?>("LockoutEnd")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("lockout_end");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("password_hash");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("UserId")
+                        .HasName("pk_user_credential");
+
+                    b.ToTable("user_credential", "identity");
+                });
+
             modelBuilder.Entity("Urban.Identity.Domain.Tokens.RefreshToken", b =>
                 {
                     b.HasOne("Urban.Identity.Domain.Tokens.RefreshToken", null)
@@ -148,6 +180,16 @@ namespace Urban.Identity.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_refresh_token_user_user_id");
+                });
+
+            modelBuilder.Entity("Urban.Identity.Domain.Users.UserCredential", b =>
+                {
+                    b.HasOne("Urban.Identity.Domain.Users.User", null)
+                        .WithOne()
+                        .HasForeignKey("Urban.Identity.Domain.Users.UserCredential", "UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_credential_user_user_id");
                 });
 #pragma warning restore 612, 618
         }
