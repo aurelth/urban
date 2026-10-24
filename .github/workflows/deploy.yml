@@ -56,6 +56,23 @@ jobs:
             infra/deploy/docker-compose.yml infra/deploy/deploy.sh \
             "${VPS_USER}@${VPS_HOST}:urban/${ENVIRONMENT}/"
 
+      # Os segredos viajam pela entrada padrao do ssh (nunca na linha de comando, onde apareceriam
+      # na lista de processos) e ficam num arquivo legivel so pelo dono, no servidor.
+      - name: Enviar segredos
+        env:
+          POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
+          REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+          JWT_SIGNING_KEY: ${{ secrets.JWT_SIGNING_KEY }}
+        run: |
+          : "${POSTGRES_PASSWORD:?secret POSTGRES_PASSWORD ausente no Environment ${ENVIRONMENT}}"
+          : "${REDIS_PASSWORD:?secret REDIS_PASSWORD ausente no Environment ${ENVIRONMENT}}"
+          : "${JWT_SIGNING_KEY:?secret JWT_SIGNING_KEY ausente no Environment ${ENVIRONMENT}}"
+          printf 'POSTGRES_PASSWORD=%s\nREDIS_PASSWORD=%s\nJWT_SIGNING_KEY=%s\n' \
+            "$POSTGRES_PASSWORD" "$REDIS_PASSWORD" "$JWT_SIGNING_KEY" |
+          ssh -i ~/.ssh/id_deploy -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            "${VPS_USER}@${VPS_HOST}" \
+            "umask 077 && cat > ~/urban/${ENVIRONMENT}/secrets.env"
+
       - name: Executar deploy
         run: |
           ssh -i ~/.ssh/id_deploy -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
