@@ -15,6 +15,8 @@ public sealed class RedisFixture : IAsyncLifetime
 
     public IDatabase Database => Connection.GetDatabase();
 
+    public string ConnectionString => _container.GetConnectionString();
+
     public async Task InitializeAsync()
     {
         await _container.StartAsync();

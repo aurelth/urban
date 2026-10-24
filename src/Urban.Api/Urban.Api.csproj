@@ -1,5 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Scalar.AspNetCore" />
+    <!-- Gerador de código em tempo de compilação: não vai para a publicação. -->
+    <PackageReference Include="Riok.Mapperly" PrivateAssets="all" />
     <!-- Exigido pela ferramenta dotnet ef no projeto de inicialização; não vai para a publicação. -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <PrivateAssets>all</PrivateAssets>
