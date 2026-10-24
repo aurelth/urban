@@ -12,6 +12,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
     public const string UnusedRedis = "localhost:6379";
 
+    public const string DownRedis = "127.0.0.1:1,connectTimeout=500,syncTimeout=500,asyncTimeout=500";
+
     public string PostgresConnectionString { get; init; } = UnusedPostgres;
 
     public string RedisConnectionString { get; init; } = UnusedRedis;
@@ -20,7 +22,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
     public bool MigrateOnStartup { get; init; }
 
-    public string SigningKey { get; init; } = Convert.ToBase64String(RandomNumberGenerator.GetBytes(48));
+    public string SigningKey { get; init; } = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {

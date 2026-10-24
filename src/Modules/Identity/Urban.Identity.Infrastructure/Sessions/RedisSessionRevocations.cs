@@ -38,7 +38,14 @@ public sealed class RedisSessionRevocations(IConnectionMultiplexer redis, IClock
             return;
         }
 
-        await redis.GetDatabase().StringSetAsync(TokenKey(jti), "1", remaining);
+        try
+        {
+            await redis.GetDatabase().StringSetAsync(TokenKey(jti), "1", remaining);
+        }
+        catch (RedisException ex)
+        {
+            throw new SessionStoreUnavailableException(ex);
+        }
     }
 
     public async Task RevokeAllOfUserAsync(Guid userId, DateTimeOffset at, CancellationToken cancellationToken)
@@ -52,13 +59,28 @@ public sealed class RedisSessionRevocations(IConnectionMultiplexer redis, IClock
 
         RedisKey[] keys = [UserKey(userId)];
         RedisValue[] values = [at.ToUnixTimeSeconds(), (long)remaining.TotalMilliseconds];
-        await redis.GetDatabase().ScriptEvaluateAsync(KeepNewestScript, keys, values);
+        try
+        {
+            await redis.GetDatabase().ScriptEvaluateAsync(KeepNewestScript, keys, values);
+        }
+        catch (RedisException ex)
+        {
+            throw new SessionStoreUnavailableException(ex);
+        }
     }
 
     public async Task<bool> IsRevokedAsync(string jti, Guid userId, DateTimeOffset issuedAt, CancellationToken cancellationToken)
     {
         // Um único MGET traz as duas chaves: uma ida ao Redis por requisição autenticada.
-        RedisValue[] found = await redis.GetDatabase().StringGetAsync([TokenKey(jti), UserKey(userId)]);
+        RedisValue[] found;
+        try
+        {
+            found = await redis.GetDatabase().StringGetAsync([TokenKey(jti), UserKey(userId)]);
+        }
+        catch (RedisException ex)
+        {
+            throw new SessionStoreUnavailableException(ex);
+        }
 
         return found[0].HasValue
             || (found[1].TryParse(out long revokedUntil) && issuedAt.ToUnixTimeSeconds() <= revokedUntil);

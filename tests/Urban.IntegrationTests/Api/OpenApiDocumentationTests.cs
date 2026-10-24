@@ -22,6 +22,21 @@ public sealed class OpenApiDocumentationTests
     }
 
     [Fact]
+    public async Task Development_documents_logout_as_protected_by_a_bearer_token()
+    {
+        await using ApiFactory factory = new() { EnvironmentName = "Development" };
+        using HttpClient client = factory.CreateClient();
+
+        JsonElement document = await client.GetFromJsonAsync<JsonElement>("/openapi/v1.json");
+
+        document.GetProperty("components").GetProperty("securitySchemes").TryGetProperty("Bearer", out _).Should().BeTrue();
+        JsonElement logout = document.GetProperty("paths").GetProperty("/api/auth/logout").GetProperty("post");
+        logout.GetProperty("security").GetArrayLength().Should().BeGreaterThan(0);
+        document.GetProperty("paths").GetProperty("/api/auth/login").GetProperty("post").TryGetProperty("security", out _)
+            .Should().BeFalse();
+    }
+
+    [Fact]
     public async Task Development_serves_the_scalar_page()
     {
         await using ApiFactory factory = new() { EnvironmentName = "Development" };
