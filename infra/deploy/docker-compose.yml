@@ -56,10 +56,9 @@ services:
     image: redis:8
     # AOF ligado: as revogacoes de sessao vivem aqui e nao devem sumir se o Redis reiniciar.
     command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?defina REDIS_PASSWORD}", "--appendonly", "yes"]
-    cap_add:
-      - CHOWN
-      - SETGID
-      - SETUID
+    # Roda direto como o usuario redis da imagem. Assim o entrypoint nao precisa trocar de usuario
+    # (a troca exigia mais capabilities, e o padrao do compose as derruba), e o Redis fica sem nenhuma.
+    user: redis
     environment:
       REDISCLI_AUTH: ${REDIS_PASSWORD}
     volumes:
