@@ -4,8 +4,8 @@ namespace Urban.ArchTests;
 
 public class InfrastructureLibrariesRulesTests
 {
-    /// <summary>Bibliotecas que só a Infrastructure pode usar: banco de dados, hash de senha (BCrypt) e JWT.</summary>
-    private static readonly string[] InfrastructureLibraries = ["Microsoft.EntityFrameworkCore", "Npgsql", "BCrypt", "Microsoft.IdentityModel"];
+    /// <summary>Bibliotecas que só a Infrastructure pode usar: banco de dados, hash de senha (BCrypt), JWT e Redis.</summary>
+    private static readonly string[] InfrastructureLibraries = ["Microsoft.EntityFrameworkCore", "Npgsql", "BCrypt", "Microsoft.IdentityModel", "StackExchange.Redis"];
 
     public static TheoryData<string, string> DomainAndApplication
     {
@@ -30,6 +30,6 @@ public class InfrastructureLibrariesRulesTests
 
         references.Should().NotContain(
             r => InfrastructureLibraries.Any(library => r.StartsWith(library, StringComparison.Ordinal)),
-            "banco, hash de senha e JWT ficam na Infrastructure, atrás de portas definidas na Application");
+            "banco, hash de senha, JWT e Redis ficam na Infrastructure, atrás de portas definidas na Application");
     }
 }
