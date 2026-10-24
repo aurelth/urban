@@ -6,7 +6,7 @@ namespace Urban.Identity.Application.Abstractions;
 /// </summary>
 public interface ISessionRevocations
 {
-    /// <summary>Todo token de acesso do usuário emitido antes de <paramref name="at"/> deixa de ser aceito.</summary>
+    /// <summary>Todo token de acesso do usuário emitido até <paramref name="at"/> (inclusive) deixa de ser aceito.</summary>
     Task RevokeAllOfUserAsync(Guid userId, DateTimeOffset at, CancellationToken cancellationToken);
 
     /// <summary>Recusa este token de acesso até <paramref name="expiresAt"/>. Token que já expirou pode ser ignorado.</summary>
