@@ -17,6 +17,8 @@ public static class ErrorHttp
         [RefreshErrors.InvalidSession.Code] = StatusCodes.Status401Unauthorized,
         [RefreshTokenErrors.Expired.Code] = StatusCodes.Status401Unauthorized,
         [RefreshTokenErrors.Reused.Code] = StatusCodes.Status401Unauthorized,
+        [EmailVerificationTokenErrors.Invalid.Code] = StatusCodes.Status400BadRequest,
+        [EmailVerificationTokenErrors.Expired.Code] = StatusCodes.Status400BadRequest,
         [LoginErrors.LockedOut.Code] = StatusCodes.Status423Locked,
         [SessionErrors.Unauthenticated.Code] = StatusCodes.Status401Unauthorized,
         [SessionErrors.StoreUnavailable.Code] = StatusCodes.Status503ServiceUnavailable,

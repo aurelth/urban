@@ -4,6 +4,7 @@
 #   URBAN_TAG               tag das imagens no GHCR
 #   WEB_PORT                porta em 127.0.0.1 onde o nginx do servidor encontra o web
 #   ASPNETCORE_ENVIRONMENT  Staging | Production
+#   WEB_BASE_URL            endereco publico do site, usado nos links dos e-mails
 #   POSTGRES_PASSWORD, REDIS_PASSWORD, JWT_SIGNING_KEY
 #                           segredos: vem do secrets.env (enviado pelo workflow de deploy a
 #                           partir dos secrets do Environment do GitHub), nunca do repositorio
@@ -83,6 +84,7 @@ services:
       ConnectionStrings__Postgres: Host=postgres;Port=5432;Database=urban;Username=urban;Password=${POSTGRES_PASSWORD}
       ConnectionStrings__Redis: redis:6379,password=${REDIS_PASSWORD}
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?defina JWT_SIGNING_KEY}
+      Links__WebBaseUrl: ${WEB_BASE_URL:?defina WEB_BASE_URL}
       Database__MigrateOnStartup: "true"
     mem_limit: 512m
 

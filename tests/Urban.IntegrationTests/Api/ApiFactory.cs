@@ -2,7 +2,11 @@ using System.Globalization;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Urban.Identity.Infrastructure.Security;
+using Urban.SharedKernel.Abstractions;
 
 namespace Urban.IntegrationTests.Api;
 
@@ -22,6 +26,10 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
     public bool MigrateOnStartup { get; init; }
 
+    public string WebBaseUrl { get; init; } = "https://app.test";
+
+    public RecordingEmailSender Emails { get; } = new();
+
     public string SigningKey { get; init; } = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -31,6 +39,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("ConnectionStrings:Redis", RedisConnectionString);
         builder.UseSetting("Jwt:SigningKey", SigningKey);
         builder.UseSetting("Database:MigrateOnStartup", MigrateOnStartup ? "true" : "false");
+        builder.UseSetting("Links:WebBaseUrl", WebBaseUrl);
+        builder.ConfigureTestServices(services => services.Replace(ServiceDescriptor.Singleton<IEmailSender>(Emails)));
 
         builder.UseSetting(
             "PasswordHashing:WorkFactor",

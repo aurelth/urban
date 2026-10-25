@@ -35,6 +35,9 @@ public sealed class UserAccounts(IdentityDbContext db, IPasswordHasher passwordH
     public Task<User?> FindByIdAsync(Guid userId, CancellationToken cancellationToken) =>
         db.Users.AsNoTracking().SingleOrDefaultAsync(u => u.Id == userId, cancellationToken);
 
+    public Task<User?> FindByEmailAsync(Email email, CancellationToken cancellationToken) =>
+        db.Users.AsNoTracking().SingleOrDefaultAsync(u => u.Email == email, cancellationToken);
+
     private async Task<Result<User>> CheckOnceAsync(Email email, string password, CancellationToken cancellationToken)
     {
         UserWithCredential? found = await (

@@ -28,6 +28,7 @@ app.MapControllers();
 app.MapHealthChecks("/health");
 app.MapVersionEndpoint();
 app.MapAuthEndpoints();
+app.MapRegistrationEndpoints();
 
 if (!app.Environment.IsProduction())
 {

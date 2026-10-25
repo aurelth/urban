@@ -65,6 +65,19 @@ public sealed class StartupTests(ApiFixture fixture)
         start.Should().Throw<InvalidOperationException>().WithMessage($"*'{missing}'*");
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("urban-pro.io")]
+    [InlineData("ftp://urban-pro.io")]
+    public void Refuses_to_start_without_a_valid_web_address(string webBaseUrl)
+    {
+        using ApiFactory factory = new() { WebBaseUrl = webBaseUrl };
+
+        Action start = () => factory.CreateClient();
+
+        start.Should().Throw<InvalidOperationException>().WithMessage("*Links:WebBaseUrl*");
+    }
+
     private async Task<string> CreateEmptyDatabaseAsync()
     {
         NpgsqlConnectionStringBuilder builder = new(fixture.Postgres.ConnectionString);

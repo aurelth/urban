@@ -14,7 +14,7 @@ public static class AuthEndpoints
 {
     public static IEndpointRouteBuilder MapAuthEndpoints(this IEndpointRouteBuilder app)
     {
-        RouteGroupBuilder auth = app.MapGroup(RefreshTokenCookie.Path).WithTags("Autenticação");
+        RouteGroupBuilder auth = app.MapGroup(AuthRoutes.Prefix).WithTags("Autenticação");
 
         auth.MapPost("/login", LoginAsync)
             .WithName("Login")
