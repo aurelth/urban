@@ -8,7 +8,7 @@ namespace Urban.Identity.Application.Authentication.Logout;
 
 /// <summary>Sair é sempre idempotente e bem-sucedido: não revela se o token existia nem de quem era.</summary>
 public sealed class LogoutCommandHandler(
-    IRefreshTokenGenerator refreshTokenGenerator,
+    ISecretGenerator refreshTokenGenerator,
     IRefreshTokenRepository refreshTokens,
     ISessionRevocations sessions,
     IClock clock) : IRequestHandler<LogoutCommand, Result>

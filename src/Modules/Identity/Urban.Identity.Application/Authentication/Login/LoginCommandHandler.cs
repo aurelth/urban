@@ -10,7 +10,7 @@ namespace Urban.Identity.Application.Authentication.Login;
 public sealed class LoginCommandHandler(
     IUserAccounts accounts,
     ITokenIssuer tokenIssuer,
-    IRefreshTokenGenerator refreshTokenGenerator,
+    ISecretGenerator refreshTokenGenerator,
     IRefreshTokenRepository refreshTokens,
     IClock clock) : IRequestHandler<LoginCommand, Result<AuthTokens>>
 {
@@ -38,7 +38,7 @@ public sealed class LoginCommandHandler(
 
         DateTimeOffset now = clock.UtcNow;
         AccessToken accessToken = tokenIssuer.IssueAccessToken(user, now);
-        RefreshSecret secret = refreshTokenGenerator.Generate();
+        GeneratedSecret secret = refreshTokenGenerator.Generate();
         RefreshToken refreshToken = RefreshToken.Issue(user.Id, secret.Hash, now);
         await refreshTokens.AddAsync(refreshToken, cancellationToken);
 

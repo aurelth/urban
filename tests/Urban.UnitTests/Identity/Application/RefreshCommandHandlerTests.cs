@@ -17,7 +17,7 @@ public class RefreshCommandHandlerTests
 
     private readonly Mock<IUserAccounts> _accounts = new();
     private readonly Mock<ITokenIssuer> _issuer = new();
-    private readonly Mock<IRefreshTokenGenerator> _generator = new();
+    private readonly Mock<ISecretGenerator> _generator = new();
     private readonly Mock<IRefreshTokenRepository> _tokens = new();
     private readonly Mock<ISessionRevocations> _sessions = new();
     private readonly Mock<IClock> _clock = new();
@@ -30,7 +30,7 @@ public class RefreshCommandHandlerTests
         _stored = RefreshToken.Issue(_user.Id, "old-hash", Now.AddHours(-1));
         _clock.SetupGet(c => c.UtcNow).Returns(Now);
         _generator.Setup(g => g.Hash("old-value")).Returns("old-hash");
-        _generator.Setup(g => g.Generate()).Returns(new RefreshSecret("new-value", "new-hash"));
+        _generator.Setup(g => g.Generate()).Returns(new GeneratedSecret("new-value", "new-hash"));
         _tokens.Setup(t => t.FindByHashAsync("old-hash", It.IsAny<CancellationToken>())).ReturnsAsync(_stored);
         _accounts.Setup(a => a.FindByIdAsync(_user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(_user);
         _handler = new RefreshCommandHandler(

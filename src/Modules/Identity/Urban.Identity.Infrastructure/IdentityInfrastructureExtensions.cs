@@ -36,7 +36,7 @@ public static class IdentityInfrastructureExtensions
 
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
         services.AddSingleton<ITokenIssuer, JwtTokenIssuer>();
-        services.AddSingleton<IRefreshTokenGenerator, RefreshTokenGenerator>();
+        services.AddSingleton<ISecretGenerator, SecretGenerator>();
         services.AddScoped<IUserAccounts, UserAccounts>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 

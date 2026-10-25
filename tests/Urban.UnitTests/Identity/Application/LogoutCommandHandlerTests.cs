@@ -14,7 +14,7 @@ public class LogoutCommandHandlerTests
     private static readonly DateTimeOffset Now = UserBuilder.Now;
     private static readonly DateTimeOffset AccessTokenExpiresAt = Now.AddMinutes(10);
 
-    private readonly Mock<IRefreshTokenGenerator> _generator = new();
+    private readonly Mock<ISecretGenerator> _generator = new();
     private readonly Mock<IRefreshTokenRepository> _tokens = new();
     private readonly Mock<ISessionRevocations> _sessions = new();
     private readonly Mock<IClock> _clock = new();

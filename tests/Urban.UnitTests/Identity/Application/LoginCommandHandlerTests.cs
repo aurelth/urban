@@ -19,7 +19,7 @@ public class LoginCommandHandlerTests
 
     private readonly Mock<IUserAccounts> _accounts = new();
     private readonly Mock<ITokenIssuer> _issuer = new();
-    private readonly Mock<IRefreshTokenGenerator> _generator = new();
+    private readonly Mock<ISecretGenerator> _generator = new();
     private readonly Mock<IRefreshTokenRepository> _tokens = new();
     private readonly Mock<IClock> _clock = new();
     private readonly LoginCommandHandler _handler;
@@ -27,7 +27,7 @@ public class LoginCommandHandlerTests
     public LoginCommandHandlerTests()
     {
         _clock.SetupGet(c => c.UtcNow).Returns(Now);
-        _generator.Setup(g => g.Generate()).Returns(new RefreshSecret("refresh-value", "refresh-hash"));
+        _generator.Setup(g => g.Generate()).Returns(new GeneratedSecret("refresh-value", "refresh-hash"));
         _handler = new LoginCommandHandler(_accounts.Object, _issuer.Object, _generator.Object, _tokens.Object, _clock.Object);
     }
 
