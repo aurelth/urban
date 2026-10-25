@@ -19,6 +19,7 @@ COPY global.json nuget.config Directory.Build.props Directory.Packages.props ./
 # 2) So os .csproj, para o restore ficar numa camada propria. Enquanto nenhum .csproj
 #    ou pacote mudar, o Docker reaproveita o restore em cache e so recompila o codigo.
 COPY src/Urban.SharedKernel/Urban.SharedKernel.csproj src/Urban.SharedKernel/
+COPY src/Urban.EmailDelivery/Urban.EmailDelivery.csproj src/Urban.EmailDelivery/
 COPY src/Modules/Identity/Urban.Identity.Domain/Urban.Identity.Domain.csproj src/Modules/Identity/Urban.Identity.Domain/
 COPY src/Modules/Identity/Urban.Identity.Application/Urban.Identity.Application.csproj src/Modules/Identity/Urban.Identity.Application/
 COPY src/Modules/Identity/Urban.Identity.Infrastructure/Urban.Identity.Infrastructure.csproj src/Modules/Identity/Urban.Identity.Infrastructure/
@@ -37,6 +38,7 @@ RUN dotnet restore src/Urban.Api/Urban.Api.csproj
 # 3) Codigo-fonte (so o que a API precisa) e publicacao.
 COPY .editorconfig ./
 COPY src/Urban.SharedKernel/ src/Urban.SharedKernel/
+COPY src/Urban.EmailDelivery/ src/Urban.EmailDelivery/
 COPY src/Modules/ src/Modules/
 COPY src/Urban.Api/ src/Urban.Api/
 
