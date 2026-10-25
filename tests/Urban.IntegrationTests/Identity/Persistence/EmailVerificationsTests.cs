@@ -17,32 +17,31 @@ public sealed class EmailVerificationsTests(PostgresFixture postgres)
     private static readonly CancellationToken Ct = CancellationToken.None;
 
     [Fact]
-    public async Task TryRegister_stores_the_pending_user_and_the_first_link_together()
+    public async Task TryRegister_stores_the_pending_user_and_no_link()
     {
-        (User user, EmailVerificationToken token) = NewRegistration();
+        User user = NewUser();
 
-        bool registered = await RunAsync(v => v.TryRegisterAsync(user, token, Ct));
+        bool registered = await RunAsync(v => v.TryRegisterAsync(user, Ct));
 
         registered.Should().BeTrue();
         await using IdentityDbContext db = postgres.CreateContext();
         (await db.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id)).Should().BeEquivalentTo(user);
-        (await db.EmailVerificationTokens.AsNoTracking().SingleAsync(t => t.Id == token.Id)).Should().BeEquivalentTo(token);
+        (await db.EmailVerificationTokens.AnyAsync(t => t.UserId == user.Id)).Should().BeFalse();
     }
 
     [Fact]
     public async Task TryRegister_returns_false_and_stores_nothing_when_the_email_already_has_an_account()
     {
-        (User first, EmailVerificationToken firstToken) = NewRegistration();
-        await RunAsync(v => v.TryRegisterAsync(first, firstToken, Ct));
+        User first = NewUser();
+        await RunAsync(v => v.TryRegisterAsync(first, Ct));
         User second = User.Register(first.Email, UserRole.Manager, null, Now).Value;
-        EmailVerificationToken secondToken = EmailVerificationToken.Issue(second.Id, NewHash(), Now);
 
-        bool registered = await RunAsync(v => v.TryRegisterAsync(second, secondToken, Ct));
+        bool registered = await RunAsync(v => v.TryRegisterAsync(second, Ct));
 
         registered.Should().BeFalse();
         await using IdentityDbContext db = postgres.CreateContext();
         (await db.Users.AnyAsync(u => u.Id == second.Id)).Should().BeFalse();
-        (await db.EmailVerificationTokens.AnyAsync(t => t.Id == secondToken.Id)).Should().BeFalse();
+        (await db.EmailVerificationTokens.AnyAsync(t => t.UserId == second.Id)).Should().BeFalse();
         (await db.Users.CountAsync(u => u.Email == first.Email)).Should().Be(1);
     }
 
@@ -191,10 +190,9 @@ public sealed class EmailVerificationsTests(PostgresFixture postgres)
 
     private static string NewHash() => Guid.NewGuid().ToString("N");
 
-    private static (User User, EmailVerificationToken Token) NewRegistration()
+    private static User NewUser()
     {
-        User user = User.Register(Email.Create($"{Guid.NewGuid():N}@example.com").Value, UserRole.Manager, null, Now).Value;
-        return (user, EmailVerificationToken.Issue(user.Id, NewHash(), Now));
+        return User.Register(Email.Create($"{Guid.NewGuid():N}@example.com").Value, UserRole.Manager, null, Now).Value;
     }
 
     private async Task<(EmailVerificationToken Token, User User)> SeedPendingAsync()

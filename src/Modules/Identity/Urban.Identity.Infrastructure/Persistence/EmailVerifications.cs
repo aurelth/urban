@@ -12,10 +12,9 @@ namespace Urban.Identity.Infrastructure.Persistence;
 /// </summary>
 public sealed class EmailVerifications(IdentityDbContext db) : IEmailVerifications
 {
-    public async Task<bool> TryRegisterAsync(User user, EmailVerificationToken token, CancellationToken cancellationToken)
+    public async Task<bool> TryRegisterAsync(User user, CancellationToken cancellationToken)
     {
         db.Users.Add(user);
-        db.EmailVerificationTokens.Add(token);
 
         return await TrySaveAsync(cancellationToken);
     }

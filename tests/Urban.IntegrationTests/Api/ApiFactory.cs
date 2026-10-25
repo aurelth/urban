@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Urban.Identity.Application.Abstractions;
 using Urban.Identity.Infrastructure.Security;
 using Urban.SharedKernel.Abstractions;
 
@@ -32,6 +33,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
     public string BrevoApiKey { get; init; } = string.Empty;
 
+    /// <summary>Liga a fila e o servidor do Hangfire de verdade. Desligado (padrão), o envio roda na hora e nada toca o banco da fila.</summary>
+    public bool RealBackgroundJobs { get; init; }
+
     public RecordingEmailSender Emails { get; } = new();
 
     public string SigningKey { get; init; } = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
@@ -46,7 +50,15 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Links:WebBaseUrl", WebBaseUrl);
         builder.UseSetting("Email:Provider", EmailProvider);
         builder.UseSetting("Email:Brevo:ApiKey", BrevoApiKey);
-        builder.ConfigureTestServices(services => services.Replace(ServiceDescriptor.Singleton<IEmailSender>(Emails)));
+        builder.UseSetting("BackgroundJobs:RunServer", RealBackgroundJobs ? "true" : "false");
+        builder.ConfigureTestServices(services =>
+        {
+            services.Replace(ServiceDescriptor.Singleton<IEmailSender>(Emails));
+            if (!RealBackgroundJobs)
+            {
+                services.Replace(ServiceDescriptor.Scoped<IEmailVerificationDispatcher, InlineEmailVerificationDispatcher>());
+            }
+        });
 
         builder.UseSetting(
             "PasswordHashing:WorkFactor",

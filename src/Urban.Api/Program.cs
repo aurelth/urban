@@ -2,6 +2,7 @@ using Scalar.AspNetCore;
 using Urban.Api.Endpoints;
 using Urban.Api.Extensions;
 using Urban.Api.Http;
+using Urban.BackgroundJobs;
 using Urban.EmailDelivery;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -13,6 +14,7 @@ builder.Services.AddExceptionHandler<SessionStoreExceptionHandler>();
 builder.Services.AddUrbanOpenApi();
 builder.Services.AddEmailDelivery(builder.Configuration);
 builder.Services.AddUrbanModules(builder.Configuration);
+builder.Services.AddBackgroundJobs(builder.Configuration);
 builder.Services.AddUrbanAuthentication();
 
 var app = builder.Build();

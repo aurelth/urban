@@ -60,7 +60,7 @@ public class EmailVerificationNotifierTests
     }
 
     [Fact]
-    public async Task SendAsync_WhenTheProviderFails_LogsAnErrorWithoutTheAddressOrTheLinkAndDoesNotThrow()
+    public async Task SendAsync_WhenTheProviderFails_LogsAnErrorWithoutTheAddressOrTheLinkAndRethrowsForTheRetry()
     {
         EmailDeliveryException failure = new("O Brevo recusou o envio (HTTP 401, código unauthorized).");
         _sender
@@ -70,7 +70,7 @@ public class EmailVerificationNotifierTests
 
         Func<Task> send = () => notifier.SendAsync(Email.Create("sindica@example.com").Value, "segredo", default);
 
-        await send.Should().NotThrowAsync();
+        (await send.Should().ThrowAsync<EmailDeliveryException>()).Which.Should().BeSameAs(failure);
         LogEntry entry = _logger.Entries.Should().ContainSingle().Subject;
         entry.Level.Should().Be(LogLevel.Error);
         entry.Exception.Should().BeSameAs(failure);
