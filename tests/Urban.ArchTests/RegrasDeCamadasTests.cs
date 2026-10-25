@@ -68,4 +68,28 @@ public class RegrasDeCamadasTests
 
         referencias.Should().NotContain(r => r.StartsWith("Urban.", StringComparison.Ordinal) && r != "Urban.SharedKernel");
     }
+
+    [Fact]
+    public void EmailDelivery_nao_deve_depender_de_nenhum_modulo()
+    {
+        var referencias = Estrutura.Referencias(Urban.EmailDelivery.AssemblyReference.Assembly);
+
+        referencias.Should().NotContain(
+            r => r.StartsWith("Urban.", StringComparison.Ordinal) && r != "Urban.SharedKernel",
+            "o envio de e-mail é um adaptador compartilhado: conhece só o SharedKernel");
+    }
+
+    [Theory]
+    [MemberData(nameof(Modulos))]
+    public void Modulo_nao_deve_referenciar_o_provedor_de_e_mail(string modulo)
+    {
+        foreach (var camada in Estrutura.Camadas)
+        {
+            var referencias = Estrutura.Referencias(Estrutura.Carregar(modulo, camada));
+
+            referencias.Should().NotContain(
+                "Urban.EmailDelivery",
+                "o módulo {0} (camada {1}) fala com a porta IEmailSender, nunca com o provedor", modulo, camada);
+        }
+    }
 }

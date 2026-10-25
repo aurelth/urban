@@ -66,12 +66,14 @@ jobs:
           POSTGRES_PASSWORD: ${{ secrets.POSTGRES_PASSWORD }}
           REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
           JWT_SIGNING_KEY: ${{ secrets.JWT_SIGNING_KEY }}
+          BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
         run: |
           : "${POSTGRES_PASSWORD:?secret POSTGRES_PASSWORD ausente no Environment ${ENVIRONMENT}}"
           : "${REDIS_PASSWORD:?secret REDIS_PASSWORD ausente no Environment ${ENVIRONMENT}}"
           : "${JWT_SIGNING_KEY:?secret JWT_SIGNING_KEY ausente no Environment ${ENVIRONMENT}}"
-          printf 'POSTGRES_PASSWORD=%s\nREDIS_PASSWORD=%s\nJWT_SIGNING_KEY=%s\n' \
-            "$POSTGRES_PASSWORD" "$REDIS_PASSWORD" "$JWT_SIGNING_KEY" |
+          : "${BREVO_API_KEY:?secret BREVO_API_KEY ausente no Environment ${ENVIRONMENT}}"
+          printf 'POSTGRES_PASSWORD=%s\nREDIS_PASSWORD=%s\nJWT_SIGNING_KEY=%s\nBREVO_API_KEY=%s\n' \
+            "$POSTGRES_PASSWORD" "$REDIS_PASSWORD" "$JWT_SIGNING_KEY" "$BREVO_API_KEY" |
           ssh -i ~/.ssh/id_deploy -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
             "${VPS_USER}@${VPS_HOST}" \
             "umask 077 && cat > ~/urban/${ENVIRONMENT}/secrets.env"

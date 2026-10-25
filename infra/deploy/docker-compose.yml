@@ -5,7 +5,7 @@
 #   WEB_PORT                porta em 127.0.0.1 onde o nginx do servidor encontra o web
 #   ASPNETCORE_ENVIRONMENT  Staging | Production
 #   WEB_BASE_URL            endereco publico do site, usado nos links dos e-mails
-#   POSTGRES_PASSWORD, REDIS_PASSWORD, JWT_SIGNING_KEY
+#   POSTGRES_PASSWORD, REDIS_PASSWORD, JWT_SIGNING_KEY, BREVO_API_KEY
 #                           segredos: vem do secrets.env (enviado pelo workflow de deploy a
 #                           partir dos secrets do Environment do GitHub), nunca do repositorio
 name: urban-${URBAN_ENV:?defina URBAN_ENV}
@@ -85,6 +85,8 @@ services:
       ConnectionStrings__Redis: redis:6379,password=${REDIS_PASSWORD}
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?defina JWT_SIGNING_KEY}
       Links__WebBaseUrl: ${WEB_BASE_URL:?defina WEB_BASE_URL}
+      Email__Provider: Brevo
+      Email__Brevo__ApiKey: ${BREVO_API_KEY:?defina BREVO_API_KEY}
       Database__MigrateOnStartup: "true"
     mem_limit: 512m
 

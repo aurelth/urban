@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Urban.Identity.Application.Abstractions;
 using Urban.Identity.Domain.Tokens;
 using Urban.Identity.Domain.Users;
@@ -5,12 +6,16 @@ using Urban.SharedKernel.Abstractions;
 
 namespace Urban.Identity.Infrastructure.Messaging;
 
-/// <summary>Monta o e-mail com o link de confirmação (tela do site) e entrega ao <see cref="IEmailSender"/>.</summary>
-public sealed class EmailVerificationNotifier(IEmailSender sender, WebLinksOptions links) : IEmailVerificationNotifier
+/// <summary>
+/// Monta o e-mail com o link de confirmação (tela do site) e entrega ao <see cref="IEmailSender"/>. Se o provedor falhar, registra
+/// o erro e segue: a conta já está pendente e o pedido de cadastro, repetido depois de 1 minuto, gera outro link.
+/// </summary>
+public sealed partial class EmailVerificationNotifier(IEmailSender sender, WebLinksOptions links, ILogger<EmailVerificationNotifier> logger)
+    : IEmailVerificationNotifier
 {
     private const string Subject = "Confirme seu e-mail no Urban";
 
-    public Task SendAsync(Email to, string token, CancellationToken cancellationToken)
+    public async Task SendAsync(Email to, string token, CancellationToken cancellationToken)
     {
         string link = $"{new Uri(links.GetWebBaseUri(), "confirmar-email").AbsoluteUri}?token={Uri.EscapeDataString(token)}";
         int hours = (int)EmailVerificationToken.Lifetime.TotalHours;
@@ -27,6 +32,17 @@ public sealed class EmailVerificationNotifier(IEmailSender sender, WebLinksOptio
             Urban
             """;
 
-        return sender.SendAsync(new EmailMessage(to.Value, Subject, body), cancellationToken);
+        EmailMessage message = new(to.Value, Subject, body);
+        try
+        {
+            await sender.SendAsync(message, cancellationToken);
+        }
+        catch (EmailDeliveryException ex)
+        {
+            LogNotDelivered(logger, ex, message.RecipientDomain);
+        }
     }
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "O e-mail de confirmação não foi entregue ao provedor. Destino em {Domain}")]
+    private static partial void LogNotDelivered(ILogger logger, Exception exception, string domain);
 }
