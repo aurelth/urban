@@ -28,6 +28,10 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
     public string WebBaseUrl { get; init; } = "https://app.test";
 
+    public string EmailProvider { get; init; } = "Log";
+
+    public string BrevoApiKey { get; init; } = string.Empty;
+
     public RecordingEmailSender Emails { get; } = new();
 
     public string SigningKey { get; init; } = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
@@ -40,6 +44,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Jwt:SigningKey", SigningKey);
         builder.UseSetting("Database:MigrateOnStartup", MigrateOnStartup ? "true" : "false");
         builder.UseSetting("Links:WebBaseUrl", WebBaseUrl);
+        builder.UseSetting("Email:Provider", EmailProvider);
+        builder.UseSetting("Email:Brevo:ApiKey", BrevoApiKey);
         builder.ConfigureTestServices(services => services.Replace(ServiceDescriptor.Singleton<IEmailSender>(Emails)));
 
         builder.UseSetting(

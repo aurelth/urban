@@ -78,6 +78,36 @@ public sealed class StartupTests(ApiFixture fixture)
         start.Should().Throw<InvalidOperationException>().WithMessage("*Links:WebBaseUrl*");
     }
 
+    [Fact]
+    public void Refuses_to_start_without_an_email_provider()
+    {
+        using ApiFactory factory = new() { EmailProvider = string.Empty };
+
+        Action start = () => factory.CreateClient();
+
+        start.Should().Throw<InvalidOperationException>().WithMessage("*Email:Provider*");
+    }
+
+    [Fact]
+    public void Refuses_to_start_with_the_brevo_provider_and_no_key()
+    {
+        using ApiFactory factory = new() { EmailProvider = "Brevo" };
+
+        Action start = () => factory.CreateClient();
+
+        start.Should().Throw<InvalidOperationException>().WithMessage("*Email:Brevo:ApiKey*");
+    }
+
+    [Fact]
+    public void Starts_with_the_brevo_provider_and_a_key()
+    {
+        using ApiFactory factory = new() { EmailProvider = "Brevo", BrevoApiKey = "chave-de-teste" };
+
+        Action start = () => factory.CreateClient();
+
+        start.Should().NotThrow();
+    }
+
     private async Task<string> CreateEmptyDatabaseAsync()
     {
         NpgsqlConnectionStringBuilder builder = new(fixture.Postgres.ConnectionString);

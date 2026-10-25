@@ -1,9 +1,10 @@
 using FluentAssertions;
 using Microsoft.Extensions.Logging;
-using Urban.Identity.Infrastructure.Messaging;
+using Urban.EmailDelivery;
 using Urban.SharedKernel.Abstractions;
+using Urban.UnitTests.Support;
 
-namespace Urban.UnitTests.Identity.Infrastructure;
+namespace Urban.UnitTests.EmailDelivery;
 
 public class LogOnlyEmailSenderTests
 {
@@ -19,20 +20,5 @@ public class LogOnlyEmailSenderTests
         entry.Level.Should().Be(LogLevel.Warning);
         entry.Message.Should().Contain("example.com").And.Contain("Assunto");
         entry.Message.Should().NotContain("sindica").And.NotContain("corpo-com-link-secreto");
-    }
-
-    private sealed record LogEntry(LogLevel Level, string Message);
-
-    private sealed class ListLogger<T> : ILogger<T>
-    {
-        public List<LogEntry> Entries { get; } = [];
-
-        public IDisposable? BeginScope<TState>(TState state)
-            where TState : notnull => null;
-
-        public bool IsEnabled(LogLevel logLevel) => true;
-
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) =>
-            Entries.Add(new LogEntry(logLevel, formatter(state, exception)));
     }
 }

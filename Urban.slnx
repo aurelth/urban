@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/Urban.Api/Urban.Api.csproj" />
+    <Project Path="src/Urban.EmailDelivery/Urban.EmailDelivery.csproj" />
     <Project Path="src/Urban.Gateway/Urban.Gateway.csproj" />
     <Project Path="src/Urban.SharedKernel/Urban.SharedKernel.csproj" />
     <Project Path="src/Urban.Workers/Urban.Workers.csproj" />
