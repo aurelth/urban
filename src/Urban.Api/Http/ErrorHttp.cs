@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.WebUtilities;
 using Urban.Identity.Application.Authentication;
 using Urban.Identity.Application.Authentication.Login;
 using Urban.Identity.Application.Authentication.Refresh;
+using Urban.Identity.Application.Bootstrap;
 using Urban.Identity.Domain.Tokens;
 using Urban.Identity.Domain.Users;
 using Urban.SharedKernel;
@@ -29,6 +30,7 @@ public static class ErrorHttp
         [UserErrors.AccountDeleted.Code] = StatusCodes.Status403Forbidden,
 
         [UserErrors.InvalidTransition.Code] = StatusCodes.Status409Conflict,
+        [BootstrapErrors.EmailTakenByAnotherRole.Code] = StatusCodes.Status409Conflict,
         [UserErrors.ReasonRequired.Code] = StatusCodes.Status400BadRequest,
         [UserErrors.CondominiumMismatch.Code] = StatusCodes.Status422UnprocessableEntity,
         [Email.Invalid.Code] = StatusCodes.Status400BadRequest,

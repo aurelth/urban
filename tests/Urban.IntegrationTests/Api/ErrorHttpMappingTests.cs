@@ -5,6 +5,7 @@ using Urban.Api.Http;
 using Urban.Identity.Application.Authentication;
 using Urban.Identity.Application.Authentication.Login;
 using Urban.Identity.Application.Authentication.Refresh;
+using Urban.Identity.Application.Bootstrap;
 using Urban.Identity.Domain.Tokens;
 using Urban.Identity.Domain.Users;
 using Urban.SharedKernel;
@@ -25,6 +26,7 @@ public sealed class ErrorHttpMappingTests
         { UserErrors.AccountSuspended.Code, 403 },
         { UserErrors.AccountDeleted.Code, 403 },
         { UserErrors.InvalidTransition.Code, 409 },
+        { BootstrapErrors.EmailTakenByAnotherRole.Code, 409 },
         { EmailVerificationTokenErrors.Invalid.Code, 400 },
         { EmailVerificationTokenErrors.Expired.Code, 400 },
         { SessionErrors.Unauthenticated.Code, 401 },

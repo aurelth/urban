@@ -15,4 +15,20 @@ public static class EmailVerificationsExtensions
 
         return latest is not null && latest.WasIssuedRecently(now);
     }
+
+    /// <summary>Pede o envio de um link, a menos que a conta tenha recebido um há pouco. Evita encher a fila quando o mesmo pedido chega várias vezes.</summary>
+    public static async Task RequestLinkUnlessRecentAsync(
+        this IEmailVerifications verifications,
+        IEmailVerificationDispatcher dispatcher,
+        Guid userId,
+        DateTimeOffset now,
+        CancellationToken cancellationToken)
+    {
+        if (await verifications.HasRecentLinkAsync(userId, now, cancellationToken))
+        {
+            return;
+        }
+
+        await dispatcher.EnqueueAsync(userId, cancellationToken);
+    }
 }

@@ -131,9 +131,23 @@ public class RegisterManagerCommandHandlerTests
         _dispatcher.VerifyNoOtherCalls();
     }
 
-    private User ExistingUser(AccountStatus status)
+    [Theory]
+    [InlineData(UserRole.SuperAdmin)]
+    [InlineData(UserRole.Resident)]
+    public async Task Handle_ForAPendingAccountThatIsNotAManager_SucceedsAndDoesNothing(UserRole role)
     {
-        User user = UserBuilder.InStatus(status, UserRole.Manager, Address);
+        ExistingUser(AccountStatus.PendingVerification, role);
+
+        Result result = await _handler.Handle(new RegisterManagerCommand(Address), default);
+
+        result.IsSuccess.Should().BeTrue();
+        _verifications.VerifyNoOtherCalls();
+        _dispatcher.VerifyNoOtherCalls();
+    }
+
+    private User ExistingUser(AccountStatus status, UserRole role = UserRole.Manager)
+    {
+        User user = UserBuilder.InStatus(status, role, Address);
         _accounts.Setup(a => a.FindByEmailAsync(It.Is<Email>(e => e.Value == Address), It.IsAny<CancellationToken>())).ReturnsAsync(user);
         return user;
     }
