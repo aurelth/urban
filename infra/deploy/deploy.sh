@@ -11,8 +11,8 @@ TAG="${2:?informe a tag da imagem}"
 PORT="${3:?informe a porta local do web}"
 
 case "$ENVIRONMENT" in
-  staging) ASPNET_ENV=Staging ;;
-  production) ASPNET_ENV=Production ;;
+  staging) ASPNET_ENV=Staging; WEB_BASE_URL=https://staging.urban-pro.io ;;
+  production) ASPNET_ENV=Production; WEB_BASE_URL=https://urban-pro.io ;;
   *) echo "ambiente invalido: $ENVIRONMENT" >&2; exit 2 ;;
 esac
 
@@ -53,6 +53,7 @@ URBAN_ENV=$ENVIRONMENT
 URBAN_TAG=$tag
 WEB_PORT=$PORT
 ASPNETCORE_ENVIRONMENT=$ASPNET_ENV
+WEB_BASE_URL=$WEB_BASE_URL
 ENVFILE
   cat "$SECRETS_FILE" >> .env
   return 0

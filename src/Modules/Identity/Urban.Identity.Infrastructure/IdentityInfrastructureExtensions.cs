@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using StackExchange.Redis;
 using Urban.Identity.Application.Abstractions;
+using Urban.Identity.Infrastructure.Messaging;
 using Urban.Identity.Infrastructure.Persistence;
 using Urban.Identity.Infrastructure.Security;
 using Urban.Identity.Infrastructure.Sessions;
@@ -28,17 +29,24 @@ public static class IdentityInfrastructureExtensions
         PasswordHashingOptions hashing = configuration.GetSection(PasswordHashingOptions.SectionName).Get<PasswordHashingOptions>()
             ?? new PasswordHashingOptions();
 
+        WebLinksOptions links = configuration.GetSection(WebLinksOptions.SectionName).Get<WebLinksOptions>() ?? new WebLinksOptions();
+        _ = links.GetWebBaseUri();
+
         services.TryAddSingleton<IClock, SystemClock>();
         services.AddSingleton(jwt);
         services.AddSingleton(hashing);
+        services.AddSingleton(links);
         services.AddDbContext<IdentityDbContext>(options => IdentityPersistence.Configure(options, postgres));
         services.AddSingleton<IConnectionMultiplexer>(_ => ConnectToRedis(redis));
 
         services.AddSingleton<IPasswordHasher, PasswordHasher>();
         services.AddSingleton<ITokenIssuer, JwtTokenIssuer>();
-        services.AddSingleton<IRefreshTokenGenerator, RefreshTokenGenerator>();
+        services.AddSingleton<ISecretGenerator, SecretGenerator>();
         services.AddScoped<IUserAccounts, UserAccounts>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+        services.AddScoped<IEmailVerifications, EmailVerifications>();
+        services.TryAddSingleton<IEmailSender, LogOnlyEmailSender>();
+        services.AddSingleton<IEmailVerificationNotifier, EmailVerificationNotifier>();
 
         services.AddSingleton<RedisSessionRevocations>();
         services.AddSingleton<ISessionRevocations>(sp => sp.GetRequiredService<RedisSessionRevocations>());

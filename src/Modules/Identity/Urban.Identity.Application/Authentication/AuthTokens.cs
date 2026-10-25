@@ -10,6 +10,6 @@ public sealed record AuthTokens(
     string RefreshToken,
     DateTimeOffset RefreshTokenExpiresAt)
 {
-    public static AuthTokens From(AccessToken access, RefreshSecret secret, RefreshToken stored) =>
+    public static AuthTokens From(AccessToken access, GeneratedSecret secret, RefreshToken stored) =>
         new(access.Value, access.ExpiresAt, secret.Value, stored.ExpiresAt);
 }

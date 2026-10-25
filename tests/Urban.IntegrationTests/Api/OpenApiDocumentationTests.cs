@@ -19,6 +19,8 @@ public sealed class OpenApiDocumentationTests
         JsonElement paths = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("paths");
         paths.TryGetProperty("/api/auth/login", out _).Should().BeTrue();
         paths.TryGetProperty("/api/auth/refresh", out _).Should().BeTrue();
+        paths.TryGetProperty("/api/auth/register", out _).Should().BeTrue();
+        paths.TryGetProperty("/api/auth/confirm-email", out _).Should().BeTrue();
     }
 
     [Fact]
@@ -32,8 +34,11 @@ public sealed class OpenApiDocumentationTests
         document.GetProperty("components").GetProperty("securitySchemes").TryGetProperty("Bearer", out _).Should().BeTrue();
         JsonElement logout = document.GetProperty("paths").GetProperty("/api/auth/logout").GetProperty("post");
         logout.GetProperty("security").GetArrayLength().Should().BeGreaterThan(0);
-        document.GetProperty("paths").GetProperty("/api/auth/login").GetProperty("post").TryGetProperty("security", out _)
-            .Should().BeFalse();
+        foreach (string open in new[] { "login", "register", "confirm-email" })
+        {
+            document.GetProperty("paths").GetProperty($"/api/auth/{open}").GetProperty("post").TryGetProperty("security", out _)
+                .Should().BeFalse(open);
+        }
     }
 
     [Fact]

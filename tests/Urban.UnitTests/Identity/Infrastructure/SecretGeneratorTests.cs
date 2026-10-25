@@ -5,14 +5,14 @@ using Urban.Identity.Infrastructure.Tokens;
 
 namespace Urban.UnitTests.Identity.Infrastructure;
 
-public class RefreshTokenGeneratorTests
+public class SecretGeneratorTests
 {
-    private readonly RefreshTokenGenerator _generator = new();
+    private readonly SecretGenerator _generator = new();
 
     [Fact]
     public void Generate_ReturnsAUrlSafeSecretWith256BitsOfEntropy()
     {
-        RefreshSecret secret = _generator.Generate();
+        GeneratedSecret secret = _generator.Generate();
 
         Regex.IsMatch(secret.Value, "^[A-Za-z0-9_-]{43}$").Should().BeTrue();
     }
@@ -28,7 +28,7 @@ public class RefreshTokenGeneratorTests
     [Fact]
     public void Generate_ReturnsTheHashOfTheValueAndNeverTheValueItself()
     {
-        RefreshSecret secret = _generator.Generate();
+        GeneratedSecret secret = _generator.Generate();
 
         secret.Hash.Should().Be(_generator.Hash(secret.Value));
         secret.Hash.Should().NotBe(secret.Value);

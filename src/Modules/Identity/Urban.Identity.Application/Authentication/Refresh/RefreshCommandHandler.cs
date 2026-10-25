@@ -10,7 +10,7 @@ namespace Urban.Identity.Application.Authentication.Refresh;
 public sealed class RefreshCommandHandler(
     IUserAccounts accounts,
     ITokenIssuer tokenIssuer,
-    IRefreshTokenGenerator refreshTokenGenerator,
+    ISecretGenerator refreshTokenGenerator,
     IRefreshTokenRepository refreshTokens,
     ISessionRevocations sessions,
     IClock clock) : IRequestHandler<RefreshCommand, Result<AuthTokens>>
@@ -38,7 +38,7 @@ public sealed class RefreshCommandHandler(
         }
 
         DateTimeOffset now = clock.UtcNow;
-        RefreshSecret secret = refreshTokenGenerator.Generate();
+        GeneratedSecret secret = refreshTokenGenerator.Generate();
         Result<RefreshToken> rotation = current.Rotate(secret.Hash, now);
         if (rotation.IsFailure)
         {

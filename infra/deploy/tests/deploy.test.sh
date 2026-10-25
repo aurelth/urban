@@ -51,6 +51,7 @@ new_server
 run_deploy; status=$?
 check "deploy saudavel termina com 0" "0" "$status"
 check "compose novo em uso" "NEW" "$(cat "$SERVER/docker-compose.yml")"
+check "endereco do site no .env" "1" "$(grep -c '^WEB_BASE_URL=https://staging.urban-pro.io$' "$SERVER/.env")"
 check "compose anterior guardado" "OLD" "$(cat "$SERVER/docker-compose.previous.yml")"
 check "tag nova no .env" "1" "$(grep -c '^URBAN_TAG=sha-new$' "$SERVER/.env")"
 

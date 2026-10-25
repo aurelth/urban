@@ -25,6 +25,8 @@ public sealed class ErrorHttpMappingTests
         { UserErrors.AccountSuspended.Code, 403 },
         { UserErrors.AccountDeleted.Code, 403 },
         { UserErrors.InvalidTransition.Code, 409 },
+        { EmailVerificationTokenErrors.Invalid.Code, 400 },
+        { EmailVerificationTokenErrors.Expired.Code, 400 },
         { SessionErrors.Unauthenticated.Code, 401 },
         { SessionErrors.StoreUnavailable.Code, 503 },
     };

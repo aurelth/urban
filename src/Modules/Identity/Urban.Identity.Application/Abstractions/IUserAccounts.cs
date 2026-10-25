@@ -13,4 +13,6 @@ public interface IUserAccounts
     Task<Result<User>> CheckCredentialsAsync(Email email, string password, CancellationToken cancellationToken);
 
     Task<User?> FindByIdAsync(Guid userId, CancellationToken cancellationToken);
+
+    Task<User?> FindByEmailAsync(Email email, CancellationToken cancellationToken);
 }
