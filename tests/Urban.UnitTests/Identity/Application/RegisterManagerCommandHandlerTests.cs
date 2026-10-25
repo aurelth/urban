@@ -18,19 +18,17 @@ public class RegisterManagerCommandHandlerTests
 
     private readonly Mock<IUserAccounts> _accounts = new();
     private readonly Mock<IEmailVerifications> _verifications = new();
-    private readonly Mock<ISecretGenerator> _secrets = new();
-    private readonly Mock<IEmailVerificationNotifier> _notifier = new();
+    private readonly Mock<IEmailVerificationDispatcher> _dispatcher = new();
     private readonly Mock<IClock> _clock = new();
     private readonly RegisterManagerCommandHandler _handler;
 
     public RegisterManagerCommandHandlerTests()
     {
         _clock.SetupGet(c => c.UtcNow).Returns(Now);
-        _secrets.Setup(s => s.Generate()).Returns(new GeneratedSecret("link-secret", "link-hash"));
         _verifications
-            .Setup(v => v.TryRegisterAsync(It.IsAny<User>(), It.IsAny<EmailVerificationToken>(), It.IsAny<CancellationToken>()))
+            .Setup(v => v.TryRegisterAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
-        _handler = new RegisterManagerCommandHandler(_accounts.Object, _verifications.Object, _secrets.Object, _notifier.Object, _clock.Object);
+        _handler = new RegisterManagerCommandHandler(_accounts.Object, _verifications.Object, _dispatcher.Object, _clock.Object);
     }
 
     [Theory]
@@ -44,17 +42,16 @@ public class RegisterManagerCommandHandlerTests
         result.Error.Should().Be(Email.Invalid);
         _accounts.VerifyNoOtherCalls();
         _verifications.VerifyNoOtherCalls();
-        _notifier.VerifyNoOtherCalls();
+        _dispatcher.VerifyNoOtherCalls();
     }
 
     [Fact]
-    public async Task Handle_WithANewEmail_RegistersAPendingManagerAndSendsTheLink()
+    public async Task Handle_WithANewEmail_RegistersAPendingManagerAndQueuesTheLink()
     {
         User? stored = null;
-        EmailVerificationToken? storedToken = null;
         _verifications
-            .Setup(v => v.TryRegisterAsync(It.IsAny<User>(), It.IsAny<EmailVerificationToken>(), It.IsAny<CancellationToken>()))
-            .Callback<User, EmailVerificationToken, CancellationToken>((u, t, _) => (stored, storedToken) = (u, t))
+            .Setup(v => v.TryRegisterAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
+            .Callback<User, CancellationToken>((u, _) => stored = u)
             .ReturnsAsync(true);
 
         Result result = await _handler.Handle(new RegisterManagerCommand(" Sindica@Example.com "), default);
@@ -64,58 +61,49 @@ public class RegisterManagerCommandHandlerTests
         stored.Role.Should().Be(UserRole.Manager);
         stored.Status.Should().Be(AccountStatus.PendingVerification);
         stored.CondominiumId.Should().BeNull();
-        storedToken!.UserId.Should().Be(stored.Id);
-        storedToken.TokenHash.Should().Be("link-hash");
-        _notifier.Verify(n => n.SendAsync(It.Is<Email>(e => e.Value == Address), "link-secret", It.IsAny<CancellationToken>()), Times.Once);
+        _dispatcher.Verify(d => d.EnqueueAsync(stored.Id, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task Handle_WhenAnotherRegistrationWinsTheRace_SucceedsWithoutSendingAnything()
+    public async Task Handle_WhenAnotherRegistrationWinsTheRace_SucceedsWithoutQueueingAnything()
     {
         _verifications
-            .Setup(v => v.TryRegisterAsync(It.IsAny<User>(), It.IsAny<EmailVerificationToken>(), It.IsAny<CancellationToken>()))
+            .Setup(v => v.TryRegisterAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
 
         Result result = await _handler.Handle(new RegisterManagerCommand(Address), default);
 
         result.IsSuccess.Should().BeTrue();
-        _notifier.VerifyNoOtherCalls();
+        _dispatcher.VerifyNoOtherCalls();
     }
 
     [Fact]
-    public async Task Handle_ForAPendingAccountWithAnOldLink_IssuesAndSendsANewLink()
+    public async Task Handle_ForAPendingAccountWithAnOldLink_QueuesANewLink()
     {
         User pending = ExistingUser(AccountStatus.PendingVerification);
         EmailVerificationToken old = EmailVerificationToken.Issue(pending.Id, "old-hash", Now.AddMinutes(-1));
         _verifications.Setup(v => v.FindLatestOfUserAsync(pending.Id, It.IsAny<CancellationToken>())).ReturnsAsync(old);
-        EmailVerificationToken? added = null;
-        _verifications
-            .Setup(v => v.AddAsync(It.IsAny<EmailVerificationToken>(), It.IsAny<CancellationToken>()))
-            .Callback<EmailVerificationToken, CancellationToken>((t, _) => added = t);
 
         Result result = await _handler.Handle(new RegisterManagerCommand(Address), default);
 
         result.IsSuccess.Should().BeTrue();
-        added!.UserId.Should().Be(pending.Id);
-        added.TokenHash.Should().Be("link-hash");
-        _notifier.Verify(n => n.SendAsync(It.Is<Email>(e => e.Value == Address), "link-secret", It.IsAny<CancellationToken>()), Times.Once);
-        _verifications.Verify(v => v.TryRegisterAsync(It.IsAny<User>(), It.IsAny<EmailVerificationToken>(), It.IsAny<CancellationToken>()), Times.Never);
+        _dispatcher.Verify(d => d.EnqueueAsync(pending.Id, It.IsAny<CancellationToken>()), Times.Once);
+        _verifications.Verify(v => v.TryRegisterAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
-    public async Task Handle_ForAPendingAccountWithoutAnyLink_IssuesANewLink()
+    public async Task Handle_ForAPendingAccountWithoutAnyLink_QueuesANewLink()
     {
         User pending = ExistingUser(AccountStatus.PendingVerification);
         _verifications.Setup(v => v.FindLatestOfUserAsync(pending.Id, It.IsAny<CancellationToken>())).ReturnsAsync((EmailVerificationToken?)null);
 
         await _handler.Handle(new RegisterManagerCommand(Address), default);
 
-        _verifications.Verify(v => v.AddAsync(It.IsAny<EmailVerificationToken>(), It.IsAny<CancellationToken>()), Times.Once);
-        _notifier.Verify(n => n.SendAsync(It.IsAny<Email>(), "link-secret", It.IsAny<CancellationToken>()), Times.Once);
+        _dispatcher.Verify(d => d.EnqueueAsync(pending.Id, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task Handle_ForAPendingAccountWithARecentLink_SucceedsWithoutSendingAgain()
+    public async Task Handle_ForAPendingAccountWithARecentLink_SucceedsWithoutQueueingAgain()
     {
         User pending = ExistingUser(AccountStatus.PendingVerification);
         EmailVerificationToken recent = EmailVerificationToken.Issue(pending.Id, "recent-hash", Now.AddSeconds(-30));
@@ -124,8 +112,7 @@ public class RegisterManagerCommandHandlerTests
         Result result = await _handler.Handle(new RegisterManagerCommand(Address), default);
 
         result.IsSuccess.Should().BeTrue();
-        _verifications.Verify(v => v.AddAsync(It.IsAny<EmailVerificationToken>(), It.IsAny<CancellationToken>()), Times.Never);
-        _notifier.VerifyNoOtherCalls();
+        _dispatcher.VerifyNoOtherCalls();
     }
 
     [Theory]
@@ -141,7 +128,7 @@ public class RegisterManagerCommandHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         _verifications.VerifyNoOtherCalls();
-        _notifier.VerifyNoOtherCalls();
+        _dispatcher.VerifyNoOtherCalls();
     }
 
     private User ExistingUser(AccountStatus status)

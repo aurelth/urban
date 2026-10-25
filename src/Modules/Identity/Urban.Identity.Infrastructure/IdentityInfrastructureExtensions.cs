@@ -46,6 +46,8 @@ public static class IdentityInfrastructureExtensions
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IEmailVerifications, EmailVerifications>();
         services.AddScoped<IEmailVerificationNotifier, EmailVerificationNotifier>();
+        services.AddScoped<IEmailVerificationDispatcher, HangfireEmailVerificationDispatcher>();
+        services.AddScoped<SendEmailVerificationJob>();
 
         services.AddSingleton<RedisSessionRevocations>();
         services.AddSingleton<ISessionRevocations>(sp => sp.GetRequiredService<RedisSessionRevocations>());

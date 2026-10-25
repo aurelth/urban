@@ -8,7 +8,7 @@ namespace Urban.Identity.Infrastructure.Messaging;
 
 /// <summary>
 /// Monta o e-mail com o link de confirmação (tela do site) e entrega ao <see cref="IEmailSender"/>. Se o provedor falhar, registra
-/// o erro e segue: a conta já está pendente e o pedido de cadastro, repetido depois de 1 minuto, gera outro link.
+/// o erro (um por tentativa, sem o endereço) e relança: quem decide tentar de novo é a tarefa em segundo plano.
 /// </summary>
 public sealed partial class EmailVerificationNotifier(IEmailSender sender, WebLinksOptions links, ILogger<EmailVerificationNotifier> logger)
     : IEmailVerificationNotifier
@@ -40,6 +40,7 @@ public sealed partial class EmailVerificationNotifier(IEmailSender sender, WebLi
         catch (EmailDeliveryException ex)
         {
             LogNotDelivered(logger, ex, message.RecipientDomain);
+            throw;
         }
     }
 

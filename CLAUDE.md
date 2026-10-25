@@ -109,6 +109,12 @@ Decidido em 22/10/2026: todo comportamento novo nasce de um teste que falha.
 
 - Solução `Urban.slnx`, versões de pacotes centralizadas em `Directory.Packages.props`, SDK fixado em `global.json`.
 - Projetos de entrada: `Urban.Api`, `Urban.Gateway`, `Urban.Workers`, mais `Urban.SharedKernel` e `Urban.EmailDelivery` (adaptador compartilhado de e-mail: só conhece o SharedKernel; os módulos usam a porta `IEmailSender`).
+- Segundo plano: Hangfire no PostgreSQL (schema `hangfire`), isolado no projeto
+`Urban.BackgroundJobs`, que não depende de nenhum projeto Urban; os módulos não o referenciam e a
+`Urban.Api` o compõe. O servidor roda dentro da API e `BackgroundJobs:RunServer=false` o desliga
+para mover a execução para `Urban.Workers`. O job recebe só o id, nunca segredos. E-mail de
+confirmação: 5 retentativas após a primeira (60 s, 5 min, 15 min, 1 h, 3 h), depois Failed com
+log de erro.
 - Módulos em `src/Modules/<Module>/Urban.<Module>.{Domain,Application,Infrastructure}`: Identity, Condominium, Finance, Operations e, quando começar o painel da plataforma, Platform (só leitura, sem tabelas próprias).
 - Regras de dependência (verificadas por NetArchTest em `tests/Urban.ArchTests`): Domain não depende de nada; Application depende só de Domain; Infrastructure depende de Application; módulos não referenciam as camadas internas uns dos outros e se comunicam por contratos e eventos de integração (RabbitMQ).
 - CQRS: comandos e consultas separados (MediatR), validação com FluentValidation em pipeline, regras de negócio no Domain.
@@ -195,6 +201,10 @@ A interface tem que ser extremamente bonita e rápida. Isso é critério de acei
 - Push na `develop` publica imagens `sha-<7>` no GHCR e faz deploy em https://staging.urban-pro.io. Push na `main` roda o Semantic Release (tags `vX.Y.Z`, começando em 0.x) e, com versão nova, faz deploy em https://urban-pro.io depois de aprovação manual.
 - Código de deploy em `infra/deploy/` (compose, `deploy.sh` com health check e rollback, modelos de nginx). Portas do Urban no VPS: 5200 (produção) e 5210 (staging), só em 127.0.0.1.
 - Dockerfiles em `infra/`; compose local em `infra/docker-compose.yml` com perfis `tools` e `observability`.
+- Todo projeto alcançado pelas referências da `Urban.Api` precisa de duas linhas `COPY` em
+`infra/Dockerfile.api` (o `.csproj` na camada de restore e a pasta na de publish); `DockerfileTests`,
+em `tests/Urban.ArchTests`, verifica. Os checks do PR não constroem imagem: quem constrói é o CD.
+Ao mexer em projetos ou referências, rode `docker build -f infra/Dockerfile.api -t urban-api:teste .`.
 - Segredos do deploy (`POSTGRES_PASSWORD`, `REDIS_PASSWORD`, `JWT_SIGNING_KEY`) ficam nos secrets do Environment do GitHub (`staging`, `production`), entram por `gh secret set --env`, viajam por ssh (entrada padrão) até `secrets.env` no VPS e o `deploy.sh` os junta ao `.env`. Postgres e Redis do deploy não publicam portas; os dados ficam nos volumes `postgres-data` e `redis-data`, então nunca use `docker compose down -v` nesses ambientes.
 - Endpoints de apoio: `GET /health` e `GET /api/version`.
 

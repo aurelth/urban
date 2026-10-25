@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Urban.Identity.Application.Abstractions;
 using Urban.Identity.Infrastructure;
+using Urban.Identity.Infrastructure.Messaging;
 
 namespace Urban.UnitTests.Identity.Infrastructure;
 
@@ -11,6 +12,26 @@ public class IdentityInfrastructureRegistrationTests
 {
     [Fact]
     public void TheEmailNotifierIsScoped_BecauseItHoldsAnHttpClientThatMustFollowDnsChanges()
+    {
+        Register().Single(d => d.ServiceType == typeof(IEmailVerificationNotifier)).Lifetime.Should().Be(ServiceLifetime.Scoped);
+    }
+
+    [Fact]
+    public void TheSendJobIsScoped_BecauseItReachesTheDatabaseThroughScopedHandlers()
+    {
+        Register().Single(d => d.ServiceType == typeof(SendEmailVerificationJob)).Lifetime.Should().Be(ServiceLifetime.Scoped);
+    }
+
+    [Fact]
+    public void TheDispatcherQueuesJobsThroughHangfire()
+    {
+        ServiceDescriptor descriptor = Register().Single(d => d.ServiceType == typeof(IEmailVerificationDispatcher));
+
+        descriptor.ImplementationType.Should().Be<HangfireEmailVerificationDispatcher>();
+        descriptor.Lifetime.Should().Be(ServiceLifetime.Scoped);
+    }
+
+    private static ServiceCollection Register()
     {
         IConfiguration configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
@@ -25,6 +46,6 @@ public class IdentityInfrastructureRegistrationTests
         ServiceCollection services = new();
         services.AddIdentityInfrastructure(configuration);
 
-        services.Single(d => d.ServiceType == typeof(IEmailVerificationNotifier)).Lifetime.Should().Be(ServiceLifetime.Scoped);
+        return services;
     }
 }

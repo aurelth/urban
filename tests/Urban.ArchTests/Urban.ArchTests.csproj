@@ -22,6 +22,7 @@
     <ProjectReference Include="..\..\src\Modules\Operations\Urban.Operations.Domain\Urban.Operations.Domain.csproj" />
     <ProjectReference Include="..\..\src\Modules\Operations\Urban.Operations.Application\Urban.Operations.Application.csproj" />
     <ProjectReference Include="..\..\src\Modules\Operations\Urban.Operations.Infrastructure\Urban.Operations.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Urban.BackgroundJobs\Urban.BackgroundJobs.csproj" />
     <ProjectReference Include="..\..\src\Urban.EmailDelivery\Urban.EmailDelivery.csproj" />
     <ProjectReference Include="..\..\src\Urban.SharedKernel\Urban.SharedKernel.csproj" />
   </ItemGroup>
