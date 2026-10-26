@@ -5,6 +5,7 @@ using Urban.Api.Mapping;
 using Urban.Identity.Application.Authentication;
 using Urban.Identity.Application.Authentication.Login;
 using Urban.Identity.Application.Authentication.Logout;
+using Urban.Identity.Application.Authentication.Me;
 using Urban.Identity.Application.Authentication.Refresh;
 using Urban.SharedKernel;
 
@@ -51,6 +52,19 @@ public static class AuthEndpoints
                 + "do cookie e apaga o cookie. Sempre responde 204 para quem está autenticado, exista ou não o token de renovação.")
             .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
+
+        auth.MapGet("/me", MeAsync)
+            .RequireAuthorization()
+            .WithName("Me")
+            .WithSummary("Informa quem está logado")
+            .WithDescription(
+                "Exige o token de acesso no cabeçalho Authorization. Devolve identificador, e-mail, papel e condomínio. "
+                + "A conta é lida de novo a cada chamada: se foi suspensa ou desativada depois do login, responde 403 com o motivo. "
+                + "A resposta nunca é guardada em cache.")
+            .Produces<CurrentUserResponse>()
+            .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status403Forbidden)
             .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
 
         return app;
@@ -110,17 +124,33 @@ public static class AuthEndpoints
         return Results.NoContent();
     }
 
+    private static async Task<IResult> MeAsync(
+        ClaimsPrincipal user,
+        HttpResponse response,
+        ISender sender,
+        CancellationToken cancellationToken)
+    {
+        if (!AccessTokenSession.TryRead(user, out AccessTokenSession? session))
+        {
+            return ErrorHttp.ToProblem(SessionErrors.Unauthenticated);
+        }
+
+        Result<CurrentUser> result = await sender.Send(new GetCurrentUserQuery(session.UserId), cancellationToken);
+        if (result.IsFailure)
+        {
+            return ErrorHttp.ToProblem(result.Error);
+        }
+
+        response.PreventCaching();
+
+        return Results.Ok(AuthMapper.ToResponse(result.Value));
+    }
+
     private static IResult Issue(HttpResponse response, AuthTokens tokens)
     {
         RefreshTokenCookie.Append(response, tokens.RefreshToken, tokens.RefreshTokenExpiresAt);
-        PreventCaching(response);
+        response.PreventCaching();
 
         return Results.Ok(AuthMapper.ToResponse(tokens));
-    }
-
-    private static void PreventCaching(HttpResponse response)
-    {
-        response.Headers.CacheControl = "no-store";
-        response.Headers.Pragma = "no-cache";
     }
 }

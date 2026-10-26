@@ -23,6 +23,26 @@ public sealed class OpenApiDocumentationTests
         paths.TryGetProperty("/api/auth/confirm-email", out _).Should().BeTrue();
         paths.TryGetProperty("/api/auth/forgot-password", out _).Should().BeTrue();
         paths.TryGetProperty("/api/auth/reset-password", out _).Should().BeTrue();
+        paths.TryGetProperty("/api/auth/me", out _).Should().BeTrue();
+        paths.TryGetProperty("/api/terms/current", out _).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Development_documents_me_as_protected_and_the_current_terms_as_open()
+    {
+        await using ApiFactory factory = new() { EnvironmentName = "Development" };
+        using HttpClient client = factory.CreateClient();
+
+        JsonElement paths = (await client.GetFromJsonAsync<JsonElement>("/openapi/v1.json")).GetProperty("paths");
+
+        JsonElement me = paths.GetProperty("/api/auth/me").GetProperty("get");
+        me.GetProperty("security").GetArrayLength().Should().BeGreaterThan(0);
+        foreach (string status in new[] { "200", "401", "403" })
+        {
+            me.GetProperty("responses").TryGetProperty(status, out _).Should().BeTrue(status);
+        }
+
+        paths.GetProperty("/api/terms/current").GetProperty("get").TryGetProperty("security", out _).Should().BeFalse();
     }
 
     [Fact]

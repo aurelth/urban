@@ -38,6 +38,7 @@ app.MapControllers();
 app.MapHealthChecks("/health");
 app.MapVersionEndpoint();
 app.MapAuthEndpoints();
+app.MapTermsEndpoints();
 app.MapRegistrationEndpoints();
 app.MapPasswordResetEndpoints();
 
