@@ -18,7 +18,7 @@ public sealed class UserCredential
 
     public Guid UserId { get; }
 
-    public string PasswordHash { get; }
+    public string PasswordHash { get; private set; }
 
     public int FailedAttempts { get; private set; }
 
@@ -52,7 +52,18 @@ public sealed class UserCredential
     }
 
     /// <summary>Senha correta: zera a contagem e limpa um bloqueio que já terminou.</summary>
-    public void RegisterSuccess()
+    public void RegisterSuccess() => ClearLockout();
+
+    /// <summary>Troca a senha depois de uma redefinição por e-mail. Quem provou ter a caixa de e-mail também sai do bloqueio.</summary>
+    public void ChangePassword(string passwordHash)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(passwordHash);
+
+        PasswordHash = passwordHash;
+        ClearLockout();
+    }
+
+    private void ClearLockout()
     {
         FailedAttempts = 0;
         LockoutEnd = null;

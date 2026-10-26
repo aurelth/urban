@@ -39,6 +39,7 @@ app.MapHealthChecks("/health");
 app.MapVersionEndpoint();
 app.MapAuthEndpoints();
 app.MapRegistrationEndpoints();
+app.MapPasswordResetEndpoints();
 
 if (!app.Environment.IsProduction())
 {

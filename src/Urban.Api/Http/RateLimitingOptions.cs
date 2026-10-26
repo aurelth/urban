@@ -11,12 +11,18 @@ public sealed class RateLimitingOptions
 
     public RateLimitRule Login { get; init; } = new();
 
+    public RateLimitRule ForgotPassword { get; init; } = new();
+
+    public RateLimitRule ResetPassword { get; init; } = new();
+
     /// <exception cref="InvalidOperationException">A configuração é inválida.</exception>
     public void Validate()
     {
         Validate(nameof(Register), Register);
         Validate(nameof(ConfirmEmail), ConfirmEmail);
         Validate(nameof(Login), Login);
+        Validate(nameof(ForgotPassword), ForgotPassword);
+        Validate(nameof(ResetPassword), ResetPassword);
     }
 
     private static void Validate(string route, RateLimitRule rule)

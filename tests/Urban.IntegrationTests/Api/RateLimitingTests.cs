@@ -19,6 +19,8 @@ public sealed class RateLimitingTests(ApiFixture fixture)
     [InlineData(RegisterRoute)]
     [InlineData("/api/auth/confirm-email")]
     [InlineData("/api/auth/login")]
+    [InlineData("/api/auth/forgot-password")]
+    [InlineData("/api/auth/reset-password")]
     public async Task Blocks_a_client_that_exceeds_the_limit_of_the_route(string route)
     {
         await using ApiFactory factory = CreateFactory(TimeSpan.FromMinutes(1));
@@ -37,6 +39,8 @@ public sealed class RateLimitingTests(ApiFixture fixture)
     [InlineData(RegisterRoute, 1)]
     [InlineData("/api/auth/confirm-email", 2)]
     [InlineData("/api/auth/login", 3)]
+    [InlineData("/api/auth/forgot-password", 4)]
+    [InlineData("/api/auth/reset-password", 5)]
     public async Task Applies_the_limit_configured_for_that_route(string route, int permits)
     {
         Dictionary<string, string?> limits = new()
@@ -44,6 +48,8 @@ public sealed class RateLimitingTests(ApiFixture fixture)
             ["RateLimiting:Register:PermitLimit"] = "1",
             ["RateLimiting:ConfirmEmail:PermitLimit"] = "2",
             ["RateLimiting:Login:PermitLimit"] = "3",
+            ["RateLimiting:ForgotPassword:PermitLimit"] = "4",
+            ["RateLimiting:ResetPassword:PermitLimit"] = "5",
         };
         await using ApiFactory factory = CreateFactory(TimeSpan.FromMinutes(1), settings: limits);
         using HttpClient client = factory.CreateClient();
@@ -58,6 +64,8 @@ public sealed class RateLimitingTests(ApiFixture fixture)
     [InlineData(RegisterRoute, 5)]
     [InlineData("/api/auth/confirm-email", 10)]
     [InlineData("/api/auth/login", 10)]
+    [InlineData("/api/auth/forgot-password", 5)]
+    [InlineData("/api/auth/reset-password", 10)]
     public async Task Ships_with_the_limits_of_the_appsettings(string route, int permits)
     {
         await using ApiFactory factory = CreateFactory(TimeSpan.FromMinutes(1), limit: null);
@@ -155,7 +163,8 @@ public sealed class RateLimitingTests(ApiFixture fixture)
     private static object BodyFor(string route) => route switch
     {
         RegisterRoute => new { email = "invalido" },
-        "/api/auth/confirm-email" => new { token = string.Empty, password = string.Empty },
+        "/api/auth/confirm-email" or "/api/auth/reset-password" => new { token = string.Empty, password = string.Empty },
+        "/api/auth/forgot-password" => new { email = "invalido" },
         _ => new { email = "ninguem@example.com", password = "qualquer-senha" },
     };
 

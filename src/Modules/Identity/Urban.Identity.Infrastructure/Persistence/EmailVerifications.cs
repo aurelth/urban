@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 using Urban.Identity.Application.Abstractions;
 using Urban.Identity.Domain.Tokens;
 using Urban.Identity.Domain.Users;
@@ -16,7 +15,7 @@ public sealed class EmailVerifications(IdentityDbContext db) : IEmailVerificatio
     {
         db.Users.Add(user);
 
-        return await TrySaveAsync(cancellationToken);
+        return await db.TrySaveAsync(cancellationToken);
     }
 
     public async Task AddAsync(EmailVerificationToken token, CancellationToken cancellationToken)
@@ -53,24 +52,6 @@ public sealed class EmailVerifications(IdentityDbContext db) : IEmailVerificatio
 
         db.UserCredentials.Add(credential);
 
-        return await TrySaveAsync(cancellationToken);
+        return await db.TrySaveAsync(cancellationToken);
     }
-
-    private async Task<bool> TrySaveAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            await db.SaveChangesAsync(cancellationToken);
-            return true;
-        }
-        catch (Exception ex) when (IsConflict(ex))
-        {
-            db.ChangeTracker.Clear();
-            return false;
-        }
-    }
-
-    private static bool IsConflict(Exception ex) =>
-        ex is DbUpdateConcurrencyException
-        || ex is DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } };
 }
