@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Urban.Identity.Domain.Consent;
 using Urban.Identity.Domain.Tokens;
 using Urban.Identity.Domain.Users;
 
@@ -18,6 +19,8 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
     public DbSet<EmailVerificationToken> EmailVerificationTokens => Set<EmailVerificationToken>();
 
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
+
+    public DbSet<UserConsent> UserConsents => Set<UserConsent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

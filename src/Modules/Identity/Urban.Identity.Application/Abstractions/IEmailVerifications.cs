@@ -1,3 +1,4 @@
+using Urban.Identity.Domain.Consent;
 using Urban.Identity.Domain.Tokens;
 using Urban.Identity.Domain.Users;
 
@@ -16,7 +17,12 @@ public interface IEmailVerifications
 
     Task<EmailVerificationToken?> FindLatestOfUserAsync(Guid userId, CancellationToken cancellationToken);
 
-    /// <summary>Grava o link usado, a conta ativada e a credencial na mesma transação.</summary>
+    /// <summary>Grava o link usado, a conta ativada, a credencial e o aceite dos termos na mesma transação.</summary>
     /// <returns><c>false</c> quando outra requisição usou o mesmo link antes; nada é gravado.</returns>
-    Task<bool> ConfirmAsync(EmailVerificationToken token, User user, UserCredential credential, CancellationToken cancellationToken);
+    Task<bool> ConfirmAsync(
+        EmailVerificationToken token,
+        User user,
+        UserCredential credential,
+        UserConsent consent,
+        CancellationToken cancellationToken);
 }

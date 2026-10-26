@@ -97,7 +97,7 @@ public sealed class SuperAdminBootstrapTests(ApiFixture fixture)
         string token = RecordingEmailSender.TokenIn(factory.Emails.SentTo(address).Single());
         using HttpClient client = factory.CreateClient();
 
-        HttpResponseMessage confirmed = await client.PostAsJsonAsync("/api/auth/confirm-email", new { token, password = Password });
+        HttpResponseMessage confirmed = await client.PostAsJsonAsync("/api/auth/confirm-email", new { token, password = Password, termsVersion = factory.TermsVersion });
 
         confirmed.StatusCode.Should().Be(HttpStatusCode.NoContent);
         await using IdentityDbContext db = fixture.Postgres.CreateContext();
@@ -105,6 +105,7 @@ public sealed class SuperAdminBootstrapTests(ApiFixture fixture)
         user.Status.Should().Be(AccountStatus.Active);
         user.Role.Should().Be(UserRole.SuperAdmin);
         (await db.UserCredentials.AnyAsync(c => c.UserId == user.Id)).Should().BeTrue();
+        (await db.UserConsents.SingleAsync(c => c.UserId == user.Id)).Version.Should().Be(factory.TermsVersion);
     }
 
     [Fact]

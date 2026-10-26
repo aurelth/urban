@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using StackExchange.Redis;
 using Urban.Identity.Application.Abstractions;
+using Urban.Identity.Infrastructure.Consent;
 using Urban.Identity.Infrastructure.Messaging;
 using Urban.Identity.Infrastructure.Persistence;
 using Urban.Identity.Infrastructure.Security;
@@ -31,11 +32,14 @@ public static class IdentityInfrastructureExtensions
 
         WebLinksOptions links = configuration.GetSection(WebLinksOptions.SectionName).Get<WebLinksOptions>() ?? new WebLinksOptions();
         _ = links.GetWebBaseUri();
+        ConsentOptions consent = configuration.GetSection(ConsentOptions.SectionName).Get<ConsentOptions>() ?? new ConsentOptions();
+        string termsVersion = consent.GetCurrentVersion();
 
         services.TryAddSingleton<IClock, SystemClock>();
         services.AddSingleton(jwt);
         services.AddSingleton(hashing);
         services.AddSingleton(links);
+        services.AddSingleton<ICurrentTerms>(new ConfiguredTerms(termsVersion));
         services.AddDbContext<IdentityDbContext>(options => IdentityPersistence.Configure(options, postgres));
         services.AddSingleton<IConnectionMultiplexer>(_ => ConnectToRedis(redis));
 

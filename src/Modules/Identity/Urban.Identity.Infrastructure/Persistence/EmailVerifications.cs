@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Urban.Identity.Application.Abstractions;
+using Urban.Identity.Domain.Consent;
 using Urban.Identity.Domain.Tokens;
 using Urban.Identity.Domain.Users;
 
@@ -38,6 +39,7 @@ public sealed class EmailVerifications(IdentityDbContext db) : IEmailVerificatio
         EmailVerificationToken token,
         User user,
         UserCredential credential,
+        UserConsent consent,
         CancellationToken cancellationToken)
     {
         if (db.Entry(token).State == EntityState.Detached)
@@ -51,6 +53,7 @@ public sealed class EmailVerifications(IdentityDbContext db) : IEmailVerificatio
         }
 
         db.UserCredentials.Add(credential);
+        db.UserConsents.Add(consent);
 
         return await db.TrySaveAsync(cancellationToken);
     }

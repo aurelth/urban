@@ -58,6 +58,15 @@ public class IdentityInfrastructureRegistrationTests
         Register().Single(d => d.ServiceType == typeof(IPasswordResets)).Lifetime.Should().Be(ServiceLifetime.Scoped);
     }
 
+    [Fact]
+    public void TheCurrentTermsAreASingletonCarryingTheConfiguredVersion()
+    {
+        ServiceDescriptor descriptor = Register().Single(d => d.ServiceType == typeof(ICurrentTerms));
+
+        descriptor.Lifetime.Should().Be(ServiceLifetime.Singleton);
+        ((ICurrentTerms)descriptor.ImplementationInstance!).Version.Should().Be("2026-10-26");
+    }
+
     private static ServiceCollection Register()
     {
         IConfiguration configuration = new ConfigurationBuilder()
@@ -67,6 +76,7 @@ public class IdentityInfrastructureRegistrationTests
                 ["ConnectionStrings:Redis"] = "localhost:6379",
                 ["Jwt:SigningKey"] = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
                 ["Links:WebBaseUrl"] = "https://urban-pro.io",
+                ["Consent:CurrentVersion"] = "2026-10-26",
             })
             .Build();
 

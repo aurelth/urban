@@ -1,8 +1,10 @@
+using System.Linq.Expressions;
 using FluentAssertions;
 using Moq;
 using Urban.Identity.Application.Abstractions;
 using Urban.Identity.Application.Registration.ConfirmEmail;
 using Urban.Identity.Domain.Access;
+using Urban.Identity.Domain.Consent;
 using Urban.Identity.Domain.Tokens;
 using Urban.Identity.Domain.Users;
 using Urban.SharedKernel;
@@ -14,12 +16,21 @@ namespace Urban.UnitTests.Identity.Application;
 public class ConfirmEmailCommandHandlerTests
 {
     private const string Password = "Senha-segura-123";
+    private const string TermsVersion = "2026-10-26";
     private static readonly DateTimeOffset Now = UserBuilder.Now;
+
+    private static readonly Expression<Func<IEmailVerifications, Task<bool>>> AnyConfirm = v => v.ConfirmAsync(
+        It.IsAny<EmailVerificationToken>(),
+        It.IsAny<User>(),
+        It.IsAny<UserCredential>(),
+        It.IsAny<UserConsent>(),
+        It.IsAny<CancellationToken>());
 
     private readonly Mock<IEmailVerifications> _verifications = new();
     private readonly Mock<IUserAccounts> _accounts = new();
     private readonly Mock<ISecretGenerator> _secrets = new();
     private readonly Mock<IPasswordHasher> _hasher = new();
+    private readonly Mock<ICurrentTerms> _terms = new();
     private readonly Mock<IClock> _clock = new();
     private readonly User _user = UserBuilder.InStatus(AccountStatus.PendingVerification, UserRole.Manager);
     private readonly EmailVerificationToken _token;
@@ -29,14 +40,14 @@ public class ConfirmEmailCommandHandlerTests
     {
         _token = EmailVerificationToken.Issue(_user.Id, "link-hash", Now.AddHours(-1));
         _clock.SetupGet(c => c.UtcNow).Returns(Now);
+        _terms.SetupGet(t => t.Version).Returns(TermsVersion);
         _secrets.Setup(s => s.Hash("link-secret")).Returns("link-hash");
         _hasher.Setup(h => h.Hash(Password)).Returns("bcrypt-hash");
         _verifications.Setup(v => v.FindByHashAsync("link-hash", It.IsAny<CancellationToken>())).ReturnsAsync(_token);
-        _verifications
-            .Setup(v => v.ConfirmAsync(It.IsAny<EmailVerificationToken>(), It.IsAny<User>(), It.IsAny<UserCredential>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(true);
+        _verifications.Setup(AnyConfirm).ReturnsAsync(true);
         _accounts.Setup(a => a.FindByIdAsync(_user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(_user);
-        _handler = new ConfirmEmailCommandHandler(_verifications.Object, _accounts.Object, _secrets.Object, _hasher.Object, _clock.Object);
+        _handler = new ConfirmEmailCommandHandler(
+            _verifications.Object, _accounts.Object, _secrets.Object, _hasher.Object, _terms.Object, _clock.Object);
     }
 
     [Fact]
@@ -44,18 +55,34 @@ public class ConfirmEmailCommandHandlerTests
     {
         UserCredential? stored = null;
         _verifications
-            .Setup(v => v.ConfirmAsync(It.IsAny<EmailVerificationToken>(), It.IsAny<User>(), It.IsAny<UserCredential>(), It.IsAny<CancellationToken>()))
-            .Callback<EmailVerificationToken, User, UserCredential, CancellationToken>((_, _, c, _) => stored = c)
+            .Setup(AnyConfirm)
+            .Callback<EmailVerificationToken, User, UserCredential, UserConsent, CancellationToken>((_, _, c, _, _) => stored = c)
             .ReturnsAsync(true);
 
-        Result result = await _handler.Handle(new ConfirmEmailCommand("link-secret", Password), default);
+        Result result = await _handler.Handle(Command(), default);
 
         result.IsSuccess.Should().BeTrue();
         _user.Status.Should().Be(AccountStatus.Active);
         _token.UsedAt.Should().Be(Now);
         stored!.UserId.Should().Be(_user.Id);
         stored.PasswordHash.Should().Be("bcrypt-hash");
-        _verifications.Verify(v => v.ConfirmAsync(_token, _user, stored, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Handle_WithAValidLinkAndPassword_RecordsTheAcceptedTermsInTheSameSave()
+    {
+        UserConsent? recorded = null;
+        _verifications
+            .Setup(AnyConfirm)
+            .Callback<EmailVerificationToken, User, UserCredential, UserConsent, CancellationToken>((_, _, _, c, _) => recorded = c)
+            .ReturnsAsync(true);
+
+        await _handler.Handle(Command(), default);
+
+        recorded!.UserId.Should().Be(_user.Id);
+        recorded.Version.Should().Be(TermsVersion);
+        recorded.AcceptedAt.Should().Be(Now);
+        _verifications.Verify(AnyConfirm, Times.Once);
     }
 
     [Theory]
@@ -63,11 +90,25 @@ public class ConfirmEmailCommandHandlerTests
     [InlineData("somente-letras-aqui", "identity.password.needs_letter_and_digit")]
     public async Task Handle_WithAWeakPassword_FailsBeforeLookingUpTheLink(string password, string code)
     {
-        Result result = await _handler.Handle(new ConfirmEmailCommand("link-secret", password), default);
+        Result result = await _handler.Handle(Command(password: password), default);
 
         result.Error.Code.Should().Be(code);
         _verifications.VerifyNoOtherCalls();
         _token.UsedAt.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData("", "identity.consent.required")]
+    [InlineData("   ", "identity.consent.required")]
+    [InlineData("2025-01-01", "identity.consent.outdated")]
+    public async Task Handle_WithoutTheCurrentTermsVersion_FailsBeforeLookingUpTheLink(string accepted, string code)
+    {
+        Result result = await _handler.Handle(Command(termsVersion: accepted), default);
+
+        result.Error.Code.Should().Be(code);
+        _verifications.VerifyNoOtherCalls();
+        _token.UsedAt.Should().BeNull();
+        _user.Status.Should().Be(AccountStatus.PendingVerification);
     }
 
     [Fact]
@@ -75,10 +116,10 @@ public class ConfirmEmailCommandHandlerTests
     {
         _verifications.Setup(v => v.FindByHashAsync("link-hash", It.IsAny<CancellationToken>())).ReturnsAsync((EmailVerificationToken?)null);
 
-        Result result = await _handler.Handle(new ConfirmEmailCommand("link-secret", Password), default);
+        Result result = await _handler.Handle(Command(), default);
 
         result.Error.Should().Be(EmailVerificationTokenErrors.Invalid);
-        _verifications.Verify(v => v.ConfirmAsync(It.IsAny<EmailVerificationToken>(), It.IsAny<User>(), It.IsAny<UserCredential>(), It.IsAny<CancellationToken>()), Times.Never);
+        _verifications.Verify(AnyConfirm, Times.Never);
     }
 
     [Fact]
@@ -86,11 +127,11 @@ public class ConfirmEmailCommandHandlerTests
     {
         _clock.SetupGet(c => c.UtcNow).Returns(_token.ExpiresAt);
 
-        Result result = await _handler.Handle(new ConfirmEmailCommand("link-secret", Password), default);
+        Result result = await _handler.Handle(Command(), default);
 
         result.Error.Should().Be(EmailVerificationTokenErrors.Expired);
         _user.Status.Should().Be(AccountStatus.PendingVerification);
-        _verifications.Verify(v => v.ConfirmAsync(It.IsAny<EmailVerificationToken>(), It.IsAny<User>(), It.IsAny<UserCredential>(), It.IsAny<CancellationToken>()), Times.Never);
+        _verifications.Verify(AnyConfirm, Times.Never);
     }
 
     [Fact]
@@ -98,7 +139,7 @@ public class ConfirmEmailCommandHandlerTests
     {
         _token.Consume(Now.AddMinutes(-5));
 
-        Result result = await _handler.Handle(new ConfirmEmailCommand("link-secret", Password), default);
+        Result result = await _handler.Handle(Command(), default);
 
         result.Error.Should().Be(EmailVerificationTokenErrors.Invalid);
     }
@@ -108,10 +149,10 @@ public class ConfirmEmailCommandHandlerTests
     {
         _accounts.Setup(a => a.FindByIdAsync(_user.Id, It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
 
-        Result result = await _handler.Handle(new ConfirmEmailCommand("link-secret", Password), default);
+        Result result = await _handler.Handle(Command(), default);
 
         result.Error.Should().Be(EmailVerificationTokenErrors.Invalid);
-        _verifications.Verify(v => v.ConfirmAsync(It.IsAny<EmailVerificationToken>(), It.IsAny<User>(), It.IsAny<UserCredential>(), It.IsAny<CancellationToken>()), Times.Never);
+        _verifications.Verify(AnyConfirm, Times.Never);
     }
 
     [Fact]
@@ -119,21 +160,22 @@ public class ConfirmEmailCommandHandlerTests
     {
         _user.ConfirmEmail(Now.AddMinutes(-10));
 
-        Result result = await _handler.Handle(new ConfirmEmailCommand("link-secret", Password), default);
+        Result result = await _handler.Handle(Command(), default);
 
         result.Error.Should().Be(EmailVerificationTokenErrors.Invalid);
-        _verifications.Verify(v => v.ConfirmAsync(It.IsAny<EmailVerificationToken>(), It.IsAny<User>(), It.IsAny<UserCredential>(), It.IsAny<CancellationToken>()), Times.Never);
+        _verifications.Verify(AnyConfirm, Times.Never);
     }
 
     [Fact]
     public async Task Handle_WhenAnotherRequestUsedTheLinkFirst_FailsAsInvalid()
     {
-        _verifications
-            .Setup(v => v.ConfirmAsync(It.IsAny<EmailVerificationToken>(), It.IsAny<User>(), It.IsAny<UserCredential>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
+        _verifications.Setup(AnyConfirm).ReturnsAsync(false);
 
-        Result result = await _handler.Handle(new ConfirmEmailCommand("link-secret", Password), default);
+        Result result = await _handler.Handle(Command(), default);
 
         result.Error.Should().Be(EmailVerificationTokenErrors.Invalid);
     }
+
+    private static ConfirmEmailCommand Command(string password = Password, string termsVersion = TermsVersion) =>
+        new("link-secret", password, termsVersion);
 }

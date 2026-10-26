@@ -23,6 +23,35 @@ namespace Urban.Identity.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Urban.Identity.Domain.Consent.UserConsent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("AcceptedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("accepted_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<string>("Version")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id")
+                        .HasName("pk_user_consent");
+
+                    b.HasIndex("UserId")
+                        .HasDatabaseName("ix_user_consent_user_id");
+
+                    b.ToTable("user_consent", "identity");
+                });
+
             modelBuilder.Entity("Urban.Identity.Domain.Tokens.EmailVerificationToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -258,6 +287,16 @@ namespace Urban.Identity.Infrastructure.Persistence.Migrations
                         .HasName("pk_user_credential");
 
                     b.ToTable("user_credential", "identity");
+                });
+
+            modelBuilder.Entity("Urban.Identity.Domain.Consent.UserConsent", b =>
+                {
+                    b.HasOne("Urban.Identity.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_consent_user_user_id");
                 });
 
             modelBuilder.Entity("Urban.Identity.Domain.Tokens.EmailVerificationToken", b =>

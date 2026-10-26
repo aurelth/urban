@@ -4,6 +4,7 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Urban.Identity.Application.Abstractions;
 using Urban.Identity.Domain.Access;
+using Urban.Identity.Domain.Consent;
 using Urban.Identity.Domain.Tokens;
 using Urban.Identity.Domain.Users;
 using Urban.Identity.Infrastructure.Persistence;
@@ -174,6 +175,56 @@ public sealed class RegistrationEndpointsTests(ApiFixture fixture) : IDisposable
     }
 
     [Fact]
+    public async Task Confirm_records_the_accepted_terms_version_for_the_new_user()
+    {
+        string address = NewAddress();
+        await RegisterAsync(address);
+        string token = RecordingEmailSender.TokenIn(Emails.SentTo(address).Single());
+        DateTimeOffset before = DateTimeOffset.UtcNow;
+
+        await ConfirmAsync(token, Password);
+
+        await using IdentityDbContext db = fixture.Postgres.CreateContext();
+        User user = await db.Users.AsNoTracking().SingleAsync(u => u.Email == Email.Create(address).Value);
+        UserConsent consent = await db.UserConsents.AsNoTracking().SingleAsync(c => c.UserId == user.Id);
+        consent.Version.Should().Be(fixture.Factory.TermsVersion);
+        consent.AcceptedAt.Should().BeOnOrAfter(before).And.BeOnOrBefore(DateTimeOffset.UtcNow);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    public async Task Confirm_without_the_terms_version_is_refused_without_spending_the_link(string? missing)
+    {
+        string token = await RegisterAndGetTokenAsync();
+
+        HttpResponseMessage refused = await ConfirmWithTermsAsync(token, Password, missing);
+        HttpResponseMessage retry = await ConfirmAsync(token, Password);
+
+        refused.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await refused.CodeAsync()).Should().Be(ConsentErrors.Required.Code);
+        retry.StatusCode.Should().Be(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task Confirm_with_an_outdated_terms_version_is_refused_and_leaves_the_account_pending()
+    {
+        string address = NewAddress();
+        await RegisterAsync(address);
+        string token = RecordingEmailSender.TokenIn(Emails.SentTo(address).Single());
+
+        HttpResponseMessage refused = await ConfirmWithTermsAsync(token, Password, "2020-01-01");
+        HttpResponseMessage retry = await ConfirmAsync(token, Password);
+
+        refused.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await refused.CodeAsync()).Should().Be(ConsentErrors.Outdated.Code);
+        retry.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        await using IdentityDbContext db = fixture.Postgres.CreateContext();
+        User user = await db.Users.AsNoTracking().SingleAsync(u => u.Email == Email.Create(address).Value);
+        (await db.UserConsents.CountAsync(c => c.UserId == user.Id)).Should().Be(1);
+    }
+
+    [Fact]
     public async Task Confirm_with_an_unknown_link_returns_400()
     {
         HttpResponseMessage response = await ConfirmAsync("link-que-nunca-existiu", Password);
@@ -238,7 +289,10 @@ public sealed class RegistrationEndpointsTests(ApiFixture fixture) : IDisposable
     private Task<HttpResponseMessage> RegisterAsync(string email) => _client.PostAsJsonAsync("/api/auth/register", new { email });
 
     private Task<HttpResponseMessage> ConfirmAsync(string token, string password) =>
-        _client.PostAsJsonAsync("/api/auth/confirm-email", new { token, password });
+        ConfirmWithTermsAsync(token, password, fixture.Factory.TermsVersion);
+
+    private Task<HttpResponseMessage> ConfirmWithTermsAsync(string token, string password, string? termsVersion) =>
+        _client.PostAsJsonAsync("/api/auth/confirm-email", new { token, password, termsVersion });
 
     private async Task<string> RegisterAndGetTokenAsync()
     {

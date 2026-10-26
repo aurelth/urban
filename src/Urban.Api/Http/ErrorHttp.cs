@@ -4,6 +4,7 @@ using Urban.Identity.Application.Authentication;
 using Urban.Identity.Application.Authentication.Login;
 using Urban.Identity.Application.Authentication.Refresh;
 using Urban.Identity.Application.Bootstrap;
+using Urban.Identity.Domain.Consent;
 using Urban.Identity.Domain.Tokens;
 using Urban.Identity.Domain.Users;
 using Urban.SharedKernel;
@@ -22,6 +23,8 @@ public static class ErrorHttp
         [EmailVerificationTokenErrors.Expired.Code] = StatusCodes.Status400BadRequest,
         [PasswordResetTokenErrors.Invalid.Code] = StatusCodes.Status400BadRequest,
         [PasswordResetTokenErrors.Expired.Code] = StatusCodes.Status400BadRequest,
+        [ConsentErrors.Required.Code] = StatusCodes.Status400BadRequest,
+        [ConsentErrors.Outdated.Code] = StatusCodes.Status400BadRequest,
         [LoginErrors.LockedOut.Code] = StatusCodes.Status423Locked,
         [SessionErrors.Unauthenticated.Code] = StatusCodes.Status401Unauthorized,
         [SessionErrors.StoreUnavailable.Code] = StatusCodes.Status503ServiceUnavailable,

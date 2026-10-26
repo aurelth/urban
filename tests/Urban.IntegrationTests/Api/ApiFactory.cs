@@ -30,6 +30,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
     public string WebBaseUrl { get; init; } = "https://app.test";
 
+    /// <summary>Versão vigente dos termos de uso e da política de privacidade (seção "Consent").</summary>
+    public string TermsVersion { get; init; } = "2026-01-01";
+
     public string EmailProvider { get; init; } = "Log";
 
     public string BrevoApiKey { get; init; } = string.Empty;
@@ -63,6 +66,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Jwt:SigningKey", SigningKey);
         builder.UseSetting("Database:MigrateOnStartup", MigrateOnStartup ? "true" : "false");
         builder.UseSetting("Links:WebBaseUrl", WebBaseUrl);
+        builder.UseSetting("Consent:CurrentVersion", TermsVersion);
         builder.UseSetting("Email:Provider", EmailProvider);
         builder.UseSetting("Email:Brevo:ApiKey", BrevoApiKey);
         builder.UseSetting("SuperAdmin:Email", SuperAdminEmail);
