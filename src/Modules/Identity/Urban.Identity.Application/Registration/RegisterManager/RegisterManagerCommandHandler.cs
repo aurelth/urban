@@ -10,6 +10,7 @@ namespace Urban.Identity.Application.Registration.RegisterManager;
 /// <summary>
 /// Cadastro da síndica: só o e-mail. A resposta é a mesma para e-mail novo, conta pendente ou conta já ativa, então
 /// ninguém descobre quais e-mails têm conta. A senha é escolhida depois, ao confirmar o e-mail. O link é emitido e enviado em segundo plano.
+/// Só contas de síndico recebem novo link por aqui: o SuperAdmin pendente é tratado pelo bootstrap, e este endpoint público não pode ser usado para encher a caixa de entrada dele.
 /// </summary>
 public sealed class RegisterManagerCommandHandler(
     IUserAccounts accounts,
@@ -32,9 +33,9 @@ public sealed class RegisterManagerCommandHandler(
         {
             await RegisterNewAsync(email.Value, now, cancellationToken);
         }
-        else if (existing.Status == AccountStatus.PendingVerification)
+        else if (existing.Role == UserRole.Manager && existing.Status == AccountStatus.PendingVerification)
         {
-            await ResendAsync(existing, now, cancellationToken);
+            await verifications.RequestLinkUnlessRecentAsync(dispatcher, existing.Id, now, cancellationToken);
         }
 
         return Result.Success();
@@ -48,15 +49,5 @@ public sealed class RegisterManagerCommandHandler(
         {
             await dispatcher.EnqueueAsync(user.Id, cancellationToken);
         }
-    }
-
-    private async Task ResendAsync(User user, DateTimeOffset now, CancellationToken cancellationToken)
-    {
-        if (await verifications.HasRecentLinkAsync(user.Id, now, cancellationToken))
-        {
-            return;
-        }
-
-        await dispatcher.EnqueueAsync(user.Id, cancellationToken);
     }
 }

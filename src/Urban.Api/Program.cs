@@ -24,6 +24,8 @@ if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
     await app.Services.MigrateModulesAsync();
 }
 
+await app.Services.BootstrapSuperAdminAsync(app.Configuration);
+
 app.UseExceptionHandler();
 app.UseAuthentication();
 app.UseAuthorization();

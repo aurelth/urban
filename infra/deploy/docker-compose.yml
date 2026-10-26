@@ -5,7 +5,7 @@
 #   WEB_PORT                porta em 127.0.0.1 onde o nginx do servidor encontra o web
 #   ASPNETCORE_ENVIRONMENT  Staging | Production
 #   WEB_BASE_URL            endereco publico do site, usado nos links dos e-mails
-#   POSTGRES_PASSWORD, REDIS_PASSWORD, JWT_SIGNING_KEY, BREVO_API_KEY
+#   POSTGRES_PASSWORD, REDIS_PASSWORD, JWT_SIGNING_KEY, BREVO_API_KEY, SUPERADMIN_EMAIL
 #                           segredos: vem do secrets.env (enviado pelo workflow de deploy a
 #                           partir dos secrets do Environment do GitHub), nunca do repositorio
 name: urban-${URBAN_ENV:?defina URBAN_ENV}
@@ -87,6 +87,8 @@ services:
       Links__WebBaseUrl: ${WEB_BASE_URL:?defina WEB_BASE_URL}
       Email__Provider: Brevo
       Email__Brevo__ApiKey: ${BREVO_API_KEY:?defina BREVO_API_KEY}
+      # Opcional: vazio desliga a criacao do SuperAdmin na partida (a senha e escolhida pelo link enviado a este e-mail).
+      SuperAdmin__Email: ${SUPERADMIN_EMAIL:-}
       Database__MigrateOnStartup: "true"
     mem_limit: 512m
 

@@ -33,6 +33,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
     public string BrevoApiKey { get; init; } = string.Empty;
 
+    /// <summary>E-mail do SuperAdmin que a API cria na partida. Vazio (padrão) desliga o bootstrap.</summary>
+    public string SuperAdminEmail { get; init; } = string.Empty;
+
     /// <summary>Liga a fila e o servidor do Hangfire de verdade. Desligado (padrão), o envio roda na hora e nada toca o banco da fila.</summary>
     public bool RealBackgroundJobs { get; init; }
 
@@ -50,6 +53,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Links:WebBaseUrl", WebBaseUrl);
         builder.UseSetting("Email:Provider", EmailProvider);
         builder.UseSetting("Email:Brevo:ApiKey", BrevoApiKey);
+        builder.UseSetting("SuperAdmin:Email", SuperAdminEmail);
         builder.UseSetting("BackgroundJobs:RunServer", RealBackgroundJobs ? "true" : "false");
         builder.ConfigureTestServices(services =>
         {
