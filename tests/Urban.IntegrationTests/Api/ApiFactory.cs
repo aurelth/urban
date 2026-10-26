@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Net;
 using System.Security.Cryptography;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -39,6 +40,17 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
     /// <summary>Liga a fila e o servidor do Hangfire de verdade. Desligado (padrão), o envio roda na hora e nada toca o banco da fila.</summary>
     public bool RealBackgroundJobs { get; init; }
 
+    /// <summary>Limite de requisições de cada rota por janela. O padrão é alto para os testes de outros assuntos nunca esbarrarem nele; nulo usa os limites do appsettings.json.</summary>
+    public int? RateLimitPermitLimit { get; init; } = 10_000;
+
+    public TimeSpan RateLimitWindow { get; init; } = TimeSpan.FromMinutes(1);
+
+    /// <summary>Endereço de quem abre a conexão com a API (o último proxy). Nulo (padrão), o servidor de teste não informa nenhum.</summary>
+    public IPAddress? RemoteAddress { get; init; }
+
+    /// <summary>Configurações extras, aplicadas por último e por isso capazes de sobrescrever qualquer outra.</summary>
+    public IReadOnlyDictionary<string, string?> Settings { get; init; } = new Dictionary<string, string?>();
+
     public RecordingEmailSender Emails { get; } = new();
 
     public string SigningKey { get; init; } = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
@@ -55,8 +67,22 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("Email:Brevo:ApiKey", BrevoApiKey);
         builder.UseSetting("SuperAdmin:Email", SuperAdminEmail);
         builder.UseSetting("BackgroundJobs:RunServer", RealBackgroundJobs ? "true" : "false");
+        if (RateLimitPermitLimit is int permits)
+        {
+            foreach (string route in new[] { "Register", "ConfirmEmail", "Login" })
+            {
+                builder.UseSetting($"RateLimiting:{route}:PermitLimit", permits.ToString(CultureInfo.InvariantCulture));
+                builder.UseSetting($"RateLimiting:{route}:Window", RateLimitWindow.ToString("c", CultureInfo.InvariantCulture));
+            }
+        }
+
         builder.ConfigureTestServices(services =>
         {
+            if (RemoteAddress is not null)
+            {
+                services.AddSingleton<IStartupFilter>(new RemoteAddressStartupFilter(RemoteAddress));
+            }
+
             services.Replace(ServiceDescriptor.Singleton<IEmailSender>(Emails));
             if (!RealBackgroundJobs)
             {
@@ -67,5 +93,10 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting(
             "PasswordHashing:WorkFactor",
             PasswordHashingOptions.MinimumWorkFactor.ToString(CultureInfo.InvariantCulture));
+
+        foreach ((string key, string? value) in Settings)
+        {
+            builder.UseSetting(key, value);
+        }
     }
 }

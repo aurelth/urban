@@ -16,6 +16,8 @@ builder.Services.AddEmailDelivery(builder.Configuration);
 builder.Services.AddUrbanModules(builder.Configuration);
 builder.Services.AddBackgroundJobs(builder.Configuration);
 builder.Services.AddUrbanAuthentication();
+builder.Services.AddUrbanForwardedHeaders(builder.Configuration);
+builder.Services.AddUrbanRateLimiting(builder.Configuration);
 
 var app = builder.Build();
 
@@ -26,7 +28,9 @@ if (app.Configuration.GetValue<bool>("Database:MigrateOnStartup"))
 
 await app.Services.BootstrapSuperAdminAsync(app.Configuration);
 
+app.UseForwardedHeaders();
 app.UseExceptionHandler();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
