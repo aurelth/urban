@@ -17,6 +17,17 @@ internal static class AuthApi
     public static Task<HttpResponseMessage> LogoutAsync(this HttpClient client, string? accessToken, string? cookie = null) =>
         client.SendAsync(PostRequest("/api/auth/logout", accessToken, cookie));
 
+    public static Task<HttpResponseMessage> MeAsync(this HttpClient client, string? accessToken)
+    {
+        HttpRequestMessage request = new(HttpMethod.Get, "/api/auth/me");
+        if (accessToken is not null)
+        {
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        }
+
+        return client.SendAsync(request);
+    }
+
     public static async Task<string> CodeAsync(this HttpResponseMessage response)
     {
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>();

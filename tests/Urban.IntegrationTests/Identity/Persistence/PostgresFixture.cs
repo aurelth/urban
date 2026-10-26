@@ -48,9 +48,12 @@ public sealed class PostgresFixture : IAsyncLifetime
     }
 
     /// <summary>Grava um usuário (ativo, por padrão) junto com a credencial dele (senha em BCrypt) e devolve o usuário.</summary>
-    public async Task<User> SeedUserWithPasswordAsync(string password, AccountStatus status = AccountStatus.Active)
+    public async Task<User> SeedUserWithPasswordAsync(
+        string password,
+        AccountStatus status = AccountStatus.Active,
+        UserRole role = UserRole.Resident)
     {
-        User user = UserBuilder.InStatus(status, UserRole.Resident, $"{Guid.NewGuid():N}@example.com");
+        User user = UserBuilder.InStatus(status, role, $"{Guid.NewGuid():N}@example.com");
 
         await using IdentityDbContext db = CreateContext();
         db.Users.Add(user);
