@@ -18,9 +18,12 @@ public static class RegistrationEndpoints
             .WithDescription(
                 "Recebe só o e-mail e envia o link de confirmação (válido por 24 horas). A senha é escolhida na confirmação. "
                 + "Responde 202 para qualquer e-mail válido, esteja ele livre ou já cadastrado, para não revelar quem tem conta. "
-                + "Pedir de novo em menos de 1 minuto não envia outro e-mail.")
+                + "Pedir de novo em menos de 1 minuto não envia outro e-mail. "
+                + "O mesmo IP tem um limite de pedidos por minuto; ao exceder, recebe 429 com Retry-After.")
+            .RequireRateLimiting(RateLimitPolicies.Register)
             .Produces(StatusCodes.Status202Accepted)
-            .ProducesProblem(StatusCodes.Status400BadRequest);
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
         registration.MapPost("/confirm-email", ConfirmEmailAsync)
             .WithName("ConfirmEmail")
@@ -28,9 +31,12 @@ public static class RegistrationEndpoints
             .WithDescription(
                 "Troca o token do link e a senha escolhida pela conta ativa (204). O link vale uma vez só. "
                 + "A senha é validada antes do token: senha fraca (400) não gasta o link. "
-                + "Link desconhecido, já usado ou de conta que não está pendente (400 invalid) e link vencido (400 expired) pedem novo cadastro.")
+                + "Link desconhecido, já usado ou de conta que não está pendente (400 invalid) e link vencido (400 expired) pedem novo cadastro. "
+                + "O mesmo IP tem um limite de pedidos por minuto; ao exceder, recebe 429 com Retry-After.")
+            .RequireRateLimiting(RateLimitPolicies.ConfirmEmail)
             .Produces(StatusCodes.Status204NoContent)
-            .ProducesProblem(StatusCodes.Status400BadRequest);
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
         return app;
     }

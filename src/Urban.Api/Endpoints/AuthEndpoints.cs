@@ -23,11 +23,14 @@ public static class AuthEndpoints
                 "Devolve o token de acesso no corpo e grava o token de renovação em cookie HttpOnly. "
                 + "E-mail inexistente e senha errada recebem a mesma resposta (401). "
                 + "O estado da conta (403) só é revelado depois da senha correta. "
-                + "Cinco senhas erradas bloqueiam a conta por 15 minutos (423).")
+                + "Cinco senhas erradas bloqueiam a conta por 15 minutos (423). "
+                + "O mesmo IP tem um limite de tentativas por minuto; ao exceder, recebe 429 com Retry-After.")
+            .RequireRateLimiting(RateLimitPolicies.Login)
             .Produces<AccessTokenResponse>()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden)
-            .ProducesProblem(StatusCodes.Status423Locked);
+            .ProducesProblem(StatusCodes.Status423Locked)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
         auth.MapPost("/refresh", RefreshAsync)
             .WithName("Refresh")
