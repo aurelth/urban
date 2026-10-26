@@ -6,6 +6,7 @@ using Urban.Identity.Application.Authentication;
 using Urban.Identity.Application.Authentication.Login;
 using Urban.Identity.Application.Authentication.Refresh;
 using Urban.Identity.Application.Bootstrap;
+using Urban.Identity.Domain.Consent;
 using Urban.Identity.Domain.Tokens;
 using Urban.Identity.Domain.Users;
 using Urban.SharedKernel;
@@ -31,6 +32,8 @@ public sealed class ErrorHttpMappingTests
         { EmailVerificationTokenErrors.Expired.Code, 400 },
         { PasswordResetTokenErrors.Invalid.Code, 400 },
         { PasswordResetTokenErrors.Expired.Code, 400 },
+        { ConsentErrors.Required.Code, 400 },
+        { ConsentErrors.Outdated.Code, 400 },
         { SessionErrors.Unauthenticated.Code, 401 },
         { SessionErrors.StoreUnavailable.Code, 503 },
     };

@@ -2,6 +2,7 @@ using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Urban.Identity.Domain.Access;
+using Urban.Identity.Domain.Consent;
 using Urban.Identity.Domain.Tokens;
 using Urban.Identity.Domain.Users;
 using Urban.Identity.Infrastructure.Persistence;
@@ -12,6 +13,8 @@ namespace Urban.IntegrationTests.Identity.Persistence;
 [Collection(PostgresCollection.Name)]
 public sealed class EmailVerificationsTests(PostgresFixture postgres)
 {
+    private const string TermsVersion = "2026-10-26";
+
     private static readonly DateTimeOffset Now = UserBuilder.Now;
 
     private static readonly CancellationToken Ct = CancellationToken.None;
@@ -114,6 +117,9 @@ public sealed class EmailVerificationsTests(PostgresFixture postgres)
         (await db.EmailVerificationTokens.AsNoTracking().SingleAsync(t => t.Id == token.Id)).UsedAt.Should().Be(Now);
         (await db.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id)).Status.Should().Be(AccountStatus.Active);
         (await postgres.ReadCredentialAsync(user.Id))!.PasswordHash.Should().Be("bcrypt-hash");
+        UserConsent consent = await db.UserConsents.AsNoTracking().SingleAsync(c => c.UserId == user.Id);
+        consent.Version.Should().Be(TermsVersion);
+        consent.AcceptedAt.Should().Be(Now);
     }
 
     [Fact]
@@ -133,6 +139,7 @@ public sealed class EmailVerificationsTests(PostgresFixture postgres)
         (await db.EmailVerificationTokens.AsNoTracking().SingleAsync(t => t.Id == token.Id)).UsedAt.Should().BeNull();
         (await db.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id)).Status.Should().Be(AccountStatus.PendingVerification);
         (await postgres.ReadCredentialAsync(user.Id))!.PasswordHash.Should().Be("existing-hash");
+        (await db.UserConsents.AnyAsync(c => c.UserId == user.Id)).Should().BeFalse();
     }
 
     [Fact]
@@ -152,12 +159,14 @@ public sealed class EmailVerificationsTests(PostgresFixture postgres)
         firstUser.ConfirmEmail(Now);
         secondUser.ConfirmEmail(Now);
 
-        bool firstWon = await first.ConfirmAsync(firstToken, firstUser, UserCredential.Create(user.Id, "first"), Ct);
-        bool secondWon = await second.ConfirmAsync(secondToken, secondUser, UserCredential.Create(user.Id, "second"), Ct);
+        bool firstWon = await first.ConfirmAsync(firstToken, firstUser, UserCredential.Create(user.Id, "first"), ConsentOf(user), Ct);
+        bool secondWon = await second.ConfirmAsync(secondToken, secondUser, UserCredential.Create(user.Id, "second"), ConsentOf(user), Ct);
 
         firstWon.Should().BeTrue();
         secondWon.Should().BeFalse();
         (await postgres.ReadCredentialAsync(user.Id))!.PasswordHash.Should().Be("first");
+        await using IdentityDbContext db = postgres.CreateContext();
+        (await db.UserConsents.CountAsync(c => c.UserId == user.Id)).Should().Be(1);
     }
 
     [Fact]
@@ -174,21 +183,24 @@ public sealed class EmailVerificationsTests(PostgresFixture postgres)
         User owned = await firstDb.Users.AsNoTracking().SingleAsync(u => u.Id == owner.Id, Ct);
         firstToken.Consume(Now);
         owned.ConfirmEmail(Now);
-        await first.ConfirmAsync(firstToken, owned, UserCredential.Create(owner.Id, "first"), Ct);
+        await first.ConfirmAsync(firstToken, owned, UserCredential.Create(owner.Id, "first"), ConsentOf(owner), Ct);
         User unrelated = await secondDb.Users.AsNoTracking().SingleAsync(u => u.Id == other.Id, Ct);
         secondToken.Consume(Now);
         unrelated.ConfirmEmail(Now);
 
         // Nada mais conflitaria (outra conta, outra credencial): só o link já usado pode barrar esta gravação.
-        bool confirmed = await second.ConfirmAsync(secondToken, unrelated, UserCredential.Create(other.Id, "second"), Ct);
+        bool confirmed = await second.ConfirmAsync(secondToken, unrelated, UserCredential.Create(other.Id, "second"), ConsentOf(other), Ct);
 
         confirmed.Should().BeFalse();
         await using IdentityDbContext db = postgres.CreateContext();
         (await db.Users.AsNoTracking().SingleAsync(u => u.Id == other.Id)).Status.Should().Be(AccountStatus.PendingVerification);
         (await postgres.ReadCredentialAsync(other.Id)).Should().BeNull();
+        (await db.UserConsents.AnyAsync(c => c.UserId == other.Id)).Should().BeFalse();
     }
 
     private static string NewHash() => Guid.NewGuid().ToString("N");
+
+    private static UserConsent ConsentOf(User user) => UserConsent.Record(user.Id, TermsVersion, Now);
 
     private static User NewUser()
     {
@@ -212,7 +224,7 @@ public sealed class EmailVerificationsTests(PostgresFixture postgres)
         token.Consume(Now);
         user.ConfirmEmail(Now);
 
-        return await verifications.ConfirmAsync(token, user, credential, Ct);
+        return await verifications.ConfirmAsync(token, user, credential, ConsentOf(user), Ct);
     }
 
     private async Task<T> RunAsync<T>(Func<EmailVerifications, Task<T>> action)

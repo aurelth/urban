@@ -78,6 +78,19 @@ public sealed class StartupTests(ApiFixture fixture)
         start.Should().Throw<InvalidOperationException>().WithMessage("*Links:WebBaseUrl*");
     }
 
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("versao-com-mais-de-trinta-e-dois-caracteres")]
+    public void Refuses_to_start_without_a_valid_terms_version(string termsVersion)
+    {
+        using ApiFactory factory = new() { TermsVersion = termsVersion };
+
+        Action start = () => factory.CreateClient();
+
+        start.Should().Throw<InvalidOperationException>().WithMessage("*Consent:CurrentVersion*");
+    }
+
     [Fact]
     public void Refuses_to_start_without_an_email_provider()
     {
