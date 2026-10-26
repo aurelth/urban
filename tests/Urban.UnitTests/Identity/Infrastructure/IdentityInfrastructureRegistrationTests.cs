@@ -31,6 +31,33 @@ public class IdentityInfrastructureRegistrationTests
         descriptor.Lifetime.Should().Be(ServiceLifetime.Scoped);
     }
 
+    [Fact]
+    public void ThePasswordResetNotifierIsScoped_ForTheSameReasonAsTheConfirmationOne()
+    {
+        Register().Single(d => d.ServiceType == typeof(IPasswordResetNotifier)).Lifetime.Should().Be(ServiceLifetime.Scoped);
+    }
+
+    [Fact]
+    public void ThePasswordResetJobIsScoped_BecauseItReachesTheDatabaseThroughScopedHandlers()
+    {
+        Register().Single(d => d.ServiceType == typeof(SendPasswordResetJob)).Lifetime.Should().Be(ServiceLifetime.Scoped);
+    }
+
+    [Fact]
+    public void ThePasswordResetDispatcherQueuesJobsThroughHangfire()
+    {
+        ServiceDescriptor descriptor = Register().Single(d => d.ServiceType == typeof(IPasswordResetDispatcher));
+
+        descriptor.ImplementationType.Should().Be<HangfirePasswordResetDispatcher>();
+        descriptor.Lifetime.Should().Be(ServiceLifetime.Scoped);
+    }
+
+    [Fact]
+    public void ThePasswordResetStoreIsScoped_BecauseItSharesTheRequestDbContext()
+    {
+        Register().Single(d => d.ServiceType == typeof(IPasswordResets)).Lifetime.Should().Be(ServiceLifetime.Scoped);
+    }
+
     private static ServiceCollection Register()
     {
         IConfiguration configuration = new ConfigurationBuilder()

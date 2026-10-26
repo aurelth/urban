@@ -119,6 +119,55 @@ public class UserCredentialTests
     }
 
     [Fact]
+    public void ChangePassword_ReplacesTheHash()
+    {
+        UserCredential credential = NewCredential();
+
+        credential.ChangePassword("novo-hash");
+
+        credential.PasswordHash.Should().Be("novo-hash");
+    }
+
+    [Fact]
+    public void ChangePassword_UnlocksALockedAccount()
+    {
+        UserCredential credential = NewCredential();
+        Fail(credential, UserCredential.MaxFailedAttempts);
+
+        credential.ChangePassword("novo-hash");
+
+        credential.IsLockedOut(Now).Should().BeFalse();
+        credential.LockoutEnd.Should().BeNull();
+        credential.FailedAttempts.Should().Be(0);
+    }
+
+    [Fact]
+    public void ChangePassword_ForgetsTheFailuresCountedSoFar()
+    {
+        UserCredential credential = NewCredential();
+        Fail(credential, 4);
+
+        credential.ChangePassword("novo-hash");
+        Fail(credential, 4);
+
+        credential.IsLockedOut(Now).Should().BeFalse();
+        credential.FailedAttempts.Should().Be(4);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void ChangePassword_RejectsABlankHash_AndKeepsTheCurrentOne(string hash)
+    {
+        UserCredential credential = NewCredential();
+
+        Action change = () => credential.ChangePassword(hash);
+
+        change.Should().Throw<ArgumentException>();
+        credential.PasswordHash.Should().Be("hash-de-teste");
+    }
+
+    [Fact]
     public void RegisterSuccess_ClearsTheLockoutDate()
     {
         UserCredential credential = NewCredential();

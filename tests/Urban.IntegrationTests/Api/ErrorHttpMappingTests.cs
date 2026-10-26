@@ -29,6 +29,8 @@ public sealed class ErrorHttpMappingTests
         { BootstrapErrors.EmailTakenByAnotherRole.Code, 409 },
         { EmailVerificationTokenErrors.Invalid.Code, 400 },
         { EmailVerificationTokenErrors.Expired.Code, 400 },
+        { PasswordResetTokenErrors.Invalid.Code, 400 },
+        { PasswordResetTokenErrors.Expired.Code, 400 },
         { SessionErrors.Unauthenticated.Code, 401 },
         { SessionErrors.StoreUnavailable.Code, 503 },
     };

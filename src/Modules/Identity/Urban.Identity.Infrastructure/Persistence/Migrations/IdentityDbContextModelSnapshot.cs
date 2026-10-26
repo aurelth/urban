@@ -70,6 +70,53 @@ namespace Urban.Identity.Infrastructure.Persistence.Migrations
                     b.ToTable("email_verification_token", "identity");
                 });
 
+            modelBuilder.Entity("Urban.Identity.Domain.Tokens.PasswordResetToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<DateTimeOffset?>("UsedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("used_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_password_reset_token");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_password_reset_token_token_hash");
+
+                    b.HasIndex("UserId", "CreatedAt")
+                        .HasDatabaseName("ix_password_reset_token_user_id_created_at");
+
+                    b.ToTable("password_reset_token", "identity");
+                });
+
             modelBuilder.Entity("Urban.Identity.Domain.Tokens.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -221,6 +268,16 @@ namespace Urban.Identity.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_email_verification_token_user_user_id");
+                });
+
+            modelBuilder.Entity("Urban.Identity.Domain.Tokens.PasswordResetToken", b =>
+                {
+                    b.HasOne("Urban.Identity.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_password_reset_token_user_user_id");
                 });
 
             modelBuilder.Entity("Urban.Identity.Domain.Tokens.RefreshToken", b =>

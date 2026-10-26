@@ -48,6 +48,10 @@ public static class IdentityInfrastructureExtensions
         services.AddScoped<IEmailVerificationNotifier, EmailVerificationNotifier>();
         services.AddScoped<IEmailVerificationDispatcher, HangfireEmailVerificationDispatcher>();
         services.AddScoped<SendEmailVerificationJob>();
+        services.AddScoped<IPasswordResets, PasswordResets>();
+        services.AddScoped<IPasswordResetNotifier, PasswordResetNotifier>();
+        services.AddScoped<IPasswordResetDispatcher, HangfirePasswordResetDispatcher>();
+        services.AddScoped<SendPasswordResetJob>();
 
         services.AddSingleton<RedisSessionRevocations>();
         services.AddSingleton<ISessionRevocations>(sp => sp.GetRequiredService<RedisSessionRevocations>());

@@ -8,6 +8,10 @@ public static class RateLimitPolicies
 
     public const string Login = "login";
 
+    public const string ForgotPassword = "forgot-password";
+
+    public const string ResetPassword = "reset-password";
+
     /// <summary>Código do problema devolvido com o 429, no mesmo campo "code" dos erros de negócio.</summary>
     public const string ExceededCode = "rate_limit.exceeded";
 }
