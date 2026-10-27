@@ -6,7 +6,8 @@ describe('Painel', () => {
     cy.visit('/');
 
     cy.location('pathname').should('eq', '/dashboard');
-    cy.contains('h1', 'Urban').should('be.visible');
+    cy.get('h1').should('have.text', 'Painel').and('have.class', 'sr-only');
+    cy.get('main').should('not.contain.text', 'Gestão condominial');
     cy.get('mat-card.module').should('have.length', 3);
     cy.get('[data-testid="condominium-notice"]').should('not.exist');
   });
@@ -18,6 +19,13 @@ describe('Painel', () => {
     cy.get('[data-testid="condominium-notice"]')
       .should('be.visible')
       .and('contain.text', 'O cadastro do seu condomínio ainda não foi feito');
+  });
+
+  it('não separa o cabeçalho do corpo com uma linha', () => {
+    stubSignedIn();
+    cy.visit('/dashboard');
+
+    cy.get('mat-toolbar').should('have.css', 'border-bottom-width', '0px');
   });
 
   it('alterna entre tema claro e escuro', () => {
