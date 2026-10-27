@@ -9,6 +9,11 @@ export interface CurrentUser {
   readonly condominiumId: string | null;
 }
 
+/** Resposta de GET /api/terms/current: a versão dos termos que a pessoa precisa aceitar. */
+export interface CurrentTerms {
+  readonly version: string;
+}
+
 /** Resposta de login e refresh. O token de renovação vai só no cookie HttpOnly. */
 export interface AccessTokenResponse {
   readonly accessToken: string;

@@ -1,23 +1,44 @@
+import { stubTerms } from '../support/cadastro';
 import { MANAGER, stubAnonymous, stubSignedIn } from '../support/session';
 
+/** Com `should` o Cypress repete a conferência até a página assentar (a barra de rolagem aparece depois do título). */
 function expectNoHorizontalScroll(): void {
-  cy.document().then((doc) => {
+  cy.document().should((doc) => {
     expect(doc.documentElement.scrollWidth).to.be.at.most(doc.documentElement.clientWidth);
   });
 }
+
+const PUBLIC_SCREENS = [
+  ['/entrar', 'Entrar'],
+  ['/cadastrar', 'Criar conta'],
+  ['/termos', 'Termos de uso'],
+  ['/privacidade', 'Política de privacidade'],
+];
 
 describe('Tela de celular (375 x 667)', () => {
   beforeEach(() => {
     cy.viewport(375, 667);
   });
 
-  it('mostra a entrada inteira, sem rolagem horizontal', () => {
-    stubAnonymous();
-    cy.visit('/entrar');
+  PUBLIC_SCREENS.forEach(([path, title]) => {
+    it(`mostra ${path} inteira, sem rolagem horizontal`, () => {
+      stubAnonymous();
+      cy.visit(path);
 
-    cy.contains('h1', 'Entrar').should('be.visible');
-    cy.get('input[type="email"]').should('be.visible');
-    cy.contains('button', 'Entrar').should('be.visible');
+      cy.contains('h1', title).should('be.visible');
+      expectNoHorizontalScroll();
+    });
+  });
+
+  it('mostra a criação de senha inteira, sem rolagem horizontal', () => {
+    stubAnonymous();
+    stubTerms();
+    cy.visit('/confirmar-email?token=token-do-link');
+
+    cy.contains('h1', 'Criar senha').should('be.visible');
+    cy.get('input[autocomplete="new-password"]').should('be.visible');
+    cy.get('mat-checkbox').should('be.visible');
+    cy.contains('button', 'Ativar conta').should('be.visible');
     expectNoHorizontalScroll();
   });
 
