@@ -1,4 +1,4 @@
-import { stubAnonymous } from '../support/session';
+import { stubAnonymous, stubSignedIn } from '../support/session';
 
 const ICONES: ReadonlyArray<readonly [string, string]> = [
   ['/favicon.svg', 'image/svg+xml'],
@@ -11,10 +11,17 @@ describe('Aba do navegador', () => {
     stubAnonymous();
   });
 
-  it('mostra o nome da aplicação como título', () => {
+  it('mostra o nome da aplicação e o da tela no título da aba', () => {
     cy.visit('/entrar');
 
-    cy.title().should('eq', 'Urban - Gestão condominial');
+    cy.title().should('eq', 'Urban - Gestão condominial | Entrar');
+  });
+
+  it('mantém o nome da aplicação no título do painel', () => {
+    stubSignedIn();
+    cy.visit('/dashboard');
+
+    cy.title().should('eq', 'Urban - Gestão condominial | Painel');
   });
 
   it('declara o favicon em SVG, o de reserva em ICO e o ícone do iPhone', () => {
