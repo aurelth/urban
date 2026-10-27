@@ -4,6 +4,7 @@ import { provideRouter, withComponentInputBinding, withViewTransitions } from '@
 import { routes } from './app.routes';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { provideSessionRestore } from './core/auth/session.providers';
+import { providePageTitle } from './core/services/page-title.strategy';
 import { provideTheme } from './core/services/theme.providers';
 import { provideUrbanIcons } from './core/theme/icons';
 
@@ -12,6 +13,7 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes, withComponentInputBinding(), withViewTransitions()),
     provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
+    providePageTitle(),
     provideUrbanIcons(),
     provideTheme(),
     provideSessionRestore(),

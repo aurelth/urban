@@ -14,7 +14,7 @@ export const routes: Routes = [
       { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       {
         path: 'dashboard',
-        title: 'Painel | Urban',
+        title: 'Painel',
         loadChildren: () =>
           import('./features/dashboard/dashboard.routes').then((m) => m.DASHBOARD_ROUTES),
       },
@@ -26,20 +26,20 @@ export const routes: Routes = [
     children: [
       {
         path: 'entrar',
-        title: 'Entrar | Urban',
+        title: 'Entrar',
         canActivate: [guestGuard],
         loadComponent: () => import('./features/auth/login/login.page').then((m) => m.LoginPage),
       },
       {
         path: 'cadastrar',
-        title: 'Criar conta | Urban',
+        title: 'Criar conta',
         canActivate: [guestGuard],
         loadComponent: () =>
           import('./features/auth/register/register.page').then((m) => m.RegisterPage),
       },
       {
         path: 'confirmar-email',
-        title: 'Confirmar e-mail | Urban',
+        title: 'Confirmar e-mail',
         loadComponent: () =>
           import('./features/auth/confirm-email/confirm-email.page').then(
             (m) => m.ConfirmEmailPage,
@@ -49,13 +49,13 @@ export const routes: Routes = [
   },
   {
     path: 'termos',
-    title: 'Termos de uso | Urban',
+    title: 'Termos de uso',
     data: { document: 'terms' },
     loadComponent: () => import('./features/legal/legal.page').then((m) => m.LegalPage),
   },
   {
     path: 'privacidade',
-    title: 'Política de privacidade | Urban',
+    title: 'Política de privacidade',
     data: { document: 'privacy' },
     loadComponent: () => import('./features/legal/legal.page').then((m) => m.LegalPage),
   },
