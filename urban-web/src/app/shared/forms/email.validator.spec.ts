@@ -18,6 +18,9 @@ describe('emailFormat', () => {
     '@example.com',
     'a@@example.com',
     'a b@example.com',
+    'a@b..com',
+    'a@.com',
+    'a@b.',
   ])('recusa "%s"', (value) => {
     expect(emailFormat(new FormControl(value, { nonNullable: true }))).toEqual({ email: true });
   });

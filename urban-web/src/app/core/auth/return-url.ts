@@ -1,5 +1,5 @@
 const LOGIN_PATH = '/entrar';
-const BASE = 'http://urban.invalid';
+const BASE = 'https://urban.invalid';
 
 /**
  * Destino depois do login. Só aceita caminho interno do próprio site: qualquer outra coisa

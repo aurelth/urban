@@ -170,10 +170,10 @@ describe('authInterceptor', () => {
     http.expectOne('/api/moradores').flush(problem(401, 'x'), UNAUTHORIZED);
     http.expectOne('/api/auth/refresh').flush(tokenResponse('access-2'));
     await flushPromises();
-    http.expectOne('/api/condominios').flush({});
-    http.expectOne('/api/moradores').flush({});
+    http.expectOne('/api/condominios').flush({ id: 1 });
+    http.expectOne('/api/moradores').flush({ id: 2 });
 
-    await Promise.all([first, second]);
+    expect(await Promise.all([first, second])).toEqual([{ id: 1 }, { id: 2 }]);
   });
 
   it.each(['/api/auth/login', '/api/auth/confirm-email'])(
