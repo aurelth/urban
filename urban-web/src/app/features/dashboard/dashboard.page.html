@@ -1,17 +1,34 @@
 <section class="mx-auto max-w-5xl p-6">
   <h1 class="mb-1 text-3xl font-semibold" urbanFadeIn>Urban</h1>
   <p class="mb-6 text-on-surface-variant" urbanFadeIn [urbanFadeInDelay]="0.05">
-    Gestao condominial
+    Gestão condominial
   </p>
 
+  @if (session.needsCondominium()) {
+    <mat-card appearance="outlined" class="mb-4" data-testid="condominium-notice" role="status">
+      <mat-card-content class="flex items-start gap-3 p-4">
+        <mat-icon svgIcon="info" aria-hidden="true" />
+        <p>
+          O cadastro do seu condomínio ainda não foi feito. Assim que o módulo de condomínios
+          estiver pronto, você poderá cadastrá-lo por aqui
+        </p>
+      </mat-card-content>
+    </mat-card>
+  }
+
   <div class="grid gap-4 md:grid-cols-3">
-    @for (modulo of modulos; track modulo.titulo) {
-      <mat-card appearance="outlined" urbanFadeIn [urbanFadeInDelay]="0.1 + $index * 0.08">
+    @for (module of modules; track module.title) {
+      <mat-card
+        appearance="outlined"
+        class="module"
+        urbanFadeIn
+        [urbanFadeInDelay]="0.1 + $index * 0.08"
+      >
         <mat-card-header>
-          <mat-card-title>{{ modulo.titulo }}</mat-card-title>
+          <mat-card-title>{{ module.title }}</mat-card-title>
         </mat-card-header>
         <mat-card-content>
-          <p class="text-on-surface-variant">{{ modulo.descricao }}</p>
+          <p class="text-on-surface-variant">{{ module.description }}</p>
         </mat-card-content>
       </mat-card>
     }

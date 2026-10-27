@@ -1,0 +1,66 @@
+<mat-card appearance="outlined">
+  <mat-card-content class="p-6">
+    <h1 class="mb-1 text-2xl font-semibold">Entrar</h1>
+    <p class="mb-6 text-on-surface-variant">Use o e-mail e a senha da sua conta</p>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col" novalidate>
+      <mat-form-field appearance="outline">
+        <mat-label>E-mail</mat-label>
+        <input
+          matInput
+          type="email"
+          formControlName="email"
+          autocomplete="username"
+          inputmode="email"
+          autocapitalize="none"
+          spellcheck="false"
+          required
+        />
+        <mat-error>
+          @if (form.controls.email.hasError('required')) {
+            Informe o e-mail
+          } @else {
+            Informe um e-mail válido
+          }
+        </mat-error>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Senha</mat-label>
+        <input
+          matInput
+          [type]="showPassword() ? 'text' : 'password'"
+          formControlName="password"
+          autocomplete="current-password"
+          required
+        />
+        <button
+          mat-icon-button
+          matSuffix
+          type="button"
+          [attr.aria-label]="showPassword() ? 'Ocultar senha' : 'Mostrar senha'"
+          [attr.aria-pressed]="showPassword()"
+          (click)="showPassword.set(!showPassword())"
+        >
+          <mat-icon [svgIcon]="showPassword() ? 'visibility_off' : 'visibility'" />
+        </button>
+        <mat-error>Informe a senha</mat-error>
+      </mat-form-field>
+
+      @if (error(); as message) {
+        <p role="alert" class="mb-4 flex items-start gap-2 text-error">
+          <mat-icon svgIcon="error" aria-hidden="true" />
+          <span>{{ message }}</span>
+        </p>
+      }
+
+      <button mat-flat-button type="submit" class="mt-2" [disabled]="submitting()">
+        @if (submitting()) {
+          Entrando
+        } @else {
+          Entrar
+        }
+      </button>
+    </form>
+  </mat-card-content>
+</mat-card>
