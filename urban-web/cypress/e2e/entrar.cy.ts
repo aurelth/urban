@@ -75,6 +75,18 @@ describe('Entrar', () => {
     cy.location('pathname').should('eq', '/dashboard');
   });
 
+  it('estica os campos até a largura do formulário', () => {
+    stubAnonymous();
+    cy.visit('/entrar');
+
+    cy.get('form').then(($form) => {
+      const width = $form[0].getBoundingClientRect().width;
+      cy.get('mat-form-field').each(($field) => {
+        expect($field[0].getBoundingClientRect().width).to.be.closeTo(width, 1);
+      });
+    });
+  });
+
   it('sai da conta e volta para a entrada', () => {
     stubSignedIn();
     cy.visit('/dashboard');

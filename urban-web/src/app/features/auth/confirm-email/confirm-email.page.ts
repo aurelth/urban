@@ -1,31 +1,24 @@
 import { Component, ElementRef, OnInit, computed, inject, input, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatAnchor, MatButton, MatIconButton } from '@angular/material/button';
+import { MatAnchor, MatButton } from '@angular/material/button';
 import { MatCard, MatCardContent } from '@angular/material/card';
 import { MatCheckbox } from '@angular/material/checkbox';
-import { MatError, MatFormField, MatHint, MatLabel, MatSuffix } from '@angular/material/form-field';
 import { MatIcon } from '@angular/material/icon';
-import { MatInput } from '@angular/material/input';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { RegistrationApi } from '../../../core/auth/registration.api';
 import { ApiProblem, toApiProblem } from '../../../core/http/api-problem';
 import { MessagesByCode, describeProblem } from '../../../core/http/problem-message';
 import { focusFirstInvalid } from '../../../shared/forms/focus-first-invalid';
-import {
-  PASSWORD_MAX_LENGTH,
-  PASSWORD_MIN_LENGTH,
-  passwordPolicy,
-} from '../../../shared/forms/password.validator';
+import { passwordPolicy } from '../../../shared/forms/password.validator';
+import { PasswordField } from '../../../shared/ui/password-field/password.field';
+import { PASSWORD_POLICY_MESSAGES } from '../password-messages';
 
 const CONFIRM_MESSAGES: MessagesByCode = {
   'identity.email_verification.invalid': 'Link inválido ou já usado. Faça o cadastro novamente',
   'identity.email_verification.expired':
     'Link expirado. Faça o cadastro novamente para receber outro',
-  'identity.password.too_short': `A senha precisa ter pelo menos ${PASSWORD_MIN_LENGTH} caracteres`,
-  'identity.password.too_long': `A senha pode ter no máximo ${PASSWORD_MAX_LENGTH} caracteres`,
-  'identity.password.needs_letter_and_digit':
-    'A senha precisa ter pelo menos uma letra e um número',
+  ...PASSWORD_POLICY_MESSAGES,
   'identity.consent.required': 'Aceite os termos de uso e a política de privacidade para continuar',
   'identity.consent.outdated': 'Os termos foram atualizados. Leia e aceite de novo para continuar',
 };
@@ -44,18 +37,12 @@ const MISSING_TOKEN_MESSAGE =
     ReactiveFormsModule,
     MatAnchor,
     MatButton,
-    MatIconButton,
     MatCard,
     MatCardContent,
     MatCheckbox,
-    MatFormField,
-    MatLabel,
-    MatError,
-    MatHint,
-    MatSuffix,
-    MatInput,
     MatIcon,
     RouterLink,
+    PasswordField,
   ],
   templateUrl: './confirm-email.page.html',
 })
@@ -70,9 +57,6 @@ export class ConfirmEmailPage implements OnInit {
     password: ['', [Validators.required, passwordPolicy]],
     accepted: [false, Validators.requiredTrue],
   });
-  protected readonly passwordMinLength = PASSWORD_MIN_LENGTH;
-  protected readonly passwordMaxLength = PASSWORD_MAX_LENGTH;
-  protected readonly showPassword = signal(false);
   protected readonly submitting = signal(false);
   protected readonly attempted = signal(false);
   protected readonly done = signal(false);
