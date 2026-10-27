@@ -24,12 +24,15 @@ describe('DashboardPage', () => {
 
   afterEach(() => TestBed.inject(HttpTestingController).match(() => true));
 
-  it('mostra o titulo e um cartao para cada modulo', async () => {
+  it('mostra um cartao para cada modulo, com o titulo so para leitores de tela', async () => {
     const fixture = TestBed.createComponent(DashboardPage);
     await fixture.whenStable();
     const html: HTMLElement = fixture.nativeElement;
 
-    expect(html.querySelector('h1')?.textContent).toContain('Urban');
+    const title = html.querySelector('h1');
+    expect(title?.textContent?.trim()).toBe('Painel');
+    expect(title?.classList).toContain('sr-only');
+    expect(html.textContent).not.toContain('Gestão condominial');
     expect(html.querySelectorAll('mat-card.module')).toHaveLength(3);
     expect(html.querySelector('[data-testid="condominium-notice"]')).toBeNull();
   });

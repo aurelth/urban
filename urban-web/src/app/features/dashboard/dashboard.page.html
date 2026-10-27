@@ -1,8 +1,5 @@
 <section class="mx-auto max-w-5xl p-6">
-  <h1 class="mb-1 text-center text-4xl font-semibold tracking-tight" urbanFadeIn>Urban</h1>
-  <p class="mb-8 text-center text-lg text-on-surface-variant" urbanFadeIn [urbanFadeInDelay]="0.05">
-    Gestão condominial
-  </p>
+  <h1 class="sr-only">Painel</h1>
 
   @if (session.needsCondominium()) {
     <mat-card appearance="outlined" class="mb-4" data-testid="condominium-notice" role="status">
