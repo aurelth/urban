@@ -265,6 +265,7 @@ describe('ConfirmEmailPage', () => {
 
     http.expectNone('/api/auth/confirm-email');
     http.expectOne('/api/terms/current');
+    expect(html.querySelector<HTMLButtonElement>('button[type="submit"]')?.disabled).toBe(true);
   });
 
   it('desabilita o botao enquanto envia e libera depois da resposta', async () => {
