@@ -24,7 +24,7 @@ html {
 }
 
 // Modo claro: fixa os valores exatos da identidade visual (fundo cinza suave, cards brancos,
-// destaque #5856D6). O modo escuro nao entra aqui e segue 100% gerado pelo Material.
+// destaque #5856D6).
 html:not(.app-dark) {
   @include mat.theme-overrides(
     (
@@ -40,12 +40,81 @@ html:not(.app-dark) {
       surface-container-highest: #ececf3,
       on-surface: #1c1c1e,
       on-surface-variant: #65657a,
+      outline: #8e8e9f,
       outline-variant: #e6e6ef,
     )
   );
 }
 
-// Tema escuro: ativado pela classe .app-dark no <html> (ThemeStore).
+// Tema escuro: ativado pela classe .app-dark no <html> (ThemeStore). Estilo Apple: fundo preto puro,
+// cards grafite sem borda e destaque indigo mais claro (o #5856D6 perde brilho no preto). O papel
+// "primary" vira o indigo de texto e de marcas (links, foco, caixa marcada); o preenchimento do
+// botao principal usa um indigo mais escuro, definido nos tokens do botao abaixo.
 html.app-dark {
   color-scheme: dark;
+
+  @include mat.theme-overrides(
+    (
+      primary: #9e9cff,
+      on-primary: #1c1c1e,
+      error: #ff453a,
+      on-error: #000000,
+      surface: #000000,
+      surface-container-lowest: #000000,
+      surface-container-low: #1c1c1e,
+      surface-container: #1c1c1e,
+      surface-container-high: #2c2c2e,
+      surface-container-highest: #3a3a3c,
+      on-surface: #f5f5f7,
+      on-surface-variant: #a1a1a6,
+      outline: #636366,
+      outline-variant: #2c2c2e,
+    )
+  );
+
+  @include mat.button-overrides(
+    (
+      filled-container-color: #5e5ce6,
+      filled-label-text-color: #ffffff,
+    )
+  );
+
+  @include mat.card-overrides(
+    (
+      outlined-outline-color: transparent,
+    )
+  );
+}
+
+// Formato dos componentes (nos dois temas): cards com cantos de 20 px e campos de 14 px. Os botoes
+// ficam em pilula, que e o formato padrao do Material 3; o contorno do secundario usa o destaque.
+html {
+  @include mat.card-overrides(
+    (
+      outlined-container-shape: 20px,
+      outlined-container-color: var(--mat-sys-surface-container),
+    )
+  );
+
+  @include mat.form-field-overrides(
+    (
+      outlined-container-shape: 14px,
+    )
+  );
+
+  @include mat.button-overrides(
+    (
+      outlined-outline-color: var(--mat-sys-primary),
+    )
+  );
+}
+
+// Telas de acesso (entrar, cadastrar, confirmar): sem cartao visivel.
+urban-auth-layout {
+  @include mat.card-overrides(
+    (
+      outlined-container-color: transparent,
+      outlined-outline-color: transparent,
+    )
+  );
 }

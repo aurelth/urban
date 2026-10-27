@@ -1,17 +1,19 @@
 <section class="mx-auto max-w-5xl p-6">
-  <h1 class="mb-1 text-3xl font-semibold" urbanFadeIn>Urban</h1>
-  <p class="mb-6 text-on-surface-variant" urbanFadeIn [urbanFadeInDelay]="0.05">
+  <h1 class="mb-1 text-center text-4xl font-semibold tracking-tight" urbanFadeIn>Urban</h1>
+  <p class="mb-8 text-center text-lg text-on-surface-variant" urbanFadeIn [urbanFadeInDelay]="0.05">
     Gestão condominial
   </p>
 
   @if (session.needsCondominium()) {
     <mat-card appearance="outlined" class="mb-4" data-testid="condominium-notice" role="status">
-      <mat-card-content class="flex items-start gap-3 p-4">
-        <mat-icon svgIcon="info" aria-hidden="true" />
-        <p>
-          O cadastro do seu condomínio ainda não foi feito. Assim que o módulo de condomínios
-          estiver pronto, você poderá cadastrá-lo por aqui
-        </p>
+      <mat-card-content class="p-4">
+        <div class="flex items-center gap-3">
+          <mat-icon class="shrink-0" svgIcon="info" aria-hidden="true" />
+          <p>
+            O cadastro do seu condomínio ainda não foi feito. Assim que o módulo de condomínios
+            estiver pronto, você poderá cadastrá-lo por aqui
+          </p>
+        </div>
       </mat-card-content>
     </mat-card>
   }

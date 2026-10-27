@@ -168,19 +168,25 @@ log de erro.
 
 Estilo Apple: limpo, minimalista, muito espaço em branco, bordas finas, um único acento. Paleta "Índigo suave":
 
-| Papel | Claro |
-| --- | --- |
-| Fundo | `#F6F6FA` |
-| Superfície (cards) | `#FFFFFF` |
-| Texto | `#1C1C1E` |
-| Texto secundário | `#65657A` |
-| Destaque (cor-semente do Material 3) | `#5856D6`, texto sobre ele `#FFFFFF` |
-| Linhas e bordas | `#E6E6EF` |
-| Sucesso / pago | `#248A3D` |
-| Alerta / pendente | `#B25000` |
-| Erro / atrasado | `#D70015` |
+| Papel | Claro | Escuro |
+| --- | --- | --- |
+| Fundo | `#F6F6FA` | `#000000` |
+| Superfície (cards) | `#FFFFFF` | `#1C1C1E` |
+| Texto | `#1C1C1E` | `#F5F5F7` |
+| Texto secundário | `#65657A` | `#A1A1A6` |
+| Destaque em texto, links e foco (cor-semente do Material 3 no claro) | `#5856D6` | `#9E9CFF` |
+| Preenchimento do botão principal, texto sobre ele `#FFFFFF` | `#5856D6` | `#5E5CE6` |
+| Linhas e bordas | `#E6E6EF` | `#2C2C2E` |
+| Contorno dos campos | `#8E8E9F` | `#636366` |
+| Sucesso / pago | `#248A3D` | `#30D158` |
+| Alerta / pendente | `#B25000` | `#FF9F0A` |
+| Erro / atrasado | `#D70015` | `#FF453A` |
 
-O modo escuro é gerado pelo Material 3 a partir da cor-semente (destaque mais claro, fundos grafite). O tema acompanha o do sistema até a pessoa escolher (a escolha fica no `localStorage`, chave `urban.theme`). `provideTheme()` cria o `ThemeStore` na abertura do app, para valer também nas telas públicas, e um script em `index.html` aplica a classe `app-dark` antes de o Angular carregar; a regra desse script e a de `readInitialMode` precisam ficar iguais. Estados nunca dependem só de cor: use também texto ou ícone.
+O escuro segue o estilo Apple e não é mais gerado a partir da cor-semente: é definido à mão em `html.app-dark` (preto puro, cards grafite sem borda, destaque em índigo mais claro). O `primary` do escuro é o índigo de texto (`#9E9CFF`); o preenchimento do botão principal usa tokens próprios do botão (`#5E5CE6`), porque o índigo de texto não tem contraste com texto branco.
+
+Formato (decidido em 27/10/2026, a partir de referências da Apple e da paleta acima): títulos centralizados nas telas de acesso e no painel (telas com listas e tabelas decidem caso a caso); cards com cantos de 20 px (borda fina no claro, sem borda no escuro) e campos de 14 px; botões sempre em pílula em toda a aplicação, que é o formato padrão do Material 3, com o principal preenchido em índigo, o secundário só com contorno índigo e a ação menor como link de texto; chips de estado em pílula, com fundo suave e o texto do estado. Tudo isso entra pelos tokens do Material em `src/styles/_material-theme.scss` (`mat.theme-overrides`, `mat.card-overrides`, `mat.form-field-overrides`, `mat.button-overrides`), nunca por CSS sobre os componentes. Nas telas de acesso (`urban-auth-layout`) o cartão fica invisível pelos tokens, sem mudar o template.
+
+O tema acompanha o do sistema até a pessoa escolher (a escolha fica no `localStorage`, chave `urban.theme`). `provideTheme()` cria o `ThemeStore` na abertura do app, para valer também nas telas públicas, e um script em `index.html` aplica a classe `app-dark` antes de o Angular carregar; a regra desse script e a de `readInitialMode` precisam ficar iguais. Estados nunca dependem só de cor: use também texto ou ícone.
 
 ## Qualidade da interface e desempenho
 
