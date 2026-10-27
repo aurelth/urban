@@ -30,7 +30,7 @@
                 "input": "public"
               },
               {
-                "glob": "{dark_mode,light_mode}.svg",
+                "glob": "{dark_mode,light_mode,visibility,visibility_off,error,info,logout}.svg",
                 "input": "node_modules/@material-symbols/svg-400/outlined",
                 "output": "icons"
               }

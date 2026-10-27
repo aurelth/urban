@@ -1,6 +1,11 @@
 <mat-toolbar class="border-b border-outline-variant">
   <span class="text-xl font-bold tracking-tight">Urban</span>
   <span class="flex-1"></span>
+  @if (session.user(); as user) {
+    <span data-testid="current-user" class="mr-2 hidden text-sm text-on-surface-variant sm:inline">
+      {{ user.email }} · {{ roleLabel(user.role) }}
+    </span>
+  }
   <button
     mat-icon-button
     type="button"
@@ -8,6 +13,10 @@
     (click)="theme.toggle()"
   >
     <mat-icon [svgIcon]="theme.isDark() ? 'light_mode' : 'dark_mode'" />
+  </button>
+  <button mat-button type="button" data-testid="sign-out" (click)="signOut()">
+    <mat-icon svgIcon="logout" />
+    Sair
   </button>
 </mat-toolbar>
 <main>
