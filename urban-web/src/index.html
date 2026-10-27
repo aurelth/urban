@@ -6,6 +6,22 @@
     <base href="/" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Urban - gestao condominial" />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      (function () {
+        let saved = null;
+        try {
+          saved = localStorage.getItem('urban.theme');
+        } catch {
+          // sem acesso ao armazenamento do navegador: vale o tema do sistema
+        }
+        const dark =
+          saved === 'light' || saved === 'dark'
+            ? saved === 'dark'
+            : matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.classList.toggle('app-dark', dark);
+      })();
+    </script>
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
   </head>
   <body>

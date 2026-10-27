@@ -4,6 +4,7 @@ import { provideRouter, withComponentInputBinding, withViewTransitions } from '@
 import { routes } from './app.routes';
 import { authInterceptor } from './core/auth/auth.interceptor';
 import { provideSessionRestore } from './core/auth/session.providers';
+import { provideTheme } from './core/services/theme.providers';
 import { provideUrbanIcons } from './core/theme/icons';
 
 export const appConfig: ApplicationConfig = {
@@ -12,6 +13,7 @@ export const appConfig: ApplicationConfig = {
     provideRouter(routes, withComponentInputBinding(), withViewTransitions()),
     provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
     provideUrbanIcons(),
+    provideTheme(),
     provideSessionRestore(),
   ],
 };

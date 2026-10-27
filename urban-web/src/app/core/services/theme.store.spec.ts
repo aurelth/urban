@@ -1,6 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { ThemeStore } from './theme.store';
 
+function systemPrefersDark(matches: boolean): void {
+  window.matchMedia = ((query: string) => ({ matches, media: query })) as typeof window.matchMedia;
+}
+
 describe('ThemeStore', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -8,11 +12,32 @@ describe('ThemeStore', () => {
     TestBed.resetTestingModule();
   });
 
+  afterEach(() => {
+    Reflect.deleteProperty(window, 'matchMedia');
+  });
+
   it('comeca no tema claro quando nao ha preferencia salva', () => {
     const store = TestBed.inject(ThemeStore);
 
     expect(store.mode()).toBe('light');
     expect(store.isDark()).toBe(false);
+  });
+
+  it('segue o tema escuro do sistema quando nao ha preferencia salva', () => {
+    systemPrefersDark(true);
+
+    const store = TestBed.inject(ThemeStore);
+
+    expect(store.mode()).toBe('dark');
+  });
+
+  it('prefere a escolha salva ao tema do sistema', () => {
+    systemPrefersDark(true);
+    localStorage.setItem('urban.theme', 'light');
+
+    const store = TestBed.inject(ThemeStore);
+
+    expect(store.mode()).toBe('light');
   });
 
   it('restaura o tema salvo pelo usuario', () => {
