@@ -2,9 +2,7 @@ import { Component, ElementRef, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButton } from '@angular/material/button';
 import { MatCard, MatCardContent } from '@angular/material/card';
-import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatIcon } from '@angular/material/icon';
-import { MatInput } from '@angular/material/input';
 import { RouterLink } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { RegistrationApi } from '../../../core/auth/registration.api';
@@ -12,6 +10,7 @@ import { toApiProblem } from '../../../core/http/api-problem';
 import { MessagesByCode, describeProblem } from '../../../core/http/problem-message';
 import { emailFormat } from '../../../shared/forms/email.validator';
 import { focusFirstInvalid } from '../../../shared/forms/focus-first-invalid';
+import { EmailField } from '../../../shared/ui/email-field/email.field';
 
 const REGISTER_MESSAGES: MessagesByCode = {
   'identity.email.invalid': 'Informe um e-mail válido',
@@ -24,12 +23,9 @@ const REGISTER_MESSAGES: MessagesByCode = {
     MatButton,
     MatCard,
     MatCardContent,
-    MatFormField,
-    MatLabel,
-    MatError,
-    MatInput,
     MatIcon,
     RouterLink,
+    EmailField,
   ],
   templateUrl: './register.page.html',
 })

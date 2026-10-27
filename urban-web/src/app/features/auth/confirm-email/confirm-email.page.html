@@ -29,38 +29,7 @@
       </p>
 
       <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col" novalidate>
-        <mat-form-field appearance="outline" subscriptSizing="dynamic">
-          <mat-label>Senha</mat-label>
-          <input
-            matInput
-            [type]="showPassword() ? 'text' : 'password'"
-            formControlName="password"
-            autocomplete="new-password"
-            required
-          />
-          <button
-            mat-icon-button
-            matSuffix
-            type="button"
-            [attr.aria-label]="showPassword() ? 'Ocultar senha' : 'Mostrar senha'"
-            [attr.aria-pressed]="showPassword()"
-            (click)="showPassword.set(!showPassword())"
-          >
-            <mat-icon [svgIcon]="showPassword() ? 'visibility_off' : 'visibility'" />
-          </button>
-          <mat-hint>Mínimo de {{ passwordMinLength }} caracteres, com letra e número</mat-hint>
-          <mat-error>
-            @if (form.controls.password.hasError('required')) {
-              Informe a senha
-            } @else if (form.controls.password.hasError('tooShort')) {
-              A senha precisa ter pelo menos {{ passwordMinLength }} caracteres
-            } @else if (form.controls.password.hasError('tooLong')) {
-              A senha pode ter no máximo {{ passwordMaxLength }} caracteres
-            } @else {
-              A senha precisa ter pelo menos uma letra e um número
-            }
-          </mat-error>
-        </mat-form-field>
+        <urban-password-field autocomplete="new-password" [policy]="true" />
 
         <mat-checkbox formControlName="accepted" class="-ml-2">
           Li e aceito os

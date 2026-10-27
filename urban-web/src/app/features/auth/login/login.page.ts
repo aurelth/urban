@@ -1,10 +1,8 @@
 import { Component, ElementRef, inject, input, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatButton, MatIconButton } from '@angular/material/button';
+import { MatButton } from '@angular/material/button';
 import { MatCard, MatCardContent } from '@angular/material/card';
-import { MatError, MatFormField, MatLabel, MatSuffix } from '@angular/material/form-field';
 import { MatIcon } from '@angular/material/icon';
-import { MatInput } from '@angular/material/input';
 import { Router, RouterLink } from '@angular/router';
 import { toApiProblem } from '../../../core/http/api-problem';
 import { MessagesByCode, describeProblem } from '../../../core/http/problem-message';
@@ -12,6 +10,8 @@ import { safeReturnUrl } from '../../../core/auth/return-url';
 import { SessionStore } from '../../../core/auth/session.store';
 import { emailFormat } from '../../../shared/forms/email.validator';
 import { focusFirstInvalid } from '../../../shared/forms/focus-first-invalid';
+import { EmailField } from '../../../shared/ui/email-field/email.field';
+import { PasswordField } from '../../../shared/ui/password-field/password.field';
 
 const LOGIN_MESSAGES: MessagesByCode = {
   'identity.login.invalid_credentials': 'E-mail ou senha incorretos',
@@ -28,16 +28,12 @@ const LOGIN_MESSAGES: MessagesByCode = {
   imports: [
     ReactiveFormsModule,
     MatButton,
-    MatIconButton,
     MatCard,
     MatCardContent,
-    MatFormField,
-    MatLabel,
-    MatError,
-    MatSuffix,
-    MatInput,
     MatIcon,
     RouterLink,
+    EmailField,
+    PasswordField,
   ],
   templateUrl: './login.page.html',
 })
@@ -53,7 +49,6 @@ export class LoginPage {
     email: ['', [Validators.required, emailFormat]],
     password: ['', Validators.required],
   });
-  protected readonly showPassword = signal(false);
   protected readonly submitting = signal(false);
   protected readonly error = signal<string | null>(null);
 
