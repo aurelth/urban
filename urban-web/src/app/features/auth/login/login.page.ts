@@ -5,12 +5,13 @@ import { MatCard, MatCardContent } from '@angular/material/card';
 import { MatError, MatFormField, MatLabel, MatSuffix } from '@angular/material/form-field';
 import { MatIcon } from '@angular/material/icon';
 import { MatInput } from '@angular/material/input';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { toApiProblem } from '../../../core/http/api-problem';
 import { MessagesByCode, describeProblem } from '../../../core/http/problem-message';
 import { safeReturnUrl } from '../../../core/auth/return-url';
 import { SessionStore } from '../../../core/auth/session.store';
 import { emailFormat } from '../../../shared/forms/email.validator';
+import { focusFirstInvalid } from '../../../shared/forms/focus-first-invalid';
 
 const LOGIN_MESSAGES: MessagesByCode = {
   'identity.login.invalid_credentials': 'E-mail ou senha incorretos',
@@ -36,6 +37,7 @@ const LOGIN_MESSAGES: MessagesByCode = {
     MatSuffix,
     MatInput,
     MatIcon,
+    RouterLink,
   ],
   templateUrl: './login.page.html',
 })
@@ -57,7 +59,7 @@ export class LoginPage {
 
   protected async submit(): Promise<void> {
     if (this.form.invalid) {
-      this.focusFirstInvalid();
+      focusFirstInvalid(this.host.nativeElement, this.form);
       return;
     }
     this.submitting.set(true);
@@ -71,13 +73,5 @@ export class LoginPage {
     } finally {
       this.submitting.set(false);
     }
-  }
-
-  private focusFirstInvalid(): void {
-    const controls = this.form.controls;
-    const name = (Object.keys(controls) as (keyof typeof controls)[]).find(
-      (key) => controls[key].invalid,
-    );
-    this.host.nativeElement.querySelector<HTMLElement>(`input[formControlName="${name}"]`)?.focus();
   }
 }

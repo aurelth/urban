@@ -91,6 +91,13 @@ describe('LoginPage', () => {
     );
   });
 
+  it('oferece criar uma conta', async () => {
+    const { fixture, html } = setup();
+    await fixture.whenStable();
+
+    expect(html.querySelector('a[href="/cadastrar"]')?.textContent?.trim()).toBe('Criar conta');
+  });
+
   it('nao chama a API e mostra o que falta quando o formulario esta vazio', async () => {
     const { fixture, http, html } = setup();
     await fixture.whenStable();

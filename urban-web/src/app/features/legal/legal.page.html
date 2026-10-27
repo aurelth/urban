@@ -1,0 +1,22 @@
+<main class="mx-auto max-w-3xl p-6">
+  <p class="mb-6 text-xl font-bold tracking-tight">Urban</p>
+
+  <p role="note" class="mb-6 rounded-lg border border-outline-variant bg-surface-container p-4">
+    Rascunho para revisão jurídica. Este texto não é aconselhamento jurídico e pode mudar antes do
+    lançamento
+  </p>
+
+  <h1 class="mb-1 text-3xl font-semibold">{{ content().title }}</h1>
+  <p class="mb-8 text-on-surface-variant">Versão {{ version }}</p>
+
+  @for (section of content().sections; track section.title) {
+    <section class="mb-6">
+      <h2 class="mb-2 text-xl font-semibold">{{ section.title }}</h2>
+      @for (paragraph of section.paragraphs; track $index) {
+        <p class="mb-2">{{ paragraph }}</p>
+      }
+    </section>
+  }
+
+  <a routerLink="/" class="text-primary underline">Voltar ao Urban</a>
+</main>
