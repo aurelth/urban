@@ -102,6 +102,15 @@ html {
     )
   );
 
+  // Aviso de inatividade: mesma superficie e mesmos cantos dos cards (por padrao o dialogo usa
+  // o fundo da pagina, que no modo escuro e preto puro e some contra o fundo escurecido).
+  @include mat.dialog-overrides(
+    (
+      container-color: var(--mat-sys-surface-container),
+      container-shape: 20px,
+    )
+  );
+
   @include mat.button-overrides(
     (
       outlined-outline-color: var(--mat-sys-primary),
