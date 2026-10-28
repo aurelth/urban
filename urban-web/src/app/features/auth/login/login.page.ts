@@ -1,4 +1,4 @@
-import { Component, ElementRef, inject, input, signal } from '@angular/core';
+import { Component, ElementRef, computed, inject, input, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatCard, MatCardContent } from '@angular/material/card';
 import { Router, RouterLink } from '@angular/router';
@@ -38,6 +38,11 @@ const LOGIN_MESSAGES: MessagesByCode = {
 export class LoginPage {
   /** Destino guardado pela guarda de rota (?returnUrl=...). */
   readonly returnUrl = input<string>();
+
+  /** Por que a pessoa chegou aqui sem ter clicado em sair (?motivo=inatividade). */
+  readonly motivo = input<string>();
+
+  protected readonly leftByInactivity = computed(() => this.motivo() === 'inatividade');
 
   private readonly session = inject(SessionStore);
   private readonly router = inject(Router);

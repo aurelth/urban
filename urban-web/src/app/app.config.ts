@@ -3,6 +3,7 @@ import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/
 import { provideRouter, withComponentInputBinding, withViewTransitions } from '@angular/router';
 import { routes } from './app.routes';
 import { authInterceptor } from './core/auth/auth.interceptor';
+import { provideInactivityLogout } from './core/auth/inactivity.monitor';
 import { provideSessionRestore } from './core/auth/session.providers';
 import { providePageTitle } from './core/services/page-title.strategy';
 import { provideTheme } from './core/services/theme.providers';
@@ -17,5 +18,6 @@ export const appConfig: ApplicationConfig = {
     provideUrbanIcons(),
     provideTheme(),
     provideSessionRestore(),
+    provideInactivityLogout(),
   ],
 };

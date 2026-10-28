@@ -98,6 +98,27 @@ describe('LoginPage', () => {
     expect(html.querySelector('a[href="/cadastrar"]')?.textContent?.trim()).toBe('Criar conta');
   });
 
+  it('avisa que a pessoa saiu por inatividade', async () => {
+    const { fixture, html } = setup();
+    fixture.componentRef.setInput('motivo', 'inatividade');
+    await fixture.whenStable();
+
+    expect(html.querySelector('[role="status"]')?.textContent).toContain(
+      'Você saiu por inatividade',
+    );
+  });
+
+  it('nao mostra aviso de saida sem motivo ou com um motivo desconhecido', async () => {
+    const { fixture, html } = setup();
+    await fixture.whenStable();
+    expect(html.querySelector('[role="status"]')).toBeNull();
+
+    fixture.componentRef.setInput('motivo', 'qualquer-coisa');
+    await fixture.whenStable();
+
+    expect(html.querySelector('[role="status"]')).toBeNull();
+  });
+
   it('oferece recuperar a senha', async () => {
     const { fixture, html } = setup();
     await fixture.whenStable();
