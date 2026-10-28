@@ -6,3 +6,10 @@ export function stubForgotPassword(statusCode = 202, code?: string, retryAfter?:
     body: code ? { status: statusCode, code, detail: 'Detalhe da API' } : undefined,
   }).as('forgot');
 }
+
+export function stubResetPassword(statusCode = 204, code?: string): void {
+  cy.intercept('POST', '/api/auth/reset-password', {
+    statusCode,
+    body: code ? { status: statusCode, code, detail: 'Detalhe da API' } : undefined,
+  }).as('reset');
+}

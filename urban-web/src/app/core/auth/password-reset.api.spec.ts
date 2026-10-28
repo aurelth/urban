@@ -23,4 +23,15 @@ describe('PasswordResetApi', () => {
     expect(request.request.body).toEqual({ email: 'sindica@example.com' });
     request.flush(null, { status: 202, statusText: 'Accepted' });
   });
+
+  it('envia o token do link e a nova senha para redefinir', () => {
+    const { api, http } = setup();
+
+    api.reset('token-do-link', 'Senha-segura-123').subscribe();
+
+    const request = http.expectOne('/api/auth/reset-password');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({ token: 'token-do-link', password: 'Senha-segura-123' });
+    request.flush(null, { status: 204, statusText: 'No Content' });
+  });
 });

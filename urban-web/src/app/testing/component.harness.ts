@@ -32,6 +32,12 @@ export function typeEmail(html: HTMLElement, value: string): void {
   input.dispatchEvent(new Event('input'));
 }
 
+export function typePassword(html: HTMLElement, value: string): void {
+  const input = html.querySelector<HTMLInputElement>('input[autocomplete="new-password"]')!;
+  input.value = value;
+  input.dispatchEvent(new Event('input'));
+}
+
 export async function submitForm<T>(fixture: ComponentFixture<T>): Promise<void> {
   fixture.nativeElement.querySelector('form').dispatchEvent(new Event('submit'));
   await fixture.whenStable();

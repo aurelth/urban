@@ -12,6 +12,7 @@ import { MessagesByCode, describeProblem } from '../../../core/http/problem-mess
 import { focusFirstInvalid } from '../../../shared/forms/focus-first-invalid';
 import { passwordPolicy } from '../../../shared/forms/password.validator';
 import { PasswordField } from '../../../shared/ui/password-field/password.field';
+import { LinkProblemNotice } from '../link-problem/link-problem.notice';
 import { PASSWORD_POLICY_MESSAGES } from '../password-messages';
 
 const CONFIRM_MESSAGES: MessagesByCode = {
@@ -43,6 +44,7 @@ const MISSING_TOKEN_MESSAGE =
     MatIcon,
     RouterLink,
     PasswordField,
+    LinkProblemNotice,
   ],
   templateUrl: './confirm-email.page.html',
 })

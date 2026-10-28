@@ -18,6 +18,7 @@ import { MessagesByCode, describeProblem } from '../../../core/http/problem-mess
 import { emailFormat } from '../../../shared/forms/email.validator';
 import { focusFirstInvalid } from '../../../shared/forms/focus-first-invalid';
 import { EmailField } from '../../../shared/ui/email-field/email.field';
+import { FormSubmit } from '../../../shared/ui/form-submit/form-submit';
 
 const LINK_REQUEST_MESSAGES: MessagesByCode = {
   'identity.email.invalid': 'Informe um e-mail válido',
@@ -47,6 +48,7 @@ export interface SentNoticeContext {
     MatCardContent,
     MatIcon,
     EmailField,
+    FormSubmit,
   ],
   templateUrl: './link-request.card.html',
 })

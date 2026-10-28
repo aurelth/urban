@@ -47,6 +47,14 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'redefinir-senha',
+        title: 'Redefinir senha',
+        loadComponent: () =>
+          import('./features/auth/reset-password/reset-password.page').then(
+            (m) => m.ResetPasswordPage,
+          ),
+      },
+      {
         path: 'confirmar-email',
         title: 'Confirmar e-mail',
         loadComponent: () =>
