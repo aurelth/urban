@@ -38,6 +38,15 @@ export const routes: Routes = [
           import('./features/auth/register/register.page').then((m) => m.RegisterPage),
       },
       {
+        path: 'esqueci-a-senha',
+        title: 'Esqueci a senha',
+        canActivate: [guestGuard],
+        loadComponent: () =>
+          import('./features/auth/forgot-password/forgot-password.page').then(
+            (m) => m.ForgotPasswordPage,
+          ),
+      },
+      {
         path: 'confirmar-email',
         title: 'Confirmar e-mail',
         loadComponent: () =>

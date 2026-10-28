@@ -98,6 +98,15 @@ describe('LoginPage', () => {
     expect(html.querySelector('a[href="/cadastrar"]')?.textContent?.trim()).toBe('Criar conta');
   });
 
+  it('oferece recuperar a senha', async () => {
+    const { fixture, html } = setup();
+    await fixture.whenStable();
+
+    expect(html.querySelector('a[href="/esqueci-a-senha"]')?.textContent?.trim()).toBe(
+      'Esqueci a senha',
+    );
+  });
+
   it('nao chama a API e mostra o que falta quando o formulario esta vazio', async () => {
     const { fixture, http, html } = setup();
     await fixture.whenStable();
