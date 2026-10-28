@@ -1,8 +1,6 @@
 import { Component, ElementRef, inject, input, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { MatButton } from '@angular/material/button';
 import { MatCard, MatCardContent } from '@angular/material/card';
-import { MatIcon } from '@angular/material/icon';
 import { Router, RouterLink } from '@angular/router';
 import { toApiProblem } from '../../../core/http/api-problem';
 import { MessagesByCode, describeProblem } from '../../../core/http/problem-message';
@@ -11,6 +9,7 @@ import { SessionStore } from '../../../core/auth/session.store';
 import { emailFormat } from '../../../shared/forms/email.validator';
 import { focusFirstInvalid } from '../../../shared/forms/focus-first-invalid';
 import { EmailField } from '../../../shared/ui/email-field/email.field';
+import { FormSubmit } from '../../../shared/ui/form-submit/form-submit';
 import { PasswordField } from '../../../shared/ui/password-field/password.field';
 
 const LOGIN_MESSAGES: MessagesByCode = {
@@ -27,13 +26,12 @@ const LOGIN_MESSAGES: MessagesByCode = {
   selector: 'urban-login-page',
   imports: [
     ReactiveFormsModule,
-    MatButton,
     MatCard,
     MatCardContent,
-    MatIcon,
     RouterLink,
     EmailField,
     PasswordField,
+    FormSubmit,
   ],
   templateUrl: './login.page.html',
 })

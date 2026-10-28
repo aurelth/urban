@@ -43,6 +43,16 @@ describe('Tela de celular (375 x 667)', () => {
     expectNoHorizontalScroll();
   });
 
+  it('mostra a nova senha inteira, sem rolagem horizontal', () => {
+    stubAnonymous();
+    cy.visit('/redefinir-senha?token=token-do-link');
+
+    cy.contains('h1', 'Redefinir senha').should('be.visible');
+    cy.get('input[autocomplete="new-password"]').should('be.visible');
+    cy.contains('button', 'Salvar senha').should('be.visible');
+    expectNoHorizontalScroll();
+  });
+
   it('mostra o painel em coluna única, com a saída à mão e sem rolagem horizontal', () => {
     stubSignedIn(MANAGER);
     cy.visit('/dashboard');

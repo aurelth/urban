@@ -11,20 +11,12 @@
         Esqueci a senha
       </a>
 
-      @if (error(); as message) {
-        <p role="alert" class="mb-4 flex items-start gap-2 text-error">
-          <mat-icon svgIcon="error" aria-hidden="true" />
-          <span>{{ message }}</span>
-        </p>
-      }
-
-      <button mat-flat-button type="submit" class="mt-2" [disabled]="submitting()">
-        @if (submitting()) {
-          Entrando
-        } @else {
-          Entrar
-        }
-      </button>
+      <urban-form-submit
+        label="Entrar"
+        busyLabel="Entrando"
+        [busy]="submitting()"
+        [error]="error()"
+      />
     </form>
 
     <p class="mt-6 text-center text-on-surface-variant">

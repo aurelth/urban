@@ -8,20 +8,12 @@
         <a mat-flat-button routerLink="/entrar">Entrar</a>
       </div>
     } @else if (blockedMessage(); as message) {
-      <div class="flex flex-col items-center gap-3 text-center">
-        <h1 class="text-3xl font-semibold tracking-tight">
-          @if (linkError()) {
-            Link inválido
-          } @else {
-            Link incompleto
-          }
-        </h1>
-        <p role="alert" class="flex items-start gap-2 text-error">
-          <mat-icon svgIcon="error" aria-hidden="true" />
-          <span>{{ message }}</span>
-        </p>
-        <a mat-flat-button routerLink="/cadastrar">Fazer novo cadastro</a>
-      </div>
+      <urban-link-problem-notice
+        [heading]="linkError() ? 'Link inválido' : 'Link incompleto'"
+        [message]="message"
+        actionLabel="Fazer novo cadastro"
+        actionLink="/cadastrar"
+      />
     } @else {
       <h1 class="mb-1 text-center text-3xl font-semibold tracking-tight">Criar senha</h1>
       <p class="mb-6 text-center text-on-surface-variant">
