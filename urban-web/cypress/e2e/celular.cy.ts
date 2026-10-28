@@ -11,6 +11,7 @@ function expectNoHorizontalScroll(): void {
 const PUBLIC_SCREENS = [
   ['/entrar', 'Entrar'],
   ['/cadastrar', 'Criar conta'],
+  ['/esqueci-a-senha', 'Esqueci a senha'],
   ['/termos', 'Termos de uso'],
   ['/privacidade', 'Política de privacidade'],
 ];
