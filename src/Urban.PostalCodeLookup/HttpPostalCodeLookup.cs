@@ -69,7 +69,8 @@ public abstract partial class HttpPostalCodeLookup(HttpClient http, ILogger logg
 
     /// <summary>
     /// Monta o endereço com o CEP que foi pedido (nunca o que o provedor devolveu). Cidade e UF são obrigatórias; rua e bairro
-    /// podem faltar nos CEPs gerais de cidades pequenas e viram texto vazio.
+    /// podem faltar nos CEPs gerais de cidades pequenas e viram texto vazio. Uma UF que não é a dona da faixa do CEP mostra que o
+    /// provedor errou: a resposta vira "não existe" (e o reserva é consultado), em vez de preencher um endereço absurdo.
     /// </summary>
     protected PostalCodeLookupResult ToAddress(JsonElement body, string postalCode, string street, string neighborhood, string city, string state)
     {
@@ -78,6 +79,12 @@ public abstract partial class HttpPostalCodeLookup(HttpClient http, ILogger logg
         if (string.IsNullOrEmpty(cityName) || string.IsNullOrEmpty(stateName))
         {
             return Unreadable();
+        }
+
+        if (!PostalCodeStateRanges.Matches(postalCode, stateName))
+        {
+            LogStateOutsideRange(logger, provider);
+            return PostalCodeLookupResult.NotFound;
         }
 
         return PostalCodeLookupResult.Found(new PostalCodeAddress(
@@ -96,6 +103,9 @@ public abstract partial class HttpPostalCodeLookup(HttpClient http, ILogger logg
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "A consulta de CEP na {Provider} respondeu com conteúdo ilegível")]
     private static partial void LogUnreadable(ILogger logger, string provider);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "A {Provider} devolveu uma UF que não corresponde à faixa do CEP consultado")]
+    private static partial void LogStateOutsideRange(ILogger logger, string provider);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Não foi possível falar com a {Provider} na consulta de CEP")]
     private static partial void LogNetworkFailure(ILogger logger, string provider, Exception exception);
