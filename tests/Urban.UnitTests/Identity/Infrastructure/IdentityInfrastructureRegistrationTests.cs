@@ -3,8 +3,10 @@ using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Urban.Identity.Application.Abstractions;
+using Urban.Identity.Application.Enrollment;
 using Urban.Identity.Infrastructure;
 using Urban.Identity.Infrastructure.Messaging;
+using Urban.SharedKernel.Contracts;
 
 namespace Urban.UnitTests.Identity.Infrastructure;
 
@@ -56,6 +58,15 @@ public class IdentityInfrastructureRegistrationTests
     public void ThePasswordResetStoreIsScoped_BecauseItSharesTheRequestDbContext()
     {
         Register().Single(d => d.ServiceType == typeof(IPasswordResets)).Lifetime.Should().Be(ServiceLifetime.Scoped);
+    }
+
+    [Fact]
+    public void TheManagerEnrollmentContractIsScoped_BecauseItSharesTheRequestDbContext()
+    {
+        ServiceDescriptor descriptor = Register().Single(d => d.ServiceType == typeof(IManagerEnrollment));
+
+        descriptor.ImplementationType.Should().Be<ManagerEnrollment>();
+        descriptor.Lifetime.Should().Be(ServiceLifetime.Scoped);
     }
 
     [Fact]

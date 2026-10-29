@@ -31,11 +31,37 @@ public sealed class MeEndpointTests(ApiFixture fixture) : IDisposable
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>();
-        body.EnumerateObject().Select(p => p.Name).Should().BeEquivalentTo("id", "email", "role", "condominiumId");
+        body.EnumerateObject().Select(p => p.Name).Should().BeEquivalentTo("id", "email", "role", "condominiumId", "displayName");
         body.GetProperty("id").GetGuid().Should().Be(user.Id);
         body.GetProperty("email").GetString().Should().Be(user.Email.Value);
         body.GetProperty("role").GetString().Should().Be("Manager");
         body.GetProperty("condominiumId").GetGuid().Should().Be(user.CondominiumId!.Value);
+        body.GetProperty("displayName").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task Me_of_an_enrolled_manager_returns_how_they_prefer_to_be_called()
+    {
+        User user = await fixture.Postgres.SeedEnrolledManagerWithPasswordAsync(Password, "Ana Paula");
+
+        HttpResponseMessage response = await _client.MeAsync(await SignInAsync(user));
+
+        JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("displayName").GetString().Should().Be("Ana Paula");
+        body.GetProperty("condominiumId").GetGuid().Should().Be(user.CondominiumId!.Value);
+    }
+
+    [Fact]
+    public async Task Me_of_a_manager_without_condominium_has_neither_condominium_nor_display_name()
+    {
+        User user = await fixture.Postgres.SeedManagerWithoutCondominiumWithPasswordAsync(Password);
+
+        HttpResponseMessage response = await _client.MeAsync(await SignInAsync(user));
+
+        JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("role").GetString().Should().Be("Manager");
+        body.GetProperty("condominiumId").ValueKind.Should().Be(JsonValueKind.Null);
+        body.GetProperty("displayName").ValueKind.Should().Be(JsonValueKind.Null);
     }
 
     [Fact]

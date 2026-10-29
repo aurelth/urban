@@ -25,6 +25,6 @@ public sealed class GetCurrentUserQueryHandler(IUserAccounts accounts) : IReques
             return Result.Failure<CurrentUser>(canSignIn.Error);
         }
 
-        return Result.Success(new CurrentUser(user.Id, user.Email.Value, user.Role.ToString(), user.CondominiumId));
+        return Result.Success(new CurrentUser(user.Id, user.Email.Value, user.Role.ToString(), user.CondominiumId, user.DisplayName?.Value));
     }
 }

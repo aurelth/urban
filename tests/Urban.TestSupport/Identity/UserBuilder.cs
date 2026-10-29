@@ -15,6 +15,28 @@ public static class UserBuilder
         Guid? condominiumId = role == UserRole.SuperAdmin ? null : Guid.CreateVersion7();
         User user = User.Register(Email.Create(address).Value, role, condominiumId, Now).Value;
 
+        return MoveTo(user, status);
+    }
+
+    /// <summary>Síndico que já entrou no sistema, mas ainda não cadastrou o condomínio (e por isso ainda não tem nome de exibição).</summary>
+    public static User ManagerWithoutCondominium(AccountStatus status = AccountStatus.Active, string address = "sindica@example.com")
+    {
+        User user = User.Register(Email.Create(address).Value, UserRole.Manager, null, Now).Value;
+
+        return MoveTo(user, status);
+    }
+
+    /// <summary>Síndico que já cadastrou o condomínio e escolheu como prefere ser chamado.</summary>
+    public static User EnrolledManager(string displayName, string address = "sindica@example.com")
+    {
+        User user = ManagerWithoutCondominium(address: address);
+        user.AssignCondominium(Guid.CreateVersion7(), DisplayName.Create(displayName).Value);
+
+        return user;
+    }
+
+    private static User MoveTo(User user, AccountStatus status)
+    {
         switch (status)
         {
             case AccountStatus.Active:

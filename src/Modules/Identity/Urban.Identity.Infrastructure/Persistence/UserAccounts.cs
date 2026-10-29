@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Urban.Identity.Application.Abstractions;
 using Urban.Identity.Application.Authentication.Login;
 using Urban.Identity.Domain.Users;
@@ -37,6 +38,16 @@ public sealed class UserAccounts(IdentityDbContext db, IPasswordHasher passwordH
 
     public Task<User?> FindByEmailAsync(Email email, CancellationToken cancellationToken) =>
         db.Users.AsNoTracking().SingleOrDefaultAsync(u => u.Email == email, cancellationToken);
+
+    public async Task SaveEnrollmentAsync(User user, CancellationToken cancellationToken)
+    {
+        // Anexa como "sem mudanças" e marca só as duas colunas que o vínculo altera.
+        EntityEntry<User> entry = db.Users.Attach(user);
+        entry.Property(u => u.CondominiumId).IsModified = true;
+        entry.Property(u => u.DisplayName).IsModified = true;
+
+        await db.SaveChangesAsync(cancellationToken);
+    }
 
     private async Task<Result<User>> CheckOnceAsync(Email email, string password, CancellationToken cancellationToken)
     {

@@ -40,6 +40,35 @@ public sealed class UserMappingTests(PostgresFixture postgres)
     }
 
     [Fact]
+    public async Task An_enrolled_manager_is_read_back_exactly_as_it_was_saved()
+    {
+        User saved = UserBuilder.EnrolledManager("Ana Paula", $"{Guid.NewGuid():N}@example.com");
+        await using (IdentityDbContext db = postgres.CreateContext())
+        {
+            db.Users.Add(saved);
+            await db.SaveChangesAsync(Ct);
+        }
+
+        User? read = await FindByIdAsync(saved.Id);
+
+        read.Should().BeEquivalentTo(saved);
+        read!.DisplayName!.Value.Should().Be("Ana Paula");
+    }
+
+    [Fact]
+    public async Task The_display_name_is_stored_as_text_with_the_length_of_the_domain_rule()
+    {
+        await using IdentityDbContext db = postgres.CreateContext();
+
+        int length = await db.Database.SqlQuery<int>($"""
+            select character_maximum_length as "Value" from information_schema.columns
+            where table_schema = 'identity' and table_name = 'user' and column_name = 'display_name'
+            """).SingleAsync(Ct);
+
+        length.Should().Be(DisplayName.MaxLength);
+    }
+
+    [Fact]
     public async Task A_user_can_be_found_by_email_in_a_query_translated_to_sql()
     {
         User saved = await postgres.SeedUserAsync();

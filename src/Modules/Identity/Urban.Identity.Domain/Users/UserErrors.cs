@@ -14,6 +14,15 @@ public static class UserErrors
     public static readonly Error CondominiumMismatch =
         new("identity.user.condominium_mismatch", "O papel e o condomínio do usuário não combinam");
 
+    public static readonly Error NotManager =
+        new("identity.user.not_manager", "Só o síndico pode cadastrar o condomínio");
+
+    public static readonly Error CondominiumAlreadyAssigned =
+        new("identity.user.condominium_already_assigned", "Esta conta já tem um condomínio cadastrado");
+
+    public static readonly Error CondominiumRequired =
+        new("identity.user.condominium_required", "Informe o condomínio");
+
     public static readonly Error EmailNotVerified =
         new("identity.user.email_not_verified", "Confirme seu e-mail para entrar");
 
