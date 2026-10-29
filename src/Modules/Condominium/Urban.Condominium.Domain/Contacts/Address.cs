@@ -16,12 +16,12 @@ public sealed record Address
         "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO",
     ];
 
-    private static readonly Error StreetInvalid = new("condominium.address.street_invalid", "Informe a rua");
-    private static readonly Error NumberInvalid = new("condominium.address.number_invalid", "Informe o número (use S/N quando não houver)");
-    private static readonly Error ComplementInvalid = new("condominium.address.complement_invalid", "O complemento deve ter até 60 caracteres");
-    private static readonly Error NeighborhoodInvalid = new("condominium.address.neighborhood_invalid", "Informe o bairro");
-    private static readonly Error CityInvalid = new("condominium.address.city_invalid", "Informe a cidade");
-    private static readonly Error StateInvalid = new("condominium.address.state_invalid", "Informe a UF");
+    public static readonly Error StreetInvalid = new("condominium.address.street_invalid", "Informe a rua");
+    public static readonly Error NumberInvalid = new("condominium.address.number_invalid", "Informe o número (use S/N quando não houver)");
+    public static readonly Error ComplementInvalid = new("condominium.address.complement_invalid", "O complemento deve ter até 60 caracteres");
+    public static readonly Error NeighborhoodInvalid = new("condominium.address.neighborhood_invalid", "Informe o bairro");
+    public static readonly Error CityInvalid = new("condominium.address.city_invalid", "Informe a cidade");
+    public static readonly Error StateInvalid = new("condominium.address.state_invalid", "Informe a UF");
 
     private Address(
         string street,

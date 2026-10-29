@@ -236,6 +236,17 @@ public class RegisterCondominiumCommandHandlerTests
     }
 
     [Fact]
+    public void PrintingTheCommandNeverShowsTheCpf()
+    {
+        RegisterCondominiumCommand command = CondominiumCommands.Valid(cpf: "529.982.247-25");
+
+        string printed = $"{command} | {command.Manager}";
+
+        printed.Should().NotContain("52998224725").And.NotContain("529.982.247");
+        printed.Should().Contain("Ana Maria Silva", "o resto continua útil para diagnóstico");
+    }
+
+    [Fact]
     public void TheConflictErrorsHaveStableCodesAndFriendlyTexts()
     {
         CondominiumErrors.CnpjAlreadyRegistered.Code.Should().Be("condominium.cnpj.already_registered");
