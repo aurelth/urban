@@ -7,6 +7,8 @@ export interface CurrentUser {
   readonly role: UserRole;
   /** Nulo para o SuperAdmin e para o síndico que ainda não cadastrou o condomínio. */
   readonly condominiumId: string | null;
+  /** Como a pessoa prefere ser chamada. Nulo até o síndico preencher o cadastro do condomínio. */
+  readonly displayName: string | null;
 }
 
 /** Resposta de GET /api/terms/current: a versão dos termos que a pessoa precisa aceitar. */

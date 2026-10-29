@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { authGuard, guestGuard } from './core/auth/auth.guards';
+import { condominiumGuard, condominiumSetupGuard } from './core/auth/condominium.guards';
 import { AuthLayout } from './core/layout/auth.layout';
 import { ShellLayout } from './core/layout/shell.layout';
 
@@ -11,12 +12,28 @@ export const routes: Routes = [
     component: ShellLayout,
     canActivate: [authGuard],
     children: [
-      { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
       {
-        path: 'dashboard',
-        title: 'Painel',
-        loadChildren: () =>
-          import('./features/dashboard/dashboard.routes').then((m) => m.DASHBOARD_ROUTES),
+        path: 'condominio/cadastrar',
+        title: 'Cadastrar condomínio',
+        canActivate: [condominiumSetupGuard],
+        loadComponent: () =>
+          import('./features/condominium/register/register-condominium.page').then(
+            (m) => m.RegisterCondominiumPage,
+          ),
+      },
+      // O resto da área logada exige o condomínio cadastrado: sem ele, a guarda leva ao cadastro.
+      {
+        path: '',
+        canActivateChild: [condominiumGuard],
+        children: [
+          { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+          {
+            path: 'dashboard',
+            title: 'Painel',
+            loadChildren: () =>
+              import('./features/dashboard/dashboard.routes').then((m) => m.DASHBOARD_ROUTES),
+          },
+        ],
       },
     ],
   },

@@ -1,20 +1,6 @@
 <section class="mx-auto max-w-5xl p-6">
   <h1 class="sr-only">Painel</h1>
 
-  @if (session.needsCondominium()) {
-    <mat-card appearance="outlined" class="mb-4" data-testid="condominium-notice" role="status">
-      <mat-card-content class="p-4">
-        <div class="flex items-center gap-3">
-          <mat-icon class="shrink-0" svgIcon="info" aria-hidden="true" />
-          <p>
-            O cadastro do seu condomínio ainda não foi feito. Assim que o módulo de condomínios
-            estiver pronto, você poderá cadastrá-lo por aqui
-          </p>
-        </div>
-      </mat-card-content>
-    </mat-card>
-  }
-
   <div class="grid gap-4 md:grid-cols-3">
     @for (module of modules; track module.title) {
       <mat-card
