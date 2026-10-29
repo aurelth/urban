@@ -25,6 +25,7 @@ public sealed class OpenApiDocumentationTests
         paths.TryGetProperty("/api/auth/reset-password", out _).Should().BeTrue();
         paths.TryGetProperty("/api/auth/me", out _).Should().BeTrue();
         paths.TryGetProperty("/api/terms/current", out _).Should().BeTrue();
+        paths.TryGetProperty("/api/condominiums", out _).Should().BeTrue();
     }
 
     [Fact]
@@ -73,6 +74,7 @@ public sealed class OpenApiDocumentationTests
     [InlineData("/api/auth/forgot-password", "post")]
     [InlineData("/api/auth/reset-password", "post")]
     [InlineData("/api/terms/current", "get")]
+    [InlineData("/api/condominiums", "post")]
     public async Task Development_documents_the_429_of_every_rate_limited_route(string path, string method)
     {
         await using ApiFactory factory = new() { EnvironmentName = "Development" };
@@ -81,6 +83,22 @@ public sealed class OpenApiDocumentationTests
         JsonElement paths = (await client.GetFromJsonAsync<JsonElement>("/openapi/v1.json")).GetProperty("paths");
 
         paths.GetProperty(path).GetProperty(method).GetProperty("responses").TryGetProperty("429", out _).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Development_documents_the_condominium_registration_as_protected_with_every_outcome()
+    {
+        await using ApiFactory factory = new() { EnvironmentName = "Development" };
+        using HttpClient client = factory.CreateClient();
+
+        JsonElement paths = (await client.GetFromJsonAsync<JsonElement>("/openapi/v1.json")).GetProperty("paths");
+
+        JsonElement post = paths.GetProperty("/api/condominiums").GetProperty("post");
+        post.GetProperty("security").GetArrayLength().Should().BeGreaterThan(0);
+        foreach (string status in new[] { "201", "400", "401", "403", "409", "429" })
+        {
+            post.GetProperty("responses").TryGetProperty(status, out _).Should().BeTrue(status);
+        }
     }
 
     [Fact]

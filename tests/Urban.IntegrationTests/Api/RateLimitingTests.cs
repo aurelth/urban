@@ -19,6 +19,8 @@ public sealed class RateLimitingTests(ApiFixture fixture)
 
     private const string TermsRoute = "/api/terms/current";
 
+    private const string CondominiumsRoute = "/api/condominiums";
+
     private static readonly IPAddress TrustedProxy = IPAddress.Parse("10.0.0.2");
 
     private static readonly IPAddress PublicAddress = IPAddress.Parse("198.51.100.7");
@@ -33,6 +35,7 @@ public sealed class RateLimitingTests(ApiFixture fixture)
     [InlineData(LogoutRoute)]
     [InlineData(MeRoute)]
     [InlineData(TermsRoute)]
+    [InlineData(CondominiumsRoute)]
     public async Task Blocks_a_client_that_exceeds_the_limit_of_the_route(string route)
     {
         await using ApiFactory factory = CreateFactory(TimeSpan.FromMinutes(1));
@@ -57,6 +60,7 @@ public sealed class RateLimitingTests(ApiFixture fixture)
     [InlineData(LogoutRoute, 7)]
     [InlineData(MeRoute, 8)]
     [InlineData(TermsRoute, 9)]
+    [InlineData(CondominiumsRoute, 10)]
     public async Task Applies_the_limit_configured_for_that_route(string route, int permits)
     {
         Dictionary<string, string?> limits = new()
@@ -70,6 +74,7 @@ public sealed class RateLimitingTests(ApiFixture fixture)
             ["RateLimiting:Logout:PermitLimit"] = "7",
             ["RateLimiting:Me:PermitLimit"] = "8",
             ["RateLimiting:Terms:PermitLimit"] = "9",
+            ["RateLimiting:CondominiumRegistration:PermitLimit"] = "10",
         };
         await using ApiFactory factory = CreateFactory(TimeSpan.FromMinutes(1), settings: limits);
         using HttpClient client = factory.CreateClient();
@@ -90,6 +95,7 @@ public sealed class RateLimitingTests(ApiFixture fixture)
     [InlineData(LogoutRoute, 20)]
     [InlineData(MeRoute, 60)]
     [InlineData(TermsRoute, 30)]
+    [InlineData(CondominiumsRoute, 10)]
     public async Task Ships_with_the_limits_of_the_appsettings(string route, int permits)
     {
         await using ApiFactory factory = CreateFactory(TimeSpan.FromMinutes(1), limit: null);

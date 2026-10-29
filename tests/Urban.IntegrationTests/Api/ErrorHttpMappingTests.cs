@@ -2,6 +2,10 @@ using System.Reflection;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Urban.Api.Http;
+using Urban.Condominium.Domain.Condominiums;
+using Urban.Condominium.Domain.Contacts;
+using Urban.Condominium.Domain.Documents;
+using Urban.Condominium.Domain.People;
 using Urban.Identity.Application.Authentication;
 using Urban.Identity.Application.Authentication.Login;
 using Urban.Identity.Application.Authentication.Refresh;
@@ -40,12 +44,38 @@ public sealed class ErrorHttpMappingTests
         { UserErrors.CondominiumAlreadyAssigned.Code, 409 },
         { UserErrors.CondominiumRequired.Code, 422 },
         { DisplayName.Invalid.Code, 400 },
+        { Cpf.Invalid.Code, 400 },
+        { Cnpj.Invalid.Code, 400 },
+        { PostalCode.Invalid.Code, 400 },
+        { PhoneNumber.Invalid.Code, 400 },
+        { PersonName.Invalid.Code, 400 },
+        { BirthDate.Invalid.Code, 400 },
+        { BirthDate.UnderAge.Code, 400 },
+        { PersonErrors.MobileRequired.Code, 400 },
+        { CondominiumErrors.NameInvalid.Code, 400 },
+        { Address.StreetInvalid.Code, 400 },
+        { Address.NumberInvalid.Code, 400 },
+        { Address.ComplementInvalid.Code, 400 },
+        { Address.NeighborhoodInvalid.Code, 400 },
+        { Address.CityInvalid.Code, 400 },
+        { Address.StateInvalid.Code, 400 },
+        { CondominiumErrors.CnpjAlreadyRegistered.Code, 409 },
+        { CondominiumErrors.ManagerAlreadyRegistered.Code, 409 },
+        { CondominiumErrors.ManagerRequired.Code, 422 },
+        { PersonErrors.CondominiumRequired.Code, 422 },
+        { PersonErrors.UserRequired.Code, 422 },
     };
 
     [Fact]
-    public void Every_error_declared_by_the_identity_module_has_a_status_code()
+    public void Every_error_declared_by_the_identity_and_condominium_modules_has_a_status_code()
     {
-        Assembly[] assemblies = [typeof(Email).Assembly, Urban.Identity.Application.AssemblyReference.Assembly];
+        Assembly[] assemblies =
+        [
+            typeof(Email).Assembly,
+            Urban.Identity.Application.AssemblyReference.Assembly,
+            typeof(Cpf).Assembly,
+            Urban.Condominium.Application.AssemblyReference.Assembly,
+        ];
 
         Error[] errors = assemblies
             .SelectMany(a => a.GetExportedTypes())
