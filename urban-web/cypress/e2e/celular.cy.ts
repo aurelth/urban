@@ -1,4 +1,5 @@
 import { stubTerms } from '../support/cadastro';
+import { NEW_MANAGER } from '../support/condominio';
 import { MANAGER, stubAnonymous, stubSignedIn } from '../support/session';
 
 /** Com `should` o Cypress repete a conferência até a página assentar (a barra de rolagem aparece depois do título). */
@@ -62,6 +63,21 @@ describe('Tela de celular (375 x 667)', () => {
     cy.get('mat-card.module').then(($cards) => {
       const lefts = [...$cards].map((card) => card.getBoundingClientRect().left);
       expect(new Set(lefts).size).to.eq(1);
+    });
+    expectNoHorizontalScroll();
+  });
+
+  it('mostra o cadastro do condomínio sem rolagem horizontal e com todos os campos na tela', () => {
+    stubSignedIn(NEW_MANAGER);
+    cy.visit('/condominio/cadastrar');
+
+    cy.contains('h1', 'Cadastre seu condomínio').should('be.visible');
+    cy.contains('button', 'Cadastrar condomínio').should('exist');
+    cy.get('mat-form-field').should('have.length.greaterThan', 15);
+    cy.get('mat-form-field').each(($field) => {
+      const { left, right } = $field[0].getBoundingClientRect();
+      expect(left).to.be.at.least(0);
+      expect(right).to.be.at.most(375);
     });
     expectNoHorizontalScroll();
   });

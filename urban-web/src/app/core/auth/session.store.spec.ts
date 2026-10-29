@@ -2,7 +2,13 @@ import { HttpErrorResponse, provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { flushPromises } from '../../testing/async';
-import { MANAGER, problem, signInAs, tokenResponse } from '../../testing/auth.fixtures';
+import {
+  MANAGER,
+  REGISTERED_MANAGER,
+  problem,
+  signInAs,
+  tokenResponse,
+} from '../../testing/auth.fixtures';
 import { CurrentUser } from './auth.models';
 import { SessionStore } from './session.store';
 
@@ -238,6 +244,58 @@ describe('SessionStore', () => {
 
       await expect(renewing).resolves.toBe(false);
       expect(store.accessToken()).toBe('access-1');
+    });
+  });
+
+  describe('reload', () => {
+    const refused = { status: 401, statusText: 'Unauthorized' };
+
+    it('renova o token e carrega de novo o usuario, que agora tem condominio e nome', async () => {
+      const { store, http } = setup();
+      await signInAs(store, http);
+      expect(store.needsCondominium()).toBe(true);
+
+      const reloading = store.reload();
+      http.expectOne('/api/auth/refresh').flush(tokenResponse('access-9'));
+      await flushPromises();
+      http.expectOne('/api/auth/me').flush(REGISTERED_MANAGER);
+
+      await expect(reloading).resolves.toBe(true);
+      expect(store.accessToken()).toBe('access-9');
+      expect(store.user()).toEqual(REGISTERED_MANAGER);
+      expect(store.needsCondominium()).toBe(false);
+      expect(store.status()).toBe('authenticated');
+    });
+
+    it('derruba a sessao, marcando que expirou, quando a renovacao e recusada', async () => {
+      const { store, http } = setup();
+      await signInAs(store, http);
+
+      const reloading = store.reload();
+      http.expectOne('/api/auth/refresh').flush(problem(401, 'x'), refused);
+
+      await expect(reloading).resolves.toBe(false);
+      expect(store.status()).toBe('anonymous');
+      expect(store.expired()).toBe(true);
+      expect(store.accessToken()).toBeNull();
+    });
+
+    it('derruba a sessao, marcando que expirou, quando nao consegue carregar o usuario', async () => {
+      const { store, http } = setup();
+      await signInAs(store, http);
+
+      const reloading = store.reload();
+      http.expectOne('/api/auth/refresh').flush(tokenResponse('access-9'));
+      await flushPromises();
+      http.expectOne('/api/auth/me').flush(problem(500, 'x'), {
+        status: 500,
+        statusText: 'Server Error',
+      });
+
+      await expect(reloading).resolves.toBe(false);
+      expect(store.status()).toBe('anonymous');
+      expect(store.expired()).toBe(true);
+      expect(store.accessToken()).toBeNull();
     });
   });
 

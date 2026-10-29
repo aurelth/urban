@@ -7,6 +7,7 @@ export interface StubUser {
   email: string;
   role: 'SuperAdmin' | 'Manager' | 'Resident';
   condominiumId: string | null;
+  displayName: string | null;
 }
 
 export const MANAGER: StubUser = {
@@ -14,6 +15,7 @@ export const MANAGER: StubUser = {
   email: 'sindica@example.com',
   role: 'Manager',
   condominiumId: '0198f3c1-6a4e-7c20-9d52-3f7a1b2c4d5e',
+  displayName: 'Marina',
 };
 
 const TOKENS = { accessToken: 'token-de-teste', accessTokenExpiresAt: '2099-01-01T00:00:00+00:00' };
