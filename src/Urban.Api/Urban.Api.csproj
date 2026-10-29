@@ -15,6 +15,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Urban.BackgroundJobs\Urban.BackgroundJobs.csproj" />
     <ProjectReference Include="..\Urban.EmailDelivery\Urban.EmailDelivery.csproj" />
+    <ProjectReference Include="..\Urban.PostalCodeLookup\Urban.PostalCodeLookup.csproj" />
     <ProjectReference Include="..\Modules\Identity\Urban.Identity.Infrastructure\Urban.Identity.Infrastructure.csproj" />
     <ProjectReference Include="..\Modules\Condominium\Urban.Condominium.Infrastructure\Urban.Condominium.Infrastructure.csproj" />
     <ProjectReference Include="..\Modules\Finance\Urban.Finance.Infrastructure\Urban.Finance.Infrastructure.csproj" />

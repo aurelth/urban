@@ -26,6 +26,7 @@ public static class RateLimitingExtensions
             limiter.AddPolicy(RateLimitPolicies.Me, http => PerClient(http, options.Me));
             limiter.AddPolicy(RateLimitPolicies.Terms, http => PerClient(http, options.Terms));
             limiter.AddPolicy(RateLimitPolicies.CondominiumRegistration, http => PerClient(http, options.CondominiumRegistration));
+            limiter.AddPolicy(RateLimitPolicies.PostalCodeLookup, http => PerClient(http, options.PostalCodeLookup));
         });
 
         return services;

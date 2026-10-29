@@ -21,6 +21,7 @@ COPY global.json nuget.config Directory.Build.props Directory.Packages.props ./
 COPY src/Urban.SharedKernel/Urban.SharedKernel.csproj src/Urban.SharedKernel/
 COPY src/Urban.BackgroundJobs/Urban.BackgroundJobs.csproj src/Urban.BackgroundJobs/
 COPY src/Urban.EmailDelivery/Urban.EmailDelivery.csproj src/Urban.EmailDelivery/
+COPY src/Urban.PostalCodeLookup/Urban.PostalCodeLookup.csproj src/Urban.PostalCodeLookup/
 COPY src/Modules/Identity/Urban.Identity.Domain/Urban.Identity.Domain.csproj src/Modules/Identity/Urban.Identity.Domain/
 COPY src/Modules/Identity/Urban.Identity.Application/Urban.Identity.Application.csproj src/Modules/Identity/Urban.Identity.Application/
 COPY src/Modules/Identity/Urban.Identity.Infrastructure/Urban.Identity.Infrastructure.csproj src/Modules/Identity/Urban.Identity.Infrastructure/
@@ -41,6 +42,7 @@ COPY .editorconfig ./
 COPY src/Urban.SharedKernel/ src/Urban.SharedKernel/
 COPY src/Urban.BackgroundJobs/ src/Urban.BackgroundJobs/
 COPY src/Urban.EmailDelivery/ src/Urban.EmailDelivery/
+COPY src/Urban.PostalCodeLookup/ src/Urban.PostalCodeLookup/
 COPY src/Modules/ src/Modules/
 COPY src/Urban.Api/ src/Urban.Api/
 

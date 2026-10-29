@@ -1,6 +1,7 @@
 using Riok.Mapperly.Abstractions;
 using Urban.Api.Endpoints;
 using Urban.Condominium.Application.Registration.RegisterCondominium;
+using Urban.SharedKernel.Abstractions;
 
 namespace Urban.Api.Mapping;
 
@@ -23,6 +24,8 @@ public static partial class CondominiumMapper
     }
 
     public static partial RegisteredCondominiumResponse ToResponse(RegisteredCondominium registered);
+
+    public static partial PostalCodeResponse ToResponse(PostalCodeAddress address);
 
     private static partial AddressInput MapAddress(AddressRequest address);
 }

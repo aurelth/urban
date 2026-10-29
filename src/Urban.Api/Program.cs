@@ -5,6 +5,7 @@ using Urban.Api.Extensions;
 using Urban.Api.Http;
 using Urban.BackgroundJobs;
 using Urban.EmailDelivery;
+using Urban.PostalCodeLookup;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +17,7 @@ builder.Services.AddExceptionHandler<BadRequestExceptionHandler>();
 builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
 builder.Services.AddUrbanOpenApi();
 builder.Services.AddEmailDelivery(builder.Configuration);
+builder.Services.AddPostalCodeLookup(builder.Configuration);
 builder.Services.AddUrbanModules(builder.Configuration);
 builder.Services.AddBackgroundJobs(builder.Configuration);
 builder.Services.AddUrbanAuthentication();
@@ -44,6 +46,7 @@ app.MapAuthEndpoints();
 app.MapTermsEndpoints();
 app.MapRegistrationEndpoints();
 app.MapCondominiumEndpoints();
+app.MapPostalCodeEndpoints();
 app.MapPasswordResetEndpoints();
 
 if (!app.Environment.IsProduction())
