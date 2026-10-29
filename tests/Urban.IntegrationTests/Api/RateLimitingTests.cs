@@ -11,6 +11,14 @@ public sealed class RateLimitingTests(ApiFixture fixture)
 
     private const string RegisterRoute = "/api/auth/register";
 
+    private const string RefreshRoute = "/api/auth/refresh";
+
+    private const string LogoutRoute = "/api/auth/logout";
+
+    private const string MeRoute = "/api/auth/me";
+
+    private const string TermsRoute = "/api/terms/current";
+
     private static readonly IPAddress TrustedProxy = IPAddress.Parse("10.0.0.2");
 
     private static readonly IPAddress PublicAddress = IPAddress.Parse("198.51.100.7");
@@ -21,13 +29,17 @@ public sealed class RateLimitingTests(ApiFixture fixture)
     [InlineData("/api/auth/login")]
     [InlineData("/api/auth/forgot-password")]
     [InlineData("/api/auth/reset-password")]
+    [InlineData(RefreshRoute)]
+    [InlineData(LogoutRoute)]
+    [InlineData(MeRoute)]
+    [InlineData(TermsRoute)]
     public async Task Blocks_a_client_that_exceeds_the_limit_of_the_route(string route)
     {
         await using ApiFactory factory = CreateFactory(TimeSpan.FromMinutes(1));
         using HttpClient client = factory.CreateClient();
 
         await ExhaustAsync(client, route);
-        HttpResponseMessage blocked = await PostAsync(client, route);
+        HttpResponseMessage blocked = await SendAsync(client, route);
 
         blocked.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
         blocked.Content.Headers.ContentType!.MediaType.Should().Be("application/problem+json");
@@ -41,6 +53,10 @@ public sealed class RateLimitingTests(ApiFixture fixture)
     [InlineData("/api/auth/login", 3)]
     [InlineData("/api/auth/forgot-password", 4)]
     [InlineData("/api/auth/reset-password", 5)]
+    [InlineData(RefreshRoute, 6)]
+    [InlineData(LogoutRoute, 7)]
+    [InlineData(MeRoute, 8)]
+    [InlineData(TermsRoute, 9)]
     public async Task Applies_the_limit_configured_for_that_route(string route, int permits)
     {
         Dictionary<string, string?> limits = new()
@@ -50,12 +66,16 @@ public sealed class RateLimitingTests(ApiFixture fixture)
             ["RateLimiting:Login:PermitLimit"] = "3",
             ["RateLimiting:ForgotPassword:PermitLimit"] = "4",
             ["RateLimiting:ResetPassword:PermitLimit"] = "5",
+            ["RateLimiting:Refresh:PermitLimit"] = "6",
+            ["RateLimiting:Logout:PermitLimit"] = "7",
+            ["RateLimiting:Me:PermitLimit"] = "8",
+            ["RateLimiting:Terms:PermitLimit"] = "9",
         };
         await using ApiFactory factory = CreateFactory(TimeSpan.FromMinutes(1), settings: limits);
         using HttpClient client = factory.CreateClient();
 
         await ExhaustAsync(client, route, permits);
-        HttpResponseMessage blocked = await PostAsync(client, route);
+        HttpResponseMessage blocked = await SendAsync(client, route);
 
         blocked.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
     }
@@ -66,13 +86,17 @@ public sealed class RateLimitingTests(ApiFixture fixture)
     [InlineData("/api/auth/login", 10)]
     [InlineData("/api/auth/forgot-password", 5)]
     [InlineData("/api/auth/reset-password", 10)]
+    [InlineData(RefreshRoute, 30)]
+    [InlineData(LogoutRoute, 20)]
+    [InlineData(MeRoute, 60)]
+    [InlineData(TermsRoute, 30)]
     public async Task Ships_with_the_limits_of_the_appsettings(string route, int permits)
     {
         await using ApiFactory factory = CreateFactory(TimeSpan.FromMinutes(1), limit: null);
         using HttpClient client = factory.CreateClient();
 
         await ExhaustAsync(client, route, permits);
-        HttpResponseMessage blocked = await PostAsync(client, route);
+        HttpResponseMessage blocked = await SendAsync(client, route);
 
         blocked.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
     }
@@ -84,7 +108,7 @@ public sealed class RateLimitingTests(ApiFixture fixture)
         using HttpClient client = factory.CreateClient();
         await ExhaustAsync(client, RegisterRoute);
 
-        HttpResponseMessage login = await PostAsync(client, "/api/auth/login");
+        HttpResponseMessage login = await SendAsync(client, "/api/auth/login");
 
         login.StatusCode.Should().NotBe(HttpStatusCode.TooManyRequests);
     }
@@ -97,7 +121,7 @@ public sealed class RateLimitingTests(ApiFixture fixture)
         await ExhaustAsync(client, RegisterRoute, limit: 1);
 
         await Task.Delay(TimeSpan.FromMilliseconds(1300));
-        HttpResponseMessage afterWindow = await PostAsync(client, RegisterRoute);
+        HttpResponseMessage afterWindow = await SendAsync(client, RegisterRoute);
 
         afterWindow.StatusCode.Should().NotBe(HttpStatusCode.TooManyRequests);
     }
@@ -109,8 +133,8 @@ public sealed class RateLimitingTests(ApiFixture fixture)
         using HttpClient client = factory.CreateClient();
         await ExhaustAsync(client, RegisterRoute, forwardedFor: _ => "203.0.113.10, 172.18.0.1");
 
-        HttpResponseMessage sameClient = await PostAsync(client, RegisterRoute, "203.0.113.10, 172.18.0.1");
-        HttpResponseMessage otherClient = await PostAsync(client, RegisterRoute, "203.0.113.11, 172.18.0.1");
+        HttpResponseMessage sameClient = await SendAsync(client, RegisterRoute, "203.0.113.10, 172.18.0.1");
+        HttpResponseMessage otherClient = await SendAsync(client, RegisterRoute, "203.0.113.11, 172.18.0.1");
 
         sameClient.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
         otherClient.StatusCode.Should().NotBe(HttpStatusCode.TooManyRequests);
@@ -123,7 +147,7 @@ public sealed class RateLimitingTests(ApiFixture fixture)
         using HttpClient client = factory.CreateClient();
         await ExhaustAsync(client, RegisterRoute, forwardedFor: i => $"198.51.100.{i}, 203.0.113.20, 172.18.0.1");
 
-        HttpResponseMessage forgedAgain = await PostAsync(client, RegisterRoute, "192.0.2.99, 203.0.113.20, 172.18.0.1");
+        HttpResponseMessage forgedAgain = await SendAsync(client, RegisterRoute, "192.0.2.99, 203.0.113.20, 172.18.0.1");
 
         forgedAgain.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
     }
@@ -135,7 +159,7 @@ public sealed class RateLimitingTests(ApiFixture fixture)
         using HttpClient client = factory.CreateClient();
         await ExhaustAsync(client, RegisterRoute, forwardedFor: i => $"203.0.113.{i}");
 
-        HttpResponseMessage anotherClaim = await PostAsync(client, RegisterRoute, "203.0.113.99");
+        HttpResponseMessage anotherClaim = await SendAsync(client, RegisterRoute, "203.0.113.99");
 
         anotherClaim.StatusCode.Should().Be(HttpStatusCode.TooManyRequests);
     }
@@ -144,14 +168,19 @@ public sealed class RateLimitingTests(ApiFixture fixture)
     {
         for (int i = 0; i < limit; i++)
         {
-            HttpResponseMessage response = await PostAsync(client, route, forwardedFor?.Invoke(i));
+            HttpResponseMessage response = await SendAsync(client, route, forwardedFor?.Invoke(i));
             response.StatusCode.Should().NotBe(HttpStatusCode.TooManyRequests, $"a requisição {i + 1} de {limit} ainda cabe no limite");
         }
     }
 
-    private static async Task<HttpResponseMessage> PostAsync(HttpClient client, string route, string? forwardedFor = null)
+    private static async Task<HttpResponseMessage> SendAsync(HttpClient client, string route, string? forwardedFor = null)
     {
-        using HttpRequestMessage request = new(HttpMethod.Post, route) { Content = JsonContent.Create(BodyFor(route)) };
+        using HttpRequestMessage request = new(IsRead(route) ? HttpMethod.Get : HttpMethod.Post, route);
+        if (HasBody(route))
+        {
+            request.Content = JsonContent.Create(BodyFor(route));
+        }
+
         if (forwardedFor is not null)
         {
             request.Headers.Add("X-Forwarded-For", forwardedFor);
@@ -159,6 +188,10 @@ public sealed class RateLimitingTests(ApiFixture fixture)
 
         return await client.SendAsync(request);
     }
+
+    private static bool IsRead(string route) => route is MeRoute or TermsRoute;
+
+    private static bool HasBody(string route) => route is not (MeRoute or TermsRoute or RefreshRoute or LogoutRoute);
 
     private static object BodyFor(string route) => route switch
     {

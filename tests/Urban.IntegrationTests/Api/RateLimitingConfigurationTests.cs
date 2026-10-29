@@ -22,6 +22,10 @@ public class RateLimitingConfigurationTests
     [InlineData("Login", 0)]
     [InlineData("ForgotPassword", 0)]
     [InlineData("ResetPassword", -1)]
+    [InlineData("Refresh", 0)]
+    [InlineData("Logout", -1)]
+    [InlineData("Me", 0)]
+    [InlineData("Terms", -1)]
     public void Rejects_a_route_without_permits(string route, int permits)
     {
         RateLimitingOptions options = WithRule(route, new() { PermitLimit = permits, Window = TimeSpan.FromMinutes(1) });
@@ -37,6 +41,10 @@ public class RateLimitingConfigurationTests
     [InlineData("Login")]
     [InlineData("ForgotPassword")]
     [InlineData("ResetPassword")]
+    [InlineData("Refresh")]
+    [InlineData("Logout")]
+    [InlineData("Me")]
+    [InlineData("Terms")]
     public void Rejects_a_route_without_a_window(string route)
     {
         RateLimitingOptions options = WithRule(route, new() { PermitLimit = 5, Window = TimeSpan.Zero });
@@ -101,6 +109,10 @@ public class RateLimitingConfigurationTests
     [InlineData("RateLimiting:Login:Window", "00:00:00", "RateLimiting:Login:Window")]
     [InlineData("RateLimiting:ForgotPassword:PermitLimit", "0", "RateLimiting:ForgotPassword:PermitLimit")]
     [InlineData("RateLimiting:ResetPassword:Window", "00:00:00", "RateLimiting:ResetPassword:Window")]
+    [InlineData("RateLimiting:Refresh:PermitLimit", "0", "RateLimiting:Refresh:PermitLimit")]
+    [InlineData("RateLimiting:Logout:Window", "00:00:00", "RateLimiting:Logout:Window")]
+    [InlineData("RateLimiting:Me:PermitLimit", "0", "RateLimiting:Me:PermitLimit")]
+    [InlineData("RateLimiting:Terms:Window", "00:00:00", "RateLimiting:Terms:Window")]
     [InlineData("TrustedProxies:Hops", "0", "TrustedProxies:Hops")]
     [InlineData("TrustedProxies:Networks:0", "nao-e-uma-rede", "TrustedProxies:Networks")]
     public void Refuses_to_start_with_an_invalid_setting(string key, string value, string reported)
@@ -119,5 +131,9 @@ public class RateLimitingConfigurationTests
         Login = route == "Login" ? rule : ValidRule,
         ForgotPassword = route == "ForgotPassword" ? rule : ValidRule,
         ResetPassword = route == "ResetPassword" ? rule : ValidRule,
+        Refresh = route == "Refresh" ? rule : ValidRule,
+        Logout = route == "Logout" ? rule : ValidRule,
+        Me = route == "Me" ? rule : ValidRule,
+        Terms = route == "Terms" ? rule : ValidRule,
     };
 }
