@@ -166,6 +166,7 @@ log de erro.
 
 - Condomínio = `Condominium`; unidade = `Unit`; morador = `Resident`; proprietário = `Owner`; síndico = `Manager`; super administrador (dono da plataforma) = `SuperAdmin`.
 - Cobrança = `Charge`; fatura (PDF da cobrança) = `Invoice`; ocorrência (chamado, reclamação) = `Incident`; comunicado = `Announcement`; condomínio como inquilino do sistema = tenant.
+- Cadastro do condomínio (módulo `Condominium`, Domain): `Cpf`, `Cnpj` (numérico ou alfanumérico), `PostalCode` (CEP), `PhoneNumber`, `Address`, `PersonName`, `BirthDate`, `Person` (dados pessoais; hoje só o síndico, por `Person.RegisterManager`) e o agregado `Condominium`. O tipo `Condominium` colide com o namespace `Urban.Condominium`: fora do próprio namespace use o alias `using CondominiumEntity = Urban.Condominium.Domain.Condominiums.Condominium;`. CPF é dado pessoal: `Cpf.ToString()` devolve a forma mascarada (`***.982.247-**`), então um log ou uma mensagem de erro que imprima o objeto não vaza o número. Os objetos de valor documentais (`Cpf`, `Cnpj`, `PostalCode`, `PhoneNumber`) guardam só os caracteres úteis (sem pontuação) e têm `Formatted` ou `Masked` para exibição; a máscara de digitação é do front.
 - Termos novos entram aqui no início de cada módulo, antes de virar código.
 
 ## Interface (identidade visual)
