@@ -1,7 +1,11 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using Microsoft.Extensions.DependencyInjection;
+using Urban.Condominium.Application.Abstractions;
+using Urban.Condominium.Infrastructure.Persistence;
 using Urban.Identity.Infrastructure.Persistence;
+using Urban.TestSupport.Condominium;
 
 namespace Urban.IntegrationTests.Api;
 
@@ -51,6 +55,49 @@ public sealed class StartupTests(ApiFixture fixture)
         Action start = () => factory.CreateClient();
 
         start.Should().Throw<InvalidOperationException>().WithMessage("*chave de assinatura*");
+    }
+
+    [Fact]
+    public async Task Migrates_the_condominium_module_on_startup_too()
+    {
+        string connectionString = await CreateEmptyDatabaseAsync();
+        await using ApiFactory factory = new()
+        {
+            PostgresConnectionString = connectionString,
+            RedisConnectionString = ApiFactory.UnusedRedis,
+            MigrateOnStartup = true,
+        };
+
+        using HttpClient client = factory.CreateClient();
+
+        await using CondominiumDbContext db = new(
+            CondominiumPersistence.CreateOptions(connectionString),
+            factory.Services.GetRequiredService<IPersonalDataProtector>(),
+            new FixedTenant(null));
+        (await db.Database.GetPendingMigrationsAsync()).Should().BeEmpty();
+        (await db.Database.GetAppliedMigrationsAsync()).Should().NotBeEmpty();
+    }
+
+    [Theory]
+    [InlineData("curta")]
+    [InlineData("")]
+    public void Refuses_to_start_with_an_invalid_personal_data_encryption_key(string key)
+    {
+        using ApiFactory factory = new() { PersonalDataEncryptionKey = key };
+
+        Action start = () => factory.CreateClient();
+
+        start.Should().Throw<InvalidOperationException>().WithMessage("*PersonalData*");
+    }
+
+    [Fact]
+    public void Refuses_to_start_with_an_invalid_personal_data_hash_key()
+    {
+        using ApiFactory factory = new() { PersonalDataHashKey = "curta" };
+
+        Action start = () => factory.CreateClient();
+
+        start.Should().Throw<InvalidOperationException>().WithMessage("*PersonalData:HashKey*");
     }
 
     [Theory]

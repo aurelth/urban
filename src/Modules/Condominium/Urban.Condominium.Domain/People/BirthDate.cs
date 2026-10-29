@@ -35,6 +35,9 @@ public sealed record BirthDate
             : Result.Failure<BirthDate>(UnderAge);
     }
 
+    /// <summary>Reconstitui uma data já aceita no cadastro, vinda do armazenamento. A regra de idade vale no momento do cadastro, não a cada leitura.</summary>
+    public static BirthDate Restore(DateOnly value) => new(value);
+
     private static DateOnly TurnsAgeOn(DateOnly birth, int years)
     {
         bool leapDay = birth.Month == 2 && birth.Day == 29;

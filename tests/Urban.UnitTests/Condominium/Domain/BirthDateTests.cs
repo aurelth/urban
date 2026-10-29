@@ -67,4 +67,12 @@ public class BirthDateTests
     {
         BirthDate.Create(null, Today).Error.Should().Be(BirthDate.Invalid);
     }
+
+    [Fact]
+    public void Restore_KeepsTheStoredDateEvenWhenTheAgeRuleWouldNowRejectIt()
+    {
+        DateOnly stored = new(1900, 1, 1);
+
+        BirthDate.Restore(stored).Value.Should().Be(stored);
+    }
 }

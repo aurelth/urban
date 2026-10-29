@@ -67,15 +67,20 @@ jobs:
           REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
           JWT_SIGNING_KEY: ${{ secrets.JWT_SIGNING_KEY }}
           BREVO_API_KEY: ${{ secrets.BREVO_API_KEY }}
+          PERSONAL_DATA_ENCRYPTION_KEY: ${{ secrets.PERSONAL_DATA_ENCRYPTION_KEY }}
+          PERSONAL_DATA_HASH_KEY: ${{ secrets.PERSONAL_DATA_HASH_KEY }}
           SUPERADMIN_EMAIL: ${{ secrets.SUPERADMIN_EMAIL }}
         run: |
           : "${POSTGRES_PASSWORD:?secret POSTGRES_PASSWORD ausente no Environment ${ENVIRONMENT}}"
           : "${REDIS_PASSWORD:?secret REDIS_PASSWORD ausente no Environment ${ENVIRONMENT}}"
           : "${JWT_SIGNING_KEY:?secret JWT_SIGNING_KEY ausente no Environment ${ENVIRONMENT}}"
           : "${BREVO_API_KEY:?secret BREVO_API_KEY ausente no Environment ${ENVIRONMENT}}"
+          : "${PERSONAL_DATA_ENCRYPTION_KEY:?secret PERSONAL_DATA_ENCRYPTION_KEY ausente no Environment ${ENVIRONMENT}}"
+          : "${PERSONAL_DATA_HASH_KEY:?secret PERSONAL_DATA_HASH_KEY ausente no Environment ${ENVIRONMENT}}"
           # SUPERADMIN_EMAIL e opcional: se o secret nao existir, o valor fica vazio e a API nao cria o SuperAdmin.
-          printf 'POSTGRES_PASSWORD=%s\nREDIS_PASSWORD=%s\nJWT_SIGNING_KEY=%s\nBREVO_API_KEY=%s\nSUPERADMIN_EMAIL=%s\n' \
-            "$POSTGRES_PASSWORD" "$REDIS_PASSWORD" "$JWT_SIGNING_KEY" "$BREVO_API_KEY" "$SUPERADMIN_EMAIL" |
+          printf 'POSTGRES_PASSWORD=%s\nREDIS_PASSWORD=%s\nJWT_SIGNING_KEY=%s\nBREVO_API_KEY=%s\nPERSONAL_DATA_ENCRYPTION_KEY=%s\nPERSONAL_DATA_HASH_KEY=%s\nSUPERADMIN_EMAIL=%s\n' \
+            "$POSTGRES_PASSWORD" "$REDIS_PASSWORD" "$JWT_SIGNING_KEY" "$BREVO_API_KEY" \
+            "$PERSONAL_DATA_ENCRYPTION_KEY" "$PERSONAL_DATA_HASH_KEY" "$SUPERADMIN_EMAIL" |
           ssh -i ~/.ssh/id_deploy -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
             "${VPS_USER}@${VPS_HOST}" \
             "umask 077 && cat > ~/urban/${ENVIRONMENT}/secrets.env"
