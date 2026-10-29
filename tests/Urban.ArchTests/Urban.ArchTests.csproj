@@ -24,6 +24,7 @@
     <ProjectReference Include="..\..\src\Modules\Operations\Urban.Operations.Infrastructure\Urban.Operations.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Urban.BackgroundJobs\Urban.BackgroundJobs.csproj" />
     <ProjectReference Include="..\..\src\Urban.EmailDelivery\Urban.EmailDelivery.csproj" />
+    <ProjectReference Include="..\..\src\Urban.PostalCodeLookup\Urban.PostalCodeLookup.csproj" />
     <ProjectReference Include="..\..\src\Urban.SharedKernel\Urban.SharedKernel.csproj" />
   </ItemGroup>
 </Project>

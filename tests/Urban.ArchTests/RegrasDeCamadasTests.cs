@@ -79,6 +79,30 @@ public class RegrasDeCamadasTests
             "o envio de e-mail é um adaptador compartilhado: conhece só o SharedKernel");
     }
 
+    [Fact]
+    public void PostalCodeLookup_nao_deve_depender_de_nenhum_modulo()
+    {
+        var referencias = Estrutura.Referencias(Urban.PostalCodeLookup.AssemblyReference.Assembly);
+
+        referencias.Should().NotContain(
+            r => r.StartsWith("Urban.", StringComparison.Ordinal) && r != "Urban.SharedKernel",
+            "a consulta de CEP é um adaptador compartilhado: conhece só o SharedKernel");
+    }
+
+    [Theory]
+    [MemberData(nameof(Modulos))]
+    public void Modulo_nao_deve_referenciar_o_adaptador_de_consulta_de_cep(string modulo)
+    {
+        foreach (var camada in Estrutura.Camadas)
+        {
+            var referencias = Estrutura.Referencias(Estrutura.Carregar(modulo, camada));
+
+            referencias.Should().NotContain(
+                "Urban.PostalCodeLookup",
+                "o módulo {0} (camada {1}) fala com a porta IPostalCodeLookup, nunca com a BrasilAPI ou o ViaCEP", modulo, camada);
+        }
+    }
+
     [Theory]
     [MemberData(nameof(Modulos))]
     public void Modulo_nao_deve_referenciar_o_provedor_de_e_mail(string modulo)

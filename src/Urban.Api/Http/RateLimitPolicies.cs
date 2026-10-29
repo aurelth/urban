@@ -22,6 +22,8 @@ public static class RateLimitPolicies
 
     public const string CondominiumRegistration = "condominium-registration";
 
+    public const string PostalCodeLookup = "postal-code-lookup";
+
     /// <summary>Código do problema devolvido com o 429, no mesmo campo "code" dos erros de negócio.</summary>
     public const string ExceededCode = "rate_limit.exceeded";
 }

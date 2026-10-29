@@ -2,6 +2,7 @@ using System.Reflection;
 using FluentAssertions;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Urban.Api.Http;
+using Urban.Condominium.Application.PostalCodes;
 using Urban.Condominium.Domain.Condominiums;
 using Urban.Condominium.Domain.Contacts;
 using Urban.Condominium.Domain.Documents;
@@ -64,6 +65,8 @@ public sealed class ErrorHttpMappingTests
         { CondominiumErrors.ManagerRequired.Code, 422 },
         { PersonErrors.CondominiumRequired.Code, 422 },
         { PersonErrors.UserRequired.Code, 422 },
+        { PostalCodeErrors.NotFound.Code, 404 },
+        { PostalCodeErrors.LookupUnavailable.Code, 503 },
     };
 
     [Fact]

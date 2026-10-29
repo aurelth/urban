@@ -56,6 +56,9 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
     public RecordingEmailSender Emails { get; } = new();
 
+    /// <summary>Substitui a BrasilAPI e o ViaCEP: o teste escolhe a resposta e confere o que foi pedido.</summary>
+    public FakePostalCodeLookup PostalCodes { get; } = new();
+
     public string SigningKey { get; init; } = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
 
     /// <summary>Chave (versão "v1") que cifra os dados pessoais; 32 bytes em base64.</summary>
@@ -82,7 +85,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("BackgroundJobs:RunServer", RealBackgroundJobs ? "true" : "false");
         if (RateLimitPermitLimit is int permits)
         {
-            foreach (string route in new[] { "Register", "ConfirmEmail", "Login", "ForgotPassword", "ResetPassword", "Refresh", "Logout", "Me", "Terms", "CondominiumRegistration" })
+            foreach (string route in new[] { "Register", "ConfirmEmail", "Login", "ForgotPassword", "ResetPassword", "Refresh", "Logout", "Me", "Terms", "CondominiumRegistration", "PostalCodeLookup" })
             {
                 builder.UseSetting($"RateLimiting:{route}:PermitLimit", permits.ToString(CultureInfo.InvariantCulture));
                 builder.UseSetting($"RateLimiting:{route}:Window", RateLimitWindow.ToString("c", CultureInfo.InvariantCulture));
@@ -97,6 +100,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
             }
 
             services.Replace(ServiceDescriptor.Singleton<IEmailSender>(Emails));
+            services.Replace(ServiceDescriptor.Singleton<IPostalCodeLookup>(PostalCodes));
             if (!RealBackgroundJobs)
             {
                 services.Replace(ServiceDescriptor.Scoped<IEmailVerificationDispatcher, InlineEmailVerificationDispatcher>());

@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.WebUtilities;
+using Urban.Condominium.Application.PostalCodes;
 using Urban.Condominium.Domain.Condominiums;
 using Urban.Condominium.Domain.Contacts;
 using Urban.Condominium.Domain.Documents;
@@ -73,6 +74,8 @@ public static class ErrorHttp
         [CondominiumErrors.ManagerRequired.Code] = StatusCodes.Status422UnprocessableEntity,
         [PersonErrors.CondominiumRequired.Code] = StatusCodes.Status422UnprocessableEntity,
         [PersonErrors.UserRequired.Code] = StatusCodes.Status422UnprocessableEntity,
+        [PostalCodeErrors.NotFound.Code] = StatusCodes.Status404NotFound,
+        [PostalCodeErrors.LookupUnavailable.Code] = StatusCodes.Status503ServiceUnavailable,
     };
 
     public static bool TryGetStatusCode(Error error, [NotNullWhen(true)] out int status) =>
