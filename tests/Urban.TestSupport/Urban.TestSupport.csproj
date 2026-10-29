@@ -10,6 +10,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Modules\Condominium\Urban.Condominium.Domain\Urban.Condominium.Domain.csproj" />
     <ProjectReference Include="..\..\src\Modules\Identity\Urban.Identity.Domain\Urban.Identity.Domain.csproj" />
     <ProjectReference Include="..\..\src\Urban.SharedKernel\Urban.SharedKernel.csproj" />
   </ItemGroup>

@@ -28,6 +28,16 @@ public sealed class Person
         CreatedAt = createdAt;
     }
 
+    // Usado só pelo EF Core, que não consegue passar o endereço (tipo complexo) pelo construtor ao ler do banco.
+    private Person()
+    {
+        FullName = null!;
+        Cpf = null!;
+        BirthDate = null!;
+        Phone = null!;
+        Address = null!;
+    }
+
     public Guid Id { get; }
 
     public Guid CondominiumId { get; }

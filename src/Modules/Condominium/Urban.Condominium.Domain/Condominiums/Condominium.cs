@@ -20,6 +20,14 @@ public sealed class Condominium
         CreatedAt = createdAt;
     }
 
+    // Usado só pelo EF Core, que não consegue passar o endereço (tipo complexo) pelo construtor ao ler do banco.
+    private Condominium()
+    {
+        Name = null!;
+        Cnpj = null!;
+        Address = null!;
+    }
+
     public Guid Id { get; }
 
     public string Name { get; }

@@ -58,12 +58,21 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
 
     public string SigningKey { get; init; } = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
 
+    /// <summary>Chave (versão "v1") que cifra os dados pessoais; 32 bytes em base64.</summary>
+    public string PersonalDataEncryptionKey { get; init; } = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+
+    /// <summary>Chave do hash que garante a unicidade do CPF; no mínimo 32 bytes em base64.</summary>
+    public string PersonalDataHashKey { get; init; } = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32));
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment(EnvironmentName);
         builder.UseSetting("ConnectionStrings:Postgres", PostgresConnectionString);
         builder.UseSetting("ConnectionStrings:Redis", RedisConnectionString);
         builder.UseSetting("Jwt:SigningKey", SigningKey);
+        builder.UseSetting("PersonalData:CurrentKeyId", "v1");
+        builder.UseSetting("PersonalData:EncryptionKeys:v1", PersonalDataEncryptionKey);
+        builder.UseSetting("PersonalData:HashKey", PersonalDataHashKey);
         builder.UseSetting("Database:MigrateOnStartup", MigrateOnStartup ? "true" : "false");
         builder.UseSetting("Links:WebBaseUrl", WebBaseUrl);
         builder.UseSetting("Consent:CurrentVersion", TermsVersion);
