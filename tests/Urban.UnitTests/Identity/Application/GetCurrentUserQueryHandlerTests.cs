@@ -29,8 +29,32 @@ public class GetCurrentUserQueryHandlerTests
         Result<CurrentUser> result = await _handler.Handle(new GetCurrentUserQuery(user.Id), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().Be(new CurrentUser(user.Id, user.Email.Value, "Manager", user.CondominiumId));
+        result.Value.Should().Be(new CurrentUser(user.Id, user.Email.Value, "Manager", user.CondominiumId, null));
         user.CondominiumId.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task Handle_ForAnEnrolledManager_ReturnsHowTheyPreferToBeCalled()
+    {
+        User manager = UserBuilder.EnrolledManager("Ana Paula");
+        GivenUser(manager);
+
+        Result<CurrentUser> result = await _handler.Handle(new GetCurrentUserQuery(manager.Id), CancellationToken.None);
+
+        result.Value.DisplayName.Should().Be("Ana Paula");
+        result.Value.CondominiumId.Should().Be(manager.CondominiumId);
+    }
+
+    [Fact]
+    public async Task Handle_ForAManagerWithoutCondominium_HasNoCondominiumAndNoDisplayName()
+    {
+        User manager = UserBuilder.ManagerWithoutCondominium();
+        GivenUser(manager);
+
+        Result<CurrentUser> result = await _handler.Handle(new GetCurrentUserQuery(manager.Id), CancellationToken.None);
+
+        result.Value.CondominiumId.Should().BeNull();
+        result.Value.DisplayName.Should().BeNull();
     }
 
     [Fact]

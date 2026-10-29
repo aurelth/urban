@@ -53,11 +53,36 @@ public sealed class PostgresFixture : IAsyncLifetime
         AccountStatus status = AccountStatus.Active,
         UserRole role = UserRole.Resident)
     {
-        User user = UserBuilder.InStatus(status, role, $"{Guid.NewGuid():N}@example.com");
+        return await PersistWithPasswordAsync(UserBuilder.InStatus(status, role, UniqueAddress()), password);
+    }
 
+    private static string UniqueAddress() => $"{Guid.NewGuid():N}@example.com";
+
+    private async Task<User> PersistWithPasswordAsync(User user, string password)
+    {
         await using IdentityDbContext db = CreateContext();
         db.Users.Add(user);
         db.UserCredentials.Add(UserCredential.Create(user.Id, Hasher.Hash(password)));
+        await db.SaveChangesAsync();
+
+        return user;
+    }
+
+    /// <summary>Grava um síndico ativo que ainda não cadastrou o condomínio, com senha.</summary>
+    public Task<User> SeedManagerWithoutCondominiumWithPasswordAsync(string password) =>
+        PersistWithPasswordAsync(UserBuilder.ManagerWithoutCondominium(address: UniqueAddress()), password);
+
+    /// <summary>Grava um síndico ativo que já cadastrou o condomínio e escolheu o nome de exibição, com senha.</summary>
+    public Task<User> SeedEnrolledManagerWithPasswordAsync(string password, string displayName) =>
+        PersistWithPasswordAsync(UserBuilder.EnrolledManager(displayName, UniqueAddress()), password);
+
+    /// <summary>Grava um síndico ativo que ainda não cadastrou o condomínio.</summary>
+    public async Task<User> SeedManagerWithoutCondominiumAsync(AccountStatus status = AccountStatus.Active)
+    {
+        User user = UserBuilder.ManagerWithoutCondominium(status, UniqueAddress());
+
+        await using IdentityDbContext db = CreateContext();
+        db.Users.Add(user);
         await db.SaveChangesAsync();
 
         return user;

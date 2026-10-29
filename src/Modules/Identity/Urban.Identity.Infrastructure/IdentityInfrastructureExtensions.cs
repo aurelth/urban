@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using StackExchange.Redis;
 using Urban.Identity.Application.Abstractions;
+using Urban.Identity.Application.Enrollment;
 using Urban.Identity.Infrastructure.Consent;
 using Urban.Identity.Infrastructure.Messaging;
 using Urban.Identity.Infrastructure.Persistence;
@@ -11,6 +12,7 @@ using Urban.Identity.Infrastructure.Security;
 using Urban.Identity.Infrastructure.Sessions;
 using Urban.Identity.Infrastructure.Tokens;
 using Urban.SharedKernel.Abstractions;
+using Urban.SharedKernel.Contracts;
 using Urban.SharedKernel.Time;
 
 namespace Urban.Identity.Infrastructure;
@@ -47,6 +49,7 @@ public static class IdentityInfrastructureExtensions
         services.AddSingleton<ITokenIssuer, JwtTokenIssuer>();
         services.AddSingleton<ISecretGenerator, SecretGenerator>();
         services.AddScoped<IUserAccounts, UserAccounts>();
+        services.AddScoped<IManagerEnrollment, ManagerEnrollment>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IEmailVerifications, EmailVerifications>();
         services.AddScoped<IEmailVerificationNotifier, EmailVerificationNotifier>();

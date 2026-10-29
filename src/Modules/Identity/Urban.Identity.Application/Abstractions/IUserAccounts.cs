@@ -15,4 +15,10 @@ public interface IUserAccounts
     Task<User?> FindByIdAsync(Guid userId, CancellationToken cancellationToken);
 
     Task<User?> FindByEmailAsync(Email email, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Grava só o condomínio e o nome de exibição de um usuário lido antes. Os outros campos não são reescritos,
+    /// para não desfazer, por exemplo, uma suspensão feita no meio do caminho.
+    /// </summary>
+    Task SaveEnrollmentAsync(User user, CancellationToken cancellationToken);
 }

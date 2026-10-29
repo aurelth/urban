@@ -36,6 +36,10 @@ public sealed class ErrorHttpMappingTests
         { ConsentErrors.Outdated.Code, 400 },
         { SessionErrors.Unauthenticated.Code, 401 },
         { SessionErrors.StoreUnavailable.Code, 503 },
+        { UserErrors.NotManager.Code, 403 },
+        { UserErrors.CondominiumAlreadyAssigned.Code, 409 },
+        { UserErrors.CondominiumRequired.Code, 422 },
+        { DisplayName.Invalid.Code, 400 },
     };
 
     [Fact]

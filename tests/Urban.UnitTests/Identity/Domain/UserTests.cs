@@ -105,6 +105,82 @@ public class UserTests
         result.Error.Should().Be(UserErrors.CondominiumMismatch);
     }
 
+    [Fact]
+    public void Register_StartsWithoutADisplayName()
+    {
+        User.Register(Email.Create("ana@example.com").Value, UserRole.Manager, null, UserBuilder.Now).Value
+            .DisplayName.Should().BeNull();
+    }
+
+    [Fact]
+    public void AssignCondominium_ToAManagerWithoutOne_SetsTheCondominiumAndTheDisplayName()
+    {
+        User manager = UserBuilder.ManagerWithoutCondominium();
+        Guid condominiumId = Guid.CreateVersion7();
+        DisplayName name = DisplayName.Create("Ana").Value;
+
+        Result result = manager.AssignCondominium(condominiumId, name);
+
+        result.IsSuccess.Should().BeTrue();
+        manager.CondominiumId.Should().Be(condominiumId);
+        manager.DisplayName.Should().Be(name);
+    }
+
+    [Fact]
+    public void AssignCondominium_WhenTheManagerAlreadyHasOne_FailsAndKeepsEverything()
+    {
+        User manager = UserBuilder.InStatus(AccountStatus.Active, UserRole.Manager);
+        Guid current = manager.CondominiumId!.Value;
+
+        Result result = manager.AssignCondominium(Guid.CreateVersion7(), DisplayName.Create("Ana").Value);
+
+        result.Error.Should().Be(UserErrors.CondominiumAlreadyAssigned);
+        UserErrors.CondominiumAlreadyAssigned.Code.Should().Be("identity.user.condominium_already_assigned");
+        manager.CondominiumId.Should().Be(current);
+        manager.DisplayName.Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData(UserRole.Resident)]
+    [InlineData(UserRole.SuperAdmin)]
+    public void AssignCondominium_ForAnyRoleButManager_FailsAsNotManager(UserRole role)
+    {
+        User user = UserBuilder.InStatus(AccountStatus.Active, role);
+        Guid? before = user.CondominiumId;
+
+        Result result = user.AssignCondominium(Guid.CreateVersion7(), DisplayName.Create("Ana").Value);
+
+        result.Error.Should().Be(UserErrors.NotManager);
+        UserErrors.NotManager.Code.Should().Be("identity.user.not_manager");
+        user.CondominiumId.Should().Be(before);
+        user.DisplayName.Should().BeNull();
+    }
+
+    [Fact]
+    public void AssignCondominium_WithAnEmptyCondominiumId_Fails()
+    {
+        User manager = UserBuilder.ManagerWithoutCondominium();
+
+        Result result = manager.AssignCondominium(Guid.Empty, DisplayName.Create("Ana").Value);
+
+        result.Error.Should().Be(UserErrors.CondominiumRequired);
+        UserErrors.CondominiumRequired.Code.Should().Be("identity.user.condominium_required");
+        manager.CondominiumId.Should().BeNull();
+        manager.DisplayName.Should().BeNull();
+    }
+
+    [Fact]
+    public void AssignCondominium_DoesNotTouchTheStatusOfTheAccount()
+    {
+        User manager = UserBuilder.ManagerWithoutCondominium();
+        DateTimeOffset changedAt = manager.StatusChangedAt;
+
+        manager.AssignCondominium(Guid.CreateVersion7(), DisplayName.Create("Ana").Value);
+
+        manager.Status.Should().Be(AccountStatus.Active);
+        manager.StatusChangedAt.Should().Be(changedAt);
+    }
+
     [Theory]
     [MemberData(nameof(AllowedTransitions))]
     public void Transition_FromAnAllowedStatus_MovesToTheTargetStatus(Transition transition, AccountStatus from, AccountStatus to)

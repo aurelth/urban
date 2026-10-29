@@ -26,7 +26,10 @@ public sealed class User
 
     public UserRole Role { get; }
 
-    public Guid? CondominiumId { get; }
+    public Guid? CondominiumId { get; private set; }
+
+    /// <summary>Como a pessoa prefere ser chamada; vem do cadastro do condomínio, então é nulo até lá.</summary>
+    public DisplayName? DisplayName { get; private set; }
 
     public AccountStatus Status { get; private set; }
 
@@ -49,6 +52,29 @@ public sealed class User
         return mismatch
             ? Result.Failure<User>(UserErrors.CondominiumMismatch)
             : Result.Success(new User(Guid.CreateVersion7(), email, role, condominiumId, now));
+    }
+
+    /// <summary>Vincula o síndico ao condomínio que ele cadastrou. Só o síndico, e só uma vez: depois disso o vínculo não muda por aqui.</summary>
+    public Result AssignCondominium(Guid condominiumId, DisplayName displayName)
+    {
+        if (Role != UserRole.Manager)
+        {
+            return Result.Failure(UserErrors.NotManager);
+        }
+
+        if (CondominiumId is not null)
+        {
+            return Result.Failure(UserErrors.CondominiumAlreadyAssigned);
+        }
+
+        if (condominiumId == Guid.Empty)
+        {
+            return Result.Failure(UserErrors.CondominiumRequired);
+        }
+
+        CondominiumId = condominiumId;
+        DisplayName = displayName;
+        return Result.Success();
     }
 
     public Result ConfirmEmail(DateTimeOffset now) =>
