@@ -66,6 +66,32 @@ public class ViaCepPostalCodeLookupTests
     }
 
     [Theory]
+    [InlineData("99999999", "PR")]
+    [InlineData("01310100", "RJ")]
+    [InlineData("89010000", "PR")]
+    [InlineData("01310100", "XX")]
+    public async Task LookupAsync_TurnsAStateOutsideTheCepRangeIntoNotFound(string postalCode, string state)
+    {
+        StubHttpHandler handler = StubHttpHandler.Returning(
+            HttpStatusCode.OK,
+            $$"""{"logradouro":"Avenida das Torres","bairro":"Jardim Centro Cívico","localidade":"Sarandi","uf":"{{state}}"}""");
+
+        PostalCodeLookupResult result = await Create(handler).LookupAsync(postalCode, default);
+
+        result.Should().Be(PostalCodeLookupResult.NotFound);
+    }
+
+    [Fact]
+    public async Task LookupAsync_AcceptsTheStateInLowerCaseWhenItMatchesTheCepRange()
+    {
+        StubHttpHandler handler = StubHttpHandler.Returning(HttpStatusCode.OK, Found.Replace("\"SP\"", "\"sp\""));
+
+        PostalCodeLookupResult result = await Create(handler).LookupAsync(Cep, default);
+
+        result.Status.Should().Be(PostalCodeLookupStatus.Found);
+    }
+
+    [Theory]
     [InlineData("""{"erro":true}""")]
     [InlineData("""{"erro":"true"}""")]
     public async Task LookupAsync_TurnsTheErroFlagIntoNotFound(string body)
@@ -169,6 +195,18 @@ public class ViaCepPostalCodeLookupTests
         LogEntry entry = _logger.Entries.Should().ContainSingle().Which;
         entry.Level.Should().Be(LogLevel.Warning);
         entry.Message.Should().Contain("ViaCEP").And.Contain("502").And.NotContain(Cep);
+    }
+
+    [Fact]
+    public async Task LookupAsync_LogsAStateOutsideTheCepRangeWithoutTheCep()
+    {
+        StubHttpHandler handler = StubHttpHandler.Returning(HttpStatusCode.OK, Found.Replace("\"SP\"", "\"PR\""));
+
+        await Create(handler).LookupAsync(Cep, default);
+
+        LogEntry entry = _logger.Entries.Should().ContainSingle().Which;
+        entry.Level.Should().Be(LogLevel.Warning);
+        entry.Message.Should().Contain("ViaCEP").And.NotContain(Cep);
     }
 
     private ViaCepPostalCodeLookup Create(StubHttpHandler handler) =>
