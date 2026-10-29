@@ -1,0 +1,15 @@
+<mat-form-field appearance="outline" class="w-full">
+  <mat-label>UF</mat-label>
+  <select
+    matNativeControl
+    [formControlName]="name()"
+    [attr.formControlName]="name()"
+    [attr.autocomplete]="autocomplete()"
+  >
+    <option value=""></option>
+    @for (state of states; track state) {
+      <option [value]="state">{{ state }}</option>
+    }
+  </select>
+  <mat-error>Informe a UF</mat-error>
+</mat-form-field>

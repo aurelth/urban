@@ -1,0 +1,45 @@
+<div [formGroupName]="groupName()" class="grid grid-cols-6 gap-x-4">
+  <urban-text-field
+    class="col-span-6 sm:col-span-2"
+    name="postalCode"
+    label="CEP"
+    [mask]="'cep'"
+    [autocomplete]="suggest('postal-code')"
+    [errors]="postalCodeErrors"
+  />
+  <urban-text-field
+    class="col-span-6 sm:col-span-4"
+    name="street"
+    label="Rua"
+    [autocomplete]="suggest('address-line1')"
+    [errors]="streetErrors"
+  />
+  <urban-text-field class="col-span-2" name="number" label="Número" [errors]="numberErrors" />
+  <urban-text-field
+    class="col-span-4"
+    name="complement"
+    label="Complemento"
+    [optional]="true"
+    [autocomplete]="suggest('address-line2')"
+    [errors]="complementErrors"
+  />
+  <urban-text-field
+    class="col-span-6 sm:col-span-3"
+    name="neighborhood"
+    label="Bairro"
+    [autocomplete]="suggest('address-level3')"
+    [errors]="neighborhoodErrors"
+  />
+  <urban-text-field
+    class="col-span-4 sm:col-span-2"
+    name="city"
+    label="Cidade"
+    [autocomplete]="suggest('address-level2')"
+    [errors]="cityErrors"
+  />
+  <urban-state-field
+    class="col-span-2 sm:col-span-1"
+    name="state"
+    [autocomplete]="suggest('address-level1')"
+  />
+</div>
