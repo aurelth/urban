@@ -188,6 +188,28 @@ describe('RegisterCondominiumPage', () => {
     expect(field(condominium, 'cnpj').value).toBe('12.ABC.345/01DE-35');
   });
 
+  it('preenche pelo CEP só o endereço em que a pessoa digitou', async () => {
+    const { fixture, html, http } = await setup();
+    const manager = section(html, 'manager');
+    const condominium = section(html, 'condominium');
+
+    fill(manager, 'postalCode', '89010000');
+    http.expectOne('/api/postal-codes/89010000').flush({
+      postalCode: '89010000',
+      street: 'Rua XV de Novembro',
+      neighborhood: 'Centro',
+      city: 'Blumenau',
+      state: 'SC',
+    });
+    await settle(fixture);
+
+    expect(field(manager, 'street').value).toBe('Rua XV de Novembro');
+    expect(field(manager, 'city').value).toBe('Blumenau');
+    expect(field(manager, 'number').value).toBe('');
+    expect(field(condominium, 'street').value).toBe('');
+    expect(field(condominium, 'city').value).toBe('');
+  });
+
   it('não envia nada e mostra o que falta quando o formulário está incompleto', async () => {
     const { fixture, html, http } = await setup();
 

@@ -42,4 +42,9 @@
     name="state"
     [autocomplete]="suggest('address-level1')"
   />
+  <div class="col-span-6" role="status">
+    @if (notice(); as message) {
+      <p class="mb-4 text-sm text-on-surface-variant">{{ message }}</p>
+    }
+  </div>
 </div>
