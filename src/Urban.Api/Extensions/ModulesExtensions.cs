@@ -1,4 +1,5 @@
 using Urban.Api.Http;
+using Urban.Api.Persistence;
 using Urban.Condominium.Infrastructure;
 using Urban.Identity.Infrastructure;
 using Urban.SharedKernel.Abstractions;
@@ -9,11 +10,14 @@ public static class ModulesExtensions
 {
     public static IServiceCollection AddUrbanModules(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddMediatR(options => options.RegisterServicesFromAssembly(Urban.Identity.Application.AssemblyReference.Assembly));
+        services.AddMediatR(options => options.RegisterServicesFromAssemblies(
+            Urban.Identity.Application.AssemblyReference.Assembly,
+            Urban.Condominium.Application.AssemblyReference.Assembly));
         services.AddHttpContextAccessor();
         services.AddScoped<ITenantContext, HttpTenantContext>();
         services.AddIdentityInfrastructure(configuration);
         services.AddCondominiumInfrastructure(configuration);
+        services.AddScoped<IAtomicWork, AtomicWork>();
 
         return services;
     }

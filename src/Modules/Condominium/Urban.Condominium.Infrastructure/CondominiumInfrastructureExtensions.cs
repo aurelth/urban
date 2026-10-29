@@ -1,9 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Urban.Condominium.Application.Abstractions;
 using Urban.Condominium.Infrastructure.Persistence;
 using Urban.Condominium.Infrastructure.Security;
+using Urban.SharedKernel.Abstractions;
+using Urban.SharedKernel.Time;
 
 namespace Urban.Condominium.Infrastructure;
 
@@ -21,9 +24,11 @@ public static class CondominiumInfrastructureExtensions
         PersonalDataOptions personalData = configuration.GetSection(PersonalDataOptions.SectionName).Get<PersonalDataOptions>() ?? new PersonalDataOptions();
         _ = personalData.GetHashKey(); // confere também as chaves de cifragem: configuração ruim derruba a partida, não o primeiro CPF
 
+        services.TryAddSingleton<IClock, SystemClock>();
         services.AddSingleton(personalData);
         services.AddSingleton<IPersonalDataProtector, PersonalDataProtector>();
         services.AddDbContext<CondominiumDbContext>(options => CondominiumPersistence.Configure(options, postgres));
+        services.AddScoped<ICondominiumRegistrations, CondominiumRegistrations>();
 
         return services;
     }
