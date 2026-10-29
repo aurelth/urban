@@ -32,3 +32,27 @@ export function stubRegistrationThatWorks(): void {
     request.reply({ statusCode: 201, body: REGISTERED_SUMMARY });
   }).as('registerCondominium');
 }
+
+export const BLUMENAU_ADDRESS = {
+  postalCode: '89010000',
+  street: 'Rua XV de Novembro',
+  neighborhood: 'Centro',
+  city: 'Blumenau',
+  state: 'SC',
+};
+
+/** Consulta de CEP que acha o endereço. O E2E do CI sobe só o front, sem API. */
+export function stubPostalCode(address: typeof BLUMENAU_ADDRESS = BLUMENAU_ADDRESS): void {
+  cy.intercept('GET', `/api/postal-codes/${address.postalCode}`, {
+    statusCode: 200,
+    body: address,
+  }).as('postalCode');
+}
+
+/** Consulta de CEP que responde com erro. Sem este stub, qualquer CEP responderia 404. */
+export function stubPostalCodeFailure(statusCode: number, code: string): void {
+  cy.intercept('GET', '/api/postal-codes/*', {
+    statusCode,
+    body: { status: statusCode, code, detail: 'Detalhe da API' },
+  }).as('postalCode');
+}

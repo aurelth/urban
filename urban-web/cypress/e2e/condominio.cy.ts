@@ -1,5 +1,8 @@
 import {
+  BLUMENAU_ADDRESS,
   NEW_MANAGER,
+  stubPostalCode,
+  stubPostalCodeFailure,
   stubRegisterCondominium,
   stubRegistrationThatWorks,
 } from '../support/condominio';
@@ -34,12 +37,16 @@ function fillAddress(section: () => Cypress.Chainable<JQuery<HTMLElement>>, cep:
   field(section, 'state').select('SC');
 }
 
-function fillManager(): void {
+function fillManagerPerson(): void {
   field(manager, 'fullName').click('right').type('Marina Souza');
   field(manager, 'displayName').click('right').type('Marina');
   field(manager, 'cpf').click('right').type('52998224725');
   field(manager, 'birthDate').click('right').type('15061980');
   field(manager, 'phone').click('right').type('47991234567');
+}
+
+function fillManager(): void {
+  fillManagerPerson();
   fillAddress(manager, '89010000');
 }
 
@@ -49,6 +56,11 @@ function fillCondominium(): void {
 }
 
 describe('Cadastro do condomínio', () => {
+  // Sem este stub, a consulta de CEP iria ao servidor de desenvolvimento, que não tem API.
+  beforeEach(() => {
+    stubPostalCodeFailure(404, 'condominium.postal_code.not_found');
+  });
+
   describe('quem chega ao formulário', () => {
     it('leva o síndico que ainda não cadastrou o condomínio ao formulário', () => {
       stubSignedIn(NEW_MANAGER);
@@ -141,6 +153,69 @@ describe('Cadastro do condomínio', () => {
       condominium().find('urban-address-fields').should('not.exist');
       cy.get('[data-testid="same-address"]').click();
       condominium().find('urban-address-fields').should('exist');
+    });
+  });
+
+  describe('endereço pelo CEP', () => {
+    beforeEach(() => {
+      stubSignedIn(NEW_MANAGER);
+    });
+
+    it('preenche rua, bairro, cidade e UF ao digitar o CEP e deixa o número para a pessoa', () => {
+      stubPostalCode();
+      cy.visit(FORM_PATH);
+
+      field(manager, 'postalCode').click('right').type('89010000');
+      cy.wait('@postalCode');
+
+      field(manager, 'street').should('have.value', 'Rua XV de Novembro');
+      field(manager, 'neighborhood').should('have.value', 'Centro');
+      field(manager, 'city').should('have.value', 'Blumenau');
+      field(manager, 'state').should('have.value', 'SC');
+      field(manager, 'number').should('have.value', '');
+      manager().find('[role="status"]').should('contain.text', 'Endereço preenchido');
+      field(condominium, 'street').should('have.value', '');
+    });
+
+    it('avisa que o CEP não existe e deixa preencher o endereço à mão', () => {
+      stubPostalCodeFailure(404, 'condominium.postal_code.not_found');
+      cy.visit(FORM_PATH);
+
+      field(manager, 'postalCode').click('right').type('89010000');
+      cy.wait('@postalCode');
+
+      manager()
+        .find('[role="status"]')
+        .should('contain.text', 'Não encontramos esse CEP. Preencha o endereço manualmente');
+      field(manager, 'street')
+        .click('right')
+        .type('Rua das Flores')
+        .should('have.value', 'Rua das Flores');
+    });
+
+    it('conclui o cadastro com o endereço trazido pelo CEP', () => {
+      stubRegistrationThatWorks();
+      stubPostalCode();
+      cy.visit(FORM_PATH);
+
+      fillManagerPerson();
+      field(manager, 'postalCode').click('right').type('89010000');
+      cy.wait('@postalCode');
+      field(manager, 'street').should('have.value', 'Rua XV de Novembro');
+      field(manager, 'number').click('right').type('120');
+      fillCondominium();
+      cy.get('[data-testid="same-address"]').click();
+      cy.contains('button', 'Cadastrar condomínio').click();
+
+      cy.wait('@registerCondominium').then(({ request }) => {
+        expect(request.body.manager.address).to.deep.equal({
+          ...BLUMENAU_ADDRESS,
+          number: '120',
+          complement: null,
+        });
+        expect(request.body.condominium.address).to.deep.equal(request.body.manager.address);
+      });
+      cy.location('pathname').should('eq', '/dashboard');
     });
   });
 
