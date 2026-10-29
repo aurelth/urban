@@ -26,6 +26,7 @@ public sealed class OpenApiDocumentationTests
         paths.TryGetProperty("/api/auth/me", out _).Should().BeTrue();
         paths.TryGetProperty("/api/terms/current", out _).Should().BeTrue();
         paths.TryGetProperty("/api/condominiums", out _).Should().BeTrue();
+        paths.TryGetProperty("/api/postal-codes/{postalCode}", out _).Should().BeTrue();
     }
 
     [Fact]
@@ -75,6 +76,7 @@ public sealed class OpenApiDocumentationTests
     [InlineData("/api/auth/reset-password", "post")]
     [InlineData("/api/terms/current", "get")]
     [InlineData("/api/condominiums", "post")]
+    [InlineData("/api/postal-codes/{postalCode}", "get")]
     public async Task Development_documents_the_429_of_every_rate_limited_route(string path, string method)
     {
         await using ApiFactory factory = new() { EnvironmentName = "Development" };
@@ -98,6 +100,22 @@ public sealed class OpenApiDocumentationTests
         foreach (string status in new[] { "201", "400", "401", "403", "409", "429" })
         {
             post.GetProperty("responses").TryGetProperty(status, out _).Should().BeTrue(status);
+        }
+    }
+
+    [Fact]
+    public async Task Development_documents_the_postal_code_lookup_as_protected_with_every_outcome()
+    {
+        await using ApiFactory factory = new() { EnvironmentName = "Development" };
+        using HttpClient client = factory.CreateClient();
+
+        JsonElement paths = (await client.GetFromJsonAsync<JsonElement>("/openapi/v1.json")).GetProperty("paths");
+
+        JsonElement get = paths.GetProperty("/api/postal-codes/{postalCode}").GetProperty("get");
+        get.GetProperty("security").GetArrayLength().Should().BeGreaterThan(0);
+        foreach (string status in new[] { "200", "400", "401", "404", "429", "503" })
+        {
+            get.GetProperty("responses").TryGetProperty(status, out _).Should().BeTrue(status);
         }
     }
 

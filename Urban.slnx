@@ -4,6 +4,7 @@
     <Project Path="src/Urban.BackgroundJobs/Urban.BackgroundJobs.csproj" />
     <Project Path="src/Urban.EmailDelivery/Urban.EmailDelivery.csproj" />
     <Project Path="src/Urban.Gateway/Urban.Gateway.csproj" />
+    <Project Path="src/Urban.PostalCodeLookup/Urban.PostalCodeLookup.csproj" />
     <Project Path="src/Urban.SharedKernel/Urban.SharedKernel.csproj" />
     <Project Path="src/Urban.Workers/Urban.Workers.csproj" />
   </Folder>

@@ -27,6 +27,7 @@ public class RateLimitingConfigurationTests
     [InlineData("Me", 0)]
     [InlineData("Terms", -1)]
     [InlineData("CondominiumRegistration", 0)]
+    [InlineData("PostalCodeLookup", -1)]
     public void Rejects_a_route_without_permits(string route, int permits)
     {
         RateLimitingOptions options = WithRule(route, new() { PermitLimit = permits, Window = TimeSpan.FromMinutes(1) });
@@ -47,6 +48,7 @@ public class RateLimitingConfigurationTests
     [InlineData("Me")]
     [InlineData("Terms")]
     [InlineData("CondominiumRegistration")]
+    [InlineData("PostalCodeLookup")]
     public void Rejects_a_route_without_a_window(string route)
     {
         RateLimitingOptions options = WithRule(route, new() { PermitLimit = 5, Window = TimeSpan.Zero });
@@ -116,6 +118,7 @@ public class RateLimitingConfigurationTests
     [InlineData("RateLimiting:Me:PermitLimit", "0", "RateLimiting:Me:PermitLimit")]
     [InlineData("RateLimiting:Terms:Window", "00:00:00", "RateLimiting:Terms:Window")]
     [InlineData("RateLimiting:CondominiumRegistration:PermitLimit", "0", "RateLimiting:CondominiumRegistration:PermitLimit")]
+    [InlineData("RateLimiting:PostalCodeLookup:Window", "00:00:00", "RateLimiting:PostalCodeLookup:Window")]
     [InlineData("TrustedProxies:Hops", "0", "TrustedProxies:Hops")]
     [InlineData("TrustedProxies:Networks:0", "nao-e-uma-rede", "TrustedProxies:Networks")]
     public void Refuses_to_start_with_an_invalid_setting(string key, string value, string reported)
@@ -139,5 +142,6 @@ public class RateLimitingConfigurationTests
         Me = route == "Me" ? rule : ValidRule,
         Terms = route == "Terms" ? rule : ValidRule,
         CondominiumRegistration = route == "CondominiumRegistration" ? rule : ValidRule,
+        PostalCodeLookup = route == "PostalCodeLookup" ? rule : ValidRule,
     };
 }
