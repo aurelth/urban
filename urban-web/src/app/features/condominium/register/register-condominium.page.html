@@ -1,0 +1,92 @@
+<section class="mx-auto max-w-3xl p-6">
+  <h1 class="mb-1 text-3xl font-semibold tracking-tight">Cadastre seu condomínio</h1>
+  <p class="mb-6 text-on-surface-variant">
+    Falta pouco para começar: conte quem é você e qual condomínio vai administrar
+  </p>
+
+  <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-6" novalidate>
+    <mat-card appearance="outlined" data-testid="manager-section">
+      <mat-card-content class="p-6">
+        <h2 class="mb-4 text-xl font-semibold">Seus dados</h2>
+        <div formGroupName="manager" class="flex flex-col">
+          <div class="grid gap-x-4 sm:grid-cols-2">
+            <urban-text-field
+              name="fullName"
+              label="Nome completo"
+              autocomplete="name"
+              [errors]="fullNameErrors"
+            />
+            <urban-text-field
+              name="displayName"
+              label="Como prefere ser chamado"
+              autocomplete="nickname"
+              [errors]="displayNameErrors"
+            />
+            <urban-text-field
+              name="cpf"
+              label="CPF"
+              [mask]="'cpf'"
+              autocomplete="off"
+              [errors]="cpfErrors"
+            />
+            <urban-text-field
+              name="birthDate"
+              label="Data de nascimento"
+              [mask]="'date'"
+              autocomplete="bday"
+              [errors]="birthDateErrors"
+            />
+            <urban-text-field
+              name="phone"
+              label="Celular"
+              [mask]="'phone'"
+              autocomplete="tel-national"
+              [errors]="phoneErrors"
+            />
+          </div>
+          <urban-address-fields groupName="address" />
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card appearance="outlined" data-testid="condominium-section">
+      <mat-card-content class="p-6">
+        <h2 class="mb-4 text-xl font-semibold">Dados do condomínio</h2>
+        <div formGroupName="condominium" class="flex flex-col">
+          <div class="grid gap-x-4 sm:grid-cols-2">
+            <urban-text-field
+              name="name"
+              label="Nome do condomínio"
+              autocomplete="organization"
+              [errors]="nameErrors"
+            />
+            <urban-text-field
+              name="cnpj"
+              label="CNPJ"
+              [mask]="'cnpj'"
+              autocomplete="off"
+              [errors]="cnpjErrors"
+            />
+          </div>
+          <mat-checkbox
+            class="mb-2 self-start"
+            data-testid="same-address"
+            (change)="useSameAddress($event.checked)"
+          >
+            O endereço do condomínio é o mesmo do meu
+          </mat-checkbox>
+          @if (!sameAddress()) {
+            <urban-address-fields groupName="address" [personal]="false" />
+          }
+        </div>
+      </mat-card-content>
+    </mat-card>
+
+    <urban-form-submit
+      label="Cadastrar condomínio"
+      busyLabel="Cadastrando"
+      [busy]="submitting()"
+      [error]="error()"
+    />
+  </form>
+</section>

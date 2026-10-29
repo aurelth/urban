@@ -8,6 +8,14 @@ export const MANAGER: CurrentUser = {
   email: 'sindica@example.com',
   role: 'Manager',
   condominiumId: null,
+  displayName: null,
+};
+
+/** Síndica que já cadastrou o condomínio: tem condomínio e o nome pelo qual prefere ser chamada. */
+export const REGISTERED_MANAGER: CurrentUser = {
+  ...MANAGER,
+  condominiumId: '0198f3c1-6a4e-7c20-9d52-3f7a1b2c4d5e',
+  displayName: 'Marina',
 };
 
 export function tokenResponse(accessToken = 'access-1'): {

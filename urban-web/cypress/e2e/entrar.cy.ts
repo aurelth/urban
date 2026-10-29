@@ -30,7 +30,7 @@ describe('Entrar', () => {
       password: 'Senha-segura-123',
     });
     cy.location('pathname').should('eq', '/dashboard');
-    cy.get('[data-testid="current-user"]').should('contain.text', MANAGER.email);
+    cy.get('[data-testid="current-user"]').should('contain.text', 'Olá Marina!');
   });
 
   it('mostra o motivo quando a senha está errada', () => {
@@ -60,12 +60,12 @@ describe('Entrar', () => {
   it('mantém a sessão ao recarregar a página', () => {
     stubSignedIn();
     cy.visit('/dashboard');
-    cy.get('[data-testid="current-user"]').should('contain.text', MANAGER.email);
+    cy.get('[data-testid="current-user"]').should('contain.text', 'Olá Marina!');
 
     cy.reload();
 
     cy.location('pathname').should('eq', '/dashboard');
-    cy.get('[data-testid="current-user"]').should('contain.text', MANAGER.email);
+    cy.get('[data-testid="current-user"]').should('contain.text', 'Olá Marina!');
   });
 
   it('leva quem já está logado de volta ao painel', () => {

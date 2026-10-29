@@ -3,12 +3,13 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router, provideRouter } from '@angular/router';
 import { jest } from '@jest/globals';
-import { signInAs } from '../../testing/auth.fixtures';
+import { MANAGER, REGISTERED_MANAGER, signInAs } from '../../testing/auth.fixtures';
+import { CurrentUser } from '../auth/auth.models';
 import { SessionStore } from '../auth/session.store';
 import { provideUrbanIcons } from '../theme/icons';
 import { ShellLayout } from './shell.layout';
 
-async function setup(): Promise<{
+async function setup(user: CurrentUser = MANAGER): Promise<{
   fixture: ComponentFixture<ShellLayout>;
   store: InstanceType<typeof SessionStore>;
   http: HttpTestingController;
@@ -25,7 +26,7 @@ async function setup(): Promise<{
   });
   const store = TestBed.inject(SessionStore);
   const http = TestBed.inject(HttpTestingController);
-  await signInAs(store, http);
+  await signInAs(store, http, user);
   const fixture = TestBed.createComponent(ShellLayout);
   await fixture.whenStable();
   return { fixture, store, http, router: TestBed.inject(Router), html: fixture.nativeElement };
@@ -37,13 +38,22 @@ describe('ShellLayout', () => {
     TestBed.inject(HttpTestingController).match(() => true);
   });
 
-  it('mostra quem esta logado e o papel', async () => {
+  it('mostra o e-mail e o papel enquanto a pessoa nao escolheu um nome', async () => {
     const { html } = await setup();
+    const account = html.querySelector('[data-testid="current-user"]')?.textContent;
 
-    expect(html.querySelector('[data-testid="current-user"]')?.textContent).toContain(
-      'sindica@example.com',
-    );
-    expect(html.querySelector('[data-testid="current-user"]')?.textContent).toContain('Síndico');
+    expect(account).toContain('sindica@example.com');
+    expect(account).toContain('Síndico');
+    expect(account).not.toContain('Olá');
+  });
+
+  it('cumprimenta pelo nome escolhido e mostra o papel, sem o e-mail', async () => {
+    const { html } = await setup(REGISTERED_MANAGER);
+    const account = html.querySelector('[data-testid="current-user"]')?.textContent;
+
+    expect(account).toContain('Olá Marina!');
+    expect(account).toContain('Síndico');
+    expect(account).not.toContain('sindica@example.com');
   });
 
   it('mantem o botao de tema', async () => {

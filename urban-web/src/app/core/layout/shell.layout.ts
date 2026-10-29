@@ -3,6 +3,7 @@ import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatToolbar } from '@angular/material/toolbar';
 import { Router, RouterOutlet } from '@angular/router';
+import { accountLabel } from '../auth/account-label';
 import { roleLabel } from '../auth/role-label';
 import { SessionStore } from '../auth/session.store';
 import { ThemeStore } from '../services/theme.store';
@@ -15,6 +16,7 @@ import { ThemeStore } from '../services/theme.store';
 export class ShellLayout {
   protected readonly theme = inject(ThemeStore);
   protected readonly session = inject(SessionStore);
+  protected readonly accountLabel = accountLabel;
   protected readonly roleLabel = roleLabel;
 
   private readonly router = inject(Router);

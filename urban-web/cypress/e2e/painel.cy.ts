@@ -1,4 +1,4 @@
-import { MANAGER, stubSignedIn } from '../support/session';
+import { stubSignedIn } from '../support/session';
 
 describe('Painel', () => {
   it('abre o painel na rota inicial', () => {
@@ -9,16 +9,16 @@ describe('Painel', () => {
     cy.get('h1').should('have.text', 'Painel').and('have.class', 'sr-only');
     cy.get('main').should('not.contain.text', 'Gestão condominial');
     cy.get('mat-card.module').should('have.length', 3);
-    cy.get('[data-testid="condominium-notice"]').should('not.exist');
   });
 
-  it('avisa o síndico que o condomínio ainda não foi cadastrado', () => {
-    stubSignedIn({ ...MANAGER, condominiumId: null });
+  it('cumprimenta pelo nome escolhido e mostra o papel no cabeçalho', () => {
+    stubSignedIn();
     cy.visit('/dashboard');
 
-    cy.get('[data-testid="condominium-notice"]')
-      .should('be.visible')
-      .and('contain.text', 'O cadastro do seu condomínio ainda não foi feito');
+    cy.get('[data-testid="current-user"]')
+      .should('contain.text', 'Olá Marina!')
+      .and('contain.text', 'Síndico')
+      .and('not.contain.text', 'sindica@example.com');
   });
 
   it('não separa o cabeçalho do corpo com uma linha', () => {

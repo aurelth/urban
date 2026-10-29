@@ -85,6 +85,23 @@ export const SessionStore = signalStore(
         patchState(store, { accessToken: tokens.accessToken });
         await loadUser();
       },
+      /**
+       * Pede um token novo e lê o usuário de novo, para a tela ver o que mudou na conta (o
+       * condomínio e o nome do síndico, por exemplo). Se a sessão não se sustenta, ela cai como
+       * expirada e quem está na área logada é levado à entrada.
+       */
+      reload: async (): Promise<boolean> => {
+        try {
+          if (!(await renew())) {
+            throw new Error('refresh refused');
+          }
+          await loadUser();
+          return true;
+        } catch {
+          patchState(store, { ...ANONYMOUS, expired: true });
+          return false;
+        }
+      },
       signOut: async (): Promise<void> => {
         try {
           await firstValueFrom(api.logout());
