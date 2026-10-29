@@ -1,6 +1,6 @@
 namespace Urban.Api.Http;
 
-/// <summary>Limites de requisições por cliente das rotas públicas (seção "RateLimiting"). Sem valores, a API não sobe.</summary>
+/// <summary>Limites de requisições por cliente das rotas de acesso, de sessão e de termos (seção "RateLimiting"). Sem valores, a API não sobe.</summary>
 public sealed class RateLimitingOptions
 {
     public const string SectionName = "RateLimiting";
@@ -15,6 +15,14 @@ public sealed class RateLimitingOptions
 
     public RateLimitRule ResetPassword { get; init; } = new();
 
+    public RateLimitRule Refresh { get; init; } = new();
+
+    public RateLimitRule Logout { get; init; } = new();
+
+    public RateLimitRule Me { get; init; } = new();
+
+    public RateLimitRule Terms { get; init; } = new();
+
     /// <exception cref="InvalidOperationException">A configuração é inválida.</exception>
     public void Validate()
     {
@@ -23,6 +31,10 @@ public sealed class RateLimitingOptions
         Validate(nameof(Login), Login);
         Validate(nameof(ForgotPassword), ForgotPassword);
         Validate(nameof(ResetPassword), ResetPassword);
+        Validate(nameof(Refresh), Refresh);
+        Validate(nameof(Logout), Logout);
+        Validate(nameof(Me), Me);
+        Validate(nameof(Terms), Terms);
     }
 
     private static void Validate(string route, RateLimitRule rule)

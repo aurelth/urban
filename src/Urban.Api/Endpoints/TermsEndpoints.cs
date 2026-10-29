@@ -14,8 +14,11 @@ public static class TermsEndpoints
             .WithSummary("Informa a versão vigente dos termos de uso e da política de privacidade")
             .WithDescription(
                 "Público. A tela de cadastro lê esta versão, mostra os textos correspondentes e a devolve em "
-                + "termsVersion ao confirmar o e-mail; qualquer outra versão é recusada.")
-            .Produces<TermsResponse>();
+                + "termsVersion ao confirmar o e-mail; qualquer outra versão é recusada. "
+                + "O mesmo IP tem um limite de requisições por minuto; ao exceder, recebe 429 com Retry-After.")
+            .RequireRateLimiting(RateLimitPolicies.Terms)
+            .Produces<TermsResponse>()
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
         return app;
     }

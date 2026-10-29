@@ -63,6 +63,26 @@ public sealed class OpenApiDocumentationTests
         }
     }
 
+    [Theory]
+    [InlineData("/api/auth/login", "post")]
+    [InlineData("/api/auth/refresh", "post")]
+    [InlineData("/api/auth/logout", "post")]
+    [InlineData("/api/auth/me", "get")]
+    [InlineData("/api/auth/register", "post")]
+    [InlineData("/api/auth/confirm-email", "post")]
+    [InlineData("/api/auth/forgot-password", "post")]
+    [InlineData("/api/auth/reset-password", "post")]
+    [InlineData("/api/terms/current", "get")]
+    public async Task Development_documents_the_429_of_every_rate_limited_route(string path, string method)
+    {
+        await using ApiFactory factory = new() { EnvironmentName = "Development" };
+        using HttpClient client = factory.CreateClient();
+
+        JsonElement paths = (await client.GetFromJsonAsync<JsonElement>("/openapi/v1.json")).GetProperty("paths");
+
+        paths.GetProperty(path).GetProperty(method).GetProperty("responses").TryGetProperty("429", out _).Should().BeTrue();
+    }
+
     [Fact]
     public async Task Development_serves_the_scalar_page()
     {

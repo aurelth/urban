@@ -73,7 +73,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("BackgroundJobs:RunServer", RealBackgroundJobs ? "true" : "false");
         if (RateLimitPermitLimit is int permits)
         {
-            foreach (string route in new[] { "Register", "ConfirmEmail", "Login", "ForgotPassword", "ResetPassword" })
+            foreach (string route in new[] { "Register", "ConfirmEmail", "Login", "ForgotPassword", "ResetPassword", "Refresh", "Logout", "Me", "Terms" })
             {
                 builder.UseSetting($"RateLimiting:{route}:PermitLimit", permits.ToString(CultureInfo.InvariantCulture));
                 builder.UseSetting($"RateLimiting:{route}:Window", RateLimitWindow.ToString("c", CultureInfo.InvariantCulture));

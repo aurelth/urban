@@ -21,6 +21,10 @@ public static class RateLimitingExtensions
             limiter.AddPolicy(RateLimitPolicies.Login, http => PerClient(http, options.Login));
             limiter.AddPolicy(RateLimitPolicies.ForgotPassword, http => PerClient(http, options.ForgotPassword));
             limiter.AddPolicy(RateLimitPolicies.ResetPassword, http => PerClient(http, options.ResetPassword));
+            limiter.AddPolicy(RateLimitPolicies.Refresh, http => PerClient(http, options.Refresh));
+            limiter.AddPolicy(RateLimitPolicies.Logout, http => PerClient(http, options.Logout));
+            limiter.AddPolicy(RateLimitPolicies.Me, http => PerClient(http, options.Me));
+            limiter.AddPolicy(RateLimitPolicies.Terms, http => PerClient(http, options.Terms));
         });
 
         return services;

@@ -38,10 +38,13 @@ public static class AuthEndpoints
             .WithSummary("Renova a sessão com o cookie de renovação")
             .WithDescription(
                 "Troca o token de renovação do cookie por um novo par (rotação). Reapresentar um token já trocado "
-                + "derruba todas as sessões da pessoa. Em qualquer falha o cookie é apagado.")
+                + "derruba todas as sessões da pessoa. Em qualquer falha o cookie é apagado. "
+                + "O mesmo IP tem um limite de requisições por minuto; ao exceder, recebe 429 com Retry-After.")
+            .RequireRateLimiting(RateLimitPolicies.Refresh)
             .Produces<AccessTokenResponse>()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
-            .ProducesProblem(StatusCodes.Status403Forbidden);
+            .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests);
 
         auth.MapPost("/logout", LogoutAsync)
             .RequireAuthorization()
@@ -49,9 +52,12 @@ public static class AuthEndpoints
             .WithSummary("Encerra a sessão atual")
             .WithDescription(
                 "Exige o token de acesso no cabeçalho Authorization. Revoga o token de acesso e o token de renovação "
-                + "do cookie e apaga o cookie. Sempre responde 204 para quem está autenticado, exista ou não o token de renovação.")
+                + "do cookie e apaga o cookie. Sempre responde 204 para quem está autenticado, exista ou não o token de renovação. "
+                + "O mesmo IP tem um limite de requisições por minuto; ao exceder, recebe 429 com Retry-After.")
+            .RequireRateLimiting(RateLimitPolicies.Logout)
             .Produces(StatusCodes.Status204NoContent)
             .ProducesProblem(StatusCodes.Status401Unauthorized)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests)
             .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
 
         auth.MapGet("/me", MeAsync)
@@ -61,10 +67,13 @@ public static class AuthEndpoints
             .WithDescription(
                 "Exige o token de acesso no cabeçalho Authorization. Devolve identificador, e-mail, papel e condomínio. "
                 + "A conta é lida de novo a cada chamada: se foi suspensa ou desativada depois do login, responde 403 com o motivo. "
-                + "A resposta nunca é guardada em cache.")
+                + "A resposta nunca é guardada em cache. "
+                + "O mesmo IP tem um limite de requisições por minuto; ao exceder, recebe 429 com Retry-After.")
+            .RequireRateLimiting(RateLimitPolicies.Me)
             .Produces<CurrentUserResponse>()
             .ProducesProblem(StatusCodes.Status401Unauthorized)
             .ProducesProblem(StatusCodes.Status403Forbidden)
+            .ProducesProblem(StatusCodes.Status429TooManyRequests)
             .ProducesProblem(StatusCodes.Status503ServiceUnavailable);
 
         return app;
