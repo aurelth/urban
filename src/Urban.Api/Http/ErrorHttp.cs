@@ -1,5 +1,9 @@
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.AspNetCore.WebUtilities;
+using Urban.Condominium.Domain.Condominiums;
+using Urban.Condominium.Domain.Contacts;
+using Urban.Condominium.Domain.Documents;
+using Urban.Condominium.Domain.People;
 using Urban.Identity.Application.Authentication;
 using Urban.Identity.Application.Authentication.Login;
 using Urban.Identity.Application.Authentication.Refresh;
@@ -46,6 +50,29 @@ public static class ErrorHttp
         [PasswordPolicy.TooShort.Code] = StatusCodes.Status400BadRequest,
         [PasswordPolicy.TooLong.Code] = StatusCodes.Status400BadRequest,
         [PasswordPolicy.NeedsLetterAndDigit.Code] = StatusCodes.Status400BadRequest,
+
+        [RequestErrors.Invalid.Code] = StatusCodes.Status400BadRequest,
+
+        [Cpf.Invalid.Code] = StatusCodes.Status400BadRequest,
+        [Cnpj.Invalid.Code] = StatusCodes.Status400BadRequest,
+        [PostalCode.Invalid.Code] = StatusCodes.Status400BadRequest,
+        [PhoneNumber.Invalid.Code] = StatusCodes.Status400BadRequest,
+        [PersonName.Invalid.Code] = StatusCodes.Status400BadRequest,
+        [BirthDate.Invalid.Code] = StatusCodes.Status400BadRequest,
+        [BirthDate.UnderAge.Code] = StatusCodes.Status400BadRequest,
+        [PersonErrors.MobileRequired.Code] = StatusCodes.Status400BadRequest,
+        [CondominiumErrors.NameInvalid.Code] = StatusCodes.Status400BadRequest,
+        [Address.StreetInvalid.Code] = StatusCodes.Status400BadRequest,
+        [Address.NumberInvalid.Code] = StatusCodes.Status400BadRequest,
+        [Address.ComplementInvalid.Code] = StatusCodes.Status400BadRequest,
+        [Address.NeighborhoodInvalid.Code] = StatusCodes.Status400BadRequest,
+        [Address.CityInvalid.Code] = StatusCodes.Status400BadRequest,
+        [Address.StateInvalid.Code] = StatusCodes.Status400BadRequest,
+        [CondominiumErrors.CnpjAlreadyRegistered.Code] = StatusCodes.Status409Conflict,
+        [CondominiumErrors.ManagerAlreadyRegistered.Code] = StatusCodes.Status409Conflict,
+        [CondominiumErrors.ManagerRequired.Code] = StatusCodes.Status422UnprocessableEntity,
+        [PersonErrors.CondominiumRequired.Code] = StatusCodes.Status422UnprocessableEntity,
+        [PersonErrors.UserRequired.Code] = StatusCodes.Status422UnprocessableEntity,
     };
 
     public static bool TryGetStatusCode(Error error, [NotNullWhen(true)] out int status) =>

@@ -23,6 +23,8 @@ public sealed class RateLimitingOptions
 
     public RateLimitRule Terms { get; init; } = new();
 
+    public RateLimitRule CondominiumRegistration { get; init; } = new();
+
     /// <exception cref="InvalidOperationException">A configuração é inválida.</exception>
     public void Validate()
     {
@@ -35,6 +37,7 @@ public sealed class RateLimitingOptions
         Validate(nameof(Logout), Logout);
         Validate(nameof(Me), Me);
         Validate(nameof(Terms), Terms);
+        Validate(nameof(CondominiumRegistration), CondominiumRegistration);
     }
 
     private static void Validate(string route, RateLimitRule rule)

@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Scalar.AspNetCore;
 using Urban.Api.Endpoints;
 using Urban.Api.Extensions;
@@ -11,6 +12,8 @@ builder.Services.AddControllers();
 builder.Services.AddHealthChecks();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<SessionStoreExceptionHandler>();
+builder.Services.AddExceptionHandler<BadRequestExceptionHandler>();
+builder.Services.Configure<RouteHandlerOptions>(options => options.ThrowOnBadRequest = true);
 builder.Services.AddUrbanOpenApi();
 builder.Services.AddEmailDelivery(builder.Configuration);
 builder.Services.AddUrbanModules(builder.Configuration);
@@ -40,6 +43,7 @@ app.MapVersionEndpoint();
 app.MapAuthEndpoints();
 app.MapTermsEndpoints();
 app.MapRegistrationEndpoints();
+app.MapCondominiumEndpoints();
 app.MapPasswordResetEndpoints();
 
 if (!app.Environment.IsProduction())
