@@ -1,6 +1,7 @@
 import { AbstractControl, ValidationErrors } from '@angular/forms';
 
 const COUNTRY_CODE = '55';
+const MOBILE_LENGTH = 11;
 
 /** DDDs que existem no Brasil, os mesmos que a API aceita, agrupados pelo primeiro dígito. */
 const AREA_CODES: ReadonlySet<string> = new Set(
@@ -26,9 +27,20 @@ const AREA_CODES: ReadonlySet<string> = new Set(
  */
 export function brazilianPhone(control: AbstractControl<string>): ValidationErrors | null {
   const value = control.value;
-  return value === '' || isValidPhone(withoutCountryCode(value.replace(/[()\-.+\s]/g, '')))
+  return value === '' || isValidPhone(nationalDigits(value)) ? null : { phone: true };
+}
+
+/** Só celular (11 dígitos): o cadastro do síndico exige um número em que ele receba mensagens. */
+export function brazilianMobile(control: AbstractControl<string>): ValidationErrors | null {
+  const value = control.value;
+  const digits = nationalDigits(value);
+  return value === '' || (digits.length === MOBILE_LENGTH && isValidPhone(digits))
     ? null
-    : { phone: true };
+    : { mobile: true };
+}
+
+function nationalDigits(value: string): string {
+  return withoutCountryCode(value.replace(/[()\-.+\s]/g, ''));
 }
 
 function withoutCountryCode(digits: string): string {
@@ -41,5 +53,5 @@ function isValidPhone(digits: string): boolean {
   if (!/^\d{10,11}$/.test(digits) || !AREA_CODES.has(digits.slice(0, 2))) {
     return false;
   }
-  return digits.length === 11 ? digits[2] === '9' : /[2-5]/.test(digits[2]);
+  return digits.length === MOBILE_LENGTH ? digits[2] === '9' : /[2-5]/.test(digits[2]);
 }

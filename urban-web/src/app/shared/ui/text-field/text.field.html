@@ -1,0 +1,26 @@
+<mat-form-field appearance="outline" class="w-full">
+  <mat-label>{{ label() }}</mat-label>
+  @if (mask(); as kind) {
+    <input
+      matInput
+      [urbanMask]="kind"
+      [formControlName]="name()"
+      [attr.formControlName]="name()"
+      [attr.autocomplete]="autocomplete()"
+      [required]="!optional()"
+    />
+  } @else {
+    <input
+      matInput
+      [formControlName]="name()"
+      [attr.formControlName]="name()"
+      [attr.autocomplete]="autocomplete()"
+      [attr.inputmode]="inputmode()"
+      [required]="!optional()"
+    />
+  }
+  @if (hint(); as text) {
+    <mat-hint>{{ text }}</mat-hint>
+  }
+  <mat-error>{{ errorMessage() }}</mat-error>
+</mat-form-field>

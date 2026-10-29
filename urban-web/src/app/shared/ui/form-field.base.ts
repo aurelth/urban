@@ -10,7 +10,7 @@ export const USE_PARENT_FORM: Provider = {
 };
 
 /**
- * Base dos campos que se ligam a um controle do formulário em que são colocados. Sendo OnPush, o
+ * Base dos campos que se ligam a um controle do formulário (ou do grupo) em que são colocados. Sendo OnPush, o
  * campo só se atualiza quando avisado; o Material decide mostrar o erro quando o formulário é
  * enviado ou o controle muda, e nenhum dos dois avisaria o campo sozinho.
  */
@@ -20,11 +20,12 @@ export abstract class FormFieldBase implements OnInit {
   protected control: AbstractControl | null = null;
 
   private readonly form = inject(FormGroupDirective);
+  private readonly container = inject(ControlContainer);
   private readonly changeDetector = inject(ChangeDetectorRef);
   private readonly destroyRef = inject(DestroyRef);
 
   ngOnInit(): void {
-    this.control = this.form.form.get(this.controlName);
+    this.control = this.container.control?.get(this.controlName) ?? null;
     merge(this.form.ngSubmit, this.control?.events ?? EMPTY)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe(() => this.changeDetector.markForCheck());
