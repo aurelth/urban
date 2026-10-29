@@ -63,6 +63,32 @@ public class BrasilApiPostalCodeLookupTests
         result.Address.Should().Be(new PostalCodeAddress("69900000", string.Empty, string.Empty, "Rio Branco", "AC"));
     }
 
+    [Theory]
+    [InlineData("99999999", "PR")]
+    [InlineData("01310100", "RJ")]
+    [InlineData("89010000", "PR")]
+    [InlineData("01310100", "XX")]
+    public async Task LookupAsync_TurnsAStateOutsideTheCepRangeIntoNotFound(string postalCode, string state)
+    {
+        StubHttpHandler handler = StubHttpHandler.Returning(
+            HttpStatusCode.OK,
+            $$"""{"state":"{{state}}","city":"Sarandi","neighborhood":"Jardim Centro Cívico","street":"Avenida das Torres","service":"open-cep"}""");
+
+        PostalCodeLookupResult result = await Create(handler).LookupAsync(postalCode, default);
+
+        result.Should().Be(PostalCodeLookupResult.NotFound);
+    }
+
+    [Fact]
+    public async Task LookupAsync_AcceptsTheStateInLowerCaseWhenItMatchesTheCepRange()
+    {
+        StubHttpHandler handler = StubHttpHandler.Returning(HttpStatusCode.OK, Found.Replace("\"SP\"", "\"sp\""));
+
+        PostalCodeLookupResult result = await Create(handler).LookupAsync(Cep, default);
+
+        result.Status.Should().Be(PostalCodeLookupStatus.Found);
+    }
+
     [Fact]
     public async Task LookupAsync_TurnsA404IntoNotFound()
     {
@@ -165,6 +191,18 @@ public class BrasilApiPostalCodeLookupTests
         LogEntry entry = _logger.Entries.Should().ContainSingle().Which;
         entry.Level.Should().Be(LogLevel.Warning);
         entry.Message.Should().Contain("BrasilAPI").And.Contain("502").And.NotContain(Cep);
+    }
+
+    [Fact]
+    public async Task LookupAsync_LogsAStateOutsideTheCepRangeWithoutTheCep()
+    {
+        StubHttpHandler handler = StubHttpHandler.Returning(HttpStatusCode.OK, Found.Replace("\"SP\"", "\"PR\""));
+
+        await Create(handler).LookupAsync(Cep, default);
+
+        LogEntry entry = _logger.Entries.Should().ContainSingle().Which;
+        entry.Level.Should().Be(LogLevel.Warning);
+        entry.Message.Should().Contain("BrasilAPI").And.NotContain(Cep);
     }
 
     private BrasilApiPostalCodeLookup Create(StubHttpHandler handler) =>
