@@ -95,4 +95,10 @@ describe('EmailField', () => {
       'Informe o e-mail',
     );
   });
+
+  it('deixa o espaço de 20px abaixo de si, que o Material não reserva mais', () => {
+    const fixture = render(DefaultHost);
+
+    expect(fixture.nativeElement.querySelector('urban-email-field').classList).toContain('mb-5');
+  });
 });

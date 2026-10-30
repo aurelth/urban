@@ -132,4 +132,14 @@ describe('PasswordField', () => {
 
     expect(errorText(fixture)).toBe('Informe a senha');
   });
+
+  it('deixa o espaço de 20px abaixo de si, menos quando mostra a regra da senha (ela ocupa o lugar)', () => {
+    const signIn = render(SignInHost);
+    expect(html(signIn).querySelector('urban-password-field')!.classList).toContain('mb-5');
+  });
+
+  it('não soma o espaço de baixo à regra da senha', () => {
+    const create = render(CreateHost);
+    expect(html(create).querySelector('urban-password-field')!.classList).not.toContain('mb-5');
+  });
 });

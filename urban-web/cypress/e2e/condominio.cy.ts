@@ -6,6 +6,7 @@ import {
   stubRegisterCondominium,
   stubRegistrationThatWorks,
 } from '../support/condominio';
+import { expectErrorsToStayInTheirOwnSpace, themeErrorColor } from '../support/layout';
 import { MANAGER, stubSignedIn } from '../support/session';
 
 const FORM_PATH = '/condominio/cadastrar';
@@ -161,6 +162,23 @@ describe('Cadastro do condomínio', () => {
       stubSignedIn(NEW_MANAGER);
     });
 
+    it('mostra a falha da consulta em vermelho, com ícone, como os outros erros', () => {
+      stubPostalCodeFailure(404, 'condominium.postal_code.not_found');
+      cy.visit(FORM_PATH);
+
+      field(manager, 'postalCode').click('right').type('89010000');
+      cy.wait('@postalCode');
+
+      themeErrorColor().then((expected) => {
+        manager()
+          .find('[role="alert"]')
+          .should('contain.text', 'Não encontramos esse CEP. Preencha o endereço manualmente')
+          .and('have.css', 'color', expected)
+          .find('mat-icon')
+          .should('be.visible');
+      });
+    });
+
     it('preenche rua, bairro, cidade e UF ao digitar o CEP e deixa o número para a pessoa', () => {
       stubPostalCode();
       cy.visit(FORM_PATH);
@@ -185,7 +203,7 @@ describe('Cadastro do condomínio', () => {
       cy.wait('@postalCode');
 
       manager()
-        .find('[role="status"]')
+        .find('[role="alert"]')
         .should('contain.text', 'Não encontramos esse CEP. Preencha o endereço manualmente');
       field(manager, 'street')
         .click('right')
@@ -216,6 +234,83 @@ describe('Cadastro do condomínio', () => {
         expect(request.body.condominium.address).to.deep.equal(request.body.manager.address);
       });
       cy.location('pathname').should('eq', '/dashboard');
+    });
+  });
+
+  describe('avisos de erro', () => {
+    beforeEach(() => {
+      stubSignedIn(NEW_MANAGER);
+    });
+
+    // Celular pequeno, celular, tablet e computador: a coluna do Número, a mais estreita, muda de largura em cada um.
+    const windows: [number, number][] = [
+      [320, 640],
+      [375, 667],
+      [768, 1024],
+      [1280, 800],
+    ];
+    for (const [width, height] of windows) {
+      it(`nenhum aviso invade o campo de baixo com a janela de ${width}x${height}`, () => {
+        cy.viewport(width, height);
+        stubRegisterCondominium();
+        cy.visit(FORM_PATH);
+
+        cy.contains('button', 'Cadastrar condomínio').click();
+
+        cy.contains('mat-error', 'Informe o número (use S/N quando não houver)').should(
+          'be.visible',
+        );
+        expectErrorsToStayInTheirOwnSpace();
+      });
+    }
+  });
+
+  describe('número e complemento no celular', () => {
+    for (const width of [320, 375]) {
+      it(`mostra os dois rótulos inteiros e o aviso do número em até duas linhas com a janela de ${width}px`, () => {
+        cy.viewport(width, 667);
+        stubSignedIn(NEW_MANAGER);
+        stubRegisterCondominium();
+        cy.visit(FORM_PATH);
+
+        cy.contains('button', 'Cadastrar condomínio').click();
+
+        for (const name of ['number', 'complement']) {
+          cy.get(`[data-testid="manager-section"] [formControlName="${name}"]`)
+            .closest('mat-form-field')
+            .find('.mdc-floating-label')
+            .then(($label) => {
+              expect($label[0].scrollWidth, `rótulo de ${name} cortado`).to.be.at.most(
+                $label[0].clientWidth,
+              );
+            });
+        }
+        cy.get('[data-testid="manager-section"] [formControlName="number"]')
+          .closest('mat-form-field')
+          .find('mat-error')
+          .then(($error) => {
+            // Duas linhas de 20px: numa coluna de um quarto da largura eram sete.
+            expect($error[0].getBoundingClientRect().height, 'altura do aviso').to.be.at.most(44);
+          });
+      });
+    }
+  });
+
+  describe('espaço entre os campos', () => {
+    it('mantém 20px entre dois campos, um sobre o outro, quando não há erro', () => {
+      stubSignedIn(NEW_MANAGER);
+      cy.viewport(1280, 800);
+      cy.visit(FORM_PATH);
+
+      cy.get('[data-testid="manager-section"] [formControlName="street"]').then(($street) => {
+        cy.get('[data-testid="manager-section"] [formControlName="number"]').then(($number) => {
+          const above = $street.closest('mat-form-field').find('.mdc-notched-outline')[0];
+          const below = $number.closest('mat-form-field').find('.mdc-notched-outline')[0];
+          expect(
+            below.getBoundingClientRect().top - above.getBoundingClientRect().bottom,
+          ).to.be.closeTo(20, 1);
+        });
+      });
     });
   });
 

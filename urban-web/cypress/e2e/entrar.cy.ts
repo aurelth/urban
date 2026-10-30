@@ -1,3 +1,4 @@
+import { expectErrorsToStayInTheirOwnSpace } from '../support/layout';
 import {
   MANAGER,
   stubAnonymous,
@@ -55,6 +56,36 @@ describe('Entrar', () => {
     cy.contains('Informe o e-mail').should('be.visible');
     cy.contains('Informe a senha').should('be.visible');
     cy.focused().should('have.attr', 'type', 'email');
+  });
+
+  it('mantém os avisos de erro longe do link e do botão em uma janela estreita', () => {
+    cy.viewport(320, 640);
+    stubAnonymous();
+    cy.visit('/entrar');
+
+    cy.contains('button', 'Entrar').click();
+
+    cy.contains('mat-error', 'Informe a senha').should('be.visible');
+    expectErrorsToStayInTheirOwnSpace();
+  });
+
+  it('mantém 20px entre o e-mail e a senha, e entre a senha e o link', () => {
+    stubAnonymous();
+    cy.visit('/entrar');
+
+    cy.get('input[type="email"]').then(($email) => {
+      cy.get('input[autocomplete="current-password"]').then(($password) => {
+        cy.contains('a', 'Esqueci a senha').then(($link) => {
+          const box = ($element: JQuery<HTMLElement>) =>
+            $element
+              .closest('mat-form-field')
+              .find('.mdc-notched-outline')[0]
+              .getBoundingClientRect();
+          expect(box($password).top - box($email).bottom).to.be.closeTo(20, 1);
+          expect($link[0].getBoundingClientRect().top - box($password).bottom).to.be.closeTo(20, 1);
+        });
+      });
+    });
   });
 
   it('mantém a sessão ao recarregar a página', () => {

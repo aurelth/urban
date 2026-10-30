@@ -1,3 +1,4 @@
+import { expectErrorsToStayInTheirOwnSpace } from '../support/layout';
 import { stubResetPassword } from '../support/senha';
 import { stubAnonymous, stubSignedIn } from '../support/session';
 
@@ -33,6 +34,18 @@ describe('Redefinir senha', () => {
 
     cy.contains('A senha precisa ter pelo menos 10 caracteres').should('be.visible');
     cy.get('@reset.all').should('have.length', 0);
+  });
+
+  it('mantém o aviso da senha longe do botão em uma janela estreita', () => {
+    cy.viewport(320, 640);
+    stubResetPassword();
+    cy.visit('/redefinir-senha?token=token-do-link');
+
+    cy.get('input[autocomplete="new-password"]').type('curta1');
+    cy.contains('button', 'Salvar senha').click();
+
+    cy.contains('mat-error', 'A senha precisa ter pelo menos 10 caracteres').should('be.visible');
+    expectErrorsToStayInTheirOwnSpace();
   });
 
   it('manda pedir um novo link quando o link venceu', () => {
