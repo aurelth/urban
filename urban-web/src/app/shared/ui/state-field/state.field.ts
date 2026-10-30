@@ -14,7 +14,7 @@ import { FormFieldBase, USE_PARENT_FORM } from '../form-field.base';
   imports: [ReactiveFormsModule, MatFormField, MatLabel, MatError, MatInput],
   templateUrl: './state.field.html',
   viewProviders: [USE_PARENT_FORM],
-  host: { class: 'block' },
+  host: { class: 'block mb-5' },
 })
 export class StateField extends FormFieldBase {
   readonly name = input.required<string>();

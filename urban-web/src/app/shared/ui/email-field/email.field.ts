@@ -13,7 +13,7 @@ import { FormFieldBase, USE_PARENT_FORM } from '../form-field.base';
   imports: [ReactiveFormsModule, MatFormField, MatLabel, MatError, MatInput],
   templateUrl: './email.field.html',
   viewProviders: [USE_PARENT_FORM],
-  host: { class: 'block' },
+  host: { class: 'block mb-5' },
 })
 export class EmailField extends FormFieldBase {
   /** `username` na entrada, para o gerenciador de senhas oferecer a conta salva. */
