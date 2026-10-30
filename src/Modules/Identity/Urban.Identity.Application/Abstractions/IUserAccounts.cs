@@ -21,4 +21,10 @@ public interface IUserAccounts
     /// para não desfazer, por exemplo, uma suspensão feita no meio do caminho.
     /// </summary>
     Task SaveEnrollmentAsync(User user, CancellationToken cancellationToken);
+
+    /// <summary>Carrega a credencial da conta para ser alterada e gravada por <see cref="SaveCredentialAsync"/>.</summary>
+    Task<UserCredential?> FindCredentialAsync(Guid userId, CancellationToken cancellationToken);
+
+    /// <summary>Grava a credencial (nova senha) lida por <see cref="FindCredentialAsync"/>. Se outra requisição a alterou no meio do caminho, o erro de concorrência sobe.</summary>
+    Task SaveCredentialAsync(UserCredential credential, CancellationToken cancellationToken);
 }

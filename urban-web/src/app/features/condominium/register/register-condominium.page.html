@@ -4,6 +4,22 @@
     Falta pouco para começar: conte quem é você e qual condomínio vai administrar
   </p>
 
+  @if (draftRestored()) {
+    <div
+      role="status"
+      class="mb-6 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-outline-variant p-4"
+      data-testid="draft-restored"
+    >
+      <p class="m-0">
+        Recuperamos o que você já tinha preenchido. Informe de novo o CPF e a data de nascimento,
+        que não ficam guardados
+      </p>
+      <button mat-button type="button" data-testid="discard-draft" (click)="discardDraft()">
+        Descartar
+      </button>
+    </div>
+  }
+
   <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-6" novalidate>
     <mat-card appearance="outlined" data-testid="manager-section">
       <mat-card-content class="p-6">
@@ -71,6 +87,7 @@
           <mat-checkbox
             class="mb-2 self-start"
             data-testid="same-address"
+            [checked]="sameAddress()"
             (change)="useSameAddress($event.checked)"
           >
             O endereço do condomínio é o mesmo do meu

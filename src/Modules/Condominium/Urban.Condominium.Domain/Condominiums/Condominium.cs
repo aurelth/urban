@@ -30,11 +30,11 @@ public sealed class Condominium
 
     public Guid Id { get; }
 
-    public string Name { get; }
+    public string Name { get; private set; }
 
     public Cnpj Cnpj { get; }
 
-    public Address Address { get; }
+    public Address Address { get; private set; }
 
     public Guid CreatedBy { get; }
 
@@ -44,7 +44,7 @@ public sealed class Condominium
     {
         string normalizedName = TextRules.Normalize(name);
 
-        if (normalizedName.Length is < NameMinLength or > NameMaxLength || TextRules.HasControlCharacters(normalizedName))
+        if (!IsValidName(normalizedName))
         {
             return Result.Failure<Condominium>(CondominiumErrors.NameInvalid);
         }
@@ -56,4 +56,33 @@ public sealed class Condominium
 
         return Result.Success(new Condominium(normalizedName, cnpj, address, createdBy, now));
     }
+
+    /// <summary>Muda o nome e o endereço. O CNPJ, o identificador e a origem do cadastro não têm caminho de edição.</summary>
+    public Result Update(string? name, Address address)
+    {
+        string normalizedName = TextRules.Normalize(name);
+
+        if (!IsValidName(normalizedName))
+        {
+            return Result.Failure(CondominiumErrors.NameInvalid);
+        }
+
+        Name = normalizedName;
+        Address = address;
+
+        return Result.Success();
+    }
+
+    /// <summary>Valida e normaliza um nome sem tocar em nenhum condomínio, para quem precisa saber se a edição vai passar antes de gravar qualquer coisa.</summary>
+    public static Result<string> NormalizeName(string? name)
+    {
+        string normalizedName = TextRules.Normalize(name);
+
+        return IsValidName(normalizedName)
+            ? Result.Success(normalizedName)
+            : Result.Failure<string>(CondominiumErrors.NameInvalid);
+    }
+
+    private static bool IsValidName(string normalizedName) =>
+        normalizedName.Length is >= NameMinLength and <= NameMaxLength && !TextRules.HasControlCharacters(normalizedName);
 }

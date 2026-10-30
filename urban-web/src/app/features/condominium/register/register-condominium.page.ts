@@ -1,11 +1,22 @@
-import { Component, ElementRef, inject, signal } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  effect,
+  ElementRef,
+  inject,
+  OnInit,
+  signal,
+  untracked,
+} from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { MatButton } from '@angular/material/button';
 import { MatCard, MatCardContent } from '@angular/material/card';
 import { MatCheckbox } from '@angular/material/checkbox';
 import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { SessionStore } from '../../../core/auth/session.store';
 import { CondominiumApi } from '../../../core/condominium/condominium.api';
+import { RegistrationDraft } from '../../../core/drafts/registration-draft';
 import { toApiProblem } from '../../../core/http/api-problem';
 import { describeProblem } from '../../../core/http/problem-message';
 import { addressGroup } from '../../../shared/forms/address.group';
@@ -20,12 +31,15 @@ import { requiredText } from '../../../shared/forms/required-text.validator';
 import { AddressFields } from '../../../shared/ui/address-fields/address.fields';
 import { FormSubmit } from '../../../shared/ui/form-submit/form-submit';
 import { TextField } from '../../../shared/ui/text-field/text.field';
+import { toDraftData } from './register-condominium.draft';
 import {
   MANAGER_ALREADY_REGISTERED,
   REGISTER_CONDOMINIUM_MESSAGES,
 } from './register-condominium.messages';
 import { toRegisterPayload } from './register-condominium.payload';
 
+/** Pausa na digitação antes de guardar o rascunho: cada tecla recomeça a espera. */
+const DRAFT_SAVE_DELAY_MS = 500;
 const CONDOMINIUM_NAME_MIN_LENGTH = 2;
 const CONDOMINIUM_NAME_MAX_LENGTH = 120;
 
@@ -37,6 +51,7 @@ const CONDOMINIUM_NAME_MAX_LENGTH = 120;
   selector: 'urban-register-condominium-page',
   imports: [
     ReactiveFormsModule,
+    MatButton,
     MatCard,
     MatCardContent,
     MatCheckbox,
@@ -46,12 +61,14 @@ const CONDOMINIUM_NAME_MAX_LENGTH = 120;
   ],
   templateUrl: './register-condominium.page.html',
 })
-export class RegisterCondominiumPage {
+export class RegisterCondominiumPage implements OnInit {
   private readonly api = inject(CondominiumApi);
   private readonly session = inject(SessionStore);
   private readonly router = inject(Router);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly builder = inject(NonNullableFormBuilder);
+  private readonly drafts = inject(RegistrationDraft);
+  private readonly destroyRef = inject(DestroyRef);
 
   protected readonly form = this.builder.group({
     manager: this.builder.group({
@@ -80,6 +97,13 @@ export class RegisterCondominiumPage {
   protected readonly sameAddress = signal(false);
   protected readonly submitting = signal(false);
   protected readonly error = signal<string | null>(null);
+  /** Verdadeiro quando o formulário foi preenchido a partir de um rascunho guardado. */
+  protected readonly draftRestored = signal(false);
+
+  private saveTimer: ReturnType<typeof setTimeout> | undefined;
+  /** Depois de cadastrar, nada mais pode recriar o rascunho. */
+  private draftClosed = false;
+  private restoreTried = false;
 
   protected readonly fullNameErrors = {
     required: 'Informe o nome completo',
@@ -106,15 +130,45 @@ export class RegisterCondominiumPage {
   };
   protected readonly cnpjErrors = { required: 'Informe o CNPJ', cnpj: 'Informe um CNPJ válido' };
 
+  constructor() {
+    // O rascunho é de um usuário: espera a sessão dizer quem é e restaura uma vez só.
+    effect(() => {
+      const userId = this.session.user()?.id;
+      if (userId && !this.restoreTried) {
+        this.restoreTried = true;
+        untracked(() => this.restoreDraft(userId));
+      }
+    });
+  }
+
+  ngOnInit(): void {
+    const subscription = this.form.valueChanges.subscribe(() => this.scheduleDraftSave());
+    this.destroyRef.onDestroy(() => {
+      subscription.unsubscribe();
+      clearTimeout(this.saveTimer);
+    });
+  }
+
   /** Com o mesmo endereço, os campos do condomínio somem e deixam de contar na validação. */
-  protected useSameAddress(same: boolean): void {
+  protected useSameAddress(same: boolean, emitEvent = true): void {
     this.sameAddress.set(same);
     const address = this.form.controls.condominium.controls.address;
     if (same) {
-      address.disable();
+      address.disable({ emitEvent });
     } else {
-      address.enable();
+      address.enable({ emitEvent });
     }
+    if (emitEvent) {
+      this.scheduleDraftSave();
+    }
+  }
+
+  /** Esvazia o formulário e apaga o rascunho guardado. */
+  protected discardDraft(): void {
+    this.dropDraft();
+    this.useSameAddress(false, false);
+    this.form.reset(undefined, { emitEvent: false });
+    this.draftRestored.set(false);
   }
 
   protected async submit(): Promise<void> {
@@ -128,16 +182,81 @@ export class RegisterCondominiumPage {
       await firstValueFrom(
         this.api.register(toRegisterPayload(this.form.getRawValue(), this.sameAddress())),
       );
+      this.closeDraft();
       await this.goToDashboard();
     } catch (error) {
       const problem = toApiProblem(error);
       if (problem.code === MANAGER_ALREADY_REGISTERED) {
+        this.closeDraft();
         await this.goToDashboard();
       } else {
         this.error.set(describeProblem(problem, REGISTER_CONDOMINIUM_MESSAGES));
       }
     } finally {
       this.submitting.set(false);
+    }
+  }
+
+  /**
+   * Preenche o formulário com o que a pessoa já tinha digitado numa visita anterior. É sem eventos de propósito: a busca de
+   * CEP escuta as mudanças do campo e, se disparasse, trocaria rua e bairro que a pessoa já tinha corrigido.
+   */
+  private restoreDraft(userId: string): void {
+    const draft = this.drafts.load(userId);
+    if (draft === null) {
+      return;
+    }
+
+    this.form.patchValue(
+      {
+        manager: {
+          fullName: draft.manager.fullName,
+          displayName: draft.manager.displayName,
+          phone: draft.manager.phone,
+          address: draft.manager.address,
+        },
+        condominium: {
+          name: draft.condominium.name,
+          cnpj: draft.condominium.cnpj,
+          address: draft.condominium.address,
+        },
+      },
+      { emitEvent: false },
+    );
+    this.useSameAddress(draft.sameAddress, false);
+    this.draftRestored.set(true);
+  }
+
+  private scheduleDraftSave(): void {
+    if (this.draftClosed) {
+      return;
+    }
+    clearTimeout(this.saveTimer);
+    this.saveTimer = setTimeout(() => this.saveDraft(), DRAFT_SAVE_DELAY_MS);
+  }
+
+  private saveDraft(): void {
+    this.saveTimer = undefined;
+    const userId = this.session.user()?.id;
+    if (this.draftClosed || !userId) {
+      return;
+    }
+    this.drafts.save(userId, toDraftData(this.form.getRawValue(), this.sameAddress()));
+  }
+
+  /** Depois do cadastro feito, o rascunho não volta mais. */
+  private closeDraft(): void {
+    this.draftClosed = true;
+    this.dropDraft();
+  }
+
+  /** Apaga o rascunho guardado e a gravação que ainda esperava a pausa. */
+  private dropDraft(): void {
+    clearTimeout(this.saveTimer);
+    this.saveTimer = undefined;
+    const userId = this.session.user()?.id;
+    if (userId) {
+      this.drafts.clear(userId);
     }
   }
 

@@ -12,6 +12,19 @@
       </p>
     }
 
+    @if (passwordChanged()) {
+      <p
+        role="status"
+        class="mb-6 flex items-start justify-center gap-2 rounded-lg border border-outline-variant bg-surface-container p-4"
+        data-testid="password-changed"
+      >
+        <span class="inline-flex text-success"
+          ><mat-icon svgIcon="check_circle" aria-hidden="true"
+        /></span>
+        <span>Senha alterada. Entre com a nova senha</span>
+      </p>
+    }
+
     <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col" novalidate>
       <urban-email-field autocomplete="username" />
 

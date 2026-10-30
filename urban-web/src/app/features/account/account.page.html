@@ -1,0 +1,69 @@
+<section class="mx-auto max-w-3xl p-6">
+  <h1 class="mb-1 text-3xl font-semibold tracking-tight">Minha conta</h1>
+  <p class="mb-6 text-on-surface-variant">Cuide do e-mail e da senha de acesso à sua conta</p>
+
+  <div class="flex flex-col gap-6">
+    <mat-card appearance="outlined" data-testid="email-section">
+      <mat-card-content class="p-6">
+        <h2 class="mb-4 text-xl font-semibold">E-mail</h2>
+        <p class="mb-4">
+          <span class="text-on-surface-variant">E-mail da conta</span>
+          <span class="ml-2 font-medium break-all" data-testid="current-email">{{
+            session.user()?.email
+          }}</span>
+        </p>
+
+        @if (requestedEmail(); as email) {
+          <p role="status" class="mb-4 flex items-start gap-2" data-testid="email-requested">
+            <span class="inline-flex text-success"
+              ><mat-icon svgIcon="check_circle" aria-hidden="true"
+            /></span>
+            <span>
+              Se o endereço puder ser usado, enviamos um link de confirmação para
+              <strong class="break-all">{{ email }}</strong
+              >. Abra o link em até 24 horas; até lá, o e-mail atual continua valendo
+            </span>
+          </p>
+        }
+
+        <button mat-stroked-button type="button" data-testid="change-email" (click)="changeEmail()">
+          Alterar e-mail
+        </button>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card appearance="outlined" data-testid="password-section">
+      <mat-card-content class="p-6">
+        <h2 class="mb-4 text-xl font-semibold">Senha</h2>
+        <form
+          [formGroup]="form"
+          (ngSubmit)="changePassword()"
+          class="flex max-w-md flex-col"
+          novalidate
+        >
+          <urban-password-field name="currentPassword" label="Senha atual" />
+          <urban-password-field
+            name="newPassword"
+            label="Nova senha"
+            autocomplete="new-password"
+            [policy]="true"
+          />
+          <urban-password-field
+            name="confirmPassword"
+            label="Confirmar nova senha"
+            autocomplete="new-password"
+          />
+          <p class="mb-2 text-sm text-on-surface-variant">
+            Ao trocar a senha, todos os acessos à sua conta são encerrados e você entra de novo
+          </p>
+          <urban-form-submit
+            label="Alterar senha"
+            busyLabel="Alterando"
+            [busy]="submitting()"
+            [error]="error()"
+          />
+        </form>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</section>

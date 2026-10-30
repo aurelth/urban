@@ -52,6 +52,59 @@ namespace Urban.Identity.Infrastructure.Persistence.Migrations
                     b.ToTable("user_consent", "identity");
                 });
 
+            modelBuilder.Entity("Urban.Identity.Domain.Tokens.EmailChangeToken", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("NewEmail")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("new_email");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("token_hash");
+
+                    b.Property<DateTimeOffset?>("UsedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("used_at");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_email_change_token");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique()
+                        .HasDatabaseName("ix_email_change_token_token_hash");
+
+                    b.HasIndex("UserId", "CreatedAt")
+                        .HasDatabaseName("ix_email_change_token_user_id_created_at");
+
+                    b.ToTable("email_change_token", "identity");
+                });
+
             modelBuilder.Entity("Urban.Identity.Domain.Tokens.EmailVerificationToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -302,6 +355,16 @@ namespace Urban.Identity.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_user_consent_user_user_id");
+                });
+
+            modelBuilder.Entity("Urban.Identity.Domain.Tokens.EmailChangeToken", b =>
+                {
+                    b.HasOne("Urban.Identity.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_email_change_token_user_user_id");
                 });
 
             modelBuilder.Entity("Urban.Identity.Domain.Tokens.EmailVerificationToken", b =>

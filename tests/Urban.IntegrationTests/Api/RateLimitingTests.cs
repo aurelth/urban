@@ -23,6 +23,16 @@ public sealed class RateLimitingTests(ApiFixture fixture)
 
     private const string PostalCodesRoute = "/api/postal-codes/01310100";
 
+    private const string ProfileRoute = "/api/condominiums/mine";
+
+    private const string IdentityRoute = "/api/condominiums/mine/manager-identity";
+
+    private const string ChangePasswordRoute = "/api/auth/change-password";
+
+    private const string ChangeEmailRoute = "/api/auth/change-email";
+
+    private const string ConfirmEmailChangeRoute = "/api/auth/confirm-email-change";
+
     private static readonly IPAddress TrustedProxy = IPAddress.Parse("10.0.0.2");
 
     private static readonly IPAddress PublicAddress = IPAddress.Parse("198.51.100.7");
@@ -39,6 +49,11 @@ public sealed class RateLimitingTests(ApiFixture fixture)
     [InlineData(TermsRoute)]
     [InlineData(CondominiumsRoute)]
     [InlineData(PostalCodesRoute)]
+    [InlineData(ProfileRoute)]
+    [InlineData(IdentityRoute)]
+    [InlineData(ChangePasswordRoute)]
+    [InlineData(ChangeEmailRoute)]
+    [InlineData(ConfirmEmailChangeRoute)]
     public async Task Blocks_a_client_that_exceeds_the_limit_of_the_route(string route)
     {
         await using ApiFactory factory = CreateFactory(TimeSpan.FromMinutes(1));
@@ -65,6 +80,11 @@ public sealed class RateLimitingTests(ApiFixture fixture)
     [InlineData(TermsRoute, 9)]
     [InlineData(CondominiumsRoute, 10)]
     [InlineData(PostalCodesRoute, 11)]
+    [InlineData(ProfileRoute, 12)]
+    [InlineData(IdentityRoute, 13)]
+    [InlineData(ChangePasswordRoute, 13)]
+    [InlineData(ChangeEmailRoute, 13)]
+    [InlineData(ConfirmEmailChangeRoute, 2)]
     public async Task Applies_the_limit_configured_for_that_route(string route, int permits)
     {
         Dictionary<string, string?> limits = new()
@@ -80,6 +100,8 @@ public sealed class RateLimitingTests(ApiFixture fixture)
             ["RateLimiting:Terms:PermitLimit"] = "9",
             ["RateLimiting:CondominiumRegistration:PermitLimit"] = "10",
             ["RateLimiting:PostalCodeLookup:PermitLimit"] = "11",
+            ["RateLimiting:CondominiumProfile:PermitLimit"] = "12",
+            ["RateLimiting:SensitiveChange:PermitLimit"] = "13",
         };
         await using ApiFactory factory = CreateFactory(TimeSpan.FromMinutes(1), settings: limits);
         using HttpClient client = factory.CreateClient();
@@ -102,6 +124,11 @@ public sealed class RateLimitingTests(ApiFixture fixture)
     [InlineData(TermsRoute, 30)]
     [InlineData(CondominiumsRoute, 10)]
     [InlineData(PostalCodesRoute, 30)]
+    [InlineData(ProfileRoute, 60)]
+    [InlineData(IdentityRoute, 10)]
+    [InlineData(ChangePasswordRoute, 10)]
+    [InlineData(ChangeEmailRoute, 10)]
+    [InlineData(ConfirmEmailChangeRoute, 10)]
     public async Task Ships_with_the_limits_of_the_appsettings(string route, int permits)
     {
         await using ApiFactory factory = CreateFactory(TimeSpan.FromMinutes(1), limit: null);
@@ -187,7 +214,7 @@ public sealed class RateLimitingTests(ApiFixture fixture)
 
     private static async Task<HttpResponseMessage> SendAsync(HttpClient client, string route, string? forwardedFor = null)
     {
-        using HttpRequestMessage request = new(IsRead(route) ? HttpMethod.Get : HttpMethod.Post, route);
+        using HttpRequestMessage request = new(MethodFor(route), route);
         if (HasBody(route))
         {
             request.Content = JsonContent.Create(BodyFor(route));
@@ -201,14 +228,19 @@ public sealed class RateLimitingTests(ApiFixture fixture)
         return await client.SendAsync(request);
     }
 
-    private static bool IsRead(string route) => route is MeRoute or TermsRoute or PostalCodesRoute;
+    private static HttpMethod MethodFor(string route) => route switch
+    {
+        MeRoute or TermsRoute or PostalCodesRoute or ProfileRoute => HttpMethod.Get,
+        IdentityRoute => HttpMethod.Put,
+        _ => HttpMethod.Post,
+    };
 
-    private static bool HasBody(string route) => route is not (MeRoute or TermsRoute or PostalCodesRoute or RefreshRoute or LogoutRoute);
+    private static bool HasBody(string route) => route is not (MeRoute or TermsRoute or PostalCodesRoute or ProfileRoute or RefreshRoute or LogoutRoute);
 
     private static object BodyFor(string route) => route switch
     {
         RegisterRoute => new { email = "invalido" },
-        "/api/auth/confirm-email" or "/api/auth/reset-password" => new { token = string.Empty, password = string.Empty },
+        "/api/auth/confirm-email" or "/api/auth/reset-password" or ConfirmEmailChangeRoute => new { token = string.Empty, password = string.Empty },
         "/api/auth/forgot-password" => new { email = "invalido" },
         _ => new { email = "ninguem@example.com", password = "qualquer-senha" },
     };

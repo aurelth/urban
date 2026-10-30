@@ -47,4 +47,12 @@ describe('FormSubmit', () => {
     expect(html.classList.contains('flex')).toBe(true);
     expect(html.classList.contains('flex-col')).toBe(true);
   });
+
+  it('desabilita o botao quando a tela diz que nao ha o que enviar', () => {
+    const { html } = setup({ disabled: true });
+
+    const button = html.querySelector<HTMLButtonElement>('button[type="submit"]')!;
+    expect(button.disabled).toBe(true);
+    expect(button.textContent?.trim()).toBe('Salvar');
+  });
 });

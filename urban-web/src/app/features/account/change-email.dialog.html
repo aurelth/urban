@@ -1,0 +1,29 @@
+<h2 mat-dialog-title>Alterar e-mail</h2>
+<form [formGroup]="form" (ngSubmit)="confirm()" novalidate>
+  <mat-dialog-content>
+    <p class="mb-4 text-on-surface-variant">
+      Informe o novo endereço e a senha da sua conta. Enviaremos um link de confirmação para o novo
+      endereço
+    </p>
+    <urban-email-field autocomplete="email" />
+    <urban-password-field />
+    @if (error(); as message) {
+      <p role="alert" class="flex items-start gap-2 text-error">
+        <mat-icon svgIcon="error" aria-hidden="true" />
+        <span>{{ message }}</span>
+      </p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button mat-button type="button" data-testid="cancel" [disabled]="busy()" (click)="ref.close()">
+      Cancelar
+    </button>
+    <button mat-flat-button type="submit" [disabled]="busy()">
+      @if (busy()) {
+        Enviando
+      } @else {
+        Enviar link de confirmação
+      }
+    </button>
+  </mat-dialog-actions>
+</form>

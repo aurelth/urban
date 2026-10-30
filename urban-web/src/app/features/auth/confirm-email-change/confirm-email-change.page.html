@@ -1,0 +1,49 @@
+<mat-card appearance="outlined">
+  <mat-card-content class="p-6">
+    @if (missingToken()) {
+      <urban-link-problem-notice
+        heading="Link incompleto"
+        [message]="missingMessage"
+        actionLabel="Ir para a entrada"
+        actionLink="/entrar"
+      />
+    } @else {
+      @switch (step()) {
+        @case ('confirming') {
+          <div class="flex flex-col items-center gap-3 text-center" role="status">
+            <p class="text-on-surface-variant">Confirmando o novo e-mail</p>
+          </div>
+        }
+        @case ('done') {
+          <div class="flex flex-col items-center gap-3 text-center" role="status">
+            <span class="inline-flex text-success">
+              <mat-icon svgIcon="check_circle" aria-hidden="true" />
+            </span>
+            <h1 class="text-3xl font-semibold tracking-tight text-success">E-mail alterado</h1>
+            <p>Por segurança, os acessos à sua conta foram encerrados. Entre com o novo e-mail</p>
+            <a mat-flat-button routerLink="/entrar">Entrar</a>
+          </div>
+        }
+        @case ('link-problem') {
+          <urban-link-problem-notice
+            heading="Link inválido"
+            [message]="message() ?? ''"
+            actionLabel="Ir para a entrada"
+            actionLink="/entrar"
+          />
+        }
+        @case ('failed') {
+          <div class="flex flex-col items-center gap-3 text-center">
+            <p role="alert" class="flex items-start gap-2 text-error">
+              <mat-icon svgIcon="error" aria-hidden="true" />
+              <span>{{ message() }}</span>
+            </p>
+            <button mat-flat-button type="button" data-testid="retry" (click)="confirm()">
+              Tentar de novo
+            </button>
+          </div>
+        }
+      }
+    }
+  </mat-card-content>
+</mat-card>

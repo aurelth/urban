@@ -1,0 +1,149 @@
+<section class="mx-auto max-w-3xl p-6">
+  <h1 class="mb-1 text-3xl font-semibold tracking-tight">Meus dados</h1>
+  <p class="mb-6 text-on-surface-variant">
+    Confira e corrija os dados do seu cadastro e do condomínio
+  </p>
+
+  @if (store.status() === 'not-found') {
+    <p role="alert" class="flex items-start gap-2 text-error" data-testid="not-found">
+      <mat-icon svgIcon="error" aria-hidden="true" />
+      <span>Não encontramos o cadastro do seu condomínio. Fale com o suporte</span>
+    </p>
+  } @else if (store.status() === 'error') {
+    <div class="flex flex-col items-start gap-4" data-testid="load-error">
+      <p class="flex items-start gap-2 text-error">
+        <mat-icon svgIcon="error" aria-hidden="true" />
+        <span>Não foi possível carregar seus dados</span>
+      </p>
+      <button mat-stroked-button type="button" data-testid="retry" (click)="load()">
+        Tentar de novo
+      </button>
+    </div>
+  } @else if (store.data(); as data) {
+    @if (store.status() === 'conflict') {
+      <div
+        role="alert"
+        class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-outline-variant p-4"
+        data-testid="conflict"
+      >
+        <p class="m-0 flex items-start gap-2 text-warning">
+          <mat-icon svgIcon="info" aria-hidden="true" />
+          <span class="text-on-surface">
+            Os dados foram alterados em outro lugar. Recarregue para ver a versão mais recente: o
+            que você digitou será substituído
+          </span>
+        </p>
+        <button mat-stroked-button type="button" data-testid="reload" (click)="load()">
+          Recarregar dados
+        </button>
+      </div>
+    }
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-6" novalidate>
+      <mat-card appearance="outlined" data-testid="manager-section">
+        <mat-card-content class="p-6">
+          <h2 class="mb-4 text-xl font-semibold">Seus dados</h2>
+          <div formGroupName="manager" class="flex flex-col">
+            <div class="grid gap-x-4 sm:grid-cols-2">
+              <urban-text-field
+                name="fullName"
+                label="Nome completo"
+                autocomplete="name"
+                [errors]="fullNameErrors"
+              />
+              <urban-text-field
+                name="displayName"
+                label="Como prefere ser chamado"
+                autocomplete="nickname"
+                [errors]="displayNameErrors"
+              />
+              <urban-text-field
+                name="birthDate"
+                label="Data de nascimento"
+                [mask]="'date'"
+                autocomplete="bday"
+                [errors]="birthDateErrors"
+              />
+              <urban-text-field
+                name="phone"
+                label="Celular"
+                [mask]="'phone'"
+                autocomplete="tel-national"
+                [errors]="phoneErrors"
+              />
+            </div>
+
+            <div class="mb-5 flex flex-wrap items-center gap-x-4 gap-y-2">
+              @if (changingCpf()) {
+                <urban-text-field
+                  class="min-w-56 grow"
+                  name="cpf"
+                  label="Novo CPF"
+                  [mask]="'cpf'"
+                  autocomplete="off"
+                  [errors]="cpfErrors"
+                />
+                <button mat-button type="button" data-testid="keep-cpf" (click)="keepCpf()">
+                  Manter o CPF atual
+                </button>
+              } @else {
+                <p class="m-0">
+                  <span class="text-on-surface-variant">CPF</span>
+                  <span class="ml-2 font-medium" data-testid="cpf-masked">{{
+                    data.manager.maskedCpf
+                  }}</span>
+                </p>
+                <button mat-button type="button" data-testid="change-cpf" (click)="changeCpf()">
+                  Alterar CPF
+                </button>
+              }
+            </div>
+
+            <urban-address-fields groupName="address" />
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card appearance="outlined" data-testid="condominium-section">
+        <mat-card-content class="p-6">
+          <h2 class="mb-4 text-xl font-semibold">Dados do condomínio</h2>
+          <div formGroupName="condominium" class="flex flex-col">
+            <urban-text-field
+              name="name"
+              label="Nome do condomínio"
+              autocomplete="organization"
+              [errors]="nameErrors"
+            />
+            <p class="mb-1">
+              <span class="text-on-surface-variant">CNPJ</span>
+              <span class="ml-2 font-medium" data-testid="cnpj">{{ data.condominium.cnpj }}</span>
+            </p>
+            <p class="mb-5 text-sm text-on-surface-variant">
+              O CNPJ não pode ser alterado. Se ele estiver errado, fale com o suporte
+            </p>
+            <urban-address-fields groupName="address" [personal]="false" />
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      @if (saved()) {
+        <p role="status" class="flex items-start gap-2" data-testid="saved">
+          <span class="inline-flex text-success"
+            ><mat-icon svgIcon="check_circle" aria-hidden="true"
+          /></span>
+          <span>Dados salvos</span>
+        </p>
+      }
+
+      <urban-form-submit
+        label="Salvar alterações"
+        busyLabel="Salvando"
+        [busy]="busy()"
+        [disabled]="saveDisabled()"
+        [error]="error()"
+      />
+    </form>
+  } @else {
+    <p role="status" class="text-on-surface-variant" data-testid="loading">Carregando seus dados</p>
+  }
+</section>

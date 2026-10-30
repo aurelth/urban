@@ -96,4 +96,36 @@ describe('ShellLayout', () => {
 
     expect(navigate).not.toHaveBeenCalled();
   });
+
+  describe('links do cabecalho', () => {
+    function link(html: HTMLElement, name: string): HTMLAnchorElement | null {
+      return html.querySelector<HTMLAnchorElement>(`a[data-testid="${name}"]`);
+    }
+
+    it('leva o sindico com condominio aos dados do condominio e a conta', async () => {
+      const { html } = await setup(REGISTERED_MANAGER);
+
+      expect(link(html, 'nav-profile')?.textContent?.trim()).toBe('Meus dados');
+      expect(link(html, 'nav-profile')?.getAttribute('href')).toBe('/condominio/meus-dados');
+      expect(link(html, 'nav-account')?.textContent?.trim()).toBe('Minha conta');
+      expect(link(html, 'nav-account')?.getAttribute('href')).toBe('/conta');
+    });
+
+    it('nao mostra os dados do condominio ao sindico que ainda nao o cadastrou', async () => {
+      const { html } = await setup(MANAGER);
+
+      expect(link(html, 'nav-profile')).toBeNull();
+      expect(link(html, 'nav-account')).not.toBeNull();
+    });
+
+    it.each([
+      ['morador', 'Resident' as const],
+      ['administrador', 'SuperAdmin' as const],
+    ])('mostra so a conta para %s', async (_name, role) => {
+      const { html } = await setup({ ...REGISTERED_MANAGER, role });
+
+      expect(link(html, 'nav-profile')).toBeNull();
+      expect(link(html, 'nav-account')).not.toBeNull();
+    });
+  });
 });

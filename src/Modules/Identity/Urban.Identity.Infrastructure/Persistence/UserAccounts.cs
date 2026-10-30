@@ -49,6 +49,19 @@ public sealed class UserAccounts(IdentityDbContext db, IPasswordHasher passwordH
         await db.SaveChangesAsync(cancellationToken);
     }
 
+    public Task<UserCredential?> FindCredentialAsync(Guid userId, CancellationToken cancellationToken) =>
+        db.UserCredentials.SingleOrDefaultAsync(c => c.UserId == userId, cancellationToken);
+
+    public async Task SaveCredentialAsync(UserCredential credential, CancellationToken cancellationToken)
+    {
+        if (db.Entry(credential).State == EntityState.Detached)
+        {
+            db.UserCredentials.Update(credential);
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
     private async Task<Result<User>> CheckOnceAsync(Email email, string password, CancellationToken cancellationToken)
     {
         UserWithCredential? found = await (

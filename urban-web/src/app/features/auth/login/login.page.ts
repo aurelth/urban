@@ -1,6 +1,7 @@
 import { Component, ElementRef, computed, inject, input, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatCard, MatCardContent } from '@angular/material/card';
+import { MatIcon } from '@angular/material/icon';
 import { Router, RouterLink } from '@angular/router';
 import { toApiProblem } from '../../../core/http/api-problem';
 import { MessagesByCode, describeProblem } from '../../../core/http/problem-message';
@@ -28,6 +29,7 @@ const LOGIN_MESSAGES: MessagesByCode = {
     ReactiveFormsModule,
     MatCard,
     MatCardContent,
+    MatIcon,
     RouterLink,
     EmailField,
     PasswordField,
@@ -39,10 +41,11 @@ export class LoginPage {
   /** Destino guardado pela guarda de rota (?returnUrl=...). */
   readonly returnUrl = input<string>();
 
-  /** Por que a pessoa chegou aqui sem ter clicado em sair (?motivo=inatividade). */
+  /** Por que a pessoa chegou aqui sem ter clicado em sair (?motivo=inatividade ou ?motivo=senha-alterada). */
   readonly motivo = input<string>();
 
   protected readonly leftByInactivity = computed(() => this.motivo() === 'inatividade');
+  protected readonly passwordChanged = computed(() => this.motivo() === 'senha-alterada');
 
   private readonly session = inject(SessionStore);
   private readonly router = inject(Router);

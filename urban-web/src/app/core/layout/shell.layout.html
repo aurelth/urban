@@ -6,6 +6,28 @@
       {{ accountLabel(user) }} · {{ roleLabel(user.role) }}
     </span>
   }
+  @if (showProfile()) {
+    <a
+      mat-button
+      data-testid="nav-profile"
+      routerLink="/condominio/meus-dados"
+      routerLinkActive="font-semibold"
+      ariaCurrentWhenActive="page"
+    >
+      <mat-icon svgIcon="apartment" />
+      <span class="hidden sm:inline">Meus dados</span>
+    </a>
+  }
+  <a
+    mat-button
+    data-testid="nav-account"
+    routerLink="/conta"
+    routerLinkActive="font-semibold"
+    ariaCurrentWhenActive="page"
+  >
+    <mat-icon svgIcon="account_circle" />
+    <span class="hidden sm:inline">Minha conta</span>
+  </a>
   <button
     mat-icon-button
     type="button"

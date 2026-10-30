@@ -309,4 +309,16 @@ describe('LoginPage', () => {
     fixture.detectChanges();
     expect(password.type).toBe('password');
   });
+
+  it('avisa em verde que a senha foi alterada, com icone e texto', async () => {
+    const { fixture, html } = setup();
+    fixture.componentRef.setInput('motivo', 'senha-alterada');
+    await fixture.whenStable();
+
+    const notice = html.querySelector('[data-testid="password-changed"]');
+    expect(notice?.getAttribute('role')).toBe('status');
+    expect(notice?.textContent).toContain('Senha alterada. Entre com a nova senha');
+    expect(notice?.querySelector('.text-success mat-icon')).not.toBeNull();
+    expect(html.textContent).not.toContain('Você saiu por inatividade');
+  });
 });

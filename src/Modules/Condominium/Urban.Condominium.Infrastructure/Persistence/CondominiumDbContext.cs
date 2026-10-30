@@ -53,17 +53,21 @@ public sealed class CondominiumDbContext : DbContext
         modelBuilder.HasDefaultSchema(Schema);
         modelBuilder.ApplyConfiguration(new Configurations.CondominiumConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.PersonConfiguration(Protector));
+        modelBuilder.ApplyConfiguration(new Configurations.ChangeLogConfiguration());
 
         // Sem tenant (SuperAdmin, síndico antes de cadastrar o condomínio, anônimo) a comparação com nulo não casa com
         // nenhuma linha: o padrão é não ver nada. Quem precisa ver tudo pede IgnoreQueryFilters de forma explícita.
         modelBuilder.Entity<Person>().HasQueryFilter(person => person.CondominiumId == _tenant.CondominiumId);
     }
 
-    /// <summary>O hash nasce junto com a linha, aqui e não nos chamadores: ninguém consegue gravar um CPF sem ele.</summary>
+    private static bool CpfNeedsAHash(Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<Person> entry) =>
+        entry.State == EntityState.Added || (entry.State == EntityState.Modified && entry.Property(p => p.Cpf).IsModified);
+
+    /// <summary>O hash nasce junto com a linha e é refeito sempre que o CPF muda, aqui e não nos chamadores: ninguém consegue gravar um CPF sem ele.</summary>
     private void StampCpfHashes()
     {
         ChangeTracker.DetectChanges();
-        foreach (Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<Person> entry in ChangeTracker.Entries<Person>().Where(e => e.State == EntityState.Added))
+        foreach (Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<Person> entry in ChangeTracker.Entries<Person>().Where(CpfNeedsAHash))
         {
             entry.Property<string>(CpfHashProperty).CurrentValue = Protector.Hash(entry.Entity.Cpf.Value);
         }

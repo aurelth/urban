@@ -1,5 +1,6 @@
 using Riok.Mapperly.Abstractions;
 using Urban.Api.Endpoints;
+using Urban.Condominium.Application.Profile;
 using Urban.Condominium.Application.Registration.RegisterCondominium;
 using Urban.SharedKernel.Abstractions;
 
@@ -22,6 +23,21 @@ public static partial class CondominiumMapper
             new ManagerInput(manager.FullName, manager.Cpf, manager.BirthDate, manager.Phone, MapAddress(manager.Address ?? NoAddress)),
             new CondominiumInput(condominium.Name, condominium.Cnpj, MapAddress(condominium.Address ?? NoAddress)));
     }
+
+    public static UpdateMyCondominiumCommand ToCommand(UpdateMyCondominiumRequest request, Guid managerUserId) =>
+        new(
+            managerUserId,
+            request.Version,
+            request.DisplayName,
+            request.Phone,
+            MapAddress(request.ManagerAddress ?? NoAddress),
+            request.CondominiumName,
+            MapAddress(request.CondominiumAddress ?? NoAddress));
+
+    public static UpdateManagerIdentityCommand ToCommand(UpdateManagerIdentityRequest request, Guid managerUserId) =>
+        new(managerUserId, request.Version, request.Password, request.FullName, request.BirthDate, request.Cpf);
+
+    public static partial MyCondominiumResponse ToResponse(MyCondominium mine);
 
     public static partial RegisteredCondominiumResponse ToResponse(RegisteredCondominium registered);
 

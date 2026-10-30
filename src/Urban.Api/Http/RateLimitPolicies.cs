@@ -24,6 +24,11 @@ public static class RateLimitPolicies
 
     public const string PostalCodeLookup = "postal-code-lookup";
 
+    public const string CondominiumProfile = "condominium-profile";
+
+    /// <summary>Troca de senha, de e-mail e edição dos dados sensíveis: ações que exigem a senha, com limite menor.</summary>
+    public const string SensitiveChange = "sensitive-change";
+
     /// <summary>Código do problema devolvido com o 429, no mesmo campo "code" dos erros de negócio.</summary>
     public const string ExceededCode = "rate_limit.exceeded";
 }

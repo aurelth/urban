@@ -29,6 +29,7 @@ public static class CondominiumInfrastructureExtensions
         services.AddSingleton<IPersonalDataProtector, PersonalDataProtector>();
         services.AddDbContext<CondominiumDbContext>(options => CondominiumPersistence.Configure(options, postgres));
         services.AddScoped<ICondominiumRegistrations, CondominiumRegistrations>();
+        services.AddScoped<ICondominiumProfiles, CondominiumProfiles>();
 
         return services;
     }

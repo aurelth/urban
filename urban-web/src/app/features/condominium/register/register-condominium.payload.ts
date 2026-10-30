@@ -1,18 +1,10 @@
+import { RegisterCondominiumPayload } from '../../../core/condominium/condominium.models';
 import {
-  AddressPayload,
-  RegisterCondominiumPayload,
-} from '../../../core/condominium/condominium.models';
+  AddressFormValue,
+  cleanText,
+  toAddressPayload,
+} from '../../../shared/forms/address.payload';
 import { unmask } from '../../../shared/forms/masks';
-
-export interface AddressFormValue {
-  postalCode: string;
-  street: string;
-  number: string;
-  complement: string;
-  neighborhood: string;
-  city: string;
-  state: string;
-}
 
 /** O que `form.getRawValue()` devolve na tela de cadastro, com os textos como aparecem nos campos. */
 export interface RegisterCondominiumFormValue {
@@ -41,37 +33,21 @@ export function toRegisterPayload(
   sameAddress: boolean,
 ): RegisterCondominiumPayload {
   const { manager, condominium } = value;
-  const managerAddress = toAddress(manager.address);
+  const managerAddress = toAddressPayload(manager.address);
 
   return {
-    displayName: clean(manager.displayName),
+    displayName: cleanText(manager.displayName),
     manager: {
-      fullName: clean(manager.fullName),
+      fullName: cleanText(manager.fullName),
       cpf: unmask('cpf', manager.cpf),
       birthDate: unmask('date', manager.birthDate),
       phone: unmask('phone', manager.phone),
       address: managerAddress,
     },
     condominium: {
-      name: clean(condominium.name),
+      name: cleanText(condominium.name),
       cnpj: unmask('cnpj', condominium.cnpj),
-      address: sameAddress ? managerAddress : toAddress(condominium.address),
+      address: sameAddress ? managerAddress : toAddressPayload(condominium.address),
     },
   };
-}
-
-function toAddress(address: AddressFormValue): AddressPayload {
-  return {
-    postalCode: unmask('cep', address.postalCode),
-    street: clean(address.street),
-    number: clean(address.number),
-    complement: clean(address.complement) || null,
-    neighborhood: clean(address.neighborhood),
-    city: clean(address.city),
-    state: address.state,
-  };
-}
-
-function clean(text: string): string {
-  return text.split(/\s+/).filter(Boolean).join(' ');
 }

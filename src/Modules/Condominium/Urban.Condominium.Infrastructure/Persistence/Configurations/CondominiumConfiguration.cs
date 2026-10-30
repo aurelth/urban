@@ -30,5 +30,8 @@ internal sealed class CondominiumConfiguration : IEntityTypeConfiguration<Condom
         builder.HasIndex(c => c.CreatedBy).IsUnique();
 
         builder.Property(c => c.CreatedAt);
+
+        // Versão da linha para a edição: a coluna de sistema xmin muda a cada UPDATE. Fica como propriedade-sombra para o Domain não conhecer o EF.
+        builder.Property<uint>("xmin").IsRowVersion();
     }
 }
