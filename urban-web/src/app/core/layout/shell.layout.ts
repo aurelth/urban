@@ -6,6 +6,7 @@ import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/rou
 import { accountLabel } from '../auth/account-label';
 import { roleLabel } from '../auth/role-label';
 import { SessionStore } from '../auth/session.store';
+import { BrandLink } from '../../shared/ui/brand-link/brand.link';
 import { ThemeStore } from '../services/theme.store';
 
 @Component({
@@ -18,6 +19,7 @@ import { ThemeStore } from '../services/theme.store';
     MatButton,
     MatIconButton,
     MatIcon,
+    BrandLink,
   ],
   templateUrl: './shell.layout.html',
 })
