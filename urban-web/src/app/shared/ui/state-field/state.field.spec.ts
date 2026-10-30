@@ -76,4 +76,10 @@ describe('StateField', () => {
     expect(select.getAttribute('autocomplete')).toBe('address-level1');
     expect(select.getAttribute('formControlName')).toBe('state');
   });
+
+  it('deixa o espaço de 20px abaixo de si, que o Material não reserva mais', () => {
+    const { fixture } = render();
+
+    expect(fixture.nativeElement.querySelector('urban-state-field').classList).toContain('mb-5');
+  });
 });

@@ -14,9 +14,14 @@
     [autocomplete]="suggest('address-line1')"
     [errors]="streetErrors"
   />
-  <urban-text-field class="col-span-2" name="number" label="Número" [errors]="numberErrors" />
   <urban-text-field
-    class="col-span-4"
+    class="col-span-6 sm:col-span-2"
+    name="number"
+    label="Número"
+    [errors]="numberErrors"
+  />
+  <urban-text-field
+    class="col-span-6 sm:col-span-4"
     name="complement"
     label="Complemento"
     [optional]="true"
@@ -43,8 +48,14 @@
     [autocomplete]="suggest('address-level1')"
   />
   <div class="col-span-6" role="status">
-    @if (notice(); as message) {
+    @if (info(); as message) {
       <p class="mb-4 text-sm text-on-surface-variant">{{ message }}</p>
     }
   </div>
+  @if (problem(); as message) {
+    <p role="alert" class="col-span-6 mb-4 flex items-start gap-2 text-error">
+      <mat-icon svgIcon="error" aria-hidden="true" />
+      <span>{{ message }}</span>
+    </p>
+  }
 </div>

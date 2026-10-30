@@ -26,7 +26,8 @@ import { FormFieldBase, USE_PARENT_FORM } from '../form-field.base';
   ],
   templateUrl: './password.field.html',
   viewProviders: [USE_PARENT_FORM],
-  host: { class: 'block' },
+  // Com a regra da senha à mostra, ela ocupa o lugar do espaço de baixo.
+  host: { class: 'block', '[class.mb-5]': '!policy()' },
 })
 export class PasswordField extends FormFieldBase {
   /** `new-password` ao criar ou trocar a senha, para o gerenciador de senhas sugerir uma. */

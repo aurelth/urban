@@ -1,6 +1,7 @@
 import { Component, DestroyRef, OnInit, computed, inject, input, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ControlContainer, FormGroup, ReactiveFormsModule } from '@angular/forms';
+import { MatIcon } from '@angular/material/icon';
 import { EMPTY, distinctUntilChanged, map, switchMap, tap } from 'rxjs';
 import { PostalCodeApi } from '../../../core/postal-code/postal-code.api';
 import { PostalCodeLookup } from '../../../core/postal-code/postal-code.models';
@@ -13,10 +14,13 @@ import { TextField } from '../text-field/text.field';
 
 type LookupState = 'idle' | 'loading' | PostalCodeLookup['status'];
 
-const NOTICES: Readonly<Record<LookupState, string | null>> = {
-  idle: null,
+/** Falha (CEP que não existe, serviço fora do ar) é erro e aparece como os outros erros; o resto é só informação. */
+const INFO: Readonly<Partial<Record<LookupState, string>>> = {
   loading: 'Buscando o endereço',
   found: 'Endereço preenchido. Confira os dados e informe o número',
+};
+
+const PROBLEMS: Readonly<Partial<Record<LookupState, string>>> = {
   'not-found': 'Não encontramos esse CEP. Preencha o endereço manualmente',
   unavailable: 'Não foi possível buscar o endereço agora. Preencha manualmente',
 };
@@ -32,7 +36,7 @@ const NOTICES: Readonly<Record<LookupState, string | null>> = {
  */
 @Component({
   selector: 'urban-address-fields',
-  imports: [ReactiveFormsModule, TextField, StateField],
+  imports: [ReactiveFormsModule, MatIcon, TextField, StateField],
   templateUrl: './address.fields.html',
   viewProviders: [USE_PARENT_FORM],
 })
@@ -45,7 +49,8 @@ export class AddressFields implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly lookupState = signal<LookupState>('idle');
 
-  protected readonly notice = computed(() => NOTICES[this.lookupState()]);
+  protected readonly info = computed(() => INFO[this.lookupState()] ?? null);
+  protected readonly problem = computed(() => PROBLEMS[this.lookupState()] ?? null);
 
   protected readonly postalCodeErrors = {
     required: 'Informe o CEP',

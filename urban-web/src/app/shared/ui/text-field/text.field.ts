@@ -26,7 +26,8 @@ const FALLBACK_ERROR = 'Confira este campo';
   ],
   templateUrl: './text.field.html',
   viewProviders: [USE_PARENT_FORM],
-  host: { class: 'block' },
+  // Sem dica, a área do erro não reserva espaço (veja provideFormFieldDefaults): o espaço de baixo é do campo.
+  host: { class: 'block', '[class.mb-5]': '!hint()' },
 })
 export class TextField extends FormFieldBase {
   readonly name = input.required<string>();

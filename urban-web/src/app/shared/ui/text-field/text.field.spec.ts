@@ -156,4 +156,13 @@ describe('TextField', () => {
     const messages = [...html.querySelectorAll('mat-error')].map((e) => e.textContent?.trim());
     expect(messages).toContain('Informe a rua');
   });
+
+  it('deixa o espaço de 20px abaixo de si, que o Material não reserva mais, menos quando há dica (a dica ocupa o lugar)', () => {
+    const { html } = render();
+    const fields = [...html.querySelectorAll('urban-text-field')];
+
+    expect(fields[0].classList).not.toContain('mb-5');
+    expect(fields[1].classList).toContain('mb-5');
+    expect(fields[4].classList).toContain('mb-5');
+  });
 });

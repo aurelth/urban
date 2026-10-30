@@ -3,6 +3,8 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { Component, inject, signal } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
+import { MatIconRegistry } from '@angular/material/icon';
+import { DomSanitizer } from '@angular/platform-browser';
 import { addressGroup } from '../../forms/address.group';
 import { AddressFields } from './address.fields';
 
@@ -47,6 +49,11 @@ class TwoAddressesHost {
 
 beforeEach(() => {
   TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+  // O aviso de falha leva o ícone de erro. Registrado de antemão, o ícone não vai buscar o SVG pela rede.
+  TestBed.inject(MatIconRegistry).addSvgIconLiteral(
+    'error',
+    TestBed.inject(DomSanitizer).bypassSecurityTrustHtml('<svg></svg>'),
+  );
 });
 
 function render(): { fixture: ComponentFixture<Host>; html: HTMLElement } {
@@ -227,7 +234,13 @@ const NOT_FOUND_NOTICE = 'Não encontramos esse CEP. Preencha o endereço manual
 const UNAVAILABLE_NOTICE = 'Não foi possível buscar o endereço agora. Preencha manualmente';
 
 function notice(root: HTMLElement): string {
-  return root.querySelector('[role="status"]')?.textContent?.trim() ?? '';
+  return [...root.querySelectorAll('[role="status"], [role="alert"]')]
+    .map((element) => element.textContent?.trim() ?? '')
+    .join('');
+}
+
+function alert(root: HTMLElement): HTMLElement | null {
+  return root.querySelector<HTMLElement>('[role="alert"]');
 }
 
 function address(fixture: ComponentFixture<Host>) {
@@ -331,6 +344,83 @@ describe('AddressFields, preenchimento pelo CEP', () => {
     type(html, 'neighborhood', 'Itoupava');
     expect(address(fixture).neighborhood).toBe('Itoupava');
     expect((control(html, 'neighborhood') as HTMLInputElement).disabled).toBe(false);
+  });
+
+  it.each([
+    [404, 'Not Found', NOT_FOUND_NOTICE],
+    [503, 'Service Unavailable', UNAVAILABLE_NOTICE],
+    [429, 'Too Many Requests', UNAVAILABLE_NOTICE],
+  ])(
+    'mostra a falha %i como alerta em vermelho, com ícone, como os outros erros do formulário',
+    (status, statusText, message) => {
+      const { fixture, html } = render();
+
+      type(html, 'postalCode', '89010000');
+      http.expectOne(`${LOOKUP}89010000`).flush({}, { status, statusText });
+      fixture.detectChanges();
+
+      const warning = alert(html)!;
+      expect(warning.textContent).toContain(message);
+      expect(warning.classList).toContain('text-error');
+      expect(warning.querySelector('mat-icon')).not.toBeNull();
+    },
+  );
+
+  it('mostra a falta de rede como alerta em vermelho', () => {
+    const { fixture, html } = render();
+
+    type(html, 'postalCode', '89010000');
+    http.expectOne(`${LOOKUP}89010000`).error(new ProgressEvent('error'));
+    fixture.detectChanges();
+
+    expect(alert(html)?.textContent).toContain(UNAVAILABLE_NOTICE);
+    expect(alert(html)?.classList).toContain('text-error');
+  });
+
+  it('mostra "buscando" e "preenchido" como texto comum, sem alerta e sem vermelho', () => {
+    const { fixture, html } = render();
+
+    type(html, 'postalCode', '89010000');
+    fixture.detectChanges();
+    expect(alert(html)).toBeNull();
+    expect(html.querySelector('[role="status"]')?.textContent).toContain('Buscando o endereço');
+    expect(html.querySelector('[role="status"] .text-error')).toBeNull();
+
+    http.expectOne(`${LOOKUP}89010000`).flush(BLUMENAU);
+    fixture.detectChanges();
+    expect(alert(html)).toBeNull();
+    expect(html.querySelector('[role="status"]')?.textContent).toContain('Endereço preenchido');
+    expect(html.querySelector('[role="status"] .text-error')).toBeNull();
+  });
+
+  it('tira o alerta quando o CEP seguinte é encontrado', () => {
+    const { fixture, html } = render();
+    type(html, 'postalCode', '89010000');
+    http.expectOne(`${LOOKUP}89010000`).flush({}, { status: 404, statusText: 'Not Found' });
+    fixture.detectChanges();
+    expect(alert(html)).not.toBeNull();
+
+    type(html, 'postalCode', '89020000');
+    http.expectOne(`${LOOKUP}89020000`).flush(BLUMENAU);
+    fixture.detectChanges();
+
+    expect(alert(html)).toBeNull();
+    expect(notice(html)).toContain('Endereço preenchido');
+  });
+
+  it('tira o alerta quando o CEP deixa de estar completo', () => {
+    const { fixture, html } = render();
+    type(html, 'postalCode', '89010000');
+    http
+      .expectOne(`${LOOKUP}89010000`)
+      .flush({}, { status: 503, statusText: 'Service Unavailable' });
+    fixture.detectChanges();
+    expect(alert(html)).not.toBeNull();
+
+    type(html, 'postalCode', '8901');
+    fixture.detectChanges();
+
+    expect(alert(html)).toBeNull();
   });
 
   it('avisa que a consulta está indisponível quando não há rede', () => {
