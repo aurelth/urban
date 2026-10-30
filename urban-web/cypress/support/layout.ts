@@ -64,10 +64,16 @@ export function expectErrorsToStayInTheirOwnSpace(): void {
 
 /**
  * Cores de sucesso (verde) e de andamento (laranja) da paleta do CLAUDE.md, como o navegador as devolve:
- * claro #248A3D e #B25000; escuro, versões mais luminosas (#30D158 e #FF9F0A).
+ * claro #248A3D e #B25000; escuro, versões mais luminosas (#30D158 e #FF9F0A). No tema claro, o botão principal
+ * (preenchido) usa a cor de destaque #5856D6, com texto branco.
  */
 export const PALETTE = {
-  light: { success: 'rgb(36, 138, 61)', warning: 'rgb(178, 80, 0)' },
+  light: {
+    success: 'rgb(36, 138, 61)',
+    warning: 'rgb(178, 80, 0)',
+    primary: 'rgb(88, 86, 214)',
+    onPrimary: 'rgb(255, 255, 255)',
+  },
   dark: { success: 'rgb(48, 209, 88)', warning: 'rgb(255, 159, 10)' },
 } as const;
 

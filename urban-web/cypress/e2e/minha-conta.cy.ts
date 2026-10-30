@@ -20,6 +20,20 @@ describe('Minha conta', () => {
     stubSignedIn();
   });
 
+  it('mostra "Alterar e-mail" como botão principal: fundo índigo preenchido e texto branco', () => {
+    cy.visit(ACCOUNT_PATH, {
+      onBeforeLoad: (win) => win.localStorage.setItem('urban.theme', 'light'),
+    });
+
+    cy.get('[data-testid="change-email"]')
+      .should('have.css', 'background-color', PALETTE.light.primary)
+      .and('have.css', 'color', PALETTE.light.onPrimary);
+    // Igual ao botão "Alterar senha", o outro botão principal da tela.
+    cy.get('[data-testid="password-section"] button[type="submit"]')
+      .should('have.css', 'background-color', PALETTE.light.primary)
+      .and('have.css', 'color', PALETTE.light.onPrimary);
+  });
+
   it('abre pelo link do cabecalho e mostra o e-mail atual', () => {
     cy.visit('/dashboard');
     cy.get('[data-testid="nav-account"]').click();
