@@ -34,6 +34,7 @@ describe('authInterceptor', () => {
     '/api/auth/confirm-email',
     '/api/auth/forgot-password',
     '/api/auth/reset-password',
+    '/api/auth/confirm-email-change',
     '/api/terms/current',
     '/api/terms/current?idioma=pt',
   ])('nao envia o token para a rota publica %s', async (url) => {

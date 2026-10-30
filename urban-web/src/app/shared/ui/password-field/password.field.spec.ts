@@ -31,7 +31,28 @@ class CreateHost {
   });
 }
 
-function render<T extends SignInHost | CreateHost>(host: new () => T): ComponentFixture<T> {
+@Component({
+  imports: [ReactiveFormsModule, PasswordField],
+  template: `
+    <form [formGroup]="form" novalidate>
+      <urban-password-field
+        name="newPassword"
+        label="Nova senha"
+        autocomplete="new-password"
+        [policy]="true"
+      />
+    </form>
+  `,
+})
+class NamedHost {
+  readonly form = inject(NonNullableFormBuilder).group({
+    newPassword: ['', [Validators.required, passwordPolicy]],
+  });
+}
+
+function render<T extends SignInHost | CreateHost | NamedHost>(
+  host: new () => T,
+): ComponentFixture<T> {
   TestBed.configureTestingModule({ providers: [provideUrbanIcons()] });
   const fixture = TestBed.createComponent(host);
   fixture.detectChanges();
@@ -141,5 +162,32 @@ describe('PasswordField', () => {
   it('não soma o espaço de baixo à regra da senha', () => {
     const create = render(CreateHost);
     expect(html(create).querySelector('urban-password-field')!.classList).not.toContain('mb-5');
+  });
+
+  it('liga o campo ao controle com o nome pedido e mostra o rotulo pedido', () => {
+    const fixture = render(NamedHost);
+    const input = html(fixture).querySelector('input')!;
+
+    input.value = 'Senha-nova-456';
+    input.dispatchEvent(new Event('input'));
+
+    expect(fixture.componentInstance.form.getRawValue().newPassword).toBe('Senha-nova-456');
+    expect(html(fixture).querySelector('mat-label')?.textContent?.trim()).toBe('Nova senha');
+    expect(input.getAttribute('formControlName')).toBe('newPassword');
+  });
+
+  it('mostra o erro do controle com o nome pedido', () => {
+    const fixture = render(NamedHost);
+
+    fixture.componentInstance.form.controls.newPassword.markAsTouched();
+    fixture.detectChanges();
+
+    expect(errorText(fixture)).toBe('Informe a senha');
+  });
+
+  it('sem nome nem rotulo, continua sendo o campo "Senha" do controle password', () => {
+    const fixture = render(SignInHost);
+
+    expect(html(fixture).querySelector('mat-label')?.textContent?.trim()).toBe('Senha');
   });
 });

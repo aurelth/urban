@@ -3,6 +3,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { jest } from '@jest/globals';
 import { SessionStore } from '../../../core/auth/session.store';
+import { RegistrationDraft, RegistrationDraftData } from '../../../core/drafts/registration-draft';
 import { flushPromises } from '../../../testing/async';
 import {
   MANAGER,
@@ -95,7 +96,7 @@ function spyNavigate() {
   return jest.spyOn(TestBed.inject(Router), 'navigateByUrl').mockResolvedValue(true);
 }
 
-async function setup(): Promise<
+async function setup(prepare?: () => void): Promise<
   Harness<RegisterCondominiumPage> & {
     navigate: ReturnType<typeof spyNavigate>;
     store: InstanceType<typeof SessionStore>;
@@ -105,6 +106,7 @@ async function setup(): Promise<
   const store = TestBed.inject(SessionStore);
   await signInAs(store, harness.http, MANAGER);
   const navigate = spyNavigate();
+  prepare?.();
   harness.fixture.detectChanges();
   await harness.fixture.whenStable();
   return { ...harness, navigate, store };
@@ -131,6 +133,8 @@ async function answerSession(
 
 describe('RegisterCondominiumPage', () => {
   afterEach(() => {
+    jest.useRealTimers();
+    localStorage.clear();
     jest.restoreAllMocks();
     TestBed.inject(HttpTestingController).match(() => true);
   });
@@ -501,5 +505,235 @@ describe('RegisterCondominiumPage', () => {
     expect(store.status()).toBe('anonymous');
     expect(store.expired()).toBe(true);
     expect(navigate).not.toHaveBeenCalled();
+  });
+
+  describe('rascunho do cadastro interrompido', () => {
+    const SAVED_ADDRESS = {
+      postalCode: '89010-000',
+      street: 'Rua das Flores',
+      number: '120',
+      complement: 'Apto 42',
+      neighborhood: 'Centro',
+      city: 'Blumenau',
+      state: 'SC',
+    };
+
+    const SAVED: RegistrationDraftData = {
+      manager: {
+        fullName: 'Marina Souza',
+        displayName: 'Marina',
+        phone: '(47) 99123-4567',
+        address: SAVED_ADDRESS,
+      },
+      condominium: {
+        name: 'Residencial das Flores',
+        cnpj: '11.222.333/0001-81',
+        address: { ...SAVED_ADDRESS, postalCode: '89012-100', street: 'Rua XV de Novembro' },
+      },
+      sameAddress: false,
+    };
+
+    const DRAFT_KEY = `urban.registration-draft.${MANAGER.id}`;
+
+    function saveDraft(data: RegistrationDraftData = SAVED): () => void {
+      return () => TestBed.inject(RegistrationDraft).save(MANAGER.id, data);
+    }
+
+    function notice(html: HTMLElement): HTMLElement | null {
+      return html.querySelector<HTMLElement>('[data-testid="draft-restored"]');
+    }
+
+    it('sem rascunho, abre o formulario vazio e sem aviso', async () => {
+      const { html } = await setup();
+
+      expect(notice(html)).toBeNull();
+      expect(field(section(html, 'manager'), 'fullName').value).toBe('');
+    });
+
+    it('recupera o que a pessoa ja tinha preenchido e avisa', async () => {
+      const { html } = await setup(saveDraft());
+
+      const manager = section(html, 'manager');
+      const condominium = section(html, 'condominium');
+      expect(field(manager, 'fullName').value).toBe('Marina Souza');
+      expect(field(manager, 'displayName').value).toBe('Marina');
+      expect(field(manager, 'phone').value).toBe('(47) 99123-4567');
+      expect(field(manager, 'postalCode').value).toBe('89010-000');
+      expect(field(manager, 'street').value).toBe('Rua das Flores');
+      expect(field(manager, 'complement').value).toBe('Apto 42');
+      expect(field(manager, 'state').value).toBe('SC');
+      expect(field(condominium, 'name').value).toBe('Residencial das Flores');
+      expect(field(condominium, 'cnpj').value).toBe('11.222.333/0001-81');
+      expect(field(condominium, 'street').value).toBe('Rua XV de Novembro');
+      expect(notice(html)?.getAttribute('role')).toBe('status');
+      expect(notice(html)?.textContent).toContain('Recuperamos o que você já tinha preenchido');
+    });
+
+    it('deixa em branco o CPF e a data de nascimento, que nunca sao guardados', async () => {
+      const { html } = await setup(saveDraft());
+
+      expect(field(section(html, 'manager'), 'cpf').value).toBe('');
+      expect(field(section(html, 'manager'), 'birthDate').value).toBe('');
+    });
+
+    it('recuperar o rascunho nao dispara a busca de CEP nem mexe no numero digitado', async () => {
+      const { fixture, html, http } = await setup(saveDraft());
+      await settle(fixture);
+
+      http.expectNone('/api/postal-codes/89010000');
+      http.expectNone('/api/postal-codes/89012100');
+      expect(field(section(html, 'manager'), 'number').value).toBe('120');
+      expect(field(section(html, 'condominium'), 'number').value).toBe('120');
+    });
+
+    it('recupera tambem a escolha de usar o mesmo endereco', async () => {
+      const { html } = await setup(saveDraft({ ...SAVED, sameAddress: true }));
+
+      expect(section(html, 'condominium').querySelector('urban-address-fields')).toBeNull();
+      expect(
+        html.querySelector<HTMLInputElement>('[data-testid="same-address"] input')!.checked,
+      ).toBe(true);
+    });
+
+    it('descartar apaga o rascunho, esvazia o formulario e tira o aviso', async () => {
+      const { fixture, html } = await setup(saveDraft());
+
+      html.querySelector<HTMLButtonElement>('[data-testid="discard-draft"]')!.click();
+      fixture.detectChanges();
+
+      expect(notice(html)).toBeNull();
+      expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
+      expect(field(section(html, 'manager'), 'fullName').value).toBe('');
+      expect(field(section(html, 'condominium'), 'cnpj').value).toBe('');
+    });
+
+    it('descartar nao deixa o formulario guardar um rascunho vazio logo em seguida', async () => {
+      const { fixture, html } = await setup(saveDraft());
+      jest.useFakeTimers();
+
+      html.querySelector<HTMLButtonElement>('[data-testid="discard-draft"]')!.click();
+      fixture.detectChanges();
+      jest.advanceTimersByTime(2_000);
+
+      expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
+    });
+
+    it('guarda o que a pessoa digita so depois de uma pausa na digitacao', async () => {
+      const { html } = await setup();
+      jest.useFakeTimers();
+
+      fill(section(html, 'manager'), 'fullName', 'Marina Souza');
+      jest.advanceTimersByTime(499);
+      expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
+
+      jest.advanceTimersByTime(1);
+      const stored = JSON.parse(localStorage.getItem(DRAFT_KEY)!);
+      expect(stored.data.manager.fullName).toBe('Marina Souza');
+    });
+
+    it('cada tecla recomeca a espera e vira uma gravacao so', async () => {
+      const { html } = await setup();
+      const save = jest.spyOn(TestBed.inject(RegistrationDraft), 'save');
+      jest.useFakeTimers();
+
+      for (const text of ['M', 'Ma', 'Mar', 'Mari']) {
+        fill(section(html, 'manager'), 'displayName', text);
+        jest.advanceTimersByTime(300);
+      }
+      jest.advanceTimersByTime(500);
+
+      expect(save).toHaveBeenCalledTimes(1);
+      expect(JSON.parse(localStorage.getItem(DRAFT_KEY)!).data.manager.displayName).toBe('Mari');
+    });
+
+    it('nunca grava o CPF nem a data de nascimento', async () => {
+      const { html } = await setup();
+      jest.useFakeTimers();
+
+      fillAll(section(html, 'manager'), {
+        fullName: 'Marina Souza',
+        cpf: '52998224725',
+        birthDate: '15061980',
+      });
+      jest.advanceTimersByTime(500);
+
+      const stored = localStorage.getItem(DRAFT_KEY)!;
+      expect(stored).toContain('Marina Souza');
+      expect(stored).not.toContain('529.982.247-25');
+      expect(stored).not.toContain('52998224725');
+      expect(stored).not.toContain('15/06/1980');
+      expect(stored).not.toContain('15061980');
+    });
+
+    it('usa o usuario da sessao na chave, sem misturar com o rascunho de outra pessoa', async () => {
+      const { html } = await setup();
+      jest.useFakeTimers();
+
+      fill(section(html, 'manager'), 'fullName', 'Marina Souza');
+      jest.advanceTimersByTime(500);
+
+      expect(localStorage.getItem(DRAFT_KEY)).not.toBeNull();
+      expect(localStorage.length).toBe(1);
+    });
+
+    it('apaga o rascunho quando o cadastro da certo', async () => {
+      const { fixture, html, http } = await setup(saveDraft());
+      fillValidForm(html);
+
+      await submitForm(fixture);
+      http.expectOne('/api/condominiums').flush(SUMMARY, { status: 201, statusText: 'Created' });
+      await answerSession(http, fixture);
+
+      expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
+    });
+
+    it('apaga o rascunho tambem quando a API diz que o sindico ja tinha cadastrado', async () => {
+      const { fixture, html, http } = await setup(saveDraft());
+      fillValidForm(html);
+
+      await submitForm(fixture);
+      http
+        .expectOne('/api/condominiums')
+        .flush(problem(409, 'condominium.manager.already_registered'), {
+          status: 409,
+          statusText: 'Conflict',
+        });
+      await answerSession(http, fixture);
+
+      expect(localStorage.getItem(DRAFT_KEY)).toBeNull();
+    });
+
+    it('mantem o rascunho quando a API recusa o cadastro, para a pessoa corrigir', async () => {
+      const { fixture, html, http } = await setup(saveDraft());
+      fillValidForm(html);
+
+      await submitForm(fixture);
+      http
+        .expectOne('/api/condominiums')
+        .flush(problem(409, 'condominium.cnpj.already_registered'), {
+          status: 409,
+          statusText: 'Conflict',
+        });
+      await settle(fixture);
+
+      expect(localStorage.getItem(DRAFT_KEY)).not.toBeNull();
+    });
+
+    it('com o armazenamento bloqueado ou cheio, o cadastro continua funcionando', async () => {
+      jest.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        throw new DOMException('cheio', 'QuotaExceededError');
+      });
+      jest.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+        throw new DOMException('bloqueado', 'SecurityError');
+      });
+      const { fixture, html, http } = await setup();
+      fillValidForm(html);
+
+      await submitForm(fixture);
+      const request = http.expectOne('/api/condominiums');
+
+      expect(notice(html)).toBeNull();
+      expect(request.request.method).toBe('POST');
+    });
   });
 });

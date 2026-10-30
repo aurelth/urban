@@ -9,6 +9,7 @@ import {
   signInAs,
   tokenResponse,
 } from '../../testing/auth.fixtures';
+import { RegistrationDraft } from '../drafts/registration-draft';
 import { CurrentUser } from './auth.models';
 import { SessionStore } from './session.store';
 
@@ -198,6 +199,110 @@ describe('SessionStore', () => {
     });
   });
 
+  describe('rascunho do cadastro', () => {
+    const DRAFT = {
+      manager: {
+        fullName: 'Marina Souza',
+        displayName: 'Marina',
+        phone: '(47) 99123-4567',
+        address: {
+          postalCode: '89010-000',
+          street: 'Rua das Flores',
+          number: '120',
+          complement: '',
+          neighborhood: 'Centro',
+          city: 'Blumenau',
+          state: 'SC',
+        },
+      },
+      condominium: {
+        name: 'Residencial das Flores',
+        cnpj: '',
+        address: {
+          postalCode: '',
+          street: '',
+          number: '',
+          complement: '',
+          neighborhood: '',
+          city: '',
+          state: '',
+        },
+      },
+      sameAddress: true,
+    };
+
+    afterEach(() => localStorage.clear());
+
+    it('sair apaga o rascunho guardado, para ele nao ficar no navegador de quem saiu', async () => {
+      const { store, http } = setup();
+      await signInAs(store, http);
+      const drafts = TestBed.inject(RegistrationDraft);
+      drafts.save(MANAGER.id, DRAFT);
+
+      const signingOut = store.signOut();
+      http.expectOne('/api/auth/logout').flush(null, { status: 204, statusText: 'No Content' });
+      await signingOut;
+
+      expect(drafts.load(MANAGER.id)).toBeNull();
+    });
+
+    it('sair apaga o rascunho mesmo quando a API falha', async () => {
+      const { store, http } = setup();
+      await signInAs(store, http);
+      const drafts = TestBed.inject(RegistrationDraft);
+      drafts.save(MANAGER.id, DRAFT);
+
+      const signingOut = store.signOut();
+      http
+        .expectOne('/api/auth/logout')
+        .flush(null, { status: 503, statusText: 'Service Unavailable' });
+      await signingOut;
+
+      expect(drafts.load(MANAGER.id)).toBeNull();
+    });
+
+    it('a sessao que expira sozinha nao apaga o rascunho: a pessoa volta e continua', async () => {
+      const { store, http } = setup();
+      await signInAs(store, http);
+      const drafts = TestBed.inject(RegistrationDraft);
+      drafts.save(MANAGER.id, DRAFT);
+
+      store.expire();
+
+      expect(drafts.load(MANAGER.id)).toEqual(DRAFT);
+    });
+  });
+
+  describe('endSession', () => {
+    it('encerra a sessao deste navegador sem chamar a API, porque ela ja revogou todas', async () => {
+      const { store, http } = setup();
+      await signInAs(store, http);
+
+      store.endSession();
+
+      expect(store.status()).toBe('anonymous');
+      expect(store.user()).toBeNull();
+      expect(store.accessToken()).toBeNull();
+      expect(store.expired()).toBe(false);
+      http.expectNone('/api/auth/logout');
+    });
+
+    it('apaga o rascunho do cadastro, como sair', async () => {
+      const { store, http } = setup();
+      await signInAs(store, http);
+      const drafts = TestBed.inject(RegistrationDraft);
+      drafts.save(MANAGER.id, {
+        manager: { fullName: 'A B', displayName: 'A', phone: '', address: emptyAddress() },
+        condominium: { name: '', cnpj: '', address: emptyAddress() },
+        sameAddress: false,
+      });
+
+      store.endSession();
+
+      expect(drafts.load(MANAGER.id)).toBeNull();
+    });
+  });
+
   describe('renew', () => {
     it('renova o token', async () => {
       const { store, http } = setup();
@@ -351,3 +456,23 @@ describe('SessionStore', () => {
     });
   });
 });
+
+function emptyAddress(): {
+  postalCode: string;
+  street: string;
+  number: string;
+  complement: string;
+  neighborhood: string;
+  city: string;
+  state: string;
+} {
+  return {
+    postalCode: '',
+    street: '',
+    number: '',
+    complement: '',
+    neighborhood: '',
+    city: '',
+    state: '',
+  };
+}

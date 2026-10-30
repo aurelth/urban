@@ -18,7 +18,7 @@ import {
   tokenResponse,
 } from '../../testing/auth.fixtures';
 import { CurrentUser } from './auth.models';
-import { condominiumGuard, condominiumSetupGuard } from './condominium.guards';
+import { condominiumGuard, condominiumSetupGuard, managerGuard } from './condominium.guards';
 import { SessionStore } from './session.store';
 
 function setup(): {
@@ -141,5 +141,55 @@ describe('condominiumSetupGuard', () => {
     await restoring;
 
     await expect(decision).resolves.toBe(true);
+  });
+});
+
+describe('managerGuard', () => {
+  afterEach(() => TestBed.inject(HttpTestingController).verify());
+
+  it('deixa o síndico entrar nas telas de dados do condomínio', async () => {
+    const { store, http, run } = setup();
+    await signInAs(store, http, REGISTERED_MANAGER);
+
+    await expect(run(managerGuard)).resolves.toBe(true);
+  });
+
+  it.each([
+    ['morador', RESIDENT],
+    ['administrador', ADMIN],
+  ])('leva %s para o painel', async (_name, user) => {
+    const { store, http, router, run } = setup();
+    await signInAs(store, http, user);
+
+    const result = await run(managerGuard);
+
+    expect(router.serializeUrl(result as UrlTree)).toBe('/dashboard');
+  });
+
+  it('espera a restauração da sessão antes de decidir', async () => {
+    const { store, http, run } = setup();
+    const restoring = store.restore();
+    const decision = run(managerGuard);
+
+    await flushPromises();
+    http.expectOne('/api/auth/refresh').flush(tokenResponse());
+    await flushPromises();
+    http.expectOne('/api/auth/me').flush(REGISTERED_MANAGER);
+    await restoring;
+
+    await expect(decision).resolves.toBe(true);
+  });
+
+  it('deixa a decisão sobre quem não está logado para a guarda de login', async () => {
+    const { store, http, run } = setup();
+    const restoring = store.restore();
+    await flushPromises();
+    http.expectOne('/api/auth/refresh').flush(problem(401, 'identity.session.unauthenticated'), {
+      status: 401,
+      statusText: 'Unauthorized',
+    });
+    await restoring;
+
+    await expect(run(managerGuard)).resolves.toBe(true);
   });
 });
