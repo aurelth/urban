@@ -190,4 +190,12 @@ describe('PasswordField', () => {
 
     expect(html(fixture).querySelector('mat-label')?.textContent?.trim()).toBe('Senha');
   });
+
+  it('deixa a área do erro crescer com o texto sem depender de configuração global', () => {
+    const subscript = html(render(SignInHost)).querySelector(
+      '.mat-mdc-form-field-subscript-wrapper',
+    );
+
+    expect(subscript?.classList).toContain('mat-mdc-form-field-subscript-dynamic-size');
+  });
 });
