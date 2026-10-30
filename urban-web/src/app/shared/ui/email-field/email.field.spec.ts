@@ -101,4 +101,12 @@ describe('EmailField', () => {
 
     expect(fixture.nativeElement.querySelector('urban-email-field').classList).toContain('mb-5');
   });
+
+  it('deixa a área do erro crescer com o texto sem depender de configuração global', () => {
+    const subscript = render(DefaultHost).nativeElement.querySelector(
+      '.mat-mdc-form-field-subscript-wrapper',
+    );
+
+    expect(subscript?.classList).toContain('mat-mdc-form-field-subscript-dynamic-size');
+  });
 });

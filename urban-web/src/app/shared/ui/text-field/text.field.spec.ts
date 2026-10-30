@@ -165,4 +165,10 @@ describe('TextField', () => {
     expect(fields[1].classList).toContain('mb-5');
     expect(fields[4].classList).toContain('mb-5');
   });
+
+  it('deixa a área do erro crescer com o texto sem depender de configuração global', () => {
+    const subscript = render().html.querySelector('.mat-mdc-form-field-subscript-wrapper');
+
+    expect(subscript?.classList).toContain('mat-mdc-form-field-subscript-dynamic-size');
+  });
 });

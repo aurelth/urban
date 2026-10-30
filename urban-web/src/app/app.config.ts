@@ -7,7 +7,6 @@ import { provideInactivityLogout } from './core/auth/inactivity.monitor';
 import { provideSessionRestore } from './core/auth/session.providers';
 import { providePageTitle } from './core/services/page-title.strategy';
 import { provideTheme } from './core/services/theme.providers';
-import { provideFormFieldDefaults } from './core/theme/form-field.providers';
 import { provideUrbanIcons } from './core/theme/icons';
 
 export const appConfig: ApplicationConfig = {
@@ -17,7 +16,6 @@ export const appConfig: ApplicationConfig = {
     provideHttpClient(withFetch(), withInterceptors([authInterceptor])),
     providePageTitle(),
     provideUrbanIcons(),
-    provideFormFieldDefaults(),
     provideTheme(),
     provideSessionRestore(),
     provideInactivityLogout(),
