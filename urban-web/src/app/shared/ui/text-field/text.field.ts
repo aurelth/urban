@@ -26,7 +26,7 @@ const FALLBACK_ERROR = 'Confira este campo';
   ],
   templateUrl: './text.field.html',
   viewProviders: [USE_PARENT_FORM],
-  // Sem dica, a área do erro não reserva espaço (veja provideFormFieldDefaults): o espaço de baixo é do campo.
+  // Sem dica, a área do erro não reserva espaço (`subscriptSizing="dynamic"` no template): o espaço de baixo é do campo.
   host: { class: 'block', '[class.mb-5]': '!hint()' },
 })
 export class TextField extends FormFieldBase {
