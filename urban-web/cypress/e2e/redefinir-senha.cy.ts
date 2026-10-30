@@ -1,4 +1,4 @@
-import { expectErrorsToStayInTheirOwnSpace } from '../support/layout';
+import { PALETTE, expectErrorsToStayInTheirOwnSpace } from '../support/layout';
 import { stubResetPassword } from '../support/senha';
 import { stubAnonymous, stubSignedIn } from '../support/session';
 
@@ -21,6 +21,8 @@ describe('Redefinir senha', () => {
       .its('request.body')
       .should('deep.equal', { token: 'token-do-link', password: PASSWORD });
     cy.contains('h1', 'Senha alterada').should('be.visible');
+    cy.contains('h1', 'Senha alterada').should('have.css', 'color', PALETTE.light.success);
+    cy.get('[role="status"] mat-icon').should('have.css', 'color', PALETTE.light.success);
     cy.contains('a', 'Entrar').click();
     cy.location('pathname').should('eq', '/entrar');
   });

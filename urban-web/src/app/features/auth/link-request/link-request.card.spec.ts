@@ -89,6 +89,10 @@ describe('LinkRequestCard', () => {
     await settle(fixture);
 
     expect(html.querySelector('h1')?.textContent?.trim()).toBe('Verifique seu e-mail');
+    expect(html.querySelector('h1')?.classList).toContain('text-success');
+    expect(html.querySelector('[role="status"] mat-icon')?.parentElement?.classList).toContain(
+      'text-success',
+    );
     const notice = html.querySelector('[role="status"]')?.textContent;
     expect(notice).toContain('Aviso para sindica@example.com');
     expect(notice).toContain('caixa de spam');

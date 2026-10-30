@@ -1,3 +1,4 @@
+import { PALETTE } from '../support/layout';
 import { TERMS_VERSION, stubConfirmEmail, stubRegister, stubTerms } from '../support/cadastro';
 import { stubAnonymous, stubSignedIn } from '../support/session';
 
@@ -34,6 +35,8 @@ describe('Cadastro', () => {
 
     cy.wait('@register').its('request.body').should('deep.equal', { email: EMAIL });
     cy.contains('h1', 'Verifique seu e-mail').should('be.visible');
+    cy.contains('h1', 'Verifique seu e-mail').should('have.css', 'color', PALETTE.light.success);
+    cy.get('[role="status"] mat-icon').should('have.css', 'color', PALETTE.light.success);
     cy.get('[role="status"]').should('contain.text', EMAIL);
   });
 
@@ -80,6 +83,8 @@ describe('Confirmação do e-mail', () => {
       termsVersion: TERMS_VERSION,
     });
     cy.contains('h1', 'Conta ativada').should('be.visible');
+    cy.contains('h1', 'Conta ativada').should('have.css', 'color', PALETTE.light.success);
+    cy.get('[role="status"] mat-icon').should('have.css', 'color', PALETTE.light.success);
     cy.contains('a', 'Entrar').click();
     cy.location('pathname').should('eq', '/entrar');
   });

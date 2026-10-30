@@ -161,6 +161,10 @@ describe('ConfirmEmailPage', () => {
 
     const { html } = harness;
     expect(html.querySelector('h1')?.textContent?.trim()).toBe('Conta ativada');
+    expect(html.querySelector('h1')?.classList).toContain('text-success');
+    expect(html.querySelector('[role="status"] mat-icon')?.parentElement?.classList).toContain(
+      'text-success',
+    );
     expect(html.querySelector('a[href="/entrar"]')?.textContent).toContain('Entrar');
     expect(html.querySelector('form')).toBeNull();
   });

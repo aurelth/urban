@@ -62,6 +62,15 @@ export function expectErrorsToStayInTheirOwnSpace(): void {
   });
 }
 
+/**
+ * Cores de sucesso (verde) e de andamento (laranja) da paleta do CLAUDE.md, como o navegador as devolve:
+ * claro #248A3D e #B25000; escuro, versões mais luminosas (#30D158 e #FF9F0A).
+ */
+export const PALETTE = {
+  light: { success: 'rgb(36, 138, 61)', warning: 'rgb(178, 80, 0)' },
+  dark: { success: 'rgb(48, 209, 88)', warning: 'rgb(255, 159, 10)' },
+} as const;
+
 /** Cor do papel "error" do tema atual, no formato que o navegador devolve (rgb(...)). */
 export function themeErrorColor(): Cypress.Chainable<string> {
   return cy.document().then((doc) => {

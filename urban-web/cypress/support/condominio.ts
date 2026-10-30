@@ -42,10 +42,14 @@ export const BLUMENAU_ADDRESS = {
 };
 
 /** Consulta de CEP que acha o endereço. O E2E do CI sobe só o front, sem API. */
-export function stubPostalCode(address: typeof BLUMENAU_ADDRESS = BLUMENAU_ADDRESS): void {
+export function stubPostalCode(
+  address: typeof BLUMENAU_ADDRESS = BLUMENAU_ADDRESS,
+  delay = 0,
+): void {
   cy.intercept('GET', `/api/postal-codes/${address.postalCode}`, {
     statusCode: 200,
     body: address,
+    delay,
   }).as('postalCode');
 }
 
