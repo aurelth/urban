@@ -128,4 +128,13 @@ describe('ShellLayout', () => {
       expect(link(html, 'nav-account')).not.toBeNull();
     });
   });
+
+  it('leva a logo da barra para a página inicial', async () => {
+    const { html } = await setup();
+
+    const logo = html.querySelector('mat-toolbar urban-brand-link a');
+
+    expect(logo?.getAttribute('href')).toBe('/');
+    expect(logo?.textContent?.trim()).toBe('Urban');
+  });
 });
