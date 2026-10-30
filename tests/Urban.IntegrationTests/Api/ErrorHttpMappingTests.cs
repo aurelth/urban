@@ -67,6 +67,15 @@ public sealed class ErrorHttpMappingTests
         { PersonErrors.UserRequired.Code, 422 },
         { PostalCodeErrors.NotFound.Code, 404 },
         { PostalCodeErrors.LookupUnavailable.Code, 503 },
+        { UserErrors.PasswordIncorrect.Code, 403 },
+        { UserErrors.PasswordUnchanged.Code, 400 },
+        { UserErrors.EmailUnchanged.Code, 400 },
+        { EmailChangeTokenErrors.Invalid.Code, 400 },
+        { EmailChangeTokenErrors.Expired.Code, 400 },
+        { CondominiumErrors.NotFound.Code, 404 },
+        { CondominiumErrors.ConcurrencyConflict.Code, 409 },
+        { CondominiumErrors.VersionRequired.Code, 400 },
+        { PersonErrors.CpfAlreadyRegistered.Code, 409 },
     };
 
     [Fact]

@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Security.Cryptography;
+using Urban.Condominium.Application.Abstractions;
 using Urban.Condominium.Domain.Contacts;
 using Urban.Condominium.Domain.Documents;
 using Urban.Condominium.Domain.People;
@@ -69,6 +70,15 @@ public static class CondominiumBuilders
             PhoneNumber.Create("(47) 99123-4567").Value,
             address ?? SampleAddress(),
             Now).Value;
+
+    /// <summary>O cadastro de um síndico como a leitura do banco o entrega: condomínio, síndico e a versão (o xmin dos dois) juntos.</summary>
+    public static ManagerCondominium Registration(Guid? userId = null, string version = "10.20")
+    {
+        Guid managerUserId = userId ?? Guid.CreateVersion7();
+        CondominiumEntity condominium = Condominium(managerUserId);
+
+        return new ManagerCondominium(condominium, Manager(condominium.Id, managerUserId), version);
+    }
 
     private static string RandomDigits(int count) =>
         string.Concat(Enumerable.Range(0, count).Select(_ => RandomNumberGenerator.GetInt32(10).ToString(CultureInfo.InvariantCulture)));

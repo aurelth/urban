@@ -26,6 +26,6 @@ public sealed class IdentityModelTests(PostgresFixture postgres)
             .SqlQuery<string>($"""select table_name as "Value" from information_schema.tables where table_schema = 'identity'""")
             .ToListAsync(Ct);
 
-        tables.Should().Contain(["user", "user_credential", "refresh_token", "email_verification_token", "password_reset_token", "__ef_migrations_history"]);
+        tables.Should().Contain(["user", "user_credential", "refresh_token", "email_verification_token", "password_reset_token", "email_change_token", "__ef_migrations_history"]);
     }
 }

@@ -78,6 +78,62 @@ public class IdentityInfrastructureRegistrationTests
         ((ICurrentTerms)descriptor.ImplementationInstance!).Version.Should().Be("2026-10-26");
     }
 
+    [Fact]
+    public void TheEmailChangeNotifierAndTheJobAreScoped_ForTheSameReasonAsTheOtherEmailJobs()
+    {
+        Register().Single(d => d.ServiceType == typeof(IEmailChangeNotifier)).Lifetime.Should().Be(ServiceLifetime.Scoped);
+        Register().Single(d => d.ServiceType == typeof(SendEmailChangeJob)).Lifetime.Should().Be(ServiceLifetime.Scoped);
+    }
+
+    [Fact]
+    public void TheEmailChangeDispatcherQueuesJobsThroughHangfire()
+    {
+        ServiceDescriptor descriptor = Register().Single(d => d.ServiceType == typeof(IEmailChangeDispatcher));
+
+        descriptor.ImplementationType.Should().Be<HangfireEmailChangeDispatcher>();
+        descriptor.Lifetime.Should().Be(ServiceLifetime.Scoped);
+    }
+
+    [Fact]
+    public void TheEmailChangeStoreIsScoped_BecauseItSharesTheRequestDbContext()
+    {
+        Register().Single(d => d.ServiceType == typeof(IEmailChanges)).Lifetime.Should().Be(ServiceLifetime.Scoped);
+    }
+
+    [Fact]
+    public void TheSecurityNoticeNotifierAndTheJobAreScoped()
+    {
+        Register().Single(d => d.ServiceType == typeof(ISecurityNoticeNotifier)).Lifetime.Should().Be(ServiceLifetime.Scoped);
+        Register().Single(d => d.ServiceType == typeof(SendSecurityNoticeJob)).Lifetime.Should().Be(ServiceLifetime.Scoped);
+    }
+
+    [Fact]
+    public void TheSecurityNoticeDispatcherQueuesJobsThroughHangfire()
+    {
+        ServiceDescriptor descriptor = Register().Single(d => d.ServiceType == typeof(ISecurityNoticeDispatcher));
+
+        descriptor.ImplementationType.Should().Be<HangfireSecurityNoticeDispatcher>();
+        descriptor.Lifetime.Should().Be(ServiceLifetime.Scoped);
+    }
+
+    [Fact]
+    public void TheManagerProfileContractIsScoped_BecauseItSharesTheRequestDbContext()
+    {
+        ServiceDescriptor descriptor = Register().Single(d => d.ServiceType == typeof(IManagerProfile));
+
+        descriptor.ImplementationType.Should().Be<ManagerProfile>();
+        descriptor.Lifetime.Should().Be(ServiceLifetime.Scoped);
+    }
+
+    [Fact]
+    public void ThePasswordConfirmationContractIsScoped_BecauseItSharesTheRequestDbContext()
+    {
+        ServiceDescriptor descriptor = Register().Single(d => d.ServiceType == typeof(IPasswordConfirmation));
+
+        descriptor.ImplementationType.Should().Be<PasswordConfirmation>();
+        descriptor.Lifetime.Should().Be(ServiceLifetime.Scoped);
+    }
+
     private static ServiceCollection Register()
     {
         IConfiguration configuration = new ConfigurationBuilder()

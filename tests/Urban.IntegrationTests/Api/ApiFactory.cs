@@ -85,7 +85,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
         builder.UseSetting("BackgroundJobs:RunServer", RealBackgroundJobs ? "true" : "false");
         if (RateLimitPermitLimit is int permits)
         {
-            foreach (string route in new[] { "Register", "ConfirmEmail", "Login", "ForgotPassword", "ResetPassword", "Refresh", "Logout", "Me", "Terms", "CondominiumRegistration", "PostalCodeLookup" })
+            foreach (string route in new[] { "Register", "ConfirmEmail", "Login", "ForgotPassword", "ResetPassword", "Refresh", "Logout", "Me", "Terms", "CondominiumRegistration", "PostalCodeLookup", "CondominiumProfile", "SensitiveChange" })
             {
                 builder.UseSetting($"RateLimiting:{route}:PermitLimit", permits.ToString(CultureInfo.InvariantCulture));
                 builder.UseSetting($"RateLimiting:{route}:Window", RateLimitWindow.ToString("c", CultureInfo.InvariantCulture));
@@ -105,6 +105,8 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
             {
                 services.Replace(ServiceDescriptor.Scoped<IEmailVerificationDispatcher, InlineEmailVerificationDispatcher>());
                 services.Replace(ServiceDescriptor.Scoped<IPasswordResetDispatcher, InlinePasswordResetDispatcher>());
+                services.Replace(ServiceDescriptor.Scoped<IEmailChangeDispatcher, InlineEmailChangeDispatcher>());
+                services.Replace(ServiceDescriptor.Scoped<ISecurityNoticeDispatcher, InlineSecurityNoticeDispatcher>());
             }
         });
 
