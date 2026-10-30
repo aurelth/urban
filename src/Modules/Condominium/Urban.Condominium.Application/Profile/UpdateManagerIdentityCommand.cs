@@ -16,5 +16,5 @@ public sealed record UpdateManagerIdentityCommand(
     string? Cpf) : IRequest<Result<MyCondominium>>
 {
     public override string ToString() =>
-        $"{nameof(UpdateManagerIdentityCommand)} {{ ManagerUserId = {ManagerUserId}, FullName = {FullName}, Password = *, Cpf = *, BirthDate = * }}";
+        $"{nameof(UpdateManagerIdentityCommand)} {{ ManagerUserId = {ManagerUserId}, FullName = {FullName}, Cpf = *, BirthDate = * }}";
 }
