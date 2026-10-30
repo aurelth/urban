@@ -1,10 +1,14 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { LEGAL_CONTENT, LEGAL_VERSION, LegalDocument } from './legal-content';
 import { LegalPage } from './legal.page';
 
 async function setup(document: LegalDocument): Promise<ComponentFixture<LegalPage>> {
-  TestBed.configureTestingModule({ providers: [provideRouter([])] });
+  TestBed.configureTestingModule({
+    providers: [provideRouter([]), provideHttpClient(), provideHttpClientTesting()],
+  });
   const fixture = TestBed.createComponent(LegalPage);
   fixture.componentRef.setInput('document', document);
   await fixture.whenStable();
@@ -12,6 +16,8 @@ async function setup(document: LegalDocument): Promise<ComponentFixture<LegalPag
 }
 
 describe('LegalPage', () => {
+  afterEach(() => TestBed.inject(HttpTestingController).match(() => true));
+
   it.each([
     ['terms', 'Termos de uso'],
     ['privacy', 'Política de privacidade'],
@@ -53,5 +59,11 @@ describe('LegalPage', () => {
     const html: HTMLElement = (await setup('privacy')).nativeElement;
 
     expect(html.querySelector('a[href="/"]')?.textContent).toContain('Voltar ao Urban');
+  });
+
+  it('leva a marca do topo para a entrada, a página inicial de quem ainda não entrou', async () => {
+    const html: HTMLElement = (await setup('terms')).nativeElement;
+
+    expect(html.querySelector('urban-brand-link a')?.getAttribute('href')).toBe('/entrar');
   });
 });
