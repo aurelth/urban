@@ -18,4 +18,7 @@
   --color-outline: var(--mat-sys-outline);
   --color-outline-variant: var(--mat-sys-outline-variant);
   --color-error: var(--mat-sys-error);
+  /* Sucesso (verde) e andamento (laranja): tokens do Urban, em _tokens.scss, com versão para o tema escuro. */
+  --color-success: var(--urban-success);
+  --color-warning: var(--urban-warning);
 }

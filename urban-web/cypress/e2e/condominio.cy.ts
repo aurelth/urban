@@ -6,7 +6,7 @@ import {
   stubRegisterCondominium,
   stubRegistrationThatWorks,
 } from '../support/condominio';
-import { expectErrorsToStayInTheirOwnSpace, themeErrorColor } from '../support/layout';
+import { PALETTE, expectErrorsToStayInTheirOwnSpace, themeErrorColor } from '../support/layout';
 import { MANAGER, stubSignedIn } from '../support/session';
 
 const FORM_PATH = '/condominio/cadastrar';
@@ -161,6 +161,31 @@ describe('Cadastro do condomínio', () => {
     beforeEach(() => {
       stubSignedIn(NEW_MANAGER);
     });
+
+    for (const theme of ['light', 'dark'] as const) {
+      it(`mostra "buscando" em laranja e "preenchido" em verde, com ícone, no tema ${theme}`, () => {
+        stubPostalCode(BLUMENAU_ADDRESS, 1500);
+        cy.visit(FORM_PATH, {
+          onBeforeLoad: (win) => win.localStorage.setItem('urban.theme', theme),
+        });
+
+        field(manager, 'postalCode').click('right').type('89010000');
+
+        manager()
+          .find('[role="status"] p')
+          .should('contain.text', 'Buscando o endereço')
+          .and('have.css', 'color', PALETTE[theme].warning)
+          .find('mat-icon svg')
+          .should('exist');
+        cy.wait('@postalCode');
+        manager()
+          .find('[role="status"] p')
+          .should('contain.text', 'Endereço preenchido')
+          .and('have.css', 'color', PALETTE[theme].success)
+          .find('mat-icon svg')
+          .should('exist');
+      });
+    }
 
     it('mostra a falha da consulta em vermelho, com ícone, como os outros erros', () => {
       stubPostalCodeFailure(404, 'condominium.postal_code.not_found');

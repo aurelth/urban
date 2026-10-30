@@ -14,10 +14,16 @@ import { TextField } from '../text-field/text.field';
 
 type LookupState = 'idle' | 'loading' | PostalCodeLookup['status'];
 
-/** Falha (CEP que não existe, serviço fora do ar) é erro e aparece como os outros erros; o resto é só informação. */
-const INFO: Readonly<Partial<Record<LookupState, string>>> = {
-  loading: 'Buscando o endereço',
-  found: 'Endereço preenchido. Confira os dados e informe o número',
+interface Info {
+  readonly text: string;
+  /** Andamento é laranja; sucesso é verde (as cores da paleta, sempre junto com texto e ícone). */
+  readonly tone: 'progress' | 'success';
+}
+
+/** Falha (CEP que não existe, serviço fora do ar) é erro e aparece como os outros erros; o resto é informação. */
+const INFO: Readonly<Partial<Record<LookupState, Info>>> = {
+  loading: { text: 'Buscando o endereço', tone: 'progress' },
+  found: { text: 'Endereço preenchido. Confira os dados e informe o número', tone: 'success' },
 };
 
 const PROBLEMS: Readonly<Partial<Record<LookupState, string>>> = {

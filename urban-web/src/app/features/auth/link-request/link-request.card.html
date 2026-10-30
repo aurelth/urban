@@ -2,8 +2,10 @@
   <mat-card-content class="p-6">
     @if (sentTo(); as email) {
       <div class="flex flex-col items-center gap-3 text-center" role="status">
-        <mat-icon svgIcon="mark_email_read" aria-hidden="true" />
-        <h1 class="text-3xl font-semibold tracking-tight">Verifique seu e-mail</h1>
+        <span class="inline-flex text-success">
+          <mat-icon svgIcon="mark_email_read" aria-hidden="true" />
+        </span>
+        <h1 class="text-3xl font-semibold tracking-tight text-success">Verifique seu e-mail</h1>
         <ng-container
           [ngTemplateOutlet]="notice()"
           [ngTemplateOutletContext]="{ $implicit: email }"

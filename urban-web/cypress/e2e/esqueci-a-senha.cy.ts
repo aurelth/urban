@@ -1,3 +1,4 @@
+import { PALETTE } from '../support/layout';
 import { stubForgotPassword } from '../support/senha';
 import { stubAnonymous, stubSignedIn } from '../support/session';
 
@@ -37,6 +38,8 @@ describe('Esqueci a senha', () => {
 
     cy.wait('@forgot').its('request.body').should('deep.equal', { email: EMAIL });
     cy.contains('h1', 'Verifique seu e-mail').should('be.visible');
+    cy.contains('h1', 'Verifique seu e-mail').should('have.css', 'color', PALETTE.light.success);
+    cy.get('[role="status"] mat-icon').should('have.css', 'color', PALETTE.light.success);
     cy.get('[role="status"]').should('contain.text', EMAIL).and('contain.text', '1 hora');
   });
 

@@ -49,11 +49,13 @@ class TwoAddressesHost {
 
 beforeEach(() => {
   TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
-  // O aviso de falha leva o ícone de erro. Registrado de antemão, o ícone não vai buscar o SVG pela rede.
-  TestBed.inject(MatIconRegistry).addSvgIconLiteral(
-    'error',
-    TestBed.inject(DomSanitizer).bypassSecurityTrustHtml('<svg></svg>'),
-  );
+  // Os avisos levam ícone. Registrados de antemão, os ícones não vão buscar o SVG pela rede.
+  for (const icon of ['error', 'progress_activity', 'check_circle']) {
+    TestBed.inject(MatIconRegistry).addSvgIconLiteral(
+      icon,
+      TestBed.inject(DomSanitizer).bypassSecurityTrustHtml('<svg></svg>'),
+    );
+  }
 });
 
 function render(): { fixture: ComponentFixture<Host>; html: HTMLElement } {
@@ -377,20 +379,41 @@ describe('AddressFields, preenchimento pelo CEP', () => {
     expect(alert(html)?.classList).toContain('text-error');
   });
 
-  it('mostra "buscando" e "preenchido" como texto comum, sem alerta e sem vermelho', () => {
+  it('mostra "buscando" em laranja, com o ícone girando: é andamento, não falha', () => {
     const { fixture, html } = render();
 
     type(html, 'postalCode', '89010000');
     fixture.detectChanges();
-    expect(alert(html)).toBeNull();
-    expect(html.querySelector('[role="status"]')?.textContent).toContain('Buscando o endereço');
-    expect(html.querySelector('[role="status"] .text-error')).toBeNull();
 
+    const status = html.querySelector<HTMLElement>('[role="status"] p')!;
+    expect(status.textContent).toContain('Buscando o endereço');
+    expect(status.classList).toContain('text-warning');
+    expect(status.classList).not.toContain('text-error');
+    expect(status.querySelector('mat-icon')?.classList).toContain('animate-spin');
+    expect(status.querySelector('mat-icon')?.classList).toContain('motion-reduce:animate-none');
+    expect(status.querySelector('mat-icon')?.getAttribute('data-mat-icon-name')).toBe(
+      'progress_activity',
+    );
+    expect(alert(html)).toBeNull();
+    http.expectOne(`${LOOKUP}89010000`).flush(BLUMENAU);
+  });
+
+  it('mostra "preenchido" em verde, com o ícone de confere, sem girar: é sucesso', () => {
+    const { fixture, html } = render();
+
+    type(html, 'postalCode', '89010000');
     http.expectOne(`${LOOKUP}89010000`).flush(BLUMENAU);
     fixture.detectChanges();
+
+    const status = html.querySelector<HTMLElement>('[role="status"] p')!;
+    expect(status.textContent).toContain('Endereço preenchido');
+    expect(status.classList).toContain('text-success');
+    expect(status.classList).not.toContain('text-warning');
+    expect(status.querySelector('mat-icon')?.classList).not.toContain('animate-spin');
+    expect(status.querySelector('mat-icon')?.getAttribute('data-mat-icon-name')).toBe(
+      'check_circle',
+    );
     expect(alert(html)).toBeNull();
-    expect(html.querySelector('[role="status"]')?.textContent).toContain('Endereço preenchido');
-    expect(html.querySelector('[role="status"] .text-error')).toBeNull();
   });
 
   it('tira o alerta quando o CEP seguinte é encontrado', () => {

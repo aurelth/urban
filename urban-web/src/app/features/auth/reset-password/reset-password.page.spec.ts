@@ -91,6 +91,10 @@ describe('ResetPasswordPage', () => {
     await settle(fixture);
 
     expect(html.querySelector('h1')?.textContent?.trim()).toBe('Senha alterada');
+    expect(html.querySelector('h1')?.classList).toContain('text-success');
+    expect(html.querySelector('[role="status"] mat-icon')?.parentElement?.classList).toContain(
+      'text-success',
+    );
     expect(html.querySelector('[role="status"]')?.textContent).toContain('outros acessos');
     expect(html.querySelector('form')).toBeNull();
     expect(html.querySelector('a[href="/entrar"]')?.textContent).toContain('Entrar');

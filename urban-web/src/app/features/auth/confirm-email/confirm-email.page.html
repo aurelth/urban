@@ -2,8 +2,10 @@
   <mat-card-content class="p-6">
     @if (done()) {
       <div class="flex flex-col items-center gap-3 text-center" role="status">
-        <mat-icon svgIcon="check_circle" aria-hidden="true" />
-        <h1 class="text-3xl font-semibold tracking-tight">Conta ativada</h1>
+        <span class="inline-flex text-success">
+          <mat-icon svgIcon="check_circle" aria-hidden="true" />
+        </span>
+        <h1 class="text-3xl font-semibold tracking-tight text-success">Conta ativada</h1>
         <p>Agora você já pode entrar com o seu e-mail e a senha que acabou de criar</p>
         <a mat-flat-button routerLink="/entrar">Entrar</a>
       </div>

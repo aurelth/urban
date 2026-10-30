@@ -48,8 +48,23 @@
     [autocomplete]="suggest('address-level1')"
   />
   <div class="col-span-6" role="status">
-    @if (info(); as message) {
-      <p class="mb-4 text-sm text-on-surface-variant">{{ message }}</p>
+    @if (info(); as notice) {
+      <p
+        class="mb-4 flex items-start gap-2"
+        [class.text-warning]="notice.tone === 'progress'"
+        [class.text-success]="notice.tone === 'success'"
+      >
+        @if (notice.tone === 'progress') {
+          <mat-icon
+            svgIcon="progress_activity"
+            class="animate-spin motion-reduce:animate-none"
+            aria-hidden="true"
+          />
+        } @else {
+          <mat-icon svgIcon="check_circle" aria-hidden="true" />
+        }
+        <span>{{ notice.text }}</span>
+      </p>
     }
   </div>
   @if (problem(); as message) {
