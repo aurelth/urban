@@ -296,6 +296,14 @@ describe('AccountPage', () => {
       return dialog()?.querySelector('[role="alert"]')?.textContent?.trim() ?? '';
     }
 
+    it('o botao e preenchido, como os outros botoes principais, e nao so contornado', async () => {
+      const h = await setup();
+      const button = testId(h.html, 'change-email')!;
+
+      expect(button.classList).toContain('mat-mdc-unelevated-button');
+      expect(button.classList).not.toContain('mat-mdc-outlined-button');
+    });
+
     it('o botao abre o dialogo com o novo e-mail e a senha', async () => {
       const h = await setup();
 
