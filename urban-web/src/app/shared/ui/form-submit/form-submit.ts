@@ -17,5 +17,7 @@ export class FormSubmit {
   readonly label = input.required<string>();
   readonly busyLabel = input.required<string>();
   readonly busy = input(false);
+  /** Para telas em que não há o que enviar (nada mudou): o botão fica desabilitado, mas sem trocar o texto. */
+  readonly disabled = input(false);
   readonly error = input<string | null>(null);
 }

@@ -26,3 +26,18 @@ export const condominiumSetupGuard: CanActivateFn = async () => {
 
   return session.needsCondominium() ? true : router.createUrlTree(['/dashboard']);
 };
+
+/**
+ * As telas de dados do condomínio são do síndico. Morador e administrador vão para o painel. Quem não está logado passa
+ * por aqui e cai na guarda de login, que é quem decide para onde levar.
+ */
+export const managerGuard: CanActivateFn = async () => {
+  const session = inject(SessionStore);
+  const router = inject(Router);
+
+  await session.ready();
+
+  const user = session.user();
+
+  return user === null || user.role === 'Manager' ? true : router.createUrlTree(['/dashboard']);
+};

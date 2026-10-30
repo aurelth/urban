@@ -5,7 +5,7 @@
   </p>
 }
 
-<button mat-flat-button type="submit" class="mt-2" [disabled]="busy()">
+<button mat-flat-button type="submit" class="mt-2" [disabled]="busy() || disabled()">
   @if (busy()) {
     {{ busyLabel() }}
   } @else {

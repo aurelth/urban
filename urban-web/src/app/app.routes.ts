@@ -1,6 +1,10 @@
 import { Routes } from '@angular/router';
 import { authGuard, guestGuard } from './core/auth/auth.guards';
-import { condominiumGuard, condominiumSetupGuard } from './core/auth/condominium.guards';
+import {
+  condominiumGuard,
+  condominiumSetupGuard,
+  managerGuard,
+} from './core/auth/condominium.guards';
 import { AuthLayout } from './core/layout/auth.layout';
 import { ShellLayout } from './core/layout/shell.layout';
 
@@ -21,12 +25,25 @@ export const routes: Routes = [
             (m) => m.RegisterCondominiumPage,
           ),
       },
+      // E-mail e senha são de qualquer pessoa logada, com ou sem condomínio cadastrado.
+      {
+        path: 'conta',
+        title: 'Minha conta',
+        loadComponent: () => import('./features/account/account.page').then((m) => m.AccountPage),
+      },
       // O resto da área logada exige o condomínio cadastrado: sem ele, a guarda leva ao cadastro.
       {
         path: '',
         canActivateChild: [condominiumGuard],
         children: [
           { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+          {
+            path: 'condominio/meus-dados',
+            title: 'Meus dados',
+            canActivate: [managerGuard],
+            loadComponent: () =>
+              import('./features/condominium/profile/profile.page').then((m) => m.ProfilePage),
+          },
           {
             path: 'dashboard',
             title: 'Painel',
@@ -69,6 +86,14 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/auth/reset-password/reset-password.page').then(
             (m) => m.ResetPasswordPage,
+          ),
+      },
+      {
+        path: 'confirmar-troca-de-email',
+        title: 'Confirmar novo e-mail',
+        loadComponent: () =>
+          import('./features/auth/confirm-email-change/confirm-email-change.page').then(
+            (m) => m.ConfirmEmailChangePage,
           ),
       },
       {

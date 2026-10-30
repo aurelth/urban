@@ -1,6 +1,7 @@
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
+import { RegistrationDraft } from '../drafts/registration-draft';
 import { AuthApi } from './auth.api';
 import { CurrentUser } from './auth.models';
 import { withRefreshLock } from './refresh-lock';
@@ -29,6 +30,7 @@ export const SessionStore = signalStore(
   })),
   withMethods((store) => {
     const api = inject(AuthApi);
+    const drafts = inject(RegistrationDraft);
     let restoring: Promise<void> | null = null;
     let renewing: Promise<boolean> | null = null;
 
@@ -108,6 +110,16 @@ export const SessionStore = signalStore(
         } catch {
           // Sai do lado do front mesmo que a API não responda: o token some da memória de qualquer jeito.
         }
+        drafts.clearAll();
+        patchState(store, { ...ANONYMOUS, expired: false });
+      },
+      /**
+       * Encerra a sessão só deste navegador, sem chamar a API: serve para quando a própria API já revogou todas as
+       * sessões da pessoa (troca de senha ou de e-mail). Apaga o rascunho como o sair, mas não marca a sessão como
+       * expirada, para a tela não tratar como queda.
+       */
+      endSession: (): void => {
+        drafts.clearAll();
         patchState(store, { ...ANONYMOUS, expired: false });
       },
       expire: (): void => {

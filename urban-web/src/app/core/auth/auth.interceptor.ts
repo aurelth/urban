@@ -11,6 +11,7 @@ const PUBLIC_PATHS: ReadonlySet<string> = new Set([
   '/api/auth/confirm-email',
   '/api/auth/forgot-password',
   '/api/auth/reset-password',
+  '/api/auth/confirm-email-change',
   '/api/terms/current',
 ]);
 
