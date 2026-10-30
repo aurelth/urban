@@ -77,6 +77,30 @@ public sealed class User
         return Result.Success();
     }
 
+    /// <summary>Muda como a pessoa prefere ser chamada. Só quem já tem condomínio tem o que editar.</summary>
+    public Result ChangeDisplayName(DisplayName displayName)
+    {
+        if (CondominiumId is null)
+        {
+            return Result.Failure(UserErrors.CondominiumRequired);
+        }
+
+        DisplayName = displayName;
+        return Result.Success();
+    }
+
+    /// <summary>Troca o endereço de e-mail da conta. A prova de que a pessoa lê a caixa nova é exigida antes, pelo link enviado a ela.</summary>
+    public Result ChangeEmail(Email newEmail)
+    {
+        if (newEmail == Email)
+        {
+            return Result.Failure(UserErrors.EmailUnchanged);
+        }
+
+        Email = newEmail;
+        return Result.Success();
+    }
+
     public Result ConfirmEmail(DateTimeOffset now) =>
         MoveTo(AccountStatus.Active, [AccountStatus.PendingVerification], Id, null, now);
 

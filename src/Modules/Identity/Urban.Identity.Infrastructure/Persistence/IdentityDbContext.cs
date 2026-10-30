@@ -20,6 +20,8 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
 
     public DbSet<PasswordResetToken> PasswordResetTokens => Set<PasswordResetToken>();
 
+    public DbSet<EmailChangeToken> EmailChangeTokens => Set<EmailChangeToken>();
+
     public DbSet<UserConsent> UserConsents => Set<UserConsent>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

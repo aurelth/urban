@@ -27,6 +27,10 @@ public sealed class RateLimitingOptions
 
     public RateLimitRule PostalCodeLookup { get; init; } = new();
 
+    public RateLimitRule CondominiumProfile { get; init; } = new();
+
+    public RateLimitRule SensitiveChange { get; init; } = new();
+
     /// <exception cref="InvalidOperationException">A configuração é inválida.</exception>
     public void Validate()
     {
@@ -41,6 +45,8 @@ public sealed class RateLimitingOptions
         Validate(nameof(Terms), Terms);
         Validate(nameof(CondominiumRegistration), CondominiumRegistration);
         Validate(nameof(PostalCodeLookup), PostalCodeLookup);
+        Validate(nameof(CondominiumProfile), CondominiumProfile);
+        Validate(nameof(SensitiveChange), SensitiveChange);
     }
 
     private static void Validate(string route, RateLimitRule rule)

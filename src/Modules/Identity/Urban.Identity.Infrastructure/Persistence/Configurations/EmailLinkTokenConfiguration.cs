@@ -36,5 +36,12 @@ internal abstract class EmailLinkTokenConfiguration<TToken>(string tableName) : 
 
         // Duas requisições com o mesmo link: só a primeira grava. A coluna de sistema xmin muda a cada UPDATE da linha.
         builder.Property<uint>("xmin").IsRowVersion();
+
+        ConfigureToken(builder);
+    }
+
+    /// <summary>Gancho para o tipo que guarda algo além do comum (a troca de e-mail guarda o endereço novo).</summary>
+    protected virtual void ConfigureToken(EntityTypeBuilder<TToken> builder)
+    {
     }
 }

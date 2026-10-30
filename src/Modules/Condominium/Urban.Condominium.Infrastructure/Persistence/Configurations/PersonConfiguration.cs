@@ -50,5 +50,7 @@ internal sealed class PersonConfiguration(IPersonalDataProtector protector) : IE
         builder.ComplexProperty(p => p.Address, address => address.MapAddress());
 
         builder.Property(p => p.CreatedAt);
+
+        builder.Property<uint>("xmin").IsRowVersion();
     }
 }

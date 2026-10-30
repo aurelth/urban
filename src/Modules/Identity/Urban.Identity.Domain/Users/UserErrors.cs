@@ -34,4 +34,13 @@ public static class UserErrors
 
     public static readonly Error AccountDeleted =
         new("identity.user.account_deleted", "Conta excluída");
+
+    public static readonly Error PasswordIncorrect =
+        new("identity.password.incorrect", "Senha incorreta");
+
+    public static readonly Error PasswordUnchanged =
+        new("identity.password.unchanged", "A nova senha precisa ser diferente da atual");
+
+    public static readonly Error EmailUnchanged =
+        new("identity.email.unchanged", "Este já é o e-mail da sua conta");
 }

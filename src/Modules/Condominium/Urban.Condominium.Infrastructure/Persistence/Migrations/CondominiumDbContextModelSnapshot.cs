@@ -50,6 +50,12 @@ namespace Urban.Condominium.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(120)")
                         .HasColumnName("name");
 
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Address", "Urban.Condominium.Domain.Condominiums.Condominium.Address#Address", b1 =>
                         {
                             b1.IsRequired();
@@ -155,6 +161,12 @@ namespace Urban.Condominium.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Address", "Urban.Condominium.Domain.People.Person.Address#Address", b1 =>
                         {
                             b1.IsRequired();
@@ -215,6 +227,44 @@ namespace Urban.Condominium.Infrastructure.Persistence.Migrations
                     b.ToTable("person", "condominium");
                 });
 
+            modelBuilder.Entity("Urban.Condominium.Infrastructure.Persistence.ChangeLogRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<DateTimeOffset>("ChangedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("changed_at");
+
+                    b.Property<Guid>("CondominiumId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("condominium_id");
+
+                    b.PrimitiveCollection<string[]>("Fields")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("fields");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kind");
+
+                    b.HasKey("Id")
+                        .HasName("pk_change_log");
+
+                    b.HasIndex("CondominiumId", "ChangedAt")
+                        .HasDatabaseName("ix_change_log_condominium_id_changed_at");
+
+                    b.ToTable("change_log", "condominium");
+                });
+
             modelBuilder.Entity("Urban.Condominium.Domain.People.Person", b =>
                 {
                     b.HasOne("Urban.Condominium.Domain.Condominiums.Condominium", null)
@@ -223,6 +273,16 @@ namespace Urban.Condominium.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_person_condominium_condominium_id");
+                });
+
+            modelBuilder.Entity("Urban.Condominium.Infrastructure.Persistence.ChangeLogRecord", b =>
+                {
+                    b.HasOne("Urban.Condominium.Domain.Condominiums.Condominium", null)
+                        .WithMany()
+                        .HasForeignKey("CondominiumId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_change_log_condominium_condominium_id");
                 });
 #pragma warning restore 612, 618
         }

@@ -50,6 +50,8 @@ public static class IdentityInfrastructureExtensions
         services.AddSingleton<ISecretGenerator, SecretGenerator>();
         services.AddScoped<IUserAccounts, UserAccounts>();
         services.AddScoped<IManagerEnrollment, ManagerEnrollment>();
+        services.AddScoped<IManagerProfile, ManagerProfile>();
+        services.AddScoped<IPasswordConfirmation, PasswordConfirmation>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IEmailVerifications, EmailVerifications>();
         services.AddScoped<IEmailVerificationNotifier, EmailVerificationNotifier>();
@@ -59,6 +61,13 @@ public static class IdentityInfrastructureExtensions
         services.AddScoped<IPasswordResetNotifier, PasswordResetNotifier>();
         services.AddScoped<IPasswordResetDispatcher, HangfirePasswordResetDispatcher>();
         services.AddScoped<SendPasswordResetJob>();
+        services.AddScoped<IEmailChanges, EmailChanges>();
+        services.AddScoped<IEmailChangeNotifier, EmailChangeNotifier>();
+        services.AddScoped<IEmailChangeDispatcher, HangfireEmailChangeDispatcher>();
+        services.AddScoped<SendEmailChangeJob>();
+        services.AddScoped<ISecurityNoticeNotifier, SecurityNoticeNotifier>();
+        services.AddScoped<ISecurityNoticeDispatcher, HangfireSecurityNoticeDispatcher>();
+        services.AddScoped<SendSecurityNoticeJob>();
 
         services.AddSingleton<RedisSessionRevocations>();
         services.AddSingleton<ISessionRevocations>(sp => sp.GetRequiredService<RedisSessionRevocations>());

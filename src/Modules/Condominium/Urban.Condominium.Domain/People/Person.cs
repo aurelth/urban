@@ -44,15 +44,15 @@ public sealed class Person
 
     public Guid UserId { get; }
 
-    public PersonName FullName { get; }
+    public PersonName FullName { get; private set; }
 
-    public Cpf Cpf { get; }
+    public Cpf Cpf { get; private set; }
 
-    public BirthDate BirthDate { get; }
+    public BirthDate BirthDate { get; private set; }
 
-    public PhoneNumber Phone { get; }
+    public PhoneNumber Phone { get; private set; }
 
-    public Address Address { get; }
+    public Address Address { get; private set; }
 
     public DateTimeOffset CreatedAt { get; }
 
@@ -82,5 +82,27 @@ public sealed class Person
         }
 
         return Result.Success(new Person(condominiumId, userId, fullName, cpf, birthDate, phone, address, now));
+    }
+
+    /// <summary>Dados de contato, de edição livre: celular e endereço.</summary>
+    public Result UpdateContact(PhoneNumber phone, Address address)
+    {
+        if (!phone.IsMobile)
+        {
+            return Result.Failure(PersonErrors.MobileRequired);
+        }
+
+        Phone = phone;
+        Address = address;
+
+        return Result.Success();
+    }
+
+    /// <summary>Dados de identidade, sensíveis: a confirmação da senha é exigida antes, na camada de Aplicação.</summary>
+    public void UpdateIdentity(PersonName fullName, Cpf cpf, BirthDate birthDate)
+    {
+        FullName = fullName;
+        Cpf = cpf;
+        BirthDate = birthDate;
     }
 }

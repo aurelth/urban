@@ -48,6 +48,7 @@ app.MapRegistrationEndpoints();
 app.MapCondominiumEndpoints();
 app.MapPostalCodeEndpoints();
 app.MapPasswordResetEndpoints();
+app.MapAccountEndpoints();
 
 if (!app.Environment.IsProduction())
 {
