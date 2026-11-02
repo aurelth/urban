@@ -70,7 +70,7 @@ services:
     networks: [urban-net]
 
   garage:
-    image: dxflrs/garage:v2.4.1
+    image: dxflrs/garage:v2.5.0
     container_name: urban-garage
     restart: unless-stopped
     # DEV: --single-node --default-bucket criam layout, chave e bucket sozinhos.
@@ -100,7 +100,7 @@ services:
 
   # ==================== PERFIL: tools ====================
   pgadmin:
-    image: dpage/pgadmin4:9.18
+    image: dpage/pgadmin4:9.19
     container_name: urban-pgadmin
     profiles: [tools]
     restart: unless-stopped
@@ -155,7 +155,7 @@ services:
     networks: [urban-net]
 
   prometheus:
-    image: prom/prometheus:v3.15.0
+    image: prom/prometheus:v3.15.1
     container_name: urban-prometheus
     profiles: [observability]
     restart: unless-stopped
@@ -179,7 +179,7 @@ services:
     networks: [urban-net]
 
   loki:
-    image: grafana/loki:3.7.8
+    image: grafana/loki:3.7.9
     container_name: urban-loki
     profiles: [observability]
     restart: unless-stopped
@@ -191,7 +191,7 @@ services:
     networks: [urban-net]
 
   grafana:
-    image: grafana/grafana:13.2.4
+    image: grafana/grafana:13.3.0
     container_name: urban-grafana
     profiles: [observability]
     restart: unless-stopped
