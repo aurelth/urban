@@ -201,7 +201,7 @@ public sealed class CondominiumProfilesTests(CondominiumPostgresFixture postgres
             .SqlQuery<string>($"""select column_name as "Value" from information_schema.columns where table_schema = 'condominium' and table_name = 'change_log'""")
             .ToListAsync(Ct);
 
-        columns.Should().BeEquivalentTo("id", "condominium_id", "actor_user_id", "kind", "fields", "changed_at");
+        columns.Should().BeEquivalentTo("id", "condominium_id", "actor_user_id", "kind", "fields", "changed_at", "subject_id");
     }
 
     private static ChangeLogEntry Entry(CondominiumEntity condominium, Person manager, ChangeKind kind, params string[] fields) =>

@@ -7,6 +7,7 @@ using Urban.Condominium.Domain.Condominiums;
 using Urban.Condominium.Domain.Contacts;
 using Urban.Condominium.Domain.Documents;
 using Urban.Condominium.Domain.People;
+using Urban.Condominium.Domain.Units;
 using Urban.Identity.Application.Authentication;
 using Urban.Identity.Application.Authentication.Login;
 using Urban.Identity.Application.Authentication.Refresh;
@@ -76,6 +77,22 @@ public sealed class ErrorHttpMappingTests
         { CondominiumErrors.ConcurrencyConflict.Code, 409 },
         { CondominiumErrors.VersionRequired.Code, 400 },
         { PersonErrors.CpfAlreadyRegistered.Code, 409 },
+        { CondominiumErrors.ApportionmentMethodInvalid.Code, 400 },
+        { UnitErrors.NumberInvalid.Code, 400 },
+        { UnitErrors.BlockInvalid.Code, 400 },
+        { UnitErrors.TypeInvalid.Code, 400 },
+        { UnitErrors.IdealFractionInvalid.Code, 400 },
+        { UnitErrors.AreaInvalid.Code, 400 },
+        { UnitErrors.CondominiumRequired.Code, 422 },
+        { UnitErrors.VersionRequired.Code, 400 },
+        { UnitErrors.PageInvalid.Code, 400 },
+        { UnitErrors.BatchSizeInvalid.Code, 400 },
+        { UnitErrors.NotFound.Code, 404 },
+        { UnitErrors.IdentifierAlreadyExists.Code, 409 },
+        { UnitErrors.Deactivated.Code, 409 },
+        { UnitErrors.AlreadyDeactivated.Code, 409 },
+        { UnitErrors.AlreadyActive.Code, 409 },
+        { UnitErrors.FractionSumExceeded.Code, 422 },
     };
 
     [Fact]

@@ -33,6 +33,10 @@ public sealed class RateLimitingTests(ApiFixture fixture)
 
     private const string ConfirmEmailChangeRoute = "/api/auth/confirm-email-change";
 
+    private const string UnitsRoute = "/api/units";
+
+    private const string UnitBatchRoute = "/api/units/batch";
+
     private static readonly IPAddress TrustedProxy = IPAddress.Parse("10.0.0.2");
 
     private static readonly IPAddress PublicAddress = IPAddress.Parse("198.51.100.7");
@@ -54,6 +58,8 @@ public sealed class RateLimitingTests(ApiFixture fixture)
     [InlineData(ChangePasswordRoute)]
     [InlineData(ChangeEmailRoute)]
     [InlineData(ConfirmEmailChangeRoute)]
+    [InlineData(UnitsRoute)]
+    [InlineData(UnitBatchRoute)]
     public async Task Blocks_a_client_that_exceeds_the_limit_of_the_route(string route)
     {
         await using ApiFactory factory = CreateFactory(TimeSpan.FromMinutes(1));
@@ -85,6 +91,8 @@ public sealed class RateLimitingTests(ApiFixture fixture)
     [InlineData(ChangePasswordRoute, 13)]
     [InlineData(ChangeEmailRoute, 13)]
     [InlineData(ConfirmEmailChangeRoute, 2)]
+    [InlineData(UnitsRoute, 14)]
+    [InlineData(UnitBatchRoute, 15)]
     public async Task Applies_the_limit_configured_for_that_route(string route, int permits)
     {
         Dictionary<string, string?> limits = new()
@@ -102,6 +110,8 @@ public sealed class RateLimitingTests(ApiFixture fixture)
             ["RateLimiting:PostalCodeLookup:PermitLimit"] = "11",
             ["RateLimiting:CondominiumProfile:PermitLimit"] = "12",
             ["RateLimiting:SensitiveChange:PermitLimit"] = "13",
+            ["RateLimiting:Units:PermitLimit"] = "14",
+            ["RateLimiting:UnitBatch:PermitLimit"] = "15",
         };
         await using ApiFactory factory = CreateFactory(TimeSpan.FromMinutes(1), settings: limits);
         using HttpClient client = factory.CreateClient();
@@ -129,6 +139,8 @@ public sealed class RateLimitingTests(ApiFixture fixture)
     [InlineData(ChangePasswordRoute, 10)]
     [InlineData(ChangeEmailRoute, 10)]
     [InlineData(ConfirmEmailChangeRoute, 10)]
+    [InlineData(UnitsRoute, 120)]
+    [InlineData(UnitBatchRoute, 10)]
     public async Task Ships_with_the_limits_of_the_appsettings(string route, int permits)
     {
         await using ApiFactory factory = CreateFactory(TimeSpan.FromMinutes(1), limit: null);
@@ -230,12 +242,12 @@ public sealed class RateLimitingTests(ApiFixture fixture)
 
     private static HttpMethod MethodFor(string route) => route switch
     {
-        MeRoute or TermsRoute or PostalCodesRoute or ProfileRoute => HttpMethod.Get,
+        MeRoute or TermsRoute or PostalCodesRoute or ProfileRoute or UnitsRoute => HttpMethod.Get,
         IdentityRoute => HttpMethod.Put,
         _ => HttpMethod.Post,
     };
 
-    private static bool HasBody(string route) => route is not (MeRoute or TermsRoute or PostalCodesRoute or ProfileRoute or RefreshRoute or LogoutRoute);
+    private static bool HasBody(string route) => route is not (MeRoute or TermsRoute or PostalCodesRoute or ProfileRoute or UnitsRoute or RefreshRoute or LogoutRoute);
 
     private static object BodyFor(string route) => route switch
     {
