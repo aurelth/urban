@@ -34,14 +34,7 @@ public sealed class CondominiumProfiles(CondominiumDbContext db) : ICondominiumP
 
     public async Task<Result<string>> SaveAsync(ManagerCondominium registration, ChangeLogEntry entry, CancellationToken cancellationToken)
     {
-        db.Set<ChangeLogRecord>().Add(new ChangeLogRecord
-        {
-            CondominiumId = entry.CondominiumId,
-            ActorUserId = entry.ActorUserId,
-            Kind = entry.Kind.ToString().ToLowerInvariant(),
-            Fields = [.. entry.Fields],
-            ChangedAt = entry.At,
-        });
+        db.Set<ChangeLogRecord>().Add(ChangeLogRecord.From(entry));
 
         try
         {

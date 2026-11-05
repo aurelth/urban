@@ -1,0 +1,317 @@
+<section class="mx-auto max-w-6xl p-6">
+  <a mat-button class="mb-2" data-testid="back" routerLink="/unidades">
+    <mat-icon svgIcon="arrow_back" />
+    Voltar para as unidades
+  </a>
+  <h1 class="mb-1 text-3xl font-semibold tracking-tight">Cadastro em lote</h1>
+  <p class="mb-1 text-on-surface-variant">
+    Gere os números por andar, corrija o que for preciso na pré-visualização e cadastre tudo de uma
+    vez. O lote aceita até 500 unidades por vez
+  </p>
+  <p class="mb-6 text-on-surface-variant">
+    Se alguma linha tiver problema, nenhuma unidade é cadastrada
+  </p>
+
+  @if (store.created(); as created) {
+    <div
+      role="status"
+      class="flex flex-col items-start gap-4 rounded-xl border border-outline-variant p-6"
+      data-testid="batch-done"
+    >
+      <p class="m-0 flex items-start gap-2 text-lg font-medium">
+        <span class="inline-flex text-success"
+          ><mat-icon svgIcon="check_circle" aria-hidden="true"
+        /></span>
+        <span
+          >{{ created }} {{ created === 1 ? 'unidade cadastrada' : 'unidades cadastradas' }}</span
+        >
+      </p>
+      <div class="flex flex-wrap gap-2">
+        <a mat-flat-button data-testid="to-units" routerLink="/unidades">Ver unidades</a>
+        <button mat-stroked-button type="button" data-testid="start-over" (click)="startOver()">
+          Cadastrar mais
+        </button>
+      </div>
+    </div>
+  } @else {
+    <mat-card appearance="outlined" class="mb-6" data-testid="generator">
+      <mat-card-content class="p-6">
+        <h2 class="mb-4 text-xl font-semibold">Gerar unidades</h2>
+        <form [formGroup]="generator" class="flex flex-col" novalidate>
+          <mat-radio-group
+            formControlName="kind"
+            class="mb-5 flex flex-wrap gap-x-6"
+            aria-label="Tipo das unidades"
+          >
+            <mat-radio-button value="apartment">Apartamentos</mat-radio-button>
+            <mat-radio-button value="house">Casas</mat-radio-button>
+          </mat-radio-group>
+
+          <div class="grid gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-4">
+            <urban-text-field
+              name="block"
+              label="Bloco"
+              hint="Opcional. Ex.: A ou Torre 1"
+              [optional]="true"
+              [errors]="blockErrors"
+            />
+            @if (kind() === 'apartment') {
+              <urban-text-field
+                name="firstFloor"
+                label="Primeiro andar"
+                hint="0 é o térreo"
+                inputmode="numeric"
+                [errors]="firstFloorErrors"
+              />
+              <urban-text-field
+                name="lastFloor"
+                label="Último andar"
+                inputmode="numeric"
+                [errors]="lastFloorErrors"
+              />
+              <urban-text-field
+                name="perFloor"
+                label="Unidades por andar"
+                inputmode="numeric"
+                [errors]="perFloorErrors"
+              />
+            } @else {
+              <urban-text-field
+                name="houseCount"
+                label="Quantidade de casas"
+                inputmode="numeric"
+                [errors]="houseCountErrors"
+              />
+            }
+          </div>
+
+          @if (kind() === 'apartment') {
+            <div class="mb-4">
+              <button
+                mat-stroked-button
+                type="button"
+                data-testid="build-floors"
+                (click)="buildFloors()"
+              >
+                Montar andares
+              </button>
+            </div>
+
+            @if (floors(); as plans) {
+              <div class="mb-4" data-testid="floor-plan">
+                <p class="mb-2 text-on-surface-variant">
+                  Ajuste a quantidade de unidades de cada andar. Total: {{ floorTotal() }}
+                </p>
+                <ul class="m-0 grid list-none grid-cols-2 gap-3 p-0 sm:grid-cols-4 lg:grid-cols-6">
+                  @for (plan of plans; track plan.floor) {
+                    <li class="flex flex-col gap-1">
+                      <label
+                        class="text-sm text-on-surface-variant"
+                        [attr.for]="'floor-' + plan.floor"
+                        >{{ plan.floor === 0 ? 'Térreo' : 'Andar ' + plan.floor }}</label
+                      >
+                      <input
+                        class="w-full min-w-0 rounded-lg border border-outline-variant bg-transparent px-3 py-2 text-on-surface focus-visible:outline-2 focus-visible:outline-primary"
+                        data-testid="floor-count"
+                        inputmode="numeric"
+                        autocomplete="off"
+                        [id]="'floor-' + plan.floor"
+                        [attr.data-floor]="plan.floor"
+                        [value]="plan.count"
+                        (input)="setFloorCount(plan.floor, $event)"
+                      />
+                    </li>
+                  }
+                </ul>
+              </div>
+            }
+          }
+
+          @if (generatorError(); as message) {
+            <p
+              role="alert"
+              class="mb-4 flex items-start gap-2 text-error"
+              data-testid="generator-error"
+            >
+              <mat-icon svgIcon="error" aria-hidden="true" />
+              <span>{{ message }}</span>
+            </p>
+          }
+
+          @if (kind() === 'house' || floors() !== null) {
+            <div>
+              <button mat-flat-button type="button" data-testid="generate" (click)="generate()">
+                Gerar unidades
+              </button>
+            </div>
+          }
+        </form>
+      </mat-card-content>
+    </mat-card>
+
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+      <h2 class="m-0 text-xl font-semibold">Pré-visualização</h2>
+      <div class="flex flex-wrap gap-2">
+        <button mat-stroked-button type="button" data-testid="add-row" (click)="addRow()">
+          <mat-icon svgIcon="add" />
+          Adicionar linha
+        </button>
+        <button
+          mat-stroked-button
+          type="button"
+          data-testid="split-fraction"
+          [disabled]="!canSplit()"
+          (click)="splitFraction()"
+        >
+          Dividir a fração que falta
+        </button>
+        <button
+          mat-button
+          type="button"
+          data-testid="clear-all"
+          [disabled]="rows().length === 0 || store.saving()"
+          (click)="clearAll()"
+        >
+          Limpar lote
+        </button>
+      </div>
+    </div>
+    @if (usedText(); as used) {
+      <p class="mb-3 text-sm text-on-surface-variant" data-testid="split-hint">
+        Divide o que falta para 100% entre as linhas sem fração. {{ used }} já estão ocupados pelas
+        unidades cadastradas
+      </p>
+    }
+
+    @if (rows().length > 0) {
+      <div data-testid="preview">
+        <p class="mb-2 text-sm text-on-surface-variant" data-testid="row-count">
+          {{ rowCountText() }}
+        </p>
+        <ul class="m-0 flex list-none flex-col gap-3 p-0">
+          @for (view of views(); track $index; let position = $index) {
+            <li class="rounded-xl border border-outline-variant p-3" data-testid="batch-row">
+              <div
+                class="grid grid-cols-2 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_9rem_minmax(0,1fr)_minmax(0,1fr)_auto]"
+              >
+                <label class="flex min-w-0 flex-col gap-1 text-xs text-on-surface-variant">
+                  <span class="sm:sr-only">Bloco</span>
+                  <input
+                    class="w-full min-w-0 rounded-lg border border-outline-variant bg-transparent px-3 py-2 text-base text-on-surface focus-visible:outline-2 focus-visible:outline-primary aria-invalid:border-error"
+                    data-field="block"
+                    autocomplete="off"
+                    [attr.aria-label]="'Bloco da linha ' + (position + 1)"
+                    [attr.aria-invalid]="view.invalid.has('block') ? 'true' : null"
+                    [value]="view.row.block"
+                    (input)="editRow(position, 'block', $event)"
+                  />
+                </label>
+                <label class="flex min-w-0 flex-col gap-1 text-xs text-on-surface-variant">
+                  <span class="sm:sr-only">Número</span>
+                  <input
+                    class="w-full min-w-0 rounded-lg border border-outline-variant bg-transparent px-3 py-2 text-base text-on-surface focus-visible:outline-2 focus-visible:outline-primary aria-invalid:border-error"
+                    data-field="number"
+                    autocomplete="off"
+                    [attr.aria-label]="'Número da linha ' + (position + 1)"
+                    [attr.aria-invalid]="view.invalid.has('number') ? 'true' : null"
+                    [value]="view.row.number"
+                    (input)="editRow(position, 'number', $event)"
+                  />
+                </label>
+                <label class="flex min-w-0 flex-col gap-1 text-xs text-on-surface-variant">
+                  <span class="sm:sr-only">Tipo</span>
+                  <select
+                    class="w-full min-w-0 rounded-lg border border-outline-variant bg-transparent px-3 py-2 text-base text-on-surface focus-visible:outline-2 focus-visible:outline-primary"
+                    data-field="type"
+                    [attr.aria-label]="'Tipo da linha ' + (position + 1)"
+                    [value]="view.row.type"
+                    (change)="editRow(position, 'type', $event)"
+                  >
+                    <option value="apartment">Apartamento</option>
+                    <option value="house">Casa</option>
+                  </select>
+                </label>
+                <label class="flex min-w-0 flex-col gap-1 text-xs text-on-surface-variant">
+                  <span class="sm:sr-only">Fração ideal (%)</span>
+                  <input
+                    class="w-full min-w-0 rounded-lg border border-outline-variant bg-transparent px-3 py-2 text-base text-on-surface focus-visible:outline-2 focus-visible:outline-primary aria-invalid:border-error"
+                    data-field="fraction"
+                    inputmode="decimal"
+                    autocomplete="off"
+                    placeholder="Fração (%)"
+                    [attr.aria-label]="'Fração ideal da linha ' + (position + 1)"
+                    [attr.aria-invalid]="view.invalid.has('fraction') ? 'true' : null"
+                    [value]="view.row.fraction"
+                    (input)="editRow(position, 'fraction', $event)"
+                  />
+                </label>
+                <label class="flex min-w-0 flex-col gap-1 text-xs text-on-surface-variant">
+                  <span class="sm:sr-only">Área (m²)</span>
+                  <input
+                    class="w-full min-w-0 rounded-lg border border-outline-variant bg-transparent px-3 py-2 text-base text-on-surface focus-visible:outline-2 focus-visible:outline-primary aria-invalid:border-error"
+                    data-field="area"
+                    inputmode="decimal"
+                    autocomplete="off"
+                    placeholder="Área (m²)"
+                    [attr.aria-label]="'Área da linha ' + (position + 1)"
+                    [attr.aria-invalid]="view.invalid.has('area') ? 'true' : null"
+                    [value]="view.row.area"
+                    (input)="editRow(position, 'area', $event)"
+                  />
+                </label>
+                <div class="flex items-end justify-end">
+                  <button
+                    mat-icon-button
+                    type="button"
+                    data-action="remove"
+                    [attr.aria-label]="'Remover a linha ' + (position + 1)"
+                    [attr.title]="'Remover a linha ' + (position + 1)"
+                    [disabled]="store.saving()"
+                    (click)="removeRow(position)"
+                  >
+                    <mat-icon svgIcon="delete" />
+                  </button>
+                </div>
+              </div>
+              @if (view.messages.length > 0) {
+                <p class="m-0 mt-2 flex flex-col gap-1 text-sm text-error" data-testid="row-error">
+                  @for (message of view.messages; track message) {
+                    <span>{{ message }}</span>
+                  }
+                </p>
+              }
+            </li>
+          }
+        </ul>
+      </div>
+    }
+
+    @if (hasProblems()) {
+      <p role="status" class="mt-4 flex items-start gap-2 text-warning" data-testid="fix-rows">
+        <mat-icon svgIcon="info" aria-hidden="true" />
+        <span class="text-on-surface">Corrija as linhas marcadas para cadastrar</span>
+      </p>
+    }
+    @if (showSubmitError()) {
+      <p role="alert" class="mt-4 flex items-start gap-2 text-error" data-testid="batch-error">
+        <mat-icon svgIcon="error" aria-hidden="true" />
+        <span>{{ submitError() }}</span>
+      </p>
+    }
+    <div class="mt-4">
+      <button
+        mat-flat-button
+        type="button"
+        data-testid="submit"
+        [disabled]="!canSubmit()"
+        (click)="submit()"
+      >
+        @if (store.saving()) {
+          Cadastrando
+        } @else {
+          {{ submitLabel() }}
+        }
+      </button>
+    </div>
+  }
+</section>

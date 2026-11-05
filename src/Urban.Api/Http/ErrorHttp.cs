@@ -5,6 +5,7 @@ using Urban.Condominium.Domain.Condominiums;
 using Urban.Condominium.Domain.Contacts;
 using Urban.Condominium.Domain.Documents;
 using Urban.Condominium.Domain.People;
+using Urban.Condominium.Domain.Units;
 using Urban.Identity.Application.Authentication;
 using Urban.Identity.Application.Authentication.Login;
 using Urban.Identity.Application.Authentication.Refresh;
@@ -83,6 +84,24 @@ public static class ErrorHttp
         [CondominiumErrors.ConcurrencyConflict.Code] = StatusCodes.Status409Conflict,
         [CondominiumErrors.VersionRequired.Code] = StatusCodes.Status400BadRequest,
         [PersonErrors.CpfAlreadyRegistered.Code] = StatusCodes.Status409Conflict,
+        [CondominiumErrors.ApportionmentMethodInvalid.Code] = StatusCodes.Status400BadRequest,
+
+        [UnitErrors.NumberInvalid.Code] = StatusCodes.Status400BadRequest,
+        [UnitErrors.BlockInvalid.Code] = StatusCodes.Status400BadRequest,
+        [UnitErrors.TypeInvalid.Code] = StatusCodes.Status400BadRequest,
+        [UnitErrors.IdealFractionInvalid.Code] = StatusCodes.Status400BadRequest,
+        [UnitErrors.AreaInvalid.Code] = StatusCodes.Status400BadRequest,
+        [UnitErrors.VersionRequired.Code] = StatusCodes.Status400BadRequest,
+        [UnitErrors.PageInvalid.Code] = StatusCodes.Status400BadRequest,
+        [UnitErrors.BatchSizeInvalid.Code] = StatusCodes.Status400BadRequest,
+        [UnitErrors.CondominiumRequired.Code] = StatusCodes.Status422UnprocessableEntity,
+        [UnitErrors.FractionSumExceeded.Code] = StatusCodes.Status422UnprocessableEntity,
+        [UnitErrors.NotFound.Code] = StatusCodes.Status404NotFound,
+        [UnitErrors.IdentifierAlreadyExists.Code] = StatusCodes.Status409Conflict,
+        [UnitErrors.Deactivated.Code] = StatusCodes.Status409Conflict,
+        [UnitErrors.AlreadyDeactivated.Code] = StatusCodes.Status409Conflict,
+        [UnitErrors.AlreadyActive.Code] = StatusCodes.Status409Conflict,
+
         [PostalCodeErrors.NotFound.Code] = StatusCodes.Status404NotFound,
         [PostalCodeErrors.LookupUnavailable.Code] = StatusCodes.Status503ServiceUnavailable,
     };
@@ -90,7 +109,8 @@ public static class ErrorHttp
     public static bool TryGetStatusCode(Error error, [NotNullWhen(true)] out int status) =>
         StatusByCode.TryGetValue(error.Code, out status);
 
-    public static IResult ToProblem(Error error)
+    /// <param name="extensions">Campos a mais no problema, além do <c>code</c> (a lista de erros do lote, por exemplo).</param>
+    public static IResult ToProblem(Error error, IReadOnlyDictionary<string, object?>? extensions = null)
     {
         if (!TryGetStatusCode(error, out int status))
         {
@@ -104,6 +124,6 @@ public static class ErrorHttp
             detail: error.Description,
             statusCode: status,
             title: ReasonPhrases.GetReasonPhrase(status),
-            extensions: new Dictionary<string, object?> { ["code"] = error.Code });
+            extensions: new Dictionary<string, object?>(extensions ?? new Dictionary<string, object?>()) { ["code"] = error.Code });
     }
 }

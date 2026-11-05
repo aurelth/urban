@@ -30,6 +30,8 @@ public class RateLimitingConfigurationTests
     [InlineData("PostalCodeLookup", -1)]
     [InlineData("CondominiumProfile", 0)]
     [InlineData("SensitiveChange", -1)]
+    [InlineData("Units", 0)]
+    [InlineData("UnitBatch", -1)]
     public void Rejects_a_route_without_permits(string route, int permits)
     {
         RateLimitingOptions options = WithRule(route, new() { PermitLimit = permits, Window = TimeSpan.FromMinutes(1) });
@@ -53,6 +55,8 @@ public class RateLimitingConfigurationTests
     [InlineData("PostalCodeLookup")]
     [InlineData("CondominiumProfile")]
     [InlineData("SensitiveChange")]
+    [InlineData("Units")]
+    [InlineData("UnitBatch")]
     public void Rejects_a_route_without_a_window(string route)
     {
         RateLimitingOptions options = WithRule(route, new() { PermitLimit = 5, Window = TimeSpan.Zero });
@@ -149,5 +153,7 @@ public class RateLimitingConfigurationTests
         PostalCodeLookup = route == "PostalCodeLookup" ? rule : ValidRule,
         CondominiumProfile = route == "CondominiumProfile" ? rule : ValidRule,
         SensitiveChange = route == "SensitiveChange" ? rule : ValidRule,
+        Units = route == "Units" ? rule : ValidRule,
+        UnitBatch = route == "UnitBatch" ? rule : ValidRule,
     };
 }

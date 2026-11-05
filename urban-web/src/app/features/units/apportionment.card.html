@@ -1,0 +1,38 @@
+<mat-card appearance="outlined" data-testid="apportionment">
+  <mat-card-content class="p-6">
+    <h2 class="mb-1 text-xl font-semibold">Método de rateio</h2>
+    <p class="mb-4 text-on-surface-variant">
+      Escolha como as despesas do condomínio são divididas entre as unidades. O método escolhido
+      será usado quando as cobranças forem calculadas
+    </p>
+    <mat-radio-group
+      class="flex flex-col gap-3"
+      aria-label="Método de rateio"
+      [value]="summary().apportionmentMethod"
+      [disabled]="busy()"
+      (change)="choose($event)"
+    >
+      @for (option of options; track option.method) {
+        <div class="rounded-xl border border-outline-variant p-3">
+          <mat-radio-button [value]="option.method">{{ option.label }}</mat-radio-button>
+          <p class="m-0 ml-10 text-sm text-on-surface-variant">{{ option.description }}</p>
+          <p
+            class="m-0 ml-10 mt-1 flex items-start gap-2 text-sm"
+            [attr.data-testid]="'readiness-' + option.method"
+          >
+            @if (isReady(option.method)) {
+              <span class="inline-flex text-success"
+                ><mat-icon svgIcon="check_circle" aria-hidden="true"
+              /></span>
+            } @else {
+              <span class="inline-flex text-warning"
+                ><mat-icon svgIcon="info" aria-hidden="true"
+              /></span>
+            }
+            <span>{{ readinessText(option.method) }}</span>
+          </p>
+        </div>
+      }
+    </mat-radio-group>
+  </mat-card-content>
+</mat-card>

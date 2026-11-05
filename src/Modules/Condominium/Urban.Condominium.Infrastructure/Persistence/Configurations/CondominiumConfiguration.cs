@@ -31,6 +31,13 @@ internal sealed class CondominiumConfiguration : IEntityTypeConfiguration<Condom
 
         builder.Property(c => c.CreatedAt);
 
+        // Guardado como texto (IdealFraction, EqualShare, Area): legível no banco e sem número mágico. O padrão do banco cobre as linhas que já existiam.
+        builder.Property(c => c.ApportionmentMethod)
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .HasDefaultValue(Domain.Condominiums.ApportionmentMethod.IdealFraction)
+            .IsRequired();
+
         // Versão da linha para a edição: a coluna de sistema xmin muda a cada UPDATE. Fica como propriedade-sombra para o Domain não conhecer o EF.
         builder.Property<uint>("xmin").IsRowVersion();
     }

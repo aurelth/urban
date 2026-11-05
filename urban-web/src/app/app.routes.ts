@@ -45,6 +45,19 @@ export const routes: Routes = [
               import('./features/condominium/profile/profile.page').then((m) => m.ProfilePage),
           },
           {
+            path: 'unidades',
+            title: 'Unidades',
+            canActivate: [managerGuard],
+            loadComponent: () => import('./features/units/units.page').then((m) => m.UnitsPage),
+          },
+          {
+            path: 'unidades/lote',
+            title: 'Cadastro em lote',
+            canActivate: [managerGuard],
+            loadComponent: () =>
+              import('./features/units/units-batch.page').then((m) => m.UnitsBatchPage),
+          },
+          {
             path: 'dashboard',
             title: 'Painel',
             loadChildren: () =>

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Urban.Condominium.Application.Abstractions;
 using Urban.Condominium.Domain.People;
+using Urban.Condominium.Domain.Units;
 using Urban.SharedKernel.Abstractions;
 using CondominiumEntity = Urban.Condominium.Domain.Condominiums.Condominium;
 
@@ -34,6 +35,8 @@ public sealed class CondominiumDbContext : DbContext
 
     public DbSet<Person> People => Set<Person>();
 
+    public DbSet<CondominiumUnit> Units => Set<CondominiumUnit>();
+
     internal IPersonalDataProtector Protector { get; }
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
@@ -51,13 +54,16 @@ public sealed class CondominiumDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(Schema);
+        modelBuilder.HasCollation(CondominiumPersistence.CollationSchema, CondominiumPersistence.NaturalCollation, locale: "und-u-kn-true", provider: "icu", deterministic: false);
         modelBuilder.ApplyConfiguration(new Configurations.CondominiumConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.PersonConfiguration(Protector));
+        modelBuilder.ApplyConfiguration(new Configurations.UnitConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.ChangeLogConfiguration());
 
         // Sem tenant (SuperAdmin, síndico antes de cadastrar o condomínio, anônimo) a comparação com nulo não casa com
         // nenhuma linha: o padrão é não ver nada. Quem precisa ver tudo pede IgnoreQueryFilters de forma explícita.
         modelBuilder.Entity<Person>().HasQueryFilter(person => person.CondominiumId == _tenant.CondominiumId);
+        modelBuilder.Entity<CondominiumUnit>().HasQueryFilter(unit => unit.CondominiumId == _tenant.CondominiumId);
     }
 
     private static bool CpfNeedsAHash(Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<Person> entry) =>

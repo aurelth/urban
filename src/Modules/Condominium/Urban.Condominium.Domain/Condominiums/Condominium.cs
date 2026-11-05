@@ -40,6 +40,9 @@ public sealed class Condominium
 
     public DateTimeOffset CreatedAt { get; }
 
+    /// <summary>Como as despesas são divididas entre as unidades. Começa na fração ideal; só a escolha fica aqui, o cálculo é do módulo de cobranças.</summary>
+    public ApportionmentMethod ApportionmentMethod { get; private set; } = ApportionmentMethod.IdealFraction;
+
     public static Result<Condominium> Register(string? name, Cnpj cnpj, Address address, Guid createdBy, DateTimeOffset now)
     {
         string normalizedName = TextRules.Normalize(name);
@@ -69,6 +72,18 @@ public sealed class Condominium
 
         Name = normalizedName;
         Address = address;
+
+        return Result.Success();
+    }
+
+    public Result ChangeApportionmentMethod(ApportionmentMethod method)
+    {
+        if (!Enum.IsDefined(method))
+        {
+            return Result.Failure(CondominiumErrors.ApportionmentMethodInvalid);
+        }
+
+        ApportionmentMethod = method;
 
         return Result.Success();
     }

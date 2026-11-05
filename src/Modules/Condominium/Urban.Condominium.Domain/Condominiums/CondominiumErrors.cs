@@ -17,4 +17,6 @@ public static class CondominiumErrors
     public static readonly Error ConcurrencyConflict = new("concurrency.conflict", "Os dados foram alterados por outra pessoa. Recarregue e tente de novo");
 
     public static readonly Error VersionRequired = new("condominium.version.required", "Informe a versão dos dados que você está editando");
+
+    public static readonly Error ApportionmentMethodInvalid = new("condominium.apportionment_method.invalid", "Escolha fração ideal, valor igual ou área");
 }

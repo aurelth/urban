@@ -4,4 +4,11 @@ namespace Urban.Condominium.Application.Abstractions;
 /// Registro de auditoria de uma edição: quem mudou, quando e QUAIS campos. Nunca os valores (o CPF, por exemplo, não pode
 /// aparecer em lugar nenhum fora da coluna cifrada), então a tabela nem tem coluna que os comporte.
 /// </summary>
-public sealed record ChangeLogEntry(Guid CondominiumId, Guid ActorUserId, ChangeKind Kind, IReadOnlyList<string> Fields, DateTimeOffset At);
+/// <param name="SubjectId">O que foi mudado, quando não é o próprio cadastro do síndico (a unidade, por exemplo). Nulo nas demais.</param>
+public sealed record ChangeLogEntry(
+    Guid CondominiumId,
+    Guid ActorUserId,
+    ChangeKind Kind,
+    IReadOnlyList<string> Fields,
+    DateTimeOffset At,
+    Guid? SubjectId = null);

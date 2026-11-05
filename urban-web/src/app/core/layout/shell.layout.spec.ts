@@ -118,6 +118,23 @@ describe('ShellLayout', () => {
       expect(link(html, 'nav-account')).not.toBeNull();
     });
 
+    it('leva o sindico com condominio as unidades, antes dos dados do condominio', async () => {
+      const { html } = await setup(REGISTERED_MANAGER);
+
+      expect(link(html, 'nav-units')?.textContent?.trim()).toBe('Unidades');
+      expect(link(html, 'nav-units')?.getAttribute('href')).toBe('/unidades');
+      const order = [...html.querySelectorAll('a[data-testid^="nav-"]')].map((a) =>
+        a.getAttribute('data-testid'),
+      );
+      expect(order).toEqual(['nav-units', 'nav-profile', 'nav-account']);
+    });
+
+    it('nao mostra as unidades ao sindico sem condominio', async () => {
+      const { html } = await setup(MANAGER);
+
+      expect(link(html, 'nav-units')).toBeNull();
+    });
+
     it.each([
       ['morador', 'Resident' as const],
       ['administrador', 'SuperAdmin' as const],
@@ -125,6 +142,7 @@ describe('ShellLayout', () => {
       const { html } = await setup({ ...REGISTERED_MANAGER, role });
 
       expect(link(html, 'nav-profile')).toBeNull();
+      expect(link(html, 'nav-units')).toBeNull();
       expect(link(html, 'nav-account')).not.toBeNull();
     });
   });

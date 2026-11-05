@@ -1,0 +1,70 @@
+<h2 mat-dialog-title>{{ editing ? 'Editar unidade' : 'Nova unidade' }}</h2>
+<form [formGroup]="form" (ngSubmit)="confirm()" novalidate>
+  <mat-dialog-content>
+    <div class="mb-3 grid gap-x-4 gap-y-3 sm:grid-cols-2">
+      <urban-text-field
+        name="block"
+        label="Bloco"
+        hint="Opcional. Ex.: A ou Torre 1"
+        [optional]="true"
+        [errors]="blockErrors"
+      />
+      <urban-text-field name="number" label="Número" [errors]="numberErrors" />
+    </div>
+
+    <mat-radio-group
+      formControlName="type"
+      class="mb-5 flex flex-wrap gap-x-6"
+      aria-label="Tipo da unidade"
+    >
+      <mat-radio-button value="apartment">Apartamento</mat-radio-button>
+      <mat-radio-button value="house">Casa</mat-radio-button>
+    </mat-radio-group>
+
+    <div class="mb-3 grid gap-x-4 gap-y-3 sm:grid-cols-2">
+      <urban-text-field
+        name="idealFraction"
+        label="Fração ideal (%)"
+        hint="Opcional. Ex.: 1,25"
+        inputmode="decimal"
+        [optional]="true"
+        [errors]="fractionErrors"
+      />
+      <urban-text-field
+        name="area"
+        label="Área (m²)"
+        hint="Opcional. Ex.: 52,5"
+        inputmode="decimal"
+        [optional]="true"
+        [errors]="areaErrors"
+      />
+    </div>
+
+    @if (error(); as message) {
+      <p role="alert" class="flex items-start gap-2 text-error">
+        <mat-icon svgIcon="error" aria-hidden="true" />
+        <span>{{ message }}</span>
+      </p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button
+      mat-button
+      type="button"
+      data-testid="cancel"
+      [disabled]="busy()"
+      (click)="ref.close(false)"
+    >
+      Cancelar
+    </button>
+    <button mat-flat-button type="submit" [disabled]="busy() || (editing && !changed())">
+      @if (busy()) {
+        Salvando
+      } @else if (editing) {
+        Salvar alterações
+      } @else {
+        Cadastrar unidade
+      }
+    </button>
+  </mat-dialog-actions>
+</form>

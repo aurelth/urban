@@ -191,4 +191,32 @@ public sealed class OpenApiDocumentationTests
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
+
+    [Theory]
+    [InlineData("/api/units", "get")]
+    [InlineData("/api/units", "post")]
+    [InlineData("/api/units/summary", "get")]
+    [InlineData("/api/units/{id}", "get")]
+    [InlineData("/api/units/{id}", "put")]
+    [InlineData("/api/units/{id}/deactivate", "post")]
+    [InlineData("/api/units/{id}/reactivate", "post")]
+    [InlineData("/api/units/batch", "post")]
+    [InlineData("/api/units/apportionment-method", "put")]
+    public async Task Development_documents_every_unit_route_as_protected_with_a_summary_and_the_error_statuses(string path, string method)
+    {
+        await using ApiFactory factory = new() { EnvironmentName = "Development" };
+        using HttpClient client = factory.CreateClient();
+
+        JsonElement paths = (await client.GetFromJsonAsync<JsonElement>("/openapi/v1.json")).GetProperty("paths");
+
+        JsonElement operation = paths.GetProperty(path).GetProperty(method);
+        operation.GetProperty("summary").GetString().Should().NotBeNullOrWhiteSpace();
+        operation.GetProperty("description").GetString().Should().NotBeNullOrWhiteSpace();
+        operation.GetProperty("security").GetArrayLength().Should().BeGreaterThan(0);
+        operation.GetProperty("tags").EnumerateArray().Select(t => t.GetString()).Should().Contain("Unidades");
+        foreach (string status in new[] { "401", "403", "429" })
+        {
+            operation.GetProperty("responses").TryGetProperty(status, out _).Should().BeTrue($"{method} {path} documenta o {status}");
+        }
+    }
 }

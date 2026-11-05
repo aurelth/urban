@@ -30,6 +30,8 @@ public static class CondominiumInfrastructureExtensions
         services.AddDbContext<CondominiumDbContext>(options => CondominiumPersistence.Configure(options, postgres));
         services.AddScoped<ICondominiumRegistrations, CondominiumRegistrations>();
         services.AddScoped<ICondominiumProfiles, CondominiumProfiles>();
+        services.AddScoped<IUnits, CondominiumUnits>();
+        services.AddScoped<IApportionments, ApportionmentSettings>();
 
         return services;
     }

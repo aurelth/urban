@@ -106,7 +106,7 @@ public static class CondominiumEndpoints
         ISender sender,
         CancellationToken cancellationToken)
     {
-        if (!TryReadManager(user, out Guid userId, out IResult? refusal))
+        if (!ManagerAccess.TryRead(user, out Guid userId, out IResult? refusal))
         {
             return refusal;
         }
@@ -129,7 +129,7 @@ public static class CondominiumEndpoints
         ISender sender,
         CancellationToken cancellationToken)
     {
-        if (!TryReadManager(user, out Guid userId, out IResult? refusal))
+        if (!ManagerAccess.TryRead(user, out Guid userId, out IResult? refusal))
         {
             return refusal;
         }
@@ -152,7 +152,7 @@ public static class CondominiumEndpoints
         ISender sender,
         CancellationToken cancellationToken)
     {
-        if (!TryReadManager(user, out Guid userId, out IResult? refusal))
+        if (!ManagerAccess.TryRead(user, out Guid userId, out IResult? refusal))
         {
             return refusal;
         }
@@ -173,27 +173,6 @@ public static class CondominiumEndpoints
         response.PreventCaching();
 
         return Results.Ok(CondominiumMapper.ToResponse(complete.Value));
-    }
-
-    /// <summary>O papel vem do token assinado; a conta e o cadastro são conferidos de novo pelos comandos.</summary>
-    private static bool TryReadManager(ClaimsPrincipal user, out Guid userId, [System.Diagnostics.CodeAnalysis.NotNullWhen(false)] out IResult? refusal)
-    {
-        userId = Guid.Empty;
-        if (!AccessTokenSession.TryRead(user, out AccessTokenSession? session))
-        {
-            refusal = ErrorHttp.ToProblem(SessionErrors.Unauthenticated);
-            return false;
-        }
-
-        if (user.FindFirstValue(AccessTokenClaims.Role) != nameof(UserRole.Manager))
-        {
-            refusal = ErrorHttp.ToProblem(UserErrors.NotManager);
-            return false;
-        }
-
-        userId = session.UserId;
-        refusal = null;
-        return true;
     }
 
     private static async Task<IResult> RegisterAsync(

@@ -26,6 +26,12 @@ public static class RateLimitPolicies
 
     public const string CondominiumProfile = "condominium-profile";
 
+    /// <summary>Todas as rotas de unidades, exceto o cadastro em lote.</summary>
+    public const string Units = "units";
+
+    /// <summary>Cadastro de até 500 unidades de uma vez: grava muito, então o limite é bem menor.</summary>
+    public const string UnitBatch = "unit-batch";
+
     /// <summary>Troca de senha, de e-mail e edição dos dados sensíveis: ações que exigem a senha, com limite menor.</summary>
     public const string SensitiveChange = "sensitive-change";
 

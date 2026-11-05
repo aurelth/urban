@@ -19,6 +19,7 @@ namespace Urban.Condominium.Infrastructure.Persistence.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("condominium")
+                .HasAnnotation("Npgsql:CollationDefinition:public.natural_order", "und-u-kn-true,und-u-kn-true,icu,False")
                 .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
@@ -29,6 +30,14 @@ namespace Urban.Condominium.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<string>("ApportionmentMethod")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("IdealFraction")
+                        .HasColumnName("apportionment_method");
 
                     b.Property<string>("Cnpj")
                         .IsRequired()
@@ -227,6 +236,66 @@ namespace Urban.Condominium.Infrastructure.Persistence.Migrations
                     b.ToTable("person", "condominium");
                 });
 
+            modelBuilder.Entity("Urban.Condominium.Domain.Units.CondominiumUnit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal?>("Area")
+                        .HasPrecision(7, 2)
+                        .HasColumnType("numeric(7,2)")
+                        .HasColumnName("area");
+
+                    b.Property<string>("Block")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("block");
+
+                    b.Property<Guid>("CondominiumId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("condominium_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("DeactivatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("deactivated_at");
+
+                    b.Property<decimal?>("IdealFraction")
+                        .HasPrecision(9, 8)
+                        .HasColumnType("numeric(9,8)")
+                        .HasColumnName("ideal_fraction");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("number");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("type");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_unit");
+
+                    b.HasIndex("CondominiumId", "DeactivatedAt")
+                        .HasDatabaseName("ix_unit_condominium_id_deactivated_at");
+
+                    b.ToTable("unit", "condominium");
+                });
+
             modelBuilder.Entity("Urban.Condominium.Infrastructure.Persistence.ChangeLogRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -256,6 +325,10 @@ namespace Urban.Condominium.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("kind");
 
+                    b.Property<Guid?>("SubjectId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subject_id");
+
                     b.HasKey("Id")
                         .HasName("pk_change_log");
 
@@ -273,6 +346,16 @@ namespace Urban.Condominium.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_person_condominium_condominium_id");
+                });
+
+            modelBuilder.Entity("Urban.Condominium.Domain.Units.CondominiumUnit", b =>
+                {
+                    b.HasOne("Urban.Condominium.Domain.Condominiums.Condominium", null)
+                        .WithMany()
+                        .HasForeignKey("CondominiumId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_unit_condominium_condominium_id");
                 });
 
             modelBuilder.Entity("Urban.Condominium.Infrastructure.Persistence.ChangeLogRecord", b =>
