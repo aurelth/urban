@@ -16,6 +16,7 @@ internal sealed class ChangeLogConfiguration : IEntityTypeConfiguration<ChangeLo
         builder.HasOne<CondominiumEntity>().WithMany().HasForeignKey(c => c.CondominiumId).OnDelete(DeleteBehavior.Restrict);
 
         builder.Property(c => c.ActorUserId).IsRequired();
+        builder.Property(c => c.SubjectId);
         builder.Property(c => c.Kind).HasMaxLength(20).IsRequired();
         builder.Property(c => c.Fields).IsRequired();
         builder.Property(c => c.ChangedAt);

@@ -46,6 +46,7 @@ app.MapAuthEndpoints();
 app.MapTermsEndpoints();
 app.MapRegistrationEndpoints();
 app.MapCondominiumEndpoints();
+app.MapUnitEndpoints();
 app.MapPostalCodeEndpoints();
 app.MapPasswordResetEndpoints();
 app.MapAccountEndpoints();
