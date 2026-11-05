@@ -9,6 +9,18 @@
   @if (showProfile()) {
     <a
       mat-button
+      class="max-sm:min-w-0!"
+      data-testid="nav-units"
+      routerLink="/unidades"
+      routerLinkActive="font-semibold"
+      ariaCurrentWhenActive="page"
+    >
+      <mat-icon svgIcon="home_work" />
+      <span class="hidden sm:inline">Unidades</span>
+    </a>
+    <a
+      mat-button
+      class="max-sm:min-w-0!"
       data-testid="nav-profile"
       routerLink="/condominio/meus-dados"
       routerLinkActive="font-semibold"
@@ -20,6 +32,7 @@
   }
   <a
     mat-button
+    class="max-sm:min-w-0!"
     data-testid="nav-account"
     routerLink="/conta"
     routerLinkActive="font-semibold"
@@ -36,9 +49,16 @@
   >
     <mat-icon [svgIcon]="theme.isDark() ? 'light_mode' : 'dark_mode'" />
   </button>
-  <button mat-button type="button" data-testid="sign-out" (click)="signOut()">
+  <button
+    mat-button
+    type="button"
+    class="max-sm:min-w-0!"
+    data-testid="sign-out"
+    aria-label="Sair"
+    (click)="signOut()"
+  >
     <mat-icon svgIcon="logout" />
-    Sair
+    <span class="hidden sm:inline">Sair</span>
   </button>
 </mat-toolbar>
 <main>

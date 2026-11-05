@@ -29,7 +29,7 @@ export class ShellLayout {
   protected readonly accountLabel = accountLabel;
   protected readonly roleLabel = roleLabel;
 
-  /** "Meus dados" é do síndico que já cadastrou o condomínio; "Minha conta" é de todos. */
+  /** "Unidades" e "Meus dados" são do síndico que já cadastrou o condomínio; "Minha conta" é de todos. */
   protected readonly showProfile = computed(() => {
     const user = this.session.user();
     return user?.role === 'Manager' && user.condominiumId !== null;

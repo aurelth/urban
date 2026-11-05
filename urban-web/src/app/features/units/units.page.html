@@ -1,0 +1,318 @@
+<section class="mx-auto max-w-6xl p-6">
+  <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="mb-1 text-3xl font-semibold tracking-tight">Unidades</h1>
+      <p class="m-0 text-on-surface-variant">Cadastre e organize as unidades do condomínio</p>
+    </div>
+    @if (store.status() === 'ready') {
+      <div class="flex flex-wrap gap-2">
+        <a mat-stroked-button data-testid="batch-link" routerLink="/unidades/lote">
+          <mat-icon svgIcon="playlist_add" />
+          Cadastrar em lote
+        </a>
+        <button
+          mat-flat-button
+          type="button"
+          data-testid="new-unit"
+          [disabled]="store.busy()"
+          (click)="create()"
+        >
+          <mat-icon svgIcon="add" />
+          Nova unidade
+        </button>
+      </div>
+    }
+  </div>
+
+  @switch (store.status()) {
+    @case ('loading') {
+      <p role="status" class="text-on-surface-variant" data-testid="loading">
+        Carregando as unidades
+      </p>
+    }
+    @case ('error') {
+      <div class="flex flex-col items-start gap-4" data-testid="load-error">
+        <p class="flex items-start gap-2 text-error">
+          <mat-icon svgIcon="error" aria-hidden="true" />
+          <span>Não foi possível carregar as unidades</span>
+        </p>
+        <button mat-stroked-button type="button" data-testid="retry" (click)="load()">
+          Tentar de novo
+        </button>
+      </div>
+    }
+    @case ('ready') {
+      @if (notice(); as message) {
+        <p role="status" class="mb-4 flex items-start gap-2" data-testid="notice">
+          <span class="inline-flex text-success"
+            ><mat-icon svgIcon="check_circle" aria-hidden="true"
+          /></span>
+          <span>{{ message }}</span>
+        </p>
+      }
+      @if (actionError(); as message) {
+        <p role="alert" class="mb-4 flex items-start gap-2 text-error" data-testid="action-error">
+          <mat-icon svgIcon="error" aria-hidden="true" />
+          <span>{{ message }}</span>
+        </p>
+      }
+
+      @if (store.summary(); as summary) {
+        <dl class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7" data-testid="summary">
+          <div class="rounded-xl border border-outline-variant p-4" data-testid="summary-active">
+            <dt class="text-sm text-on-surface-variant">Ativas</dt>
+            <dd class="m-0 text-2xl font-semibold">{{ summary.active }}</dd>
+          </div>
+          <div
+            class="rounded-xl border border-outline-variant p-4"
+            data-testid="summary-deactivated"
+          >
+            <dt class="text-sm text-on-surface-variant">Desativadas</dt>
+            <dd class="m-0 text-2xl font-semibold">{{ summary.deactivated }}</dd>
+          </div>
+          <div
+            class="rounded-xl border border-outline-variant p-4"
+            data-testid="summary-apartments"
+          >
+            <dt class="text-sm text-on-surface-variant">Apartamentos</dt>
+            <dd class="m-0 text-2xl font-semibold">{{ summary.apartments }}</dd>
+          </div>
+          <div class="rounded-xl border border-outline-variant p-4" data-testid="summary-houses">
+            <dt class="text-sm text-on-surface-variant">Casas</dt>
+            <dd class="m-0 text-2xl font-semibold">{{ summary.houses }}</dd>
+          </div>
+          <div class="rounded-xl border border-outline-variant p-4" data-testid="summary-fraction">
+            <dt class="text-sm text-on-surface-variant">Fração ideal ocupada</dt>
+            <dd class="m-0 text-2xl font-semibold">
+              {{ percent(summary.idealFractionTotal) }} de 100%
+            </dd>
+          </div>
+          <div
+            class="rounded-xl border border-outline-variant p-4"
+            data-testid="summary-without-fraction"
+          >
+            <dt class="text-sm text-on-surface-variant">Sem fração ideal</dt>
+            <dd class="m-0 text-2xl font-semibold">{{ summary.withoutIdealFraction }}</dd>
+          </div>
+          <div
+            class="rounded-xl border border-outline-variant p-4"
+            data-testid="summary-without-area"
+          >
+            <dt class="text-sm text-on-surface-variant">Sem área</dt>
+            <dd class="m-0 text-2xl font-semibold">{{ summary.withoutArea }}</dd>
+          </div>
+        </dl>
+
+        <div class="mb-6">
+          <urban-apportionment-card
+            [summary]="summary"
+            [busy]="store.busy()"
+            (methodChange)="changeMethod($event)"
+          />
+          @if (methodError(); as message) {
+            <p
+              role="alert"
+              class="mt-3 flex items-start gap-2 text-error"
+              data-testid="method-error"
+            >
+              <mat-icon svgIcon="error" aria-hidden="true" />
+              <span>{{ message }}</span>
+            </p>
+          }
+        </div>
+      }
+
+      <form
+        class="grid gap-x-4 sm:grid-cols-2 lg:grid-cols-4"
+        data-testid="filters"
+        (submit)="$event.preventDefault()"
+      >
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="mb-4 w-full">
+          <mat-label>Situação</mat-label>
+          <select
+            matNativeControl
+            data-testid="filter-status"
+            [value]="store.query().status"
+            (change)="onStatus($event)"
+          >
+            <option value="active">Ativas</option>
+            <option value="deactivated">Desativadas</option>
+            <option value="all">Todas</option>
+          </select>
+        </mat-form-field>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="mb-4 w-full">
+          <mat-label>Tipo</mat-label>
+          <select
+            matNativeControl
+            data-testid="filter-type"
+            [value]="store.query().type ?? ''"
+            (change)="onType($event)"
+          >
+            <option value="">Todos os tipos</option>
+            <option value="apartment">Apartamentos</option>
+            <option value="house">Casas</option>
+          </select>
+        </mat-form-field>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="mb-4 w-full">
+          <mat-label>Bloco</mat-label>
+          <input
+            matInput
+            data-testid="filter-block"
+            autocomplete="off"
+            [value]="store.query().block"
+            (change)="onBlock($event)"
+          />
+        </mat-form-field>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="mb-4 w-full">
+          <mat-label>Buscar por número ou bloco</mat-label>
+          <input
+            matInput
+            data-testid="filter-search"
+            autocomplete="off"
+            [value]="store.query().search"
+            (change)="onSearch($event)"
+          />
+        </mat-form-field>
+      </form>
+      @if (store.hasFilters()) {
+        <button
+          mat-button
+          type="button"
+          class="mb-4"
+          data-testid="clear-filters"
+          [disabled]="store.busy()"
+          (click)="clearFilters()"
+        >
+          Limpar filtros
+        </button>
+      }
+
+      @if (store.total() === 0 && !store.hasFilters()) {
+        <div class="rounded-xl border border-outline-variant p-6 text-center" data-testid="empty">
+          <p class="mb-1 text-lg font-medium">Nenhuma unidade cadastrada ainda</p>
+          <p class="m-0 text-on-surface-variant">
+            Cadastre uma unidade por vez ou várias de uma vez, pelo cadastro em lote
+          </p>
+        </div>
+      } @else if (store.items().length === 0) {
+        <p
+          class="rounded-xl border border-outline-variant p-6 text-center text-on-surface-variant"
+          data-testid="no-results"
+        >
+          Nenhuma unidade encontrada com estes filtros
+        </p>
+      } @else {
+        <p class="mb-2 text-sm text-on-surface-variant" data-testid="total">
+          {{ store.total() }} {{ store.total() === 1 ? 'unidade' : 'unidades' }}
+        </p>
+        <div class="overflow-x-auto rounded-xl border border-outline-variant">
+          <table class="w-full border-collapse text-left" data-testid="units-table">
+            <caption class="sr-only">
+              Lista de unidades
+            </caption>
+            <thead>
+              <tr class="border-b border-outline-variant text-sm text-on-surface-variant">
+                <th scope="col" class="p-3 font-medium">Unidade</th>
+                <th scope="col" class="p-3 font-medium">Tipo</th>
+                <th scope="col" class="p-3 font-medium">Fração ideal</th>
+                <th scope="col" class="p-3 font-medium">Área</th>
+                <th scope="col" class="p-3 font-medium">Situação</th>
+                <th scope="col" class="p-3 font-medium">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of store.items(); track item.id) {
+                <tr class="border-b border-outline-variant last:border-b-0" data-testid="unit-row">
+                  <td class="p-3 font-medium">{{ label(item) }}</td>
+                  <td class="p-3">{{ item.type === 'house' ? 'Casa' : 'Apartamento' }}</td>
+                  <td class="p-3">{{ percent(item.idealFraction) }}</td>
+                  <td class="p-3">{{ area(item.area) }}</td>
+                  <td class="p-3">
+                    @if (item.isActive) {
+                      <span class="inline-flex items-center gap-1 text-success">
+                        <mat-icon svgIcon="check_circle" aria-hidden="true" />
+                        <span class="text-on-surface">Ativa</span>
+                      </span>
+                    } @else {
+                      <span class="inline-flex items-center gap-1 text-on-surface-variant">
+                        <mat-icon svgIcon="block" aria-hidden="true" />
+                        <span>Desativada</span>
+                      </span>
+                    }
+                  </td>
+                  <td class="p-1 whitespace-nowrap">
+                    @if (item.isActive) {
+                      <button
+                        mat-icon-button
+                        type="button"
+                        [attr.aria-label]="'Editar ' + label(item)"
+                        [attr.title]="'Editar ' + label(item)"
+                        [disabled]="store.busy()"
+                        (click)="edit(item)"
+                      >
+                        <mat-icon svgIcon="edit" />
+                      </button>
+                      <button
+                        mat-icon-button
+                        type="button"
+                        [attr.aria-label]="'Desativar ' + label(item)"
+                        [attr.title]="'Desativar ' + label(item)"
+                        [disabled]="store.busy()"
+                        (click)="deactivate(item)"
+                      >
+                        <mat-icon svgIcon="block" />
+                      </button>
+                    } @else {
+                      <button
+                        mat-icon-button
+                        type="button"
+                        [attr.aria-label]="'Reativar ' + label(item)"
+                        [attr.title]="'Reativar ' + label(item)"
+                        [disabled]="store.busy()"
+                        (click)="reactivate(item)"
+                      >
+                        <mat-icon svgIcon="restart_alt" />
+                      </button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+
+      @if (store.pageCount() > 1) {
+        <nav
+          class="mt-4 flex items-center justify-between gap-4"
+          aria-label="Paginação"
+          data-testid="pagination"
+        >
+          <button
+            mat-stroked-button
+            type="button"
+            data-testid="previous"
+            [disabled]="store.busy() || store.query().page <= 1"
+            (click)="goTo(store.query().page - 1)"
+          >
+            <mat-icon svgIcon="chevron_left" />
+            Anterior
+          </button>
+          <span aria-live="polite" data-testid="page-status"
+            >Página {{ store.query().page }} de {{ store.pageCount() }}</span
+          >
+          <button
+            mat-stroked-button
+            type="button"
+            data-testid="next"
+            [disabled]="store.busy() || store.query().page >= store.pageCount()"
+            (click)="goTo(store.query().page + 1)"
+          >
+            Próxima
+            <mat-icon svgIcon="chevron_right" />
+          </button>
+        </nav>
+      }
+    }
+  }
+</section>
