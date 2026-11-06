@@ -21,6 +21,12 @@ describe('preenchimento automático do navegador', () => {
     expect(rule).toMatch(/transition:\s*background-color 600000s 0s/);
   });
 
+  it('impõe o atraso com !important, para não perder para a transição que o Material põe no campo', () => {
+    const rule = ruleFor(compile(), 'input:-webkit-autofill');
+
+    expect(rule).toMatch(/transition:[^;]*600000s[^;]*!important/);
+  });
+
   it('mantém o texto na cor do tema, sem depender da cor que o navegador escolhe', () => {
     const rule = ruleFor(compile(), 'input:-webkit-autofill');
 
