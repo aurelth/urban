@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { provideUrbanIcons } from '../../../core/theme/icons';
 import { emailFormat } from '../../forms/email.validator';
 import { EmailField } from './email.field';
 
@@ -31,6 +32,7 @@ class LoginHost {
 }
 
 function render<T extends DefaultHost | LoginHost>(host: new () => T): ComponentFixture<T> {
+  TestBed.configureTestingModule({ providers: [provideUrbanIcons()] });
   const fixture = TestBed.createComponent(host);
   fixture.detectChanges();
   return fixture;
@@ -108,5 +110,15 @@ describe('EmailField', () => {
     );
 
     expect(subscript?.classList).toContain('mat-mdc-form-field-subscript-dynamic-size');
+  });
+
+  it('mostra o ícone de identificação no fim do campo, só como enfeite', () => {
+    const fixture = render(DefaultHost);
+    const field = fixture.nativeElement.querySelector('.mat-mdc-form-field-icon-suffix');
+    const icon = field?.querySelector('mat-icon');
+
+    expect(icon?.getAttribute('svgicon')).toBe('frame_person');
+    expect(icon?.getAttribute('aria-hidden')).toBe('true');
+    expect(fixture.nativeElement.querySelector('button')).toBeNull();
   });
 });

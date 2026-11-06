@@ -30,7 +30,7 @@
                 "input": "public"
               },
               {
-                "glob": "{dark_mode,light_mode,visibility,visibility_off,error,info,logout,check_circle,mark_email_read,progress_activity,apartment,account_circle,home_work,add,edit,block,restart_alt,playlist_add,delete,arrow_back,chevron_left,chevron_right}.svg",
+                "glob": "{dark_mode,light_mode,visibility,visibility_off,error,info,logout,check_circle,mark_email_read,progress_activity,apartment,account_circle,home_work,add,edit,block,restart_alt,playlist_add,delete,arrow_back,chevron_left,chevron_right,frame_person}.svg",
                 "input": "node_modules/@material-symbols/svg-400/outlined",
                 "output": "icons"
               }

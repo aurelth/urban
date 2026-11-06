@@ -1,6 +1,7 @@
 import { Component, input } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
-import { MatError, MatFormField, MatLabel } from '@angular/material/form-field';
+import { MatError, MatFormField, MatLabel, MatSuffix } from '@angular/material/form-field';
+import { MatIcon } from '@angular/material/icon';
 import { MatInput } from '@angular/material/input';
 import { FormFieldBase, USE_PARENT_FORM } from '../form-field.base';
 
@@ -10,7 +11,7 @@ import { FormFieldBase, USE_PARENT_FORM } from '../form-field.base';
  */
 @Component({
   selector: 'urban-email-field',
-  imports: [ReactiveFormsModule, MatFormField, MatLabel, MatError, MatInput],
+  imports: [ReactiveFormsModule, MatFormField, MatLabel, MatError, MatInput, MatIcon, MatSuffix],
   templateUrl: './email.field.html',
   viewProviders: [USE_PARENT_FORM],
   host: { class: 'block mb-5' },
