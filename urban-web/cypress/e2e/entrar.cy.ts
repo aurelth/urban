@@ -1,3 +1,4 @@
+import { backgroundAlpha, forceAutofill } from '../support/autofill';
 import { expectErrorsToStayInTheirOwnSpace } from '../support/layout';
 import {
   MANAGER,
@@ -26,6 +27,18 @@ describe('Entrar', () => {
       .closest('mat-form-field')
       .find('.mat-mdc-form-field-icon-suffix mat-icon[svgicon="frame_person"] svg')
       .should('be.visible');
+  });
+
+  it('não pinta o fundo azulado do preenchimento automático atrás do e-mail e da senha', () => {
+    stubAnonymous();
+    cy.visit('/entrar');
+
+    for (const selector of ['input[type="email"]', 'input[autocomplete="current-password"]']) {
+      forceAutofill(selector);
+      cy.get(selector).should(($input) => {
+        expect(backgroundAlpha($input)).to.be.lessThan(0.01);
+      });
+    }
   });
 
   it('entra com e-mail e senha e abre o painel', () => {
