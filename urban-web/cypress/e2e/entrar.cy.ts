@@ -17,6 +17,17 @@ describe('Entrar', () => {
     cy.contains('h1', 'Entrar').should('be.visible');
   });
 
+  it('mostra o ícone de identificação no fim do campo de e-mail, com o desenho carregado', () => {
+    stubAnonymous();
+    cy.visit('/entrar');
+
+    cy.get('mat-form-field')
+      .contains('E-mail')
+      .closest('mat-form-field')
+      .find('.mat-mdc-form-field-icon-suffix mat-icon[svgicon="frame_person"] svg')
+      .should('be.visible');
+  });
+
   it('entra com e-mail e senha e abre o painel', () => {
     stubAnonymous();
     stubLogin();
