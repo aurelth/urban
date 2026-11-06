@@ -1,5 +1,6 @@
 // O Chrome pinta o campo preenchido pelo navegador com um fundo claro (com !important), então só
-// um atraso de transição o segura. O texto e o cursor seguem a cor do tema.
+// um atraso de transição o segura. O !important é para vencer a transição de opacidade que o
+// Material põe no campo. O texto e o cursor seguem a cor do tema.
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
@@ -8,7 +9,7 @@ input:-webkit-autofill:active {
   caret-color: var(--mat-sys-on-surface);
   transition:
     background-color 600000s 0s,
-    color 600000s 0s;
+    color 600000s 0s !important;
 }
 
 // Seletor padrão, usado pelo Firefox.
