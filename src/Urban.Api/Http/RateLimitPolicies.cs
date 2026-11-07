@@ -32,6 +32,9 @@ public static class RateLimitPolicies
     /// <summary>Cadastro de até 500 unidades de uma vez: grava muito, então o limite é bem menor.</summary>
     public const string UnitBatch = "unit-batch";
 
+    /// <summary>Todas as rotas do financeiro: despesas, grupos e lançamentos do mês.</summary>
+    public const string Finance = "finance";
+
     /// <summary>Troca de senha, de e-mail e edição dos dados sensíveis: ações que exigem a senha, com limite menor.</summary>
     public const string SensitiveChange = "sensitive-change";
 
