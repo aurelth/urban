@@ -32,6 +32,8 @@ public static class ExpenseErrors
 
     public static readonly Error NotDueInMonth = new("expense.not_due_in_month", "A despesa não tem lançamento neste mês");
 
+    public static readonly Error KindInvalid = new("expense.kind.invalid", "Escolha se a despesa é única, fixa mensal, variável mensal ou parcelada");
+
     public static readonly Error NotFound = new("expense.not_found", "Despesa não encontrada");
 
     public static readonly Error EntryNotFound = new("expense_entry.not_found", "Lançamento não encontrado");

@@ -42,14 +42,22 @@ public sealed class ExpenseGroup
             : Result.Failure<ExpenseGroup>(ExpenseGroupErrors.NameInvalid);
     }
 
+    /// <summary>O nome como será guardado (sem espaços repetidos), ou a falha. Serve para conferir se já existe antes de criar ou renomear.</summary>
+    public static Result<string> ValidateName(string? name) =>
+        TextRules.IsValidText(name, NameMaxLength, out string normalized)
+            ? Result.Success(normalized)
+            : Result.Failure<string>(ExpenseGroupErrors.NameInvalid);
+
     public Result Rename(string? name)
     {
-        if (!TextRules.IsValidText(name, NameMaxLength, out string normalized))
+        Result<string> valid = ValidateName(name);
+
+        if (valid.IsFailure)
         {
-            return Result.Failure(ExpenseGroupErrors.NameInvalid);
+            return Result.Failure(valid.Error);
         }
 
-        Name = normalized;
+        Name = valid.Value;
         return Result.Success();
     }
 }
