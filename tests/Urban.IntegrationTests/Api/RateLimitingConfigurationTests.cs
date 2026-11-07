@@ -32,6 +32,7 @@ public class RateLimitingConfigurationTests
     [InlineData("SensitiveChange", -1)]
     [InlineData("Units", 0)]
     [InlineData("UnitBatch", -1)]
+    [InlineData("Finance", 0)]
     public void Rejects_a_route_without_permits(string route, int permits)
     {
         RateLimitingOptions options = WithRule(route, new() { PermitLimit = permits, Window = TimeSpan.FromMinutes(1) });
@@ -57,6 +58,7 @@ public class RateLimitingConfigurationTests
     [InlineData("SensitiveChange")]
     [InlineData("Units")]
     [InlineData("UnitBatch")]
+    [InlineData("Finance")]
     public void Rejects_a_route_without_a_window(string route)
     {
         RateLimitingOptions options = WithRule(route, new() { PermitLimit = 5, Window = TimeSpan.Zero });
@@ -155,5 +157,6 @@ public class RateLimitingConfigurationTests
         SensitiveChange = route == "SensitiveChange" ? rule : ValidRule,
         Units = route == "Units" ? rule : ValidRule,
         UnitBatch = route == "UnitBatch" ? rule : ValidRule,
+        Finance = route == "Finance" ? rule : ValidRule,
     };
 }

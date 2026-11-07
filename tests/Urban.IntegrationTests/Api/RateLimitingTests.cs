@@ -37,6 +37,8 @@ public sealed class RateLimitingTests(ApiFixture fixture)
 
     private const string UnitBatchRoute = "/api/units/batch";
 
+    private const string FinanceRoute = "/api/finance/months/2026-11";
+
     private static readonly IPAddress TrustedProxy = IPAddress.Parse("10.0.0.2");
 
     private static readonly IPAddress PublicAddress = IPAddress.Parse("198.51.100.7");
@@ -60,6 +62,7 @@ public sealed class RateLimitingTests(ApiFixture fixture)
     [InlineData(ConfirmEmailChangeRoute)]
     [InlineData(UnitsRoute)]
     [InlineData(UnitBatchRoute)]
+    [InlineData(FinanceRoute)]
     public async Task Blocks_a_client_that_exceeds_the_limit_of_the_route(string route)
     {
         await using ApiFactory factory = CreateFactory(TimeSpan.FromMinutes(1));
@@ -93,6 +96,7 @@ public sealed class RateLimitingTests(ApiFixture fixture)
     [InlineData(ConfirmEmailChangeRoute, 2)]
     [InlineData(UnitsRoute, 14)]
     [InlineData(UnitBatchRoute, 15)]
+    [InlineData(FinanceRoute, 16)]
     public async Task Applies_the_limit_configured_for_that_route(string route, int permits)
     {
         Dictionary<string, string?> limits = new()
@@ -112,6 +116,7 @@ public sealed class RateLimitingTests(ApiFixture fixture)
             ["RateLimiting:SensitiveChange:PermitLimit"] = "13",
             ["RateLimiting:Units:PermitLimit"] = "14",
             ["RateLimiting:UnitBatch:PermitLimit"] = "15",
+            ["RateLimiting:Finance:PermitLimit"] = "16",
         };
         await using ApiFactory factory = CreateFactory(TimeSpan.FromMinutes(1), settings: limits);
         using HttpClient client = factory.CreateClient();
@@ -141,6 +146,7 @@ public sealed class RateLimitingTests(ApiFixture fixture)
     [InlineData(ConfirmEmailChangeRoute, 10)]
     [InlineData(UnitsRoute, 120)]
     [InlineData(UnitBatchRoute, 10)]
+    [InlineData(FinanceRoute, 120)]
     public async Task Ships_with_the_limits_of_the_appsettings(string route, int permits)
     {
         await using ApiFactory factory = CreateFactory(TimeSpan.FromMinutes(1), limit: null);
@@ -242,12 +248,12 @@ public sealed class RateLimitingTests(ApiFixture fixture)
 
     private static HttpMethod MethodFor(string route) => route switch
     {
-        MeRoute or TermsRoute or PostalCodesRoute or ProfileRoute or UnitsRoute => HttpMethod.Get,
+        MeRoute or TermsRoute or PostalCodesRoute or ProfileRoute or UnitsRoute or FinanceRoute => HttpMethod.Get,
         IdentityRoute => HttpMethod.Put,
         _ => HttpMethod.Post,
     };
 
-    private static bool HasBody(string route) => route is not (MeRoute or TermsRoute or PostalCodesRoute or ProfileRoute or UnitsRoute or RefreshRoute or LogoutRoute);
+    private static bool HasBody(string route) => route is not (MeRoute or TermsRoute or PostalCodesRoute or ProfileRoute or UnitsRoute or FinanceRoute or RefreshRoute or LogoutRoute);
 
     private static object BodyFor(string route) => route switch
     {

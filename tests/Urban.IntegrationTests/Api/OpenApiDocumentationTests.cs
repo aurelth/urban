@@ -193,6 +193,38 @@ public sealed class OpenApiDocumentationTests
     }
 
     [Theory]
+    [InlineData("/api/finance/expense-groups", "get")]
+    [InlineData("/api/finance/expense-groups", "post")]
+    [InlineData("/api/finance/expense-groups/default", "post")]
+    [InlineData("/api/finance/expense-groups/{id}", "put")]
+    [InlineData("/api/finance/expenses", "get")]
+    [InlineData("/api/finance/expenses", "post")]
+    [InlineData("/api/finance/expenses/{id}", "put")]
+    [InlineData("/api/finance/expenses/{id}/amount", "post")]
+    [InlineData("/api/finance/expenses/{id}/installments/{number}", "put")]
+    [InlineData("/api/finance/expenses/{id}/end", "post")]
+    [InlineData("/api/finance/months/{month}", "get")]
+    [InlineData("/api/finance/months/{month}/open", "post")]
+    [InlineData("/api/finance/entries/{id}/amount", "put")]
+    public async Task Development_documents_every_finance_route_as_protected_with_a_summary_and_the_error_statuses(string path, string method)
+    {
+        await using ApiFactory factory = new() { EnvironmentName = "Development" };
+        using HttpClient client = factory.CreateClient();
+
+        JsonElement paths = (await client.GetFromJsonAsync<JsonElement>("/openapi/v1.json")).GetProperty("paths");
+
+        JsonElement operation = paths.GetProperty(path).GetProperty(method);
+        operation.GetProperty("summary").GetString().Should().NotBeNullOrWhiteSpace();
+        operation.GetProperty("description").GetString().Should().NotBeNullOrWhiteSpace();
+        operation.GetProperty("security").GetArrayLength().Should().BeGreaterThan(0);
+        operation.GetProperty("tags").EnumerateArray().Select(t => t.GetString()).Should().Contain("Financeiro");
+        foreach (string status in new[] { "401", "403", "429" })
+        {
+            operation.GetProperty("responses").TryGetProperty(status, out _).Should().BeTrue($"{method} {path} documenta o {status}");
+        }
+    }
+
+    [Theory]
     [InlineData("/api/units", "get")]
     [InlineData("/api/units", "post")]
     [InlineData("/api/units/summary", "get")]
