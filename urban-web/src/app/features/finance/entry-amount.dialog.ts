@@ -41,7 +41,7 @@ export interface EntryAmountDialogConfig {
 export class EntryAmountDialog {
   protected readonly config = inject<EntryAmountDialogConfig>(MAT_DIALOG_DATA);
   protected readonly ref = inject<MatDialogRef<EntryAmountDialog, boolean>>(MatDialogRef);
-  protected readonly pending = this.config.entry.isPending;
+  protected readonly pending = this.config.entry.needsAmount;
   protected readonly suggested = this.pending && this.config.entry.suggestedAmount !== null;
 
   private readonly initial = formatMoneyInput(

@@ -23,6 +23,7 @@ import {
   canAdjust,
   canEnd,
   canSetInstallment,
+  dueText,
   kindLabel,
   periodText,
 } from './expense-values';
@@ -55,6 +56,7 @@ export class ExpensesPage implements OnInit {
   protected readonly kind = kindLabel;
   protected readonly amount = amountText;
   protected readonly period = periodText;
+  protected readonly due = dueText;
   protected readonly canAdjust = canAdjust;
   protected readonly canSetInstallment = canSetInstallment;
   protected readonly canEnd = canEnd;
@@ -104,9 +106,9 @@ export class ExpensesPage implements OnInit {
       expense: target,
       groups: this.store.groups(),
       month: this.month(),
-      save: ({ description, supplier, groupId }) =>
+      save: ({ description, supplier, groupId, dueDay }) =>
         this.saved(
-          this.store.updateExpense(target, { description, supplier, groupId }),
+          this.store.updateExpense(target, { description, supplier, groupId, dueDay }),
           'Despesa atualizada',
         ),
     });

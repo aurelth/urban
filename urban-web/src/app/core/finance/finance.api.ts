@@ -8,6 +8,7 @@ import {
   ExpensePayload,
   ExpenseStatusFilter,
   MonthEntries,
+  SettableEntryStatus,
   UpdateExpensePayload,
 } from './finance.models';
 
@@ -78,5 +79,13 @@ export class FinanceApi {
 
   setEntryAmount(id: string, version: string, amount: number): Observable<ExpenseEntry> {
     return this.http.put<ExpenseEntry>(`${BASE}/entries/${id}/amount`, { version, amount });
+  }
+
+  setEntryStatus(
+    id: string,
+    version: string,
+    status: SettableEntryStatus,
+  ): Observable<ExpenseEntry> {
+    return this.http.put<ExpenseEntry>(`${BASE}/entries/${id}/status`, { version, status });
   }
 }

@@ -67,13 +67,10 @@
             Novo grupo
           </button>
         </div>
-        <ul class="m-0 flex list-none flex-wrap gap-2 p-0">
+        <ul class="m-0 flex list-none flex-wrap gap-x-6 gap-y-1 p-0">
           @for (group of store.groups(); track group.id) {
-            <li
-              class="flex items-center gap-1 rounded-full border border-outline-variant py-1 pr-1 pl-4"
-              data-testid="group-item"
-            >
-              <span>{{ group.name }}</span>
+            <li class="flex items-center gap-1" data-testid="group-item">
+              <span class="text-lg font-medium">{{ group.name }}</span>
               <button
                 mat-icon-button
                 type="button"
@@ -132,6 +129,7 @@
                 <th scope="col" class="p-3 font-medium">Tipo</th>
                 <th scope="col" class="p-3 font-medium">Valor</th>
                 <th scope="col" class="p-3 font-medium">Período</th>
+                <th scope="col" class="p-3 font-medium">Vencimento</th>
                 <th scope="col" class="p-3 font-medium">Situação</th>
                 <th scope="col" class="p-3 font-medium">Ações</th>
               </tr>
@@ -152,6 +150,7 @@
                   <td class="p-3">{{ kind(item.kind) }}</td>
                   <td class="p-3 whitespace-nowrap">{{ amount(item) }}</td>
                   <td class="p-3 whitespace-nowrap">{{ period(item) }}</td>
+                  <td class="p-3 whitespace-nowrap">{{ due(item) }}</td>
                   <td class="p-3">
                     @if (item.isEnded) {
                       <span class="inline-flex items-center gap-1 text-on-surface-variant">

@@ -66,6 +66,14 @@
           />
         }
       }
+
+      <urban-text-field
+        name="dueDay"
+        label="Dia do vencimento"
+        inputmode="numeric"
+        [hint]="dueDayHint()"
+        [errors]="dueDayErrors"
+      />
     </div>
 
     @if (error(); as message) {

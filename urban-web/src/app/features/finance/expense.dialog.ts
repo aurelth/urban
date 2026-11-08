@@ -32,7 +32,9 @@ const TEXT_MAX_LENGTH = 120;
 const MIN_INSTALLMENTS = 2;
 const MAX_INSTALLMENTS = 120;
 const MONTHS_BEHIND = 36;
-const MONTHS_AHEAD = 24;
+const MONTHS_AHEAD = 60;
+const MIN_DUE_DAY = 1;
+const MAX_DUE_DAY = 31;
 const WHOLE_NUMBER = /^\d+$/;
 
 const KINDS: readonly (SelectOption & { readonly hint: string })[] = [
@@ -97,6 +99,11 @@ function currentInstallmentField(control: AbstractControl<string>): ValidationEr
     : { currentInstallment: true };
 }
 
+function dueDayField(control: AbstractControl<string>): ValidationErrors | null {
+  const day = wholeNumber(control.value);
+  return day !== null && day >= MIN_DUE_DAY && day <= MAX_DUE_DAY ? null : { dueDay: true };
+}
+
 function endMonthField(control: AbstractControl<string>): ValidationErrors | null {
   const start: string = control.parent?.get('startMonth')?.value ?? '';
   return control.value !== '' && start !== '' && control.value < start
@@ -104,7 +111,7 @@ function endMonthField(control: AbstractControl<string>): ValidationErrors | nul
     : null;
 }
 
-/** Cadastra uma despesa dos quatro tipos ou, na edição, muda só descrição, fornecedor e grupo. */
+/** Cadastra uma despesa dos quatro tipos ou, na edição, muda só descrição, fornecedor, grupo e dia do vencimento. */
 @Component({
   selector: 'urban-expense-dialog',
   imports: [
@@ -149,6 +156,7 @@ export class ExpenseDialog {
     amount: ['', moneyField],
     installmentCount: ['', installmentCountField],
     currentInstallment: ['1', currentInstallmentField],
+    dueDay: [this.current === null ? '' : String(this.current.dueDay), dueDayField],
   });
 
   protected readonly kind = signal<ExpenseKind>(this.form.controls.kind.value);
@@ -168,6 +176,7 @@ export class ExpenseDialog {
   protected readonly currentErrors = {
     currentInstallment: 'Informe uma parcela entre 1 e o total de parcelas',
   };
+  protected readonly dueDayErrors = { dueDay: 'Informe o dia do vencimento, de 1 a 31' };
   protected readonly endErrors = {
     beforeStart: 'O mês final não pode ser anterior ao mês inicial',
   };
@@ -189,6 +198,12 @@ export class ExpenseDialog {
 
   protected kindHint(): string {
     return KINDS.find((option) => option.value === this.kind())?.hint ?? '';
+  }
+
+  protected dueDayHint(): string {
+    return this.editing
+      ? 'De 1 a 31. Vale para os próximos lançamentos; os que já existem não mudam'
+      : 'De 1 a 31. Nos meses mais curtos vale o último dia';
   }
 
   protected startLabel(): string {
@@ -245,7 +260,8 @@ export class ExpenseDialog {
     return (
       value.description.trim() !== (this.current?.description ?? '') ||
       value.supplier.trim() !== (this.current?.supplier ?? '') ||
-      value.groupId !== (this.current?.groupId ?? '')
+      value.groupId !== (this.current?.groupId ?? '') ||
+      wholeNumber(value.dueDay) !== (this.current?.dueDay ?? null)
     );
   }
 
@@ -256,6 +272,7 @@ export class ExpenseDialog {
       groupId: value.groupId,
       description: value.description.trim(),
       supplier,
+      dueDay: wholeNumber(value.dueDay) ?? 0,
     };
 
     if (this.current !== null) {
