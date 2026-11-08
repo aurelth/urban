@@ -31,6 +31,8 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options,
 
     public DbSet<ConsumptionTariff> ConsumptionTariffs => Set<ConsumptionTariff>();
 
+    public DbSet<MeterReading> MeterReadings => Set<MeterReading>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(Schema);
@@ -42,6 +44,7 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options,
         modelBuilder.ApplyConfiguration(new Configurations.UnitChargeLineConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.FinanceSettingsConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.ConsumptionTariffConfiguration());
+        modelBuilder.ApplyConfiguration(new Configurations.MeterReadingConfiguration());
 
         // Sem tenant a comparação com nulo não casa com nenhuma linha: o padrão é não ver nada.
         modelBuilder.Entity<ExpenseGroup>().HasQueryFilter(group => group.CondominiumId == tenant.CondominiumId);
@@ -52,5 +55,6 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options,
         modelBuilder.Entity<UnitChargeLine>().HasQueryFilter(line => line.CondominiumId == tenant.CondominiumId);
         modelBuilder.Entity<FinanceSettings>().HasQueryFilter(settings => settings.CondominiumId == tenant.CondominiumId);
         modelBuilder.Entity<ConsumptionTariff>().HasQueryFilter(tariff => tariff.CondominiumId == tenant.CondominiumId);
+        modelBuilder.Entity<MeterReading>().HasQueryFilter(reading => reading.CondominiumId == tenant.CondominiumId);
     }
 }

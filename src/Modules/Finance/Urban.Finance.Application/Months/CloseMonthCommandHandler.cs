@@ -2,7 +2,10 @@ using MediatR;
 using Urban.Finance.Application.Abstractions;
 using Urban.Finance.Domain;
 using Urban.Finance.Domain.Closing;
+using Urban.Finance.Domain.Consumption;
+using Urban.Finance.Domain.Expenses;
 using Urban.Finance.Domain.Months;
+using Urban.Finance.Domain.Settings;
 using Urban.SharedKernel;
 using Urban.SharedKernel.Abstractions;
 using Urban.SharedKernel.Contracts;
@@ -12,12 +15,16 @@ namespace Urban.Finance.Application.Months;
 /// <summary>
 /// Fecha o mês. Pede ao Condomínio as unidades ativas com o peso de cada uma (e a falha dele, se os dados ainda não bastam
 /// para o método escolhido), deixa o Domain conferir os lançamentos e repartir o total, e grava o fechamento com as cobranças
-/// numa unidade atômica. O índice único (condomínio + mês) impede dois fechamentos do mesmo mês ao mesmo tempo.
+/// numa unidade atômica. Cada grupo de despesa vira uma linha do recibo; o fundo de reserva, a água, o esgoto e o gás entram conforme
+/// a configuração do condomínio e as leituras do mês (sem leitura de uma unidade, o fechamento é recusado). O índice único (condomínio + mês) impede dois fechamentos do mesmo mês ao mesmo tempo.
 /// </summary>
 public sealed class CloseMonthCommandHandler(
     IExpenseEntries entries,
     IMonthClosings closings,
     IExpenseGroups groups,
+    IFinanceSettings settings,
+    IConsumptionTariffs tariffs,
+    IMeterReadings readings,
     IApportionmentBasis apportionment,
     ITenantContext tenant,
     IAtomicWork atomicWork,
@@ -53,7 +60,8 @@ public sealed class CloseMonthCommandHandler(
         }
 
         DateTimeOffset now = clock.UtcNow;
-        Result<MonthClosing> closing = MonthClosing.Close(condominiumId, month, request.DueDate, request.ActorUserId, now, [.. records.Select(record => record.Entry)], basis.Value);
+        ClosingOptions options = await OptionsAsync(month, cancellationToken);
+        Result<MonthClosing> closing = MonthClosing.Close(condominiumId, month, request.DueDate, request.ActorUserId, now, [.. records.Select(record => record.Entry)], basis.Value, options);
 
         if (closing.IsFailure)
         {
@@ -71,5 +79,19 @@ public sealed class CloseMonthCommandHandler(
                     : Result.Failure<MonthView>(added.Error);
             },
             cancellationToken);
+    }
+
+    private async Task<ClosingOptions> OptionsAsync(YearMonth month, CancellationToken cancellationToken)
+    {
+        IReadOnlyList<ExpenseGroupRecord> allGroups = await groups.ListAsync(cancellationToken);
+        FinanceSettings? chosen = await settings.FindAsync(cancellationToken);
+        ConsumptionTariff? tariff = ConsumptionTariff.CurrentFor(month, await tariffs.ListAsync(cancellationToken));
+
+        return new ClosingOptions(
+            allGroups.ToDictionary(record => record.Group.Id, record => record.Group.Name),
+            allGroups.Where(record => record.Group.ReserveFundBase).Select(record => record.Group.Id).ToHashSet(),
+            chosen?.ReserveFundPercent ?? 0m,
+            tariff,
+            await readings.ListAsync(month, cancellationToken));
     }
 }

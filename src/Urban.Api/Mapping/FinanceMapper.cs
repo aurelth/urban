@@ -6,6 +6,8 @@ using Urban.Finance.Application.Expenses;
 using Urban.Finance.Application.Groups;
 using Urban.Finance.Application.Months;
 using Urban.Finance.Application.Settings;
+using Urban.Finance.Domain.Closing;
+using Urban.Finance.Domain.Consumption;
 using Urban.Finance.Domain.Expenses;
 using Urban.SharedKernel.Contracts;
 
@@ -63,6 +65,14 @@ public static partial class FinanceMapper
             request.SewagePercent ?? DefaultSewagePercent,
             request.Gas is null ? null : new GasTariffInput(request.Gas.KilosPerCubicMeter ?? 0m, request.Gas.PricePerKilo ?? 0m));
 
+    public static GetMonthReadingsQuery ToReadingsQuery(string month) => new(month);
+
+    public static SaveMonthReadingsCommand ToCommand(MonthReadingsRequest request, string month) =>
+        new(month, request.Readings?.Select(ToInput).ToList());
+
+    private static ReadingInput ToInput(MeterReadingRequest reading) =>
+        new(reading.UnitId ?? Guid.Empty, ParseService(reading.Service), reading.Previous, reading.Current);
+
     private static TariffBandInput ToInput(TariffBandRequest band) => new(band.UpToCubicMeters, band.FixedAmount ?? 0m, band.PricePerCubicMeter ?? 0m);
 
     /// <returns>Falso quando a data falta ou não está em AAAA-MM-DD.</returns>
@@ -81,6 +91,8 @@ public static partial class FinanceMapper
 
     public static partial IReadOnlyList<ConsumptionTariffResponse> ToResponse(IReadOnlyList<ConsumptionTariffView> views);
 
+    public static partial MonthReadingsResponse ToResponse(MonthReadingsView view);
+
     public static partial ExpenseResponse ToResponse(ExpenseView view);
 
     public static partial IReadOnlyList<ExpenseResponse> ToResponse(IReadOnlyList<ExpenseView> views);
@@ -93,6 +105,8 @@ public static partial class FinanceMapper
 
     private static partial UnitChargeResponse ToResponse(UnitChargeView view);
 
+    private static partial ChargeLineResponse ToResponse(ChargeLineView view);
+
     // ---- Texto da API <-> enum (camelCase). Valor desconhecido vira 0, que o Application recusa com o código do campo ----
 
     public static ExpenseKind ParseKind(string? text) => text?.Trim().ToLowerInvariant() switch
@@ -102,6 +116,14 @@ public static partial class FinanceMapper
         "variable" => ExpenseKind.Variable,
         "installment" => ExpenseKind.Installment,
         _ => 0,
+    };
+
+    /// <summary>Só água e gás. Outro texto vira um valor fora do enum, que o Application recusa com o código do serviço.</summary>
+    public static ConsumptionService ParseService(string? text) => text?.Trim().ToLowerInvariant() switch
+    {
+        "water" => ConsumptionService.Water,
+        "gas" => ConsumptionService.Gas,
+        _ => (ConsumptionService)(-1),
     };
 
     /// <summary>Só pendente, pago e cancelado podem ser enviados. Qualquer outro texto vira um valor fora do enum, que o domínio recusa com o código do campo.</summary>
@@ -149,6 +171,16 @@ public static partial class FinanceMapper
         ApportionmentBasisKind.EqualShare => "equalShare",
         ApportionmentBasisKind.Area => "area",
         _ => throw new ArgumentOutOfRangeException(nameof(basis), basis, "Base de rateio desconhecida."),
+    };
+
+    private static string ChargeLineKindName(ChargeLineKind kind) => kind switch
+    {
+        ChargeLineKind.Expenses => "expenses",
+        ChargeLineKind.ReserveFund => "reserveFund",
+        ChargeLineKind.Water => "water",
+        ChargeLineKind.Sewage => "sewage",
+        ChargeLineKind.Gas => "gas",
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Tipo de linha do recibo desconhecido."),
     };
 
     private static string DateText(DateOnly date) => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);

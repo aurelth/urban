@@ -28,6 +28,7 @@ public static class FinanceInfrastructureExtensions
         services.AddScoped<IMonthClosings, FinanceMonthClosings>();
         services.AddScoped<IFinanceSettings, FinanceSettingsStore>();
         services.AddScoped<IConsumptionTariffs, FinanceConsumptionTariffs>();
+        services.AddScoped<IMeterReadings, FinanceMeterReadings>();
 
         return services;
     }

@@ -58,7 +58,12 @@ public sealed record MonthResponse(
     MonthClosingResponse? Closing);
 
 /// <param name="Weight">O peso da unidade no rateio (fração ideal de 0 a 1, área em m² ou 1), como era quando o mês fechou.</param>
-public sealed record UnitChargeResponse(Guid UnitId, string? Block, string Number, decimal Weight, decimal Amount);
+/// <param name="Lines">As linhas do recibo em ordem (despesas por grupo, fundo de reserva, água, esgoto e gás); a soma delas é o amount.</param>
+public sealed record UnitChargeResponse(Guid UnitId, string? Block, string Number, decimal Weight, decimal Amount, IReadOnlyList<ChargeLineResponse> Lines);
+
+/// <param name="Kind">De onde vem a linha: expenses, reserveFund, water, sewage ou gas.</param>
+/// <param name="Quantity">Consumo em m³ das linhas de água, esgoto e gás; nulo nas demais.</param>
+public sealed record ChargeLineResponse(string Kind, string Label, decimal Amount, decimal? Quantity, decimal? PreviousReading, decimal? CurrentReading);
 
 /// <param name="Basis">Em que o rateio se baseou: idealFraction, equalShare ou area.</param>
 /// <param name="DueDate">O vencimento das cobranças, AAAA-MM-DD.</param>
@@ -77,3 +82,21 @@ public sealed record ConsumptionTariffResponse(
     IReadOnlyList<TariffBandResponse>? Sewage,
     decimal SewagePercent,
     GasTariffResponse? Gas);
+
+public sealed record MeterReadingResponse(decimal Previous, decimal Current, decimal Consumption);
+
+/// <param name="SuggestedWaterPrevious">A leitura atual de água do mês passado, para sugerir como leitura anterior.</param>
+/// <param name="SuggestedGasPrevious">A leitura atual de gás do mês passado.</param>
+public sealed record UnitReadingsResponse(
+    Guid UnitId,
+    string? Block,
+    string Number,
+    MeterReadingResponse? Water,
+    MeterReadingResponse? Gas,
+    decimal? SuggestedWaterPrevious,
+    decimal? SuggestedGasPrevious);
+
+/// <param name="IsClosed">Verdadeiro quando o mês está fechado: as leituras não mudam mais.</param>
+/// <param name="HasTariff">Verdadeiro quando há tarifa de consumo em vigor no mês.</param>
+/// <param name="HasGas">Verdadeiro quando a tarifa em vigor cobra gás, então toda unidade precisa de leitura de gás.</param>
+public sealed record MonthReadingsResponse(string Month, bool IsClosed, bool HasTariff, bool HasGas, IReadOnlyList<UnitReadingsResponse> Units);

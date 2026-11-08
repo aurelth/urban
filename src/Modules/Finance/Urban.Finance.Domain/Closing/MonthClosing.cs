@@ -155,13 +155,16 @@ public sealed class MonthClosing
     {
         List<(ChargeLineKind, string, decimal)> lines = [];
 
-        foreach (IGrouping<Guid, ExpenseEntry> group in counted.GroupBy(entry => entry.GroupId))
-        {
-            decimal groupTotal = group.Sum(entry => entry.Amount ?? 0m);
+        IEnumerable<(string Label, decimal Total)> groups = counted
+            .GroupBy(entry => entry.GroupId)
+            .Select(group => (Label: LabelOf(group.Key, options), Total: group.Sum(entry => entry.Amount ?? 0m)))
+            .OrderBy(group => group.Label, TextRules.Alphabetical);
 
+        foreach ((string label, decimal groupTotal) in groups)
+        {
             if (groupTotal > 0)
             {
-                lines.Add((ChargeLineKind.Expenses, LabelOf(group.Key, options), groupTotal));
+                lines.Add((ChargeLineKind.Expenses, label, groupTotal));
             }
         }
 

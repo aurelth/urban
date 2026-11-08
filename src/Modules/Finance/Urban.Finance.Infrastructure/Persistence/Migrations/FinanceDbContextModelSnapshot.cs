@@ -236,6 +236,56 @@ namespace Urban.Finance.Infrastructure.Persistence.Migrations
                     b.ToTable("consumption_tariff", "finance");
                 });
 
+            modelBuilder.Entity("Urban.Finance.Domain.Consumption.MeterReading", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CondominiumId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("condominium_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<decimal>("Current")
+                        .HasPrecision(10, 3)
+                        .HasColumnType("numeric(10,3)")
+                        .HasColumnName("current");
+
+                    b.Property<string>("Month")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .HasColumnType("character varying(7)")
+                        .HasColumnName("month");
+
+                    b.Property<decimal>("Previous")
+                        .HasPrecision(10, 3)
+                        .HasColumnType("numeric(10,3)")
+                        .HasColumnName("previous");
+
+                    b.Property<string>("Service")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("service");
+
+                    b.Property<Guid>("UnitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("unit_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_meter_reading");
+
+                    b.HasIndex("CondominiumId", "UnitId", "Month", "Service")
+                        .IsUnique()
+                        .HasDatabaseName("ix_meter_reading_condominium_unit_month_service");
+
+                    b.ToTable("meter_reading", "finance");
+                });
+
             modelBuilder.Entity("Urban.Finance.Domain.Expenses.Expense", b =>
                 {
                     b.Property<Guid>("Id")

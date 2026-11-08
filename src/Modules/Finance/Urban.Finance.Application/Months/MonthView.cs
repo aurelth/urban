@@ -60,7 +60,11 @@ public sealed record MonthView(
     MonthClosingView? Closing);
 
 /// <param name="Weight">O peso da unidade no rateio (fração ideal, área ou 1), como era quando o mês fechou.</param>
-public sealed record UnitChargeView(Guid UnitId, string? Block, string Number, decimal Weight, decimal Amount);
+/// <param name="Lines">As linhas do recibo (despesas por grupo, fundo de reserva, água, esgoto e gás) em ordem; a soma delas é <paramref name="Amount"/>.</param>
+public sealed record UnitChargeView(Guid UnitId, string? Block, string Number, decimal Weight, decimal Amount, IReadOnlyList<ChargeLineView> Lines);
+
+/// <param name="Quantity">Consumo em m³ das linhas de água, esgoto e gás; nulo nas demais.</param>
+public sealed record ChargeLineView(ChargeLineKind Kind, string Label, decimal Amount, decimal? Quantity, decimal? PreviousReading, decimal? CurrentReading);
 
 /// <param name="Total">Soma dos lançamentos não cancelados quando o mês fechou.</param>
 public sealed record MonthClosingView(
@@ -75,5 +79,8 @@ public sealed record MonthClosingView(
         closing.DueDate,
         closing.Total,
         closing.BasisKind,
-        [.. closing.Charges.Select(charge => new UnitChargeView(charge.UnitId, charge.Block, charge.Number, charge.Weight, charge.Amount))]);
+        [.. closing.Charges.Select(charge => new UnitChargeView(charge.UnitId, charge.Block, charge.Number, charge.Weight, charge.Amount, ChargeLines(charge)))]);
+
+    private static IReadOnlyList<ChargeLineView> ChargeLines(UnitCharge charge) =>
+        [.. charge.Lines.OrderBy(line => line.Position).Select(line => new ChargeLineView(line.Kind, line.Label, line.Amount, line.Quantity, line.PreviousReading, line.CurrentReading))];
 }

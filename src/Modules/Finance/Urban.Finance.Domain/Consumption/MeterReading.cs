@@ -75,7 +75,8 @@ public sealed class MeterReading
         return Result.Success();
     }
 
-    private static bool AreValid(decimal previous, decimal current) =>
+    /// <summary>Se as duas leituras formam uma leitura válida, para conferir um pedido inteiro antes de mexer em qualquer uma.</summary>
+    public static bool AreValid(decimal previous, decimal current) =>
         previous >= 0
         && current >= previous
         && current <= MaximumReading
