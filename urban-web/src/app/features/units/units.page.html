@@ -138,29 +138,21 @@
       >
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="mb-4 w-full">
           <mat-label>Situação</mat-label>
-          <select
-            matNativeControl
+          <urban-menu-select
             data-testid="filter-status"
+            [options]="statusOptions"
             [value]="store.query().status"
-            (change)="onStatus($event)"
-          >
-            <option value="active">Ativas</option>
-            <option value="deactivated">Desativadas</option>
-            <option value="all">Todas</option>
-          </select>
+            (valueChange)="onStatus($event)"
+          />
         </mat-form-field>
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="mb-4 w-full">
           <mat-label>Tipo</mat-label>
-          <select
-            matNativeControl
+          <urban-menu-select
             data-testid="filter-type"
+            [options]="typeOptions"
             [value]="store.query().type ?? ''"
-            (change)="onType($event)"
-          >
-            <option value="">Todos os tipos</option>
-            <option value="apartment">Apartamentos</option>
-            <option value="house">Casas</option>
-          </select>
+            (valueChange)="onType($event)"
+          />
         </mat-form-field>
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="mb-4 w-full">
           <mat-label>Bloco</mat-label>

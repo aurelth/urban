@@ -1,8 +1,8 @@
-import { Component, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { MatError, MatFormField, MatHint, MatLabel } from '@angular/material/form-field';
-import { MatInput } from '@angular/material/input';
 import { FormFieldBase, USE_PARENT_FORM } from '../form-field.base';
+import { MenuSelect } from '../menu-select/menu-select';
 
 export interface SelectOption {
   readonly value: string;
@@ -12,13 +12,12 @@ export interface SelectOption {
 const FALLBACK_ERROR = 'Confira este campo';
 
 /**
- * Escolha de um valor numa lista. Usa a lista nativa do navegador, que no celular abre o seletor do sistema, e
- * liga-se ao controle de nome `name` do formulário (ou do grupo) em que for colocada. `emptyLabel` acrescenta uma
+ * Escolha de um valor numa lista suspensa com o visual do menu de situação (`urban-menu-select`). Liga-se ao controle de nome `name` do formulário (ou do grupo) em que for colocada. `emptyLabel` acrescenta uma
  * primeira opção de valor vazio (por exemplo, "Sem data final").
  */
 @Component({
   selector: 'urban-select-field',
-  imports: [ReactiveFormsModule, MatFormField, MatLabel, MatError, MatHint, MatInput],
+  imports: [ReactiveFormsModule, MatFormField, MatLabel, MatError, MatHint, MenuSelect],
   templateUrl: './select.field.html',
   viewProviders: [USE_PARENT_FORM],
   host: { class: 'block', '[class.mb-5]': '!hint()' },
@@ -30,6 +29,11 @@ export class SelectField extends FormFieldBase {
   readonly emptyLabel = input<string | null>(null);
   readonly hint = input<string | null>(null);
   readonly errors = input<Readonly<Record<string, string>>>({});
+
+  protected readonly menuOptions = computed<readonly SelectOption[]>(() => {
+    const empty = this.emptyLabel();
+    return empty === null ? this.options() : [{ value: '', label: empty }, ...this.options()];
+  });
 
   protected get controlName(): string {
     return this.name();

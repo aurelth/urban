@@ -3,6 +3,7 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { provideUrbanIcons } from '../core/theme/icons';
+import { fieldValueOf, menuSelectOptions, setFieldValue } from './menu-select';
 
 export function configureDialogTest(): void {
   TestBed.configureTestingModule({
@@ -19,10 +20,8 @@ export function dialogOf(tag: string): HTMLElement {
   return document.querySelector<HTMLElement>(tag)!;
 }
 
-export function fieldOf(tag: string, name: string): HTMLInputElement & HTMLSelectElement {
-  return dialogOf(tag).querySelector<HTMLInputElement & HTMLSelectElement>(
-    `[formControlName="${name}"]`,
-  )!;
+export function fieldOf(tag: string, name: string): HTMLInputElement {
+  return dialogOf(tag).querySelector<HTMLInputElement>(`[formControlName="${name}"]`)!;
 }
 
 export function typeIn(tag: string, name: string, value: string): void {
@@ -32,9 +31,20 @@ export function typeIn(tag: string, name: string, value: string): void {
 }
 
 export function chooseIn(tag: string, name: string, value: string): void {
-  const field = fieldOf(tag, name);
-  field.value = value;
-  field.dispatchEvent(new Event('change'));
+  setFieldValue(fieldOf(tag, name), value);
+}
+
+/** Valor escolhido numa lista (`urban-menu-select`) do diálogo. */
+export function choiceOf(tag: string, name: string): string {
+  return fieldValueOf(fieldOf(tag, name));
+}
+
+/** Opções (valor, texto e marca) da lista do diálogo; abre o menu e o fecha. */
+export function choicesOf(
+  tag: string,
+  name: string,
+): { value: string; label: string; checked: boolean }[] {
+  return menuSelectOptions(fieldOf(tag, name));
 }
 
 export function submitDialog(tag: string): void {

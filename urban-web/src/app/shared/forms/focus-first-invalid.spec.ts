@@ -13,16 +13,19 @@ function buildHost(): HTMLElement {
   const box = document.createElement('input');
   box.type = 'checkbox';
   checkbox.append(box);
-  host.append(field('input', 'email'), field('input', 'password'), checkbox);
+  const menu = field('urban-menu-select', 'state');
+  menu.append(document.createElement('button'));
+  host.append(field('input', 'email'), field('input', 'password'), checkbox, menu);
   document.body.append(host);
   return host;
 }
 
-function buildForm(email: string, password: string, accepted: boolean) {
+function buildForm(email: string, password: string, accepted: boolean, state = 'SC') {
   return new FormGroup({
     email: new FormControl(email, { nonNullable: true, validators: Validators.required }),
     password: new FormControl(password, { nonNullable: true, validators: Validators.required }),
     accepted: new FormControl(accepted, { nonNullable: true, validators: Validators.requiredTrue }),
+    state: new FormControl(state, { nonNullable: true, validators: Validators.required }),
   });
 }
 
@@ -53,6 +56,12 @@ describe('focusFirstInvalid', () => {
     focusFirstInvalid(host, buildForm('a@b.com', 'Senha-segura-123', false));
 
     expect(document.activeElement).toBe(host.querySelector('mat-checkbox input'));
+  });
+
+  it('foca o botão da lista suspensa do Urban', () => {
+    focusFirstInvalid(host, buildForm('a@b.com', 'Senha-segura-123', true, ''));
+
+    expect(document.activeElement).toBe(host.querySelector('urban-menu-select button'));
   });
 
   it('não muda o foco quando tudo é válido', () => {
@@ -92,19 +101,21 @@ describe('focusFirstInvalidInput', () => {
     expect(document.activeElement).toBe(first);
   });
 
-  it('alcança listas de escolha', () => {
+  it('alcança o botão das listas suspensas do Urban', () => {
     add('input', 'ng-valid');
-    const select = add('select', 'ng-invalid');
+    const menu = add('urban-menu-select', 'ng-invalid');
+    const button = document.createElement('button');
+    menu.append(button);
     add('textarea', 'ng-invalid');
 
     focusFirstInvalidInput(host);
 
-    expect(document.activeElement).toBe(select);
+    expect(document.activeElement).toBe(button);
   });
 
   it('alcança áreas de texto', () => {
     add('input', 'ng-valid');
-    add('select', 'ng-valid');
+    add('urban-menu-select', 'ng-valid').append(document.createElement('button'));
     const area = add('textarea', 'ng-invalid');
 
     focusFirstInvalidInput(host);

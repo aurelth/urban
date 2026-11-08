@@ -1,13 +1,22 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { Component, inject } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { provideUrbanIcons } from '../../../core/theme/icons';
+import {
+  chooseMenuOption,
+  menuSelectLabel,
+  menuSelectOptions,
+  menuSelectValue,
+} from '../../../testing/menu-select';
 import { StateField } from './state.field';
 
 @Component({
   imports: [ReactiveFormsModule, StateField],
   template: `
     <form [formGroup]="form" novalidate>
-      <urban-state-field name="state" autocomplete="address-level1" />
+      <urban-state-field name="state" />
     </form>
   `,
 })
@@ -15,19 +24,30 @@ class Host {
   readonly form = inject(NonNullableFormBuilder).group({ state: ['', Validators.required] });
 }
 
-function render(): { fixture: ComponentFixture<Host>; select: HTMLSelectElement } {
+function render(): { fixture: ComponentFixture<Host>; select: HTMLElement } {
   const fixture = TestBed.createComponent(Host);
   fixture.detectChanges();
-  return { fixture, select: fixture.nativeElement.querySelector('select') };
+  return { fixture, select: fixture.nativeElement.querySelector('urban-menu-select') };
 }
 
 describe('StateField', () => {
-  it('oferece uma opção vazia e as 27 UFs', () => {
-    const { select } = render();
-    const options = [...select.options].map((option) => option.value);
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting(), provideUrbanIcons()],
+    });
+  });
 
-    expect(options).toHaveLength(28);
-    expect(options[0]).toBe('');
+  afterEach(() => {
+    const http = TestBed.inject(HttpTestingController);
+    http.match((request) => request.url.startsWith('icons/'));
+    http.verify();
+  });
+
+  it('oferece as 27 UFs no menu', () => {
+    const { select } = render();
+    const options = menuSelectOptions(select).map((option) => option.value);
+
+    expect(options).toHaveLength(27);
     expect(options).toContain('SC');
     expect(options).toContain('DF');
   });
@@ -35,25 +55,26 @@ describe('StateField', () => {
   it('liga a escolha ao controle do formulário', () => {
     const { fixture, select } = render();
 
-    select.value = 'SC';
-    select.dispatchEvent(new Event('change'));
+    chooseMenuOption(select, 'SC');
+    TestBed.tick();
 
     expect(fixture.componentInstance.form.getRawValue().state).toBe('SC');
+    expect(menuSelectLabel(select)).toBe('SC');
   });
 
   it('mostra a UF que já está no controle', () => {
     const { fixture, select } = render();
 
     fixture.componentInstance.form.controls.state.setValue('RS');
-    fixture.detectChanges();
+    TestBed.tick();
 
-    expect(select.value).toBe('RS');
+    expect(menuSelectValue(select)).toBe('RS');
+    expect(menuSelectLabel(select)).toBe('RS');
   });
 
   it('é obrigatória e avisa quando fica vazia', () => {
-    const { fixture, select } = render();
+    const { fixture } = render();
 
-    expect(select.required).toBe(true);
     fixture.componentInstance.form.controls.state.markAsTouched();
     fixture.detectChanges();
 
@@ -69,11 +90,10 @@ describe('StateField', () => {
     expect(fixture.nativeElement.querySelector('mat-error')?.textContent).toContain('Informe a UF');
   });
 
-  it('mantém o rótulo, o autocomplete e o atributo formControlName', () => {
+  it('mantém o rótulo e o atributo formControlName', () => {
     const { fixture, select } = render();
 
     expect(fixture.nativeElement.querySelector('mat-label').textContent).toContain('UF');
-    expect(select.getAttribute('autocomplete')).toBe('address-level1');
     expect(select.getAttribute('formControlName')).toBe('state');
   });
 

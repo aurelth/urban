@@ -20,6 +20,7 @@ import {
   UnitPayload,
   UnitStatusFilter,
 } from '../../core/units/units.models';
+import { MenuOption, MenuSelect } from '../../shared/ui/menu-select/menu-select';
 import { ApportionmentCard } from './apportionment.card';
 import { openUnitDialog } from './unit.dialog';
 import { formatArea, formatPercent, unitLabel } from './unit-values';
@@ -28,6 +29,18 @@ import { UnitsStore } from './units.store';
 
 const STATUSES: readonly UnitStatusFilter[] = ['active', 'deactivated', 'all'];
 const KINDS: readonly UnitKind[] = ['apartment', 'house'];
+
+const STATUS_OPTIONS: readonly MenuOption[] = [
+  { value: 'active', label: 'Ativas' },
+  { value: 'deactivated', label: 'Desativadas' },
+  { value: 'all', label: 'Todas' },
+];
+
+const TYPE_OPTIONS: readonly MenuOption[] = [
+  { value: '', label: 'Todos os tipos' },
+  { value: 'apartment', label: 'Apartamentos' },
+  { value: 'house', label: 'Casas' },
+];
 
 /**
  * Lista das unidades do condomínio: resumo, método de rateio, filtros, tabela paginada e as ações de cadastrar,
@@ -43,6 +56,7 @@ const KINDS: readonly UnitKind[] = ['apartment', 'house'];
     MatLabel,
     MatIcon,
     MatInput,
+    MenuSelect,
     ApportionmentCard,
   ],
   templateUrl: './units.page.html',
@@ -57,6 +71,9 @@ export class UnitsPage implements OnInit {
   protected readonly actionError = signal<string | null>(null);
   protected readonly methodError = signal<string | null>(null);
 
+  protected readonly statusOptions = STATUS_OPTIONS;
+  protected readonly typeOptions = TYPE_OPTIONS;
+
   protected readonly label = unitLabel;
   protected readonly percent = formatPercent;
   protected readonly area = formatArea;
@@ -69,14 +86,12 @@ export class UnitsPage implements OnInit {
     return this.store.load();
   }
 
-  protected onStatus(event: Event): void {
-    const value = fieldValue(event);
+  protected onStatus(value: string): void {
     const status = STATUSES.find((candidate) => candidate === value) ?? 'active';
     void this.store.filter({ status });
   }
 
-  protected onType(event: Event): void {
-    const value = fieldValue(event);
+  protected onType(value: string): void {
     void this.store.filter({ type: KINDS.find((candidate) => candidate === value) ?? null });
   }
 

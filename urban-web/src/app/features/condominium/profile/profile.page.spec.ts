@@ -8,6 +8,7 @@ import { SessionStore } from '../../../core/auth/session.store';
 import { MyCondominium } from '../../../core/condominium/condominium.models';
 import { provideUrbanIcons } from '../../../core/theme/icons';
 import { flushPromises } from '../../../testing/async';
+import { fieldValueOf, setFieldValue } from '../../../testing/menu-select';
 import {
   REGISTERED_MANAGER,
   problem,
@@ -16,7 +17,7 @@ import {
 } from '../../../testing/auth.fixtures';
 import { ProfilePage } from './profile.page';
 
-type Field = HTMLInputElement | HTMLSelectElement;
+type Field = HTMLInputElement;
 
 const ADDRESS = {
   postalCode: '89010000',
@@ -101,9 +102,7 @@ function field(root: HTMLElement, name: string): Field {
 }
 
 function fill(root: HTMLElement, name: string, value: string): void {
-  const element = field(root, name);
-  element.value = value;
-  element.dispatchEvent(new Event(element instanceof HTMLSelectElement ? 'change' : 'input'));
+  setFieldValue(field(root, name), value);
 }
 
 function testId(html: HTMLElement, id: string): HTMLElement | null {
@@ -185,7 +184,7 @@ describe('ProfilePage', () => {
       expect(field(manager, 'street').value).toBe('Rua das Flores');
       expect(field(manager, 'number').value).toBe('120');
       expect(field(manager, 'complement').value).toBe('Apto 42');
-      expect(field(manager, 'state').value).toBe('SC');
+      expect(fieldValueOf(field(manager, 'state'))).toBe('SC');
       expect(field(condominium, 'name').value).toBe('Residencial das Flores');
       expect(field(condominium, 'postalCode').value).toBe('89012-100');
       expect(field(condominium, 'street').value).toBe('Rua XV de Novembro');

@@ -22,6 +22,7 @@ import { firstValueFrom } from 'rxjs';
 import { describeProblem } from '../../core/http/problem-message';
 import { UnitsApi } from '../../core/units/units.api';
 import { UnitKind } from '../../core/units/units.models';
+import { MenuOption, MenuSelect } from '../../shared/ui/menu-select/menu-select';
 import { TextField } from '../../shared/ui/text-field/text.field';
 import {
   BatchRow,
@@ -83,6 +84,7 @@ const ISSUE_FIELDS: Readonly<Record<string, readonly RowField[]>> = {
     MatIcon,
     MatRadioButton,
     MatRadioGroup,
+    MenuSelect,
     TextField,
   ],
   templateUrl: './units-batch.page.html',
@@ -90,6 +92,10 @@ const ISSUE_FIELDS: Readonly<Record<string, readonly RowField[]>> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class UnitsBatchPage implements OnInit {
+  protected readonly typeOptions: readonly MenuOption[] = [
+    { value: 'apartment', label: 'Apartamento' },
+    { value: 'house', label: 'Casa' },
+  ];
   protected readonly store = inject(UnitsBatchStore);
   private readonly api = inject(UnitsApi);
 
@@ -249,7 +255,10 @@ export class UnitsBatchPage implements OnInit {
   }
 
   protected editRow(position: number, field: keyof BatchRow, event: Event): void {
-    const value = (event.target as HTMLInputElement | HTMLSelectElement).value;
+    this.setRow(position, field, (event.target as HTMLInputElement).value);
+  }
+
+  protected setRow(position: number, field: keyof BatchRow, value: string): void {
     this.rows.update((rows) =>
       rows.map((row, index) => (index === position ? { ...row, [field]: value } : row)),
     );

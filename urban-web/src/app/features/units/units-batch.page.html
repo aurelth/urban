@@ -221,19 +221,16 @@
                     (input)="editRow(position, 'number', $event)"
                   />
                 </label>
-                <label class="flex min-w-0 flex-col gap-1 text-xs text-on-surface-variant">
+                <div class="flex min-w-0 flex-col gap-1 text-xs text-on-surface-variant">
                   <span class="sm:sr-only">Tipo</span>
-                  <select
-                    class="w-full min-w-0 rounded-lg border border-outline-variant bg-transparent px-3 py-2 text-base text-on-surface focus-visible:outline-2 focus-visible:outline-primary"
+                  <urban-menu-select
                     data-field="type"
-                    [attr.aria-label]="'Tipo da linha ' + (position + 1)"
+                    [ariaLabel]="'Tipo da linha ' + (position + 1)"
+                    [options]="typeOptions"
                     [value]="view.row.type"
-                    (change)="editRow(position, 'type', $event)"
-                  >
-                    <option value="apartment">Apartamento</option>
-                    <option value="house">Casa</option>
-                  </select>
-                </label>
+                    (valueChange)="setRow(position, 'type', $event)"
+                  />
+                </div>
                 <label class="flex min-w-0 flex-col gap-1 text-xs text-on-surface-variant">
                   <span class="sm:sr-only">Fração ideal (%)</span>
                   <input

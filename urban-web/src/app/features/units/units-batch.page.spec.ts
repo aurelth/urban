@@ -6,6 +6,7 @@ import { provideRouter } from '@angular/router';
 import { jest } from '@jest/globals';
 import { SessionStore } from '../../core/auth/session.store';
 import { provideUrbanIcons } from '../../core/theme/icons';
+import { fieldValueOf, setFieldValue } from '../../testing/menu-select';
 import { flushPromises } from '../../testing/async';
 import { REGISTERED_MANAGER, signInAs } from '../../testing/auth.fixtures';
 import { unitsSummary } from '../../testing/units.fixtures';
@@ -62,9 +63,8 @@ function generator(html: HTMLElement): HTMLElement {
   return testId(html, 'generator')!;
 }
 
-function typeInto(element: HTMLInputElement | HTMLSelectElement, value: string): void {
-  element.value = value;
-  element.dispatchEvent(new Event(element instanceof HTMLSelectElement ? 'change' : 'input'));
+function typeInto(element: HTMLElement, value: string): void {
+  setFieldValue(element, value);
 }
 
 function fillGenerator(html: HTMLElement, name: string, value: string): void {
@@ -79,8 +79,8 @@ function rows(html: HTMLElement): HTMLElement[] {
   return [...html.querySelectorAll<HTMLElement>('[data-testid="batch-row"]')];
 }
 
-function cell(row: HTMLElement, field: string): HTMLInputElement | HTMLSelectElement {
-  return row.querySelector<HTMLInputElement | HTMLSelectElement>(`[data-field="${field}"]`)!;
+function cell(row: HTMLElement, field: string): HTMLInputElement {
+  return row.querySelector<HTMLInputElement>(`[data-field="${field}"]`)!;
 }
 
 function numbers(html: HTMLElement): string[] {
@@ -215,7 +215,7 @@ describe('UnitsBatchPage', () => {
 
       const [row] = rows(h.html);
       expect(cell(row, 'block').value).toBe('A');
-      expect(cell(row, 'type').value).toBe('apartment');
+      expect(fieldValueOf(cell(row, 'type'))).toBe('apartment');
       expect(cell(row, 'fraction').value).toBe('');
       expect(cell(row, 'area').value).toBe('');
     });
@@ -226,7 +226,7 @@ describe('UnitsBatchPage', () => {
       await generateHouses(h, '3');
 
       expect(numbers(h.html)).toEqual(['1', '2', '3']);
-      expect(cell(rows(h.html)[0], 'type').value).toBe('house');
+      expect(fieldValueOf(cell(rows(h.html)[0], 'type'))).toBe('house');
     });
 
     it('so mostra os campos do tipo escolhido', async () => {
@@ -322,7 +322,7 @@ describe('UnitsBatchPage', () => {
       const edited = rows(h.html)[0];
       expect(cell(edited, 'number').value).toBe('1A');
       expect(cell(edited, 'block').value).toBe('Torre');
-      expect(cell(edited, 'type').value).toBe('house');
+      expect(fieldValueOf(cell(edited, 'type'))).toBe('house');
       expect(cell(edited, 'fraction').value).toBe('1,5');
       expect(cell(edited, 'area').value).toBe('60');
       expect(rowErrors(edited)).toBe('');
@@ -381,7 +381,7 @@ describe('UnitsBatchPage', () => {
       const added = rows(h.html)[1];
       expect(cell(added, 'number').value).toBe('');
       expect(cell(added, 'block').value).toBe('A');
-      expect(cell(added, 'type').value).toBe('apartment');
+      expect(fieldValueOf(cell(added, 'type'))).toBe('apartment');
     });
 
     it('permite comecar so com linhas manuais', async () => {

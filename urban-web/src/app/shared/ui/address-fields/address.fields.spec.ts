@@ -6,6 +6,7 @@ import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatIconRegistry } from '@angular/material/icon';
 import { DomSanitizer } from '@angular/platform-browser';
 import { addressGroup } from '../../forms/address.group';
+import { fieldValueOf, setFieldValue } from '../../../testing/menu-select';
 import { AddressFields } from './address.fields';
 
 @Component({
@@ -50,7 +51,7 @@ class TwoAddressesHost {
 beforeEach(() => {
   TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
   // Os avisos levam ícone. Registrados de antemão, os ícones não vão buscar o SVG pela rede.
-  for (const icon of ['error', 'progress_activity', 'check_circle']) {
+  for (const icon of ['error', 'progress_activity', 'check_circle', 'arrow_drop_down']) {
     TestBed.inject(MatIconRegistry).addSvgIconLiteral(
       icon,
       TestBed.inject(DomSanitizer).bypassSecurityTrustHtml('<svg></svg>'),
@@ -64,14 +65,12 @@ function render(): { fixture: ComponentFixture<Host>; html: HTMLElement } {
   return { fixture, html: fixture.nativeElement };
 }
 
-function control(html: HTMLElement, name: string): HTMLInputElement | HTMLSelectElement {
+function control(html: HTMLElement, name: string): HTMLInputElement {
   return html.querySelector<HTMLInputElement>(`[formControlName="${name}"]`)!;
 }
 
 function type(html: HTMLElement, name: string, value: string): void {
-  const element = control(html, name);
-  element.value = value;
-  element.dispatchEvent(new Event(element instanceof HTMLSelectElement ? 'change' : 'input'));
+  setFieldValue(control(html, name), value);
 }
 
 function messages(html: HTMLElement): string[] {
@@ -192,7 +191,6 @@ describe('AddressFields', () => {
     expect(control(html, 'complement').getAttribute('autocomplete')).toBe('address-line2');
     expect(control(html, 'neighborhood').getAttribute('autocomplete')).toBe('address-level3');
     expect(control(html, 'city').getAttribute('autocomplete')).toBe('address-level2');
-    expect(control(html, 'state').getAttribute('autocomplete')).toBe('address-level1');
   });
 
   it('não sugere nada quando o endereço é de outro lugar', () => {
@@ -201,15 +199,7 @@ describe('AddressFields', () => {
     fixture.componentInstance.personal.set(false);
     fixture.detectChanges();
 
-    for (const name of [
-      'postalCode',
-      'street',
-      'number',
-      'complement',
-      'neighborhood',
-      'city',
-      'state',
-    ]) {
+    for (const name of ['postalCode', 'street', 'number', 'complement', 'neighborhood', 'city']) {
       expect(control(html, name).getAttribute('autocomplete')).toBe('off');
     }
   });
@@ -290,7 +280,7 @@ describe('AddressFields, preenchimento pelo CEP', () => {
       state: 'SC',
     });
     expect((control(html, 'street') as HTMLInputElement).value).toBe('Rua XV de Novembro');
-    expect((control(html, 'state') as HTMLSelectElement).value).toBe('SC');
+    expect(fieldValueOf(control(html, 'state'))).toBe('SC');
   });
 
   it.each(['', '8901', '8901000', '00000000'])(

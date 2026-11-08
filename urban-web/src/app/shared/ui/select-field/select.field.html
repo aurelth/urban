@@ -1,13 +1,10 @@
 <mat-form-field appearance="outline" subscriptSizing="dynamic" class="w-full">
   <mat-label>{{ label() }}</mat-label>
-  <select matNativeControl [formControlName]="name()" [attr.formControlName]="name()">
-    @if (emptyLabel(); as text) {
-      <option value="">{{ text }}</option>
-    }
-    @for (option of options(); track option.value) {
-      <option [value]="option.value">{{ option.label }}</option>
-    }
-  </select>
+  <urban-menu-select
+    [formControlName]="name()"
+    [attr.formControlName]="name()"
+    [options]="menuOptions()"
+  />
   @if (hint(); as text) {
     <mat-hint>{{ text }}</mat-hint>
   }

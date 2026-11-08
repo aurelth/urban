@@ -10,6 +10,7 @@ import { provideRouter } from '@angular/router';
 import { jest } from '@jest/globals';
 import { SessionStore } from '../../core/auth/session.store';
 import { provideUrbanIcons } from '../../core/theme/icons';
+import { chooseMenuOption, menuSelectOptions, menuSelectValue } from '../../testing/menu-select';
 import { Unit, UnitsSummary } from '../../core/units/units.models';
 import { flushPromises } from '../../testing/async';
 import { REGISTERED_MANAGER, problem, signInAs } from '../../testing/auth.fixtures';
@@ -102,9 +103,13 @@ function failure(status: number, code: string): [unknown, { status: number; stat
 }
 
 function choose(html: HTMLElement, id: string, value: string): void {
-  const select = testId(html, id) as HTMLSelectElement | HTMLInputElement;
-  select.value = value;
-  select.dispatchEvent(new Event('change'));
+  const field = testId(html, id)!;
+  if (field.tagName.toLowerCase() === 'urban-menu-select') {
+    chooseMenuOption(field, value);
+    return;
+  }
+  (field as HTMLInputElement).value = value;
+  field.dispatchEvent(new Event('change'));
 }
 
 function dialog(): HTMLElement | null {
@@ -278,15 +283,15 @@ describe('UnitsPage', () => {
     it('oferece situacao, tipo, bloco e busca', async () => {
       const { html } = await setup();
 
-      const status = testId(html, 'filter-status') as HTMLSelectElement;
-      expect([...status.options].map((option) => option.textContent!.trim())).toEqual([
+      const status = testId(html, 'filter-status')!;
+      expect(menuSelectOptions(status).map((option) => option.label)).toEqual([
         'Ativas',
         'Desativadas',
         'Todas',
       ]);
-      expect(status.value).toBe('active');
-      const type = testId(html, 'filter-type') as HTMLSelectElement;
-      expect([...type.options].map((option) => option.textContent!.trim())).toEqual([
+      expect(menuSelectValue(status)).toBe('active');
+      const type = testId(html, 'filter-type')!;
+      expect(menuSelectOptions(type).map((option) => option.label)).toEqual([
         'Todos os tipos',
         'Apartamentos',
         'Casas',
