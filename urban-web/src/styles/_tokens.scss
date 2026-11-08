@@ -16,6 +16,11 @@
   --urban-success-container: color-mix(in srgb, var(--urban-success) 12%, transparent);
   --urban-warning: light-dark(#b25000, #ff9f0a);
   --urban-warning-container: color-mix(in srgb, var(--urban-warning) 14%, transparent);
+
+  // Preenchimento de destaque: fundo do botao principal e do cabecalho das tabelas, com o texto sobre ele.
+  // No escuro e um indigo mais escuro que o papel "primary" (#9E9CFF), que serve de cor de texto.
+  --urban-accent-fill: light-dark(#5856d6, #5e5ce6);
+  --urban-on-accent-fill: #ffffff;
 }
 
 // No escuro a sombra some contra o fundo grafite: troca por borda fina mais sombra forte.

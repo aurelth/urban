@@ -72,13 +72,6 @@ html.app-dark {
     )
   );
 
-  @include mat.button-overrides(
-    (
-      filled-container-color: #5e5ce6,
-      filled-label-text-color: #ffffff,
-    )
-  );
-
   @include mat.card-overrides(
     (
       outlined-outline-color: transparent,
@@ -111,9 +104,13 @@ html {
     )
   );
 
+  // O preenchimento do botao principal vem do token do Urban (--urban-accent-fill, em _tokens.scss),
+  // o mesmo do cabecalho das tabelas: no claro e o proprio primary, no escuro um indigo mais escuro.
   @include mat.button-overrides(
     (
       outlined-outline-color: var(--mat-sys-primary),
+      filled-container-color: var(--urban-accent-fill),
+      filled-label-text-color: var(--urban-on-accent-fill),
     )
   );
 }

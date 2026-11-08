@@ -266,19 +266,87 @@ describe('ExpensesPage', () => {
     expect(testId(html, 'expenses-table')).toBeNull();
   });
 
-  it('filtra por situacao e avisa quando nada combina', async () => {
+  it('filtra por situacao pelo menu, com a opcao atual no botao, e avisa quando nada combina', async () => {
     const { fixture, html, http } = await setup();
+    const trigger = testId(html, 'filter-status') as HTMLButtonElement;
+    expect(trigger.tagName).toBe('BUTTON');
+    expect(plain(trigger.textContent ?? '')).toContain('Ativas');
 
-    const select = testId(html, 'filter-status') as HTMLSelectElement;
-    select.value = 'ended';
-    select.dispatchEvent(new Event('change'));
+    click(trigger);
+    await settle(fixture);
+    const items = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+    expect(items.map((item) => plain(item.textContent ?? ''))).toEqual([
+      'Ativas',
+      'Encerradas',
+      'Todas',
+    ]);
+    items[1].click();
     const request = listRequest(http);
     expect(request.request.params.get('status')).toBe('ended');
     request.flush([]);
     await settle(fixture);
 
+    expect(plain(trigger.textContent ?? '')).toContain('Encerradas');
     expect(testId(html, 'empty')).toBeNull();
     expect(testId(html, 'no-results')).not.toBeNull();
+  });
+
+  it('pinta cada opcao do filtro com a cor do seu icone', async () => {
+    const { fixture, html } = await setup();
+
+    click(testId(html, 'filter-status'));
+    await settle(fixture);
+
+    const tones = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].map(
+      (item) => item.className,
+    );
+    expect(tones).toHaveLength(3);
+    expect(tones[0]).toContain('--mat-menu-item-label-text-color:var(--urban-success)');
+    expect(tones[1]).toContain(
+      '--mat-menu-item-label-text-color:var(--mat-sys-on-surface-variant)',
+    );
+    expect(tones[2]).toContain('--mat-menu-item-label-text-color:var(--mat-sys-primary)');
+  });
+
+  it('usa a cor de destaque nos titulos e no rotulo do filtro', async () => {
+    const { html } = await setup();
+
+    const highlighted = [
+      html.querySelector('h1'),
+      html.querySelector('#groups-title'),
+      testId(html, 'filter-label'),
+    ];
+
+    for (const element of highlighted) {
+      expect(element?.classList.contains('text-primary')).toBe(true);
+    }
+    expect(text(html, 'filter-label')).toBe('Situação');
+  });
+
+  it('pinta o cabecalho da tabela com o fundo do botao Nova despesa, com texto legivel', async () => {
+    const { html } = await setup();
+
+    const header = html.querySelector('thead tr')!;
+
+    expect(header.classList.contains('bg-accent-fill')).toBe(true);
+    expect(header.classList.contains('text-on-accent-fill')).toBe(true);
+    for (const cell of header.querySelectorAll('th')) {
+      expect(cell.className).not.toMatch(/text-on-surface/);
+    }
+  });
+
+  it('mostra Ativa em verde, como o icone, e Encerrada em cinza', async () => {
+    const { html } = await setup({ expenses: [FIXED, ENDED] });
+
+    const [active, ended] = rows(html).map((row) =>
+      row.querySelector<HTMLElement>('[data-testid="expense-situation"]')!,
+    );
+
+    expect(plain(active.textContent ?? '')).toBe('Ativa');
+    expect(active.classList.contains('text-success')).toBe(true);
+    expect(active.querySelector('[class*="text-on-surface"]')).toBeNull();
+    expect(plain(ended.textContent ?? '')).toBe('Encerrada');
+    expect(ended.classList.contains('text-on-surface-variant')).toBe(true);
   });
 
   describe('grupos', () => {
@@ -302,6 +370,7 @@ describe('ExpensesPage', () => {
         const name = item.querySelector('span')!;
         expect(name.classList.contains('text-lg')).toBe(true);
         expect(name.classList.contains('font-medium')).toBe(true);
+        expect(name.classList.contains('text-primary')).toBe(true);
         expect(item.className).not.toMatch(/rounded|border/);
       }
     });

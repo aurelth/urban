@@ -4,12 +4,12 @@ import {
   Injector,
   OnInit,
   inject,
+  computed,
   signal,
 } from '@angular/core';
 import { MatButton, MatIconButton } from '@angular/material/button';
-import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatIcon } from '@angular/material/icon';
-import { MatInput } from '@angular/material/input';
+import { MatMenu, MatMenuItem, MatMenuTrigger } from '@angular/material/menu';
 import { RouterLink } from '@angular/router';
 import { NOW } from '../../core/finance/clock';
 import { Expense, ExpenseGroup, ExpenseStatusFilter } from '../../core/finance/finance.models';
@@ -33,7 +33,43 @@ import { FINANCE_FORM_MESSAGES } from './finance.messages';
 import { openGroupDialog } from './group.dialog';
 import { openInstallmentDialog } from './installment.dialog';
 
-const STATUSES: readonly ExpenseStatusFilter[] = ['active', 'ended', 'all'];
+interface FilterChoice {
+  readonly value: ExpenseStatusFilter;
+  readonly label: string;
+  readonly icon: string;
+  /** Cor do texto e do ícone no botão. */
+  readonly tone: string;
+  /** Cor do texto e do ícone no item do menu, pelos tokens do Material (classes por extenso para o Tailwind). */
+  readonly menuTone: string;
+}
+
+/** Mesmo padrão do menu de situação dos lançamentos: ícone e texto na mesma cor, uma situação por item. */
+const FILTER_CHOICES: readonly FilterChoice[] = [
+  {
+    value: 'active',
+    label: 'Ativas',
+    icon: 'check_circle',
+    tone: 'text-success',
+    menuTone:
+      '[--mat-menu-item-icon-color:var(--urban-success)] [--mat-menu-item-label-text-color:var(--urban-success)]',
+  },
+  {
+    value: 'ended',
+    label: 'Encerradas',
+    icon: 'event_busy',
+    tone: 'text-on-surface-variant',
+    menuTone:
+      '[--mat-menu-item-icon-color:var(--mat-sys-on-surface-variant)] [--mat-menu-item-label-text-color:var(--mat-sys-on-surface-variant)]',
+  },
+  {
+    value: 'all',
+    label: 'Todas',
+    icon: 'format_list_bulleted',
+    tone: 'text-primary',
+    menuTone:
+      '[--mat-menu-item-icon-color:var(--mat-sys-primary)] [--mat-menu-item-label-text-color:var(--mat-sys-primary)]',
+  },
+];
 
 /**
  * Despesas do condomínio: grupos, filtro por situação e a lista com as ações de cadastrar, editar, reajustar,
@@ -41,7 +77,7 @@ const STATUSES: readonly ExpenseStatusFilter[] = ['active', 'ended', 'all'];
  */
 @Component({
   selector: 'urban-expenses-page',
-  imports: [RouterLink, MatButton, MatIconButton, MatFormField, MatLabel, MatIcon, MatInput],
+  imports: [RouterLink, MatButton, MatIconButton, MatIcon, MatMenu, MatMenuItem, MatMenuTrigger],
   templateUrl: './expenses.page.html',
   providers: [ExpensesStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -52,6 +88,12 @@ export class ExpensesPage implements OnInit {
   private readonly now = inject(NOW);
 
   protected readonly notice = signal<string | null>(null);
+
+  protected readonly filterChoices = FILTER_CHOICES;
+  protected readonly currentFilter = computed(
+    () =>
+      FILTER_CHOICES.find((choice) => choice.value === this.store.filter()) ?? FILTER_CHOICES[0],
+  );
 
   protected readonly kind = kindLabel;
   protected readonly amount = amountText;
@@ -69,9 +111,8 @@ export class ExpensesPage implements OnInit {
     return this.store.load();
   }
 
-  protected onStatus(event: Event): void {
-    const value = (event.target as HTMLSelectElement).value;
-    void this.store.filterBy(STATUSES.find((candidate) => candidate === value) ?? 'active');
+  protected filterBy(value: ExpenseStatusFilter): void {
+    void this.store.filterBy(value);
   }
 
   protected async createGroup(): Promise<void> {
