@@ -1,0 +1,53 @@
+<button
+  #button
+  type="button"
+  class="group flex w-full min-w-0 items-center justify-between gap-1 text-left text-base text-on-surface focus-visible:outline-2 focus-visible:outline-primary disabled:opacity-60"
+  [class]="framed ? 'rounded-lg border border-outline-variant bg-transparent px-3 py-2' : 'py-0'"
+  [attr.id]="id"
+  [attr.data-value]="value()"
+  [attr.aria-label]="ariaLabel()"
+  [attr.aria-describedby]="userAriaDescribedBy() || null"
+  [attr.aria-invalid]="errorState() ? 'true' : null"
+  [attr.aria-required]="required ? 'true' : null"
+  [disabled]="disabled()"
+  [matMenuTriggerFor]="menu"
+  (menuOpened)="opened()"
+  (menuClosed)="closed()"
+>
+  <span
+    class="inline-flex min-w-0 items-center gap-1"
+    data-testid="menu-select-value"
+    [class]="selected()?.tone ?? ''"
+  >
+    @if (selected(); as option) {
+      @if (option.icon) {
+        <mat-icon [svgIcon]="option.icon" aria-hidden="true" />
+      }
+      <span class="truncate">{{ option.label }}</span>
+    }
+  </span>
+  <mat-icon
+    svgIcon="arrow_drop_down"
+    class="shrink-0 [--mat-icon-color:var(--mat-sys-on-surface-variant)] group-aria-expanded:[--mat-icon-color:var(--mat-sys-primary)]"
+    data-testid="menu-select-arrow"
+    aria-hidden="true"
+  />
+</button>
+<mat-menu #menu="matMenu">
+  @for (option of options(); track option.value) {
+    <button
+      mat-menu-item
+      type="button"
+      role="menuitemradio"
+      [class]="option.menuTone ?? ''"
+      [attr.data-value]="option.value"
+      [attr.aria-checked]="option.value === value()"
+      (click)="choose(option)"
+    >
+      @if (option.icon) {
+        <mat-icon [svgIcon]="option.icon" aria-hidden="true" />
+      }
+      <span [class.font-medium]="option.value === value()">{{ option.label }}</span>
+    </button>
+  }
+</mat-menu>

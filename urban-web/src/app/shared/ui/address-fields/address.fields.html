@@ -42,11 +42,7 @@
     [autocomplete]="suggest('address-level2')"
     [errors]="cityErrors"
   />
-  <urban-state-field
-    class="col-span-2 sm:col-span-1"
-    name="state"
-    [autocomplete]="suggest('address-level1')"
-  />
+  <urban-state-field class="col-span-2 sm:col-span-1" name="state" />
   <div class="col-span-6" role="status">
     @if (info(); as notice) {
       <p
