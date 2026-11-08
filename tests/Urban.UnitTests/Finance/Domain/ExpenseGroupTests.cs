@@ -67,4 +67,28 @@ public class ExpenseGroupTests
     {
         ExpenseGroup.DefaultName.Should().Be("Despesas ordinárias");
     }
+
+    [Fact]
+    public void Create_IsNotPartOfTheReserveFundBaseByDefault()
+    {
+        ExpenseGroup.Create(CondominiumId, "Manutenção das garagens", Now).Value.ReserveFundBase.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Create_CanStartAsPartOfTheReserveFundBase()
+    {
+        ExpenseGroup.Create(CondominiumId, ExpenseGroup.DefaultName, Now, reserveFundBase: true).Value.ReserveFundBase.Should().BeTrue();
+    }
+
+    [Fact]
+    public void SetReserveFundBase_TurnsTheFlagOnAndOff()
+    {
+        ExpenseGroup group = ExpenseGroup.Create(CondominiumId, "Obras", Now).Value;
+
+        group.SetReserveFundBase(true);
+        group.ReserveFundBase.Should().BeTrue();
+
+        group.SetReserveFundBase(false);
+        group.ReserveFundBase.Should().BeFalse();
+    }
 }

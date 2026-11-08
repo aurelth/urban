@@ -18,6 +18,8 @@ public class ExpenseGroupHandlersTests
 
     private RenameExpenseGroupCommandHandler RenameHandler() => new(_kit.Groups, _kit.Tenant);
 
+    private SetExpenseGroupReserveFundBaseCommandHandler ReserveBaseHandler() => new(_kit.Groups, _kit.Tenant);
+
     // ---- list ----
 
     [Fact]
@@ -191,5 +193,87 @@ public class ExpenseGroupHandlersTests
         ExpenseGroup group = _kit.NewGroup("Garagens");
 
         (await RenameHandler().Handle(new RenameExpenseGroupCommand(group.Id, "5", ""), default)).Error.Should().Be(ExpenseGroupErrors.NameInvalid);
+    }
+
+    // ---- reserve fund base ----
+
+    [Fact]
+    public async Task List_ShowsWhichGroupsAreTheReserveFundBase()
+    {
+        _kit.NewGroup("Despesas ordinárias").SetReserveFundBase(true);
+        _kit.NewGroup("Manutenção das garagens");
+
+        Result<IReadOnlyList<ExpenseGroupView>> result = await ListHandler().Handle(new ListExpenseGroupsQuery(), default);
+
+        result.Value.Select(group => group.ReserveFundBase).Should().Equal(true, false);
+    }
+
+    [Fact]
+    public async Task EnsureDefault_CreatesTheGroupAsPartOfTheReserveFundBase()
+    {
+        Result<ExpenseGroupView> result = await EnsureHandler().Handle(new EnsureDefaultExpenseGroupCommand(), default);
+
+        result.Value.ReserveFundBase.Should().BeTrue();
+        _kit.Groups.All.Single().ReserveFundBase.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SetReserveFundBase_TurnsItOnAndReturnsTheNewVersion()
+    {
+        ExpenseGroup group = _kit.NewGroup("Manutenção das garagens");
+
+        Result<ExpenseGroupView> result = await ReserveBaseHandler().Handle(new SetExpenseGroupReserveFundBaseCommand(group.Id, "5", true), default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.ReserveFundBase.Should().BeTrue();
+        result.Value.Version.Should().Be("6");
+        group.ReserveFundBase.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SetReserveFundBase_TurnsItOff()
+    {
+        ExpenseGroup group = _kit.NewGroup();
+        group.SetReserveFundBase(true);
+
+        Result<ExpenseGroupView> result = await ReserveBaseHandler().Handle(new SetExpenseGroupReserveFundBaseCommand(group.Id, "5", false), default);
+
+        result.Value.ReserveFundBase.Should().BeFalse();
+        group.ReserveFundBase.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SetReserveFundBase_WithoutATenant_Fails()
+    {
+        _kit.WithoutATenant();
+
+        (await ReserveBaseHandler().Handle(new SetExpenseGroupReserveFundBaseCommand(Guid.CreateVersion7(), "5", true), default)).Error.Should().Be(FinanceErrors.CondominiumNotFound);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("  ")]
+    public async Task SetReserveFundBase_WithoutTheVersion_Fails(string? version)
+    {
+        ExpenseGroup group = _kit.NewGroup();
+
+        (await ReserveBaseHandler().Handle(new SetExpenseGroupReserveFundBaseCommand(group.Id, version, true), default)).Error.Should().Be(FinanceErrors.VersionRequired);
+        group.ReserveFundBase.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SetReserveFundBase_ForAGroupThatDoesNotExist_Fails()
+    {
+        (await ReserveBaseHandler().Handle(new SetExpenseGroupReserveFundBaseCommand(Guid.CreateVersion7(), "5", true), default)).Error.Should().Be(ExpenseGroupErrors.NotFound);
+    }
+
+    [Fact]
+    public async Task SetReserveFundBase_WithAnOldVersion_FailsAndChangesNothing()
+    {
+        ExpenseGroup group = _kit.NewGroup();
+
+        (await ReserveBaseHandler().Handle(new SetExpenseGroupReserveFundBaseCommand(group.Id, "4", true), default)).Error.Should().Be(FinanceErrors.ConcurrencyConflict);
+        group.ReserveFundBase.Should().BeFalse();
     }
 }

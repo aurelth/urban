@@ -144,6 +144,7 @@ public sealed class ErrorHttpMappingTests
         { ConsumptionErrors.ReadingInvalid.Code, 400 },
         { ConsumptionErrors.CondominiumRequired.Code, 422 },
         { ConsumptionErrors.UnitRequired.Code, 422 },
+        { ConsumptionErrors.TariffNotFound.Code, 404 },
         { CondominiumErrors.ApportionmentNotReady.Code, 422 },
     };
 

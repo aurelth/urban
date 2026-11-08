@@ -22,6 +22,10 @@ internal sealed class FinanceStoreKit(FinancePostgresFixture postgres)
 
     public FinanceExpenseEntries Entries(Guid? tenant = null) => new(postgres.CreateContext(tenant ?? CondominiumId));
 
+    public FinanceSettingsStore Settings(Guid? tenant = null) => new(postgres.CreateContext(tenant ?? CondominiumId));
+
+    public FinanceConsumptionTariffs Tariffs(Guid? tenant = null) => new(postgres.CreateContext(tenant ?? CondominiumId));
+
     public async Task<ExpenseGroup> StoreGroupAsync(string name = "Despesas ordinárias", Guid? condominiumId = null)
     {
         ExpenseGroup group = ExpenseGroup.Create(condominiumId ?? CondominiumId, name, Now).Value;
