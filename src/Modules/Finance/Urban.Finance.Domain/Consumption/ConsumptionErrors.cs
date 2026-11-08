@@ -17,4 +17,6 @@ public static class ConsumptionErrors
     public static readonly Error UnitRequired = new("consumption.unit_required", "A unidade da leitura é obrigatória");
 
     public static readonly Error ReserveFundPercentInvalid = new("consumption.reserve_percent_invalid", "O percentual do fundo de reserva vai de 0 a 100, com até 2 casas decimais");
+
+    public static readonly Error TariffNotFound = new("consumption.tariff_not_found", "Não há tarifa de consumo que comece nesse mês");
 }

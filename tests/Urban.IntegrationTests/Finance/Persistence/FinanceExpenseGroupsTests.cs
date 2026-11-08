@@ -137,4 +137,28 @@ public class FinanceExpenseGroupsTests(FinancePostgresFixture postgres)
 
         (await store.SaveAsync(record, default)).Error.Should().Be(ExpenseGroupErrors.NameAlreadyExists);
     }
+
+    [Fact]
+    public async Task TheReserveFundBaseFlag_IsStoredAndCanBeChanged()
+    {
+        ExpenseGroup group = ExpenseGroup.Create(_kit.CondominiumId, ExpenseGroup.DefaultName, FinanceStoreKit.Now, reserveFundBase: true).Value;
+        await _kit.Groups().AddAsync(group, default);
+
+        FinanceExpenseGroups store = _kit.Groups();
+        ExpenseGroupRecord stored = (await store.FindAsync(group.Id, default))!;
+        stored.Group.ReserveFundBase.Should().BeTrue();
+        stored.Group.SetReserveFundBase(false);
+        Result<string> saved = await store.SaveAsync(stored, default);
+
+        saved.IsSuccess.Should().BeTrue();
+        (await _kit.Groups().FindAsync(group.Id, default))!.Group.ReserveFundBase.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task AGroupCreatedWithoutTheFlag_IsNotPartOfTheReserveFundBase()
+    {
+        ExpenseGroup group = await _kit.StoreGroupAsync("Manutenção das garagens");
+
+        (await _kit.Groups().FindAsync(group.Id, default))!.Group.ReserveFundBase.Should().BeFalse();
+    }
 }

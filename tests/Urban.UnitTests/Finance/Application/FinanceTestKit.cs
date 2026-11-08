@@ -33,6 +33,10 @@ internal sealed class FinanceTestKit
 
     public FakeApportionmentBasis Basis { get; } = new();
 
+    public FakeFinanceSettings Settings { get; } = new();
+
+    public FakeConsumptionTariffs Tariffs { get; } = new();
+
     public FinanceTestKit()
     {
         Tenant = new FixedTenant(CondominiumId);

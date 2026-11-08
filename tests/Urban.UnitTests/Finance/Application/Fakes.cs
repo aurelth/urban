@@ -1,8 +1,10 @@
 using Urban.Finance.Application.Abstractions;
 using Urban.Finance.Domain;
 using Urban.Finance.Domain.Closing;
+using Urban.Finance.Domain.Consumption;
 using Urban.Finance.Domain.Expenses;
 using Urban.Finance.Domain.Months;
+using Urban.Finance.Domain.Settings;
 using Urban.SharedKernel;
 using Urban.SharedKernel.Abstractions;
 using Urban.SharedKernel.Contracts;
@@ -265,5 +267,79 @@ internal sealed class FakeApportionmentBasis : IApportionmentBasis
         Calls++;
 
         return Task.FromResult(Outcome);
+    }
+}
+
+internal sealed class FakeFinanceSettings : IFinanceSettings
+{
+    public FinanceSettings? Stored { get; private set; }
+
+    public int Saves { get; private set; }
+
+    public Error? SaveFailure { get; set; }
+
+    public FinanceSettings Existing(FinanceSettings settings)
+    {
+        Stored = settings;
+
+        return settings;
+    }
+
+    public Task<FinanceSettings?> FindAsync(CancellationToken cancellationToken) => Task.FromResult(Stored);
+
+    public Task<Result> SaveAsync(FinanceSettings settings, CancellationToken cancellationToken)
+    {
+        if (SaveFailure is { } failure)
+        {
+            return Task.FromResult(Result.Failure(failure));
+        }
+
+        Stored = settings;
+        Saves++;
+
+        return Task.FromResult(Result.Success());
+    }
+}
+
+/// <summary>Tarifas em memória: guardar uma tarifa que começa no mesmo mês substitui a anterior, como o banco faz.</summary>
+internal sealed class FakeConsumptionTariffs : IConsumptionTariffs
+{
+    private readonly List<ConsumptionTariff> _items = [];
+
+    public IReadOnlyList<ConsumptionTariff> All => _items;
+
+    public Error? SaveFailure { get; set; }
+
+    public ConsumptionTariff Existing(ConsumptionTariff tariff)
+    {
+        _items.Add(tariff);
+
+        return tariff;
+    }
+
+    public Task<IReadOnlyList<ConsumptionTariff>> ListAsync(CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<ConsumptionTariff>>([.. _items.OrderByDescending(tariff => tariff.ValidFrom)]);
+
+    public Task<ConsumptionTariff?> FindAsync(YearMonth validFrom, CancellationToken cancellationToken) =>
+        Task.FromResult(_items.FirstOrDefault(tariff => tariff.ValidFrom == validFrom));
+
+    public Task<Result> SaveAsync(ConsumptionTariff tariff, CancellationToken cancellationToken)
+    {
+        if (SaveFailure is { } failure)
+        {
+            return Task.FromResult(Result.Failure(failure));
+        }
+
+        _items.RemoveAll(item => item.ValidFrom == tariff.ValidFrom);
+        _items.Add(tariff);
+
+        return Task.FromResult(Result.Success());
+    }
+
+    public Task RemoveAsync(ConsumptionTariff tariff, CancellationToken cancellationToken)
+    {
+        _items.Remove(tariff);
+
+        return Task.CompletedTask;
     }
 }

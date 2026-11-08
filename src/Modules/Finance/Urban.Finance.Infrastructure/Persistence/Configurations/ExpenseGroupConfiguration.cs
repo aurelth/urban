@@ -19,6 +19,7 @@ internal sealed class ExpenseGroupConfiguration : IEntityTypeConfiguration<Expen
         builder.Property(group => group.CondominiumId).IsRequired();
         builder.Property(group => group.Name).HasMaxLength(ExpenseGroup.NameMaxLength).IsRequired();
         builder.Property(group => group.CreatedAt);
+        builder.Property(group => group.ReserveFundBase).HasDefaultValue(false);
 
         builder.HasIndex(group => group.CondominiumId);
 

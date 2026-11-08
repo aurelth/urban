@@ -1,9 +1,11 @@
 using System.Globalization;
 using Riok.Mapperly.Abstractions;
 using Urban.Api.Endpoints;
+using Urban.Finance.Application.Consumption;
 using Urban.Finance.Application.Expenses;
 using Urban.Finance.Application.Groups;
 using Urban.Finance.Application.Months;
+using Urban.Finance.Application.Settings;
 using Urban.Finance.Domain.Expenses;
 using Urban.SharedKernel.Contracts;
 
@@ -12,6 +14,9 @@ namespace Urban.Api.Mapping;
 [Mapper]
 public static partial class FinanceMapper
 {
+    /// <summary>O esgoto cobra 100% das faixas quando o corpo não diz outro percentual.</summary>
+    private const decimal DefaultSewagePercent = 100m;
+
     // ---- Do corpo da requisição para o comando ----
 
     public static CreateExpenseCommand ToCommand(ExpenseRequest request) =>
@@ -45,6 +50,21 @@ public static partial class FinanceMapper
     public static SetEntryStatusCommand ToCommand(EntryStatusRequest request, Guid entryId) =>
         new(entryId, request.Version, ParseEntryStatus(request.Status));
 
+    public static SetExpenseGroupReserveFundBaseCommand ToCommand(ReserveFundBaseRequest request, Guid groupId) =>
+        new(groupId, request.Version, request.Enabled ?? false);
+
+    public static SetReserveFundPercentCommand ToCommand(FinanceSettingsRequest request) => new(request.ReserveFundPercent ?? 0m);
+
+    public static SaveConsumptionTariffCommand ToCommand(ConsumptionTariffRequest request, string month) =>
+        new(
+            month,
+            request.Water?.Select(ToInput).ToList(),
+            request.Sewage?.Select(ToInput).ToList(),
+            request.SewagePercent ?? DefaultSewagePercent,
+            request.Gas is null ? null : new GasTariffInput(request.Gas.KilosPerCubicMeter ?? 0m, request.Gas.PricePerKilo ?? 0m));
+
+    private static TariffBandInput ToInput(TariffBandRequest band) => new(band.UpToCubicMeters, band.FixedAmount ?? 0m, band.PricePerCubicMeter ?? 0m);
+
     /// <returns>Falso quando a data falta ou não está em AAAA-MM-DD.</returns>
     public static bool TryParseDueDate(string? text, out DateOnly dueDate) =>
         DateOnly.TryParseExact(text, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out dueDate);
@@ -54,6 +74,12 @@ public static partial class FinanceMapper
     public static partial ExpenseGroupResponse ToResponse(ExpenseGroupView view);
 
     public static partial IReadOnlyList<ExpenseGroupResponse> ToResponse(IReadOnlyList<ExpenseGroupView> views);
+
+    public static partial FinanceSettingsResponse ToResponse(FinanceSettingsView view);
+
+    public static partial ConsumptionTariffResponse ToResponse(ConsumptionTariffView view);
+
+    public static partial IReadOnlyList<ConsumptionTariffResponse> ToResponse(IReadOnlyList<ConsumptionTariffView> views);
 
     public static partial ExpenseResponse ToResponse(ExpenseView view);
 

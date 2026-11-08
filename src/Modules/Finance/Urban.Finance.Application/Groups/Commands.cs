@@ -11,3 +11,6 @@ public sealed record EnsureDefaultExpenseGroupCommand : IRequest<Result<ExpenseG
 public sealed record CreateExpenseGroupCommand(string? Name) : IRequest<Result<ExpenseGroupView>>;
 
 public sealed record RenameExpenseGroupCommand(Guid GroupId, string? Version, string? Name) : IRequest<Result<ExpenseGroupView>>;
+
+/// <summary>Marca ou desmarca o grupo como base de cálculo do fundo de reserva.</summary>
+public sealed record SetExpenseGroupReserveFundBaseCommand(Guid GroupId, string? Version, bool Enabled) : IRequest<Result<ExpenseGroupView>>;

@@ -1,6 +1,6 @@
 namespace Urban.Api.Endpoints;
 
-public sealed record ExpenseGroupResponse(Guid Id, string Name, string Version);
+public sealed record ExpenseGroupResponse(Guid Id, string Name, bool ReserveFundBase, string Version);
 
 public sealed record InstallmentResponse(int Number, string Month, decimal Amount);
 
@@ -64,3 +64,16 @@ public sealed record UnitChargeResponse(Guid UnitId, string? Block, string Numbe
 /// <param name="DueDate">O vencimento das cobranças, AAAA-MM-DD.</param>
 /// <param name="Total">Soma dos lançamentos não cancelados quando o mês fechou.</param>
 public sealed record MonthClosingResponse(DateTimeOffset ClosedAt, string DueDate, decimal Total, string Basis, IReadOnlyList<UnitChargeResponse> Charges);
+
+public sealed record FinanceSettingsResponse(decimal ReserveFundPercent);
+
+public sealed record TariffBandResponse(decimal? UpToCubicMeters, decimal FixedAmount, decimal PricePerCubicMeter);
+
+public sealed record GasTariffResponse(decimal KilosPerCubicMeter, decimal PricePerKilo, decimal PricePerCubicMeter);
+
+public sealed record ConsumptionTariffResponse(
+    string ValidFrom,
+    IReadOnlyList<TariffBandResponse> Water,
+    IReadOnlyList<TariffBandResponse>? Sewage,
+    decimal SewagePercent,
+    GasTariffResponse? Gas);

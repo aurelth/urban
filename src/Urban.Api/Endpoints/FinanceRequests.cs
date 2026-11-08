@@ -37,3 +37,17 @@ public sealed record EntryStatusRequest(string? Version, string? Status);
 
 /// <param name="DueDate">O vencimento de todas as cobranças do mês, como AAAA-MM-DD. Não pode ser antes do primeiro dia do mês.</param>
 public sealed record MonthCloseRequest(string? DueDate);
+
+public sealed record ReserveFundBaseRequest(string? Version, bool? Enabled);
+
+public sealed record FinanceSettingsRequest(decimal? ReserveFundPercent);
+
+public sealed record TariffBandRequest(decimal? UpToCubicMeters, decimal? FixedAmount, decimal? PricePerCubicMeter);
+
+public sealed record GasTariffRequest(decimal? KilosPerCubicMeter, decimal? PricePerKilo);
+
+public sealed record ConsumptionTariffRequest(
+    IReadOnlyList<TariffBandRequest>? Water,
+    IReadOnlyList<TariffBandRequest>? Sewage,
+    decimal? SewagePercent,
+    GasTariffRequest? Gas);

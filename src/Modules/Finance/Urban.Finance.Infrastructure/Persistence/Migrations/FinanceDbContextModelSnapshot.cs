@@ -188,6 +188,54 @@ namespace Urban.Finance.Infrastructure.Persistence.Migrations
                     b.ToTable("unit_charge_line", "finance");
                 });
 
+            modelBuilder.Entity("Urban.Finance.Domain.Consumption.ConsumptionTariff", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CondominiumId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("condominium_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Gas")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("gas");
+
+                    b.Property<string>("Sewage")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("sewage");
+
+                    b.Property<decimal>("SewagePercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("sewage_percent");
+
+                    b.Property<string>("ValidFrom")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .HasColumnType("character varying(7)")
+                        .HasColumnName("valid_from");
+
+                    b.Property<string>("Water")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("water");
+
+                    b.HasKey("Id")
+                        .HasName("pk_consumption_tariff");
+
+                    b.HasIndex("CondominiumId", "ValidFrom")
+                        .IsUnique()
+                        .HasDatabaseName("ix_consumption_tariff_condominium_valid_from");
+
+                    b.ToTable("consumption_tariff", "finance");
+                });
+
             modelBuilder.Entity("Urban.Finance.Domain.Expenses.Expense", b =>
                 {
                     b.Property<Guid>("Id")
@@ -366,6 +414,12 @@ namespace Urban.Finance.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(60)")
                         .HasColumnName("name");
 
+                    b.Property<bool>("ReserveFundBase")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("reserve_fund_base");
+
                     b.Property<uint>("xmin")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()
@@ -379,6 +433,27 @@ namespace Urban.Finance.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_expense_group_condominium_id");
 
                     b.ToTable("expense_group", "finance");
+                });
+
+            modelBuilder.Entity("Urban.Finance.Domain.Settings.FinanceSettings", b =>
+                {
+                    b.Property<Guid>("CondominiumId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("condominium_id");
+
+                    b.Property<decimal>("ReserveFundPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("reserve_fund_percent");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.HasKey("CondominiumId")
+                        .HasName("pk_finance_settings");
+
+                    b.ToTable("finance_settings", "finance");
                 });
 
             modelBuilder.Entity("Urban.Finance.Domain.Closing.UnitCharge", b =>
