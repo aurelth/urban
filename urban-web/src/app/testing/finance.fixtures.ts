@@ -29,6 +29,7 @@ export function expense(overrides: Partial<Expense> = {}): Expense {
     endMonth: null,
     lastMonth: null,
     currentAmount: 4200,
+    dueDay: 10,
     installmentCount: null,
     currentInstallment: null,
     installments: [],
@@ -70,7 +71,9 @@ export function entry(overrides: Partial<ExpenseEntry> = {}): ExpenseEntry {
     description: 'Portaria',
     amount: 4200,
     label: null,
-    isPending: false,
+    dueDate: '2026-11-10',
+    status: 'pending',
+    needsAmount: false,
     suggestedAmount: null,
     version: '21',
     ...overrides,
@@ -82,7 +85,7 @@ export function groupTotal(overrides: Partial<GroupTotal> = {}): GroupTotal {
     groupId: '0199bbbb-0001-7000-8000-000000000001',
     groupName: 'Despesas ordinárias',
     total: 4200,
-    pendingCount: 0,
+    needsAmountCount: 0,
     ...overrides,
   };
 }
@@ -93,7 +96,8 @@ export function monthEntries(overrides: Partial<MonthEntries> = {}): MonthEntrie
     entries: [],
     groups: [],
     total: 0,
-    pendingCount: 0,
+    needsAmountCount: 0,
+    overdueCount: 0,
     ...overrides,
   };
 }

@@ -5,7 +5,9 @@ import {
   isMonth,
   monthOptions,
   monthTitle,
-  canOpenMonth,
+  formatDate,
+  isMonthInWindow,
+  MONTH_WINDOW,
 } from './month';
 
 describe('currentMonth', () => {
@@ -53,14 +55,37 @@ describe('formatMonth and monthTitle', () => {
   });
 });
 
-describe('canOpenMonth', () => {
+describe('isMonthInWindow', () => {
   const now = new Date('2026-11-15T12:00:00Z');
 
-  it('allows the current month, the past and the next month only', () => {
-    expect(canOpenMonth('2026-12', now)).toBe(true);
-    expect(canOpenMonth('2026-11', now)).toBe(true);
-    expect(canOpenMonth('2020-01', now)).toBe(true);
-    expect(canOpenMonth('2027-01', now)).toBe(false);
+  it('uses a window of 5 years', () => {
+    expect(MONTH_WINDOW).toBe(60);
+  });
+
+  it('allows 5 years back and 5 years ahead of the current month', () => {
+    expect(isMonthInWindow('2026-11', now)).toBe(true);
+    expect(isMonthInWindow('2026-12', now)).toBe(true);
+    expect(isMonthInWindow('2031-11', now)).toBe(true);
+    expect(isMonthInWindow('2021-11', now)).toBe(true);
+  });
+
+  it('refuses what is beyond the window', () => {
+    expect(isMonthInWindow('2031-12', now)).toBe(false);
+    expect(isMonthInWindow('2021-10', now)).toBe(false);
+  });
+
+  it('follows the Brazilian clock at the edge of the month', () => {
+    const lateOctober = new Date('2026-11-01T02:00:00Z');
+
+    expect(isMonthInWindow('2031-10', lateOctober)).toBe(true);
+    expect(isMonthInWindow('2031-11', lateOctober)).toBe(false);
+  });
+});
+
+describe('formatDate', () => {
+  it('writes an ISO date as dd/mm/yyyy', () => {
+    expect(formatDate('2026-11-10')).toBe('10/11/2026');
+    expect(formatDate('2027-02-28')).toBe('28/02/2027');
   });
 });
 

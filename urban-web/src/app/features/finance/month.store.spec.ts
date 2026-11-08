@@ -6,6 +6,8 @@ import { problem } from '../../testing/auth.fixtures';
 import { entry, groupTotal, monthEntries } from '../../testing/finance.fixtures';
 import { MonthStore } from './month.store';
 
+const OPEN_2026_11 = { method: 'POST', url: '/api/finance/months/2026-11/open' };
+
 function setup(): { store: InstanceType<typeof MonthStore>; http: HttpTestingController } {
   TestBed.configureTestingModule({
     providers: [provideHttpClient(), provideHttpClientTesting(), MonthStore],
@@ -36,7 +38,7 @@ describe('MonthStore', () => {
 
       const showing = store.show('2026-10');
       expect(store.status()).toBe('loading');
-      http.expectOne('/api/finance/months/2026-10').flush(month);
+      http.expectOne({ method: 'POST', url: '/api/finance/months/2026-10/open' }).flush(month);
       await showing;
 
       expect(store.status()).toBe('ready');
@@ -47,14 +49,12 @@ describe('MonthStore', () => {
     it('vira "erro" quando a leitura falha e pode tentar de novo', async () => {
       const { store, http } = setup();
       const first = store.show('2026-11');
-      http
-        .expectOne('/api/finance/months/2026-11')
-        .flush(null, { status: 500, statusText: 'Erro' });
+      http.expectOne(OPEN_2026_11).flush(null, { status: 500, statusText: 'Erro' });
       await first;
       expect(store.status()).toBe('error');
 
       const second = store.show('2026-11');
-      http.expectOne('/api/finance/months/2026-11').flush(monthEntries());
+      http.expectOne(OPEN_2026_11).flush(monthEntries());
       await second;
 
       expect(store.status()).toBe('ready');
@@ -65,7 +65,7 @@ describe('MonthStore', () => {
       const first = groupTotal({ groupId: 'g1', groupName: 'Contratos', total: 4000 });
       const second = groupTotal({ groupId: 'g2', groupName: 'Obras', total: 100 });
       const showing = store.show('2026-11');
-      http.expectOne('/api/finance/months/2026-11').flush(
+      http.expectOne(OPEN_2026_11).flush(
         monthEntries({
           groups: [first, second],
           entries: [
@@ -85,47 +85,64 @@ describe('MonthStore', () => {
       ]);
       expect(sections[1].entries.map((item) => item.description)).toEqual(['Elevador']);
     });
-  });
 
-  describe('open', () => {
-    it('abre o mes e mostra o que foi gerado', async () => {
+    it('gera os lancamentos do mes ao abrir, sem botao: a leitura e o proprio POST', async () => {
       const { store, http } = setup();
+
       const showing = store.show('2026-11');
-      http.expectOne('/api/finance/months/2026-11').flush(monthEntries());
+      const post = http.expectOne(OPEN_2026_11);
+      expect(post.request.body).toEqual({});
+      post.flush(monthEntries({ entries: [entry()], total: 4200 }));
       await showing;
 
-      const opening = store.open();
-      expect(store.busy()).toBe(true);
-      const post = http.expectOne({ method: 'POST', url: '/api/finance/months/2026-11/open' });
-      post.flush(monthEntries({ entries: [entry()], total: 4200 }));
-
-      expect(await opening).toBeNull();
       expect(store.data()?.entries).toHaveLength(1);
-      expect(store.busy()).toBe(false);
+      http.expectNone({ method: 'GET', url: '/api/finance/months/2026-11' });
     });
 
-    it('devolve o problema quando a API recusa', async () => {
+    it('tenta mais uma vez quando duas aberturas se cruzam (conflito)', async () => {
       const { store, http } = setup();
-      const showing = store.show('2027-03');
-      http.expectOne('/api/finance/months/2027-03').flush(monthEntries({ month: '2027-03' }));
+
+      const showing = store.show('2026-11');
+      http.expectOne(OPEN_2026_11).flush(...fail(409, 'concurrency.conflict'));
+      await flushPromises();
+      http.expectOne(OPEN_2026_11).flush(monthEntries({ entries: [entry()], total: 4200 }));
       await showing;
 
-      const opening = store.open();
-      http
-        .expectOne({ method: 'POST', url: '/api/finance/months/2027-03/open' })
-        .flush(...fail(422, 'month.too_far_ahead'));
+      expect(store.status()).toBe('ready');
+      expect(store.data()?.total).toBe(4200);
+    });
 
-      expect((await opening)?.code).toBe('month.too_far_ahead');
-      expect(store.data()?.entries).toEqual([]);
+    it('vira "erro" se o conflito se repete', async () => {
+      const { store, http } = setup();
+
+      const showing = store.show('2026-11');
+      http.expectOne(OPEN_2026_11).flush(...fail(409, 'concurrency.conflict'));
+      await flushPromises();
+      http.expectOne(OPEN_2026_11).flush(...fail(409, 'concurrency.conflict'));
+      await showing;
+
+      expect(store.status()).toBe('error');
+    });
+
+    it('nao tenta de novo diante de outro erro', async () => {
+      const { store, http } = setup();
+
+      const showing = store.show('2031-12');
+      http
+        .expectOne({ method: 'POST', url: '/api/finance/months/2031-12/open' })
+        .flush(...fail(422, 'month.too_far_ahead'));
+      await showing;
+
+      expect(store.status()).toBe('error');
     });
   });
 
   describe('setAmount', () => {
     it('grava o valor e le o mes de novo para refazer os totais', async () => {
       const { store, http } = setup();
-      const pending = entry({ isPending: true, amount: null, version: '30' });
+      const pending = entry({ needsAmount: true, amount: null, version: '30' });
       const showing = store.show('2026-11');
-      http.expectOne('/api/finance/months/2026-11').flush(monthEntries({ entries: [pending] }));
+      http.expectOne(OPEN_2026_11).flush(monthEntries({ entries: [pending] }));
       await showing;
 
       const saving = store.setAmount(pending, 812.34);
@@ -153,7 +170,7 @@ describe('MonthStore', () => {
         const { store, http } = setup();
         const target = entry();
         const showing = store.show('2026-11');
-        http.expectOne('/api/finance/months/2026-11').flush(monthEntries({ entries: [target] }));
+        http.expectOne(OPEN_2026_11).flush(monthEntries({ entries: [target] }));
         await showing;
 
         const saving = store.setAmount(target, 10);
@@ -172,7 +189,7 @@ describe('MonthStore', () => {
       const { store, http } = setup();
       const target = entry();
       const showing = store.show('2026-11');
-      http.expectOne('/api/finance/months/2026-11').flush(monthEntries({ entries: [target] }));
+      http.expectOne(OPEN_2026_11).flush(monthEntries({ entries: [target] }));
       await showing;
 
       const saving = store.setAmount(target, 0);
@@ -187,7 +204,7 @@ describe('MonthStore', () => {
       const { store, http } = setup();
       const target = entry();
       const showing = store.show('2026-11');
-      http.expectOne('/api/finance/months/2026-11').flush(monthEntries({ entries: [target] }));
+      http.expectOne(OPEN_2026_11).flush(monthEntries({ entries: [target] }));
       await showing;
 
       const saving = store.setAmount(target, 10);
@@ -201,6 +218,73 @@ describe('MonthStore', () => {
       await saving;
 
       expect(store.status()).toBe('error');
+    });
+  });
+
+  describe('setStatus', () => {
+    it('grava a situacao e le o mes de novo para refazer os totais e os vencidos', async () => {
+      const { store, http } = setup();
+      const target = entry({ version: '30' });
+      const showing = store.show('2026-11');
+      http.expectOne(OPEN_2026_11).flush(monthEntries({ entries: [target] }));
+      await showing;
+
+      const saving = store.setStatus(target, 'paid');
+      expect(store.busy()).toBe(true);
+      const put = http.expectOne({
+        method: 'PUT',
+        url: `/api/finance/entries/${target.id}/status`,
+      });
+      expect(put.request.body).toEqual({ version: '30', status: 'paid' });
+      put.flush(entry({ status: 'paid' }));
+      await flushPromises();
+      http
+        .expectOne({ method: 'GET', url: '/api/finance/months/2026-11' })
+        .flush(monthEntries({ entries: [entry({ status: 'paid' })] }));
+
+      expect(await saving).toBeNull();
+      expect(store.data()?.entries[0].status).toBe('paid');
+      expect(store.busy()).toBe(false);
+    });
+
+    it.each([
+      [409, 'concurrency.conflict'],
+      [404, 'expense_entry.not_found'],
+    ])(
+      'devolve o problema e le o mes de novo quando esta desatualizado (%i)',
+      async (status, code) => {
+        const { store, http } = setup();
+        const target = entry();
+        const showing = store.show('2026-11');
+        http.expectOne(OPEN_2026_11).flush(monthEntries({ entries: [target] }));
+        await showing;
+
+        const saving = store.setStatus(target, 'canceled');
+        http
+          .expectOne({ method: 'PUT', url: `/api/finance/entries/${target.id}/status` })
+          .flush(...fail(status, code));
+        await flushPromises();
+        http.expectOne('/api/finance/months/2026-11').flush(monthEntries());
+
+        expect((await saving)?.code).toBe(code);
+        expect(store.data()?.entries).toEqual([]);
+      },
+    );
+
+    it('devolve o problema sem reler o mes quando falta o valor para pagar', async () => {
+      const { store, http } = setup();
+      const target = entry({ amount: null, needsAmount: true });
+      const showing = store.show('2026-11');
+      http.expectOne(OPEN_2026_11).flush(monthEntries({ entries: [target] }));
+      await showing;
+
+      const saving = store.setStatus(target, 'paid');
+      http
+        .expectOne({ method: 'PUT', url: `/api/finance/entries/${target.id}/status` })
+        .flush(...fail(422, 'expense_entry.amount_required'));
+
+      expect((await saving)?.code).toBe('expense_entry.amount_required');
+      expect(store.busy()).toBe(false);
     });
   });
 });

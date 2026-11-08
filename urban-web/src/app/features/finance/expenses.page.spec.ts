@@ -162,7 +162,7 @@ describe('ExpensesPage', () => {
     expect(rows(html)).toHaveLength(3);
   });
 
-  it('lista as despesas com tipo, grupo, valor e periodo', async () => {
+  it('lista as despesas com tipo, grupo, valor, periodo e vencimento', async () => {
     const { html } = await setup();
 
     const cells = rows(html).map((row) =>
@@ -197,7 +197,44 @@ describe('ExpensesPage', () => {
       'R$ 1.000,00 em 6x',
       '11/2026 a 04/2027',
     ]);
-    expect(cells[0][5]).toContain('Ativa');
+    expect(cells.map((row) => row[5])).toEqual(['Todo dia 10', 'Todo dia 10', 'Todo dia 10']);
+    expect(cells[0][6]).toContain('Ativa');
+  });
+
+  it('mostra o vencimento: o dia de cada mes, ou a data completa na despesa unica', async () => {
+    const { html } = await setup({
+      expenses: [
+        expense({ description: 'Portaria', dueDay: 5 }),
+        expense({
+          description: 'Troca da lâmpada',
+          kind: 'single',
+          startMonth: '2026-11',
+          lastMonth: '2026-11',
+          dueDay: 12,
+        }),
+        expense({
+          description: 'Reparo do portão',
+          kind: 'single',
+          startMonth: '2026-11',
+          lastMonth: '2026-11',
+          dueDay: 31,
+        }),
+        expense({
+          description: 'Pintura',
+          kind: 'single',
+          startMonth: '2028-02',
+          lastMonth: '2028-02',
+          dueDay: 31,
+        }),
+      ],
+    });
+
+    const due = rows(html).map((row) => plain(row.querySelectorAll('td')[5].textContent));
+
+    expect(due).toEqual(['Todo dia 5', '12/11/2026', '30/11/2026', '29/02/2028']);
+    expect(
+      [...html.querySelectorAll('thead th')].map((header) => plain(header.textContent)),
+    ).toContain('Vencimento');
   });
 
   it('aponta para os lancamentos do mes', async () => {
@@ -253,6 +290,20 @@ describe('ExpensesPage', () => {
       );
 
       expect(names).toEqual(['Despesas ordinárias', 'Obras']);
+    });
+
+    it('mostra o nome do grupo com o mesmo visual do titulo de grupo dos lancamentos, sem pilula', async () => {
+      const { html } = await setup();
+
+      const items = [...html.querySelectorAll('[data-testid="group-item"]')];
+
+      expect(items).toHaveLength(2);
+      for (const item of items) {
+        const name = item.querySelector('span')!;
+        expect(name.classList.contains('text-lg')).toBe(true);
+        expect(name.classList.contains('font-medium')).toBe(true);
+        expect(item.className).not.toMatch(/rounded|border/);
+      }
     });
 
     it('cria um grupo', async () => {
@@ -326,6 +377,7 @@ describe('ExpensesPage', () => {
       await settle(fixture);
       typeIn('urban-expense-dialog', 'description', 'Seguro predial');
       typeIn('urban-expense-dialog', 'amount', '900');
+      typeIn('urban-expense-dialog', 'dueDay', '10');
       submitDialog('urban-expense-dialog');
       await flushPromises();
       const create = http.expectOne({ method: 'POST', url: '/api/finance/expenses' });
@@ -339,6 +391,7 @@ describe('ExpensesPage', () => {
         amount: 900,
         installmentCount: null,
         currentInstallment: null,
+        dueDay: 10,
       });
       create.flush(expense());
       await flushPromises();
@@ -356,6 +409,7 @@ describe('ExpensesPage', () => {
       await settle(fixture);
       typeIn('urban-expense-dialog', 'description', 'Seguro predial');
       typeIn('urban-expense-dialog', 'amount', '900');
+      typeIn('urban-expense-dialog', 'dueDay', '10');
       submitDialog('urban-expense-dialog');
       await flushPromises();
       http
@@ -386,6 +440,31 @@ describe('ExpensesPage', () => {
         description: 'Portaria 24h',
         supplier: 'Segura Ltda',
         groupId: WORKS.id,
+        dueDay: 10,
+      });
+      update.flush(FIXED);
+      await flushPromises();
+      answerRefresh(http);
+      await settle(fixture);
+
+      expect(text(html, 'notice')).toBe('Despesa atualizada');
+    });
+
+    it('muda o dia do vencimento de uma despesa', async () => {
+      const { fixture, html, http } = await setup();
+
+      click(button(html, 'Editar Portaria'));
+      await settle(fixture);
+      typeIn('urban-expense-dialog', 'dueDay', '25');
+      submitDialog('urban-expense-dialog');
+      await flushPromises();
+      const update = http.expectOne({ method: 'PUT', url: `/api/finance/expenses/${FIXED.id}` });
+      expect(update.request.body).toEqual({
+        version: '11',
+        description: 'Portaria',
+        supplier: 'Segura Ltda',
+        groupId: ORDINARY.id,
+        dueDay: 25,
       });
       update.flush(FIXED);
       await flushPromises();

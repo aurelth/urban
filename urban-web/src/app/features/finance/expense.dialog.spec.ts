@@ -65,14 +65,14 @@ describe('ExpenseDialog (nova despesa)', () => {
     expect(submitButtonOf(TAG).textContent?.trim()).toBe('Cadastrar despesa');
   });
 
-  it('oferece tres anos para tras e dois para a frente no mes inicial', () => {
+  it('oferece tres anos para tras e cinco para a frente no mes inicial', () => {
     setup();
 
     const months = [...fieldOf(TAG, 'startMonth').options].map((option) => option.value);
 
     expect(months[0]).toBe('2023-11');
-    expect(months.at(-1)).toBe('2028-11');
-    expect(months).toHaveLength(61);
+    expect(months.at(-1)).toBe('2031-11');
+    expect(months).toHaveLength(97);
   });
 
   it('mostra os campos de cada tipo', () => {
@@ -128,6 +128,7 @@ describe('ExpenseDialog (nova despesa)', () => {
     chooseIn(TAG, 'startMonth', '2026-09');
     chooseIn(TAG, 'endMonth', '2027-08');
     typeIn(TAG, 'amount', '4.200,00');
+    typeIn(TAG, 'dueDay', '10');
     submitDialog(TAG);
     await flushPromises();
 
@@ -141,6 +142,7 @@ describe('ExpenseDialog (nova despesa)', () => {
       amount: 4200,
       installmentCount: null,
       currentInstallment: null,
+      dueDay: 10,
     });
     expect(await result).toBe(true);
   });
@@ -150,6 +152,7 @@ describe('ExpenseDialog (nova despesa)', () => {
 
     typeIn(TAG, 'description', 'Portaria');
     typeIn(TAG, 'amount', '4200');
+    typeIn(TAG, 'dueDay', '10');
     submitDialog(TAG);
     await flushPromises();
 
@@ -164,6 +167,7 @@ describe('ExpenseDialog (nova despesa)', () => {
     chooseKind('single');
     typeIn(TAG, 'description', 'Conserto do portao');
     typeIn(TAG, 'amount', '350,50');
+    typeIn(TAG, 'dueDay', '10');
     submitDialog(TAG);
     await flushPromises();
 
@@ -177,6 +181,7 @@ describe('ExpenseDialog (nova despesa)', () => {
       amount: 350.5,
       installmentCount: null,
       currentInstallment: null,
+      dueDay: 10,
     });
   });
 
@@ -185,6 +190,7 @@ describe('ExpenseDialog (nova despesa)', () => {
 
     chooseKind('variable');
     typeIn(TAG, 'description', 'Conta de luz');
+    typeIn(TAG, 'dueDay', '10');
     submitDialog(TAG);
     await flushPromises();
 
@@ -198,6 +204,7 @@ describe('ExpenseDialog (nova despesa)', () => {
       amount: null,
       installmentCount: null,
       currentInstallment: null,
+      dueDay: 10,
     });
   });
 
@@ -209,6 +216,7 @@ describe('ExpenseDialog (nova despesa)', () => {
     typeIn(TAG, 'amount', '1000');
     typeIn(TAG, 'installmentCount', '6');
     typeIn(TAG, 'currentInstallment', '2');
+    typeIn(TAG, 'dueDay', '10');
     submitDialog(TAG);
     await flushPromises();
 
@@ -222,6 +230,7 @@ describe('ExpenseDialog (nova despesa)', () => {
       amount: 1000,
       installmentCount: 6,
       currentInstallment: 2,
+      dueDay: 10,
     });
   });
 
@@ -235,6 +244,7 @@ describe('ExpenseDialog (nova despesa)', () => {
     expect(errorsOf(TAG)).toEqual([
       'Informe a descrição da despesa',
       'Informe um valor maior que zero, com até 2 casas decimais',
+      'Informe o dia do vencimento, de 1 a 31',
     ]);
   });
 
@@ -244,6 +254,7 @@ describe('ExpenseDialog (nova despesa)', () => {
     typeIn(TAG, 'description', 'a'.repeat(121));
     typeIn(TAG, 'supplier', 'b'.repeat(121));
     typeIn(TAG, 'amount', '10');
+    typeIn(TAG, 'dueDay', '10');
     submitDialog(TAG);
     TestBed.tick();
 
@@ -261,6 +272,7 @@ describe('ExpenseDialog (nova despesa)', () => {
     typeIn(TAG, 'description', 'Elevador');
     typeIn(TAG, 'amount', '1000');
     typeIn(TAG, 'installmentCount', '1');
+    typeIn(TAG, 'dueDay', '10');
     submitDialog(TAG);
     TestBed.tick();
 
@@ -276,6 +288,7 @@ describe('ExpenseDialog (nova despesa)', () => {
     typeIn(TAG, 'amount', '1000');
     typeIn(TAG, 'installmentCount', '6');
     typeIn(TAG, 'currentInstallment', '7');
+    typeIn(TAG, 'dueDay', '10');
     submitDialog(TAG);
     TestBed.tick();
 
@@ -303,6 +316,7 @@ describe('ExpenseDialog (nova despesa)', () => {
     typeIn(TAG, 'amount', '4200');
     chooseIn(TAG, 'startMonth', '2026-11');
     chooseIn(TAG, 'endMonth', '2026-10');
+    typeIn(TAG, 'dueDay', '10');
     submitDialog(TAG);
     TestBed.tick();
 
@@ -317,10 +331,54 @@ describe('ExpenseDialog (nova despesa)', () => {
     typeIn(TAG, 'amount', '4200');
     chooseIn(TAG, 'endMonth', '2026-10');
     chooseIn(TAG, 'startMonth', '2026-09');
+    typeIn(TAG, 'dueDay', '10');
     submitDialog(TAG);
     await flushPromises();
 
     expect(save).toHaveBeenCalledWith(expect.objectContaining({ endMonth: '2026-10' }));
+  });
+
+  it('mostra o campo do dia do vencimento em todos os tipos, vazio e com a explicacao', () => {
+    setup();
+
+    for (const kind of ['fixed', 'variable', 'single', 'installment']) {
+      chooseKind(kind);
+      expect(has('dueDay')).toBe(true);
+    }
+    expect(fieldOf(TAG, 'dueDay').value).toBe('');
+    expect(dialogOf(TAG).textContent).toContain('Dia do vencimento');
+    expect(dialogOf(TAG).textContent).toContain(
+      'De 1 a 31. Nos meses mais curtos vale o último dia',
+    );
+  });
+
+  it.each(['0', '32', 'dez', '1,5', '-3', '1e1'])('recusa %s como dia do vencimento', (value) => {
+    const { save } = setup();
+
+    typeIn(TAG, 'description', 'Portaria');
+    typeIn(TAG, 'amount', '4200');
+    typeIn(TAG, 'dueDay', value);
+    submitDialog(TAG);
+    TestBed.tick();
+
+    expect(save).not.toHaveBeenCalled();
+    expect(errorsOf(TAG)).toEqual(['Informe o dia do vencimento, de 1 a 31']);
+  });
+
+  it.each([
+    ['1', 1],
+    ['15', 15],
+    [' 31 ', 31],
+  ])('aceita %s como dia do vencimento', async (value, expected) => {
+    const { save } = setup();
+
+    typeIn(TAG, 'description', 'Portaria');
+    typeIn(TAG, 'amount', '4200');
+    typeIn(TAG, 'dueDay', value);
+    submitDialog(TAG);
+    await flushPromises();
+
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({ dueDay: expected }));
   });
 
   it('continua aberto com o erro quando a gravacao e recusada', async () => {
@@ -329,6 +387,7 @@ describe('ExpenseDialog (nova despesa)', () => {
 
     typeIn(TAG, 'description', 'Portaria');
     typeIn(TAG, 'amount', '4200');
+    typeIn(TAG, 'dueDay', '10');
     submitDialog(TAG);
     await flushPromises();
     TestBed.tick();
@@ -355,15 +414,17 @@ describe('ExpenseDialog (editar despesa)', () => {
     supplier: 'Segura Ltda',
     kind: 'fixed',
     startMonth: '2026-09',
+    dueDay: 10,
   });
 
-  it('mostra so descricao, fornecedor e grupo, preenchidos', () => {
+  it('mostra so descricao, fornecedor, grupo e vencimento, preenchidos', () => {
     setup(current);
 
     expect(dialogOf(TAG).querySelector('h2')?.textContent?.trim()).toBe('Editar despesa');
     expect(fieldOf(TAG, 'description').value).toBe('Portaria');
     expect(fieldOf(TAG, 'supplier').value).toBe('Segura Ltda');
     expect(fieldOf(TAG, 'groupId').value).toBe(ordinary.id);
+    expect(fieldOf(TAG, 'dueDay').value).toBe('10');
     expect(['kind', 'startMonth', 'endMonth', 'amount'].map(has)).toEqual([
       false,
       false,
@@ -415,5 +476,49 @@ describe('ExpenseDialog (editar despesa)', () => {
 
     expect(save).not.toHaveBeenCalled();
     expect(errorsOf(TAG)).toEqual(['Informe a descrição da despesa']);
+  });
+
+  it('avisa que o novo dia vale so para os proximos lancamentos', () => {
+    setup(current);
+
+    expect(dialogOf(TAG).textContent).toContain('Vale para os próximos lançamentos');
+  });
+
+  it('habilita o botao ao mudar so o dia do vencimento e grava o novo dia', async () => {
+    const { save, result } = setup(current);
+    expect(submitButtonOf(TAG).disabled).toBe(true);
+
+    typeIn(TAG, 'dueDay', '20');
+    TestBed.tick();
+    expect(submitButtonOf(TAG).disabled).toBe(false);
+    submitDialog(TAG);
+    await flushPromises();
+
+    expect(save).toHaveBeenCalledWith(
+      expect.objectContaining({ dueDay: 20, description: 'Portaria' }),
+    );
+    expect(await result).toBe(true);
+  });
+
+  it('volta a desabilitar o botao quando o dia volta ao que era', () => {
+    setup(current);
+
+    typeIn(TAG, 'dueDay', '20');
+    TestBed.tick();
+    typeIn(TAG, 'dueDay', '10');
+    TestBed.tick();
+
+    expect(submitButtonOf(TAG).disabled).toBe(true);
+  });
+
+  it('exige um dia valido tambem na edicao', () => {
+    const { save } = setup(current);
+
+    typeIn(TAG, 'dueDay', '40');
+    submitDialog(TAG);
+    TestBed.tick();
+
+    expect(save).not.toHaveBeenCalled();
+    expect(errorsOf(TAG)).toEqual(['Informe o dia do vencimento, de 1 a 31']);
   });
 });

@@ -171,6 +171,7 @@ describe('ExpensesStore', () => {
         description: 'Portaria 24h',
         supplier: 'Segura',
         groupId: GROUP.id,
+        dueDay: 15,
       });
       const put = http.expectOne({ method: 'PUT', url: `/api/finance/expenses/${target.id}` });
       expect(put.request.body).toEqual({
@@ -178,6 +179,7 @@ describe('ExpensesStore', () => {
         description: 'Portaria 24h',
         supplier: 'Segura',
         groupId: GROUP.id,
+        dueDay: 15,
       });
       put.flush(target);
       await flushPromises();

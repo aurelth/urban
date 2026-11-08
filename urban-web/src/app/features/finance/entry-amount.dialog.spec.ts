@@ -36,7 +36,7 @@ describe('EntryAmountDialog', () => {
     const pending = entry({
       description: 'Água',
       amount: null,
-      isPending: true,
+      needsAmount: true,
       suggestedAmount: 812.34,
     });
 
@@ -56,7 +56,7 @@ describe('EntryAmountDialog', () => {
     });
 
     it('comeca vazio quando nao ha sugestao', () => {
-      setup(entry({ amount: null, isPending: true, suggestedAmount: null }));
+      setup(entry({ amount: null, needsAmount: true, suggestedAmount: null }));
 
       expect(fieldOf(TAG, 'amount').value).toBe('');
       expect(dialogOf(TAG).textContent).not.toContain('Sugestão');
@@ -79,7 +79,7 @@ describe('EntryAmountDialog', () => {
   });
 
   it('nao grava valor invalido e explica', () => {
-    const { save } = setup(entry({ amount: null, isPending: true }));
+    const { save } = setup(entry({ amount: null, needsAmount: true }));
 
     typeIn(TAG, 'amount', '0');
     submitDialog(TAG);
@@ -90,7 +90,7 @@ describe('EntryAmountDialog', () => {
   });
 
   it('continua aberto com o erro quando a gravacao e recusada', async () => {
-    const { save } = setup(entry({ amount: null, isPending: true }));
+    const { save } = setup(entry({ amount: null, needsAmount: true }));
     save.mockResolvedValue('Este lançamento foi alterado em outro lugar');
 
     typeIn(TAG, 'amount', '10');
@@ -103,7 +103,7 @@ describe('EntryAmountDialog', () => {
   });
 
   it('cancelar fecha sem gravar', async () => {
-    const { save, result } = setup(entry({ amount: null, isPending: true }));
+    const { save, result } = setup(entry({ amount: null, needsAmount: true }));
 
     dialogOf(TAG).querySelector<HTMLButtonElement>('[data-testid="cancel"]')!.click();
 
