@@ -118,21 +118,24 @@ describe('ShellLayout', () => {
       expect(link(html, 'nav-account')).not.toBeNull();
     });
 
-    it('leva o sindico com condominio as unidades, antes dos dados do condominio', async () => {
+    it('leva o sindico com condominio as unidades e ao financeiro, antes dos dados do condominio', async () => {
       const { html } = await setup(REGISTERED_MANAGER);
 
       expect(link(html, 'nav-units')?.textContent?.trim()).toBe('Unidades');
       expect(link(html, 'nav-units')?.getAttribute('href')).toBe('/unidades');
+      expect(link(html, 'nav-finance')?.textContent?.trim()).toBe('Financeiro');
+      expect(link(html, 'nav-finance')?.getAttribute('href')).toBe('/financeiro');
       const order = [...html.querySelectorAll('a[data-testid^="nav-"]')].map((a) =>
         a.getAttribute('data-testid'),
       );
-      expect(order).toEqual(['nav-units', 'nav-profile', 'nav-account']);
+      expect(order).toEqual(['nav-units', 'nav-finance', 'nav-profile', 'nav-account']);
     });
 
-    it('nao mostra as unidades ao sindico sem condominio', async () => {
+    it('nao mostra as unidades nem o financeiro ao sindico sem condominio', async () => {
       const { html } = await setup(MANAGER);
 
       expect(link(html, 'nav-units')).toBeNull();
+      expect(link(html, 'nav-finance')).toBeNull();
     });
 
     it.each([

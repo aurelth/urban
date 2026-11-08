@@ -1,0 +1,39 @@
+<h2 mat-dialog-title>Valor de {{ config.entry.description }}</h2>
+<form [formGroup]="form" (ngSubmit)="confirm()" novalidate>
+  <mat-dialog-content>
+    <urban-text-field
+      name="amount"
+      label="Valor (R$)"
+      inputmode="decimal"
+      [hint]="suggested ? 'Sugestão: o valor do mês anterior' : 'Ex.: 1.250,50'"
+      [errors]="amountErrors"
+    />
+
+    @if (error(); as message) {
+      <p role="alert" class="flex items-start gap-2 text-error">
+        <mat-icon svgIcon="error" aria-hidden="true" />
+        <span>{{ message }}</span>
+      </p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button
+      mat-button
+      type="button"
+      data-testid="cancel"
+      [disabled]="busy()"
+      (click)="ref.close(false)"
+    >
+      Cancelar
+    </button>
+    <button mat-flat-button type="submit" [disabled]="busy() || (!pending && !changed())">
+      @if (busy()) {
+        Salvando
+      } @else if (pending) {
+        Informar valor
+      } @else {
+        Salvar valor
+      }
+    </button>
+  </mat-dialog-actions>
+</form>

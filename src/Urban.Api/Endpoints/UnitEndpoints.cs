@@ -119,16 +119,6 @@ public static class UnitEndpoints
         return app;
     }
 
-    private static RouteHandlerBuilder WithErrors(this RouteHandlerBuilder builder, params int[] statuses)
-    {
-        foreach (int status in new[] { StatusCodes.Status401Unauthorized, StatusCodes.Status403Forbidden, StatusCodes.Status429TooManyRequests }.Concat(statuses).Distinct())
-        {
-            builder.ProducesProblem(status);
-        }
-
-        return builder;
-    }
-
     private static async Task<IResult> ListAsync(
         ClaimsPrincipal user,
         HttpResponse response,
@@ -160,7 +150,7 @@ public static class UnitEndpoints
         ListUnitsQuery query = new(block, typeFilter, statusFilter, search, page ?? 1, pageSize ?? 50);
         Result<UnitListing> result = await sender.Send(query, cancellationToken);
 
-        return Respond(result, response, listing => UnitMapper.ToResponse(listing));
+        return ApiResults.Respond(result, response, listing => UnitMapper.ToResponse(listing));
     }
 
     private static async Task<IResult> SummaryAsync(ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken cancellationToken)
@@ -172,7 +162,7 @@ public static class UnitEndpoints
 
         Result<UnitsSummary> result = await sender.Send(new GetUnitsSummaryQuery(), cancellationToken);
 
-        return Respond(result, response, summary => UnitMapper.ToResponse(summary));
+        return ApiResults.Respond(result, response, summary => UnitMapper.ToResponse(summary));
     }
 
     private static async Task<IResult> GetAsync(Guid id, ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken cancellationToken)
@@ -184,7 +174,7 @@ public static class UnitEndpoints
 
         Result<UnitView> result = await sender.Send(new GetUnitQuery(id), cancellationToken);
 
-        return Respond(result, response, view => UnitMapper.ToResponse(view));
+        return ApiResults.Respond(result, response, view => UnitMapper.ToResponse(view));
     }
 
     private static async Task<IResult> CreateAsync(UnitRequest request, ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken cancellationToken)
@@ -214,7 +204,7 @@ public static class UnitEndpoints
 
         Result<UnitView> result = await sender.Send(UnitMapper.ToUpdateCommand(request, id, userId), cancellationToken);
 
-        return Respond(result, response, view => UnitMapper.ToResponse(view));
+        return ApiResults.Respond(result, response, view => UnitMapper.ToResponse(view));
     }
 
     private static async Task<IResult> DeactivateAsync(Guid id, UnitVersionRequest request, ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken cancellationToken)
@@ -226,7 +216,7 @@ public static class UnitEndpoints
 
         Result<UnitView> result = await sender.Send(new DeactivateUnitCommand(userId, id, request.Version), cancellationToken);
 
-        return Respond(result, response, view => UnitMapper.ToResponse(view));
+        return ApiResults.Respond(result, response, view => UnitMapper.ToResponse(view));
     }
 
     private static async Task<IResult> ReactivateAsync(Guid id, UnitVersionRequest request, ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken cancellationToken)
@@ -238,7 +228,7 @@ public static class UnitEndpoints
 
         Result<UnitView> result = await sender.Send(new ReactivateUnitCommand(userId, id, request.Version), cancellationToken);
 
-        return Respond(result, response, view => UnitMapper.ToResponse(view));
+        return ApiResults.Respond(result, response, view => UnitMapper.ToResponse(view));
     }
 
     private static async Task<IResult> BatchAsync(UnitBatchRequest request, ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken cancellationToken)
@@ -272,19 +262,6 @@ public static class UnitEndpoints
 
         Result<ApportionmentView> result = await sender.Send(UnitMapper.ToCommand(request, userId), cancellationToken);
 
-        return Respond(result, response, view => UnitMapper.ToResponse(view));
-    }
-
-    /// <summary>Falha vira o problema do erro; sucesso vira 200 com a resposta, que nunca é guardada em cache (traz versão e dados do condomínio).</summary>
-    private static IResult Respond<T, TResponse>(Result<T> result, HttpResponse response, Func<T, TResponse> toResponse)
-    {
-        if (result.IsFailure)
-        {
-            return ErrorHttp.ToProblem(result.Error);
-        }
-
-        response.PreventCaching();
-
-        return Results.Ok(toResponse(result.Value));
+        return ApiResults.Respond(result, response, view => UnitMapper.ToResponse(view));
     }
 }

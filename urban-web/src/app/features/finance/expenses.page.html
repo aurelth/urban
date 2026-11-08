@@ -1,0 +1,224 @@
+<section class="mx-auto max-w-6xl p-6">
+  <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="mb-1 text-3xl font-semibold tracking-tight">Despesas</h1>
+      <p class="m-0 text-on-surface-variant">
+        Cadastre o que o condomínio paga, mês a mês ou de uma vez só
+      </p>
+    </div>
+    @if (store.status() === 'ready') {
+      <div class="flex flex-wrap gap-2">
+        <a mat-stroked-button data-testid="entries-link" routerLink="/financeiro/lancamentos">
+          <mat-icon svgIcon="calendar_month" />
+          Lançamentos do mês
+        </a>
+        <button
+          mat-flat-button
+          type="button"
+          data-testid="new-expense"
+          [disabled]="store.busy()"
+          (click)="create()"
+        >
+          <mat-icon svgIcon="add" />
+          Nova despesa
+        </button>
+      </div>
+    }
+  </div>
+
+  @switch (store.status()) {
+    @case ('loading') {
+      <p role="status" class="text-on-surface-variant" data-testid="loading">
+        Carregando as despesas
+      </p>
+    }
+    @case ('error') {
+      <div class="flex flex-col items-start gap-4" data-testid="load-error">
+        <p class="flex items-start gap-2 text-error">
+          <mat-icon svgIcon="error" aria-hidden="true" />
+          <span>Não foi possível carregar as despesas</span>
+        </p>
+        <button mat-stroked-button type="button" data-testid="retry" (click)="load()">
+          Tentar de novo
+        </button>
+      </div>
+    }
+    @case ('ready') {
+      @if (notice(); as message) {
+        <p role="status" class="mb-4 flex items-start gap-2" data-testid="notice">
+          <span class="inline-flex text-success"
+            ><mat-icon svgIcon="check_circle" aria-hidden="true"
+          /></span>
+          <span>{{ message }}</span>
+        </p>
+      }
+
+      <section class="mb-6" aria-labelledby="groups-title" data-testid="groups">
+        <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h2 id="groups-title" class="m-0 text-lg font-medium">Grupos</h2>
+          <button
+            mat-button
+            type="button"
+            data-testid="new-group"
+            [disabled]="store.busy()"
+            (click)="createGroup()"
+          >
+            <mat-icon svgIcon="add" />
+            Novo grupo
+          </button>
+        </div>
+        <ul class="m-0 flex list-none flex-wrap gap-2 p-0">
+          @for (group of store.groups(); track group.id) {
+            <li
+              class="flex items-center gap-1 rounded-full border border-outline-variant py-1 pr-1 pl-4"
+              data-testid="group-item"
+            >
+              <span>{{ group.name }}</span>
+              <button
+                mat-icon-button
+                type="button"
+                [attr.aria-label]="'Renomear grupo ' + group.name"
+                [attr.title]="'Renomear grupo ' + group.name"
+                [disabled]="store.busy()"
+                (click)="renameGroup(group)"
+              >
+                <mat-icon svgIcon="edit" />
+              </button>
+            </li>
+          }
+        </ul>
+      </section>
+
+      <form class="mb-2 max-w-xs" data-testid="filters" (submit)="$event.preventDefault()">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="w-full">
+          <mat-label>Situação</mat-label>
+          <select
+            matNativeControl
+            data-testid="filter-status"
+            [value]="store.filter()"
+            (change)="onStatus($event)"
+          >
+            <option value="active">Ativas</option>
+            <option value="ended">Encerradas</option>
+            <option value="all">Todas</option>
+          </select>
+        </mat-form-field>
+      </form>
+
+      @if (store.expenses().length === 0 && store.filter() === 'active') {
+        <div class="rounded-xl border border-outline-variant p-6 text-center" data-testid="empty">
+          <p class="mb-1 text-lg font-medium">Nenhuma despesa ativa</p>
+          <p class="m-0 text-on-surface-variant">
+            Cadastre a primeira despesa para gerar os lançamentos do mês
+          </p>
+        </div>
+      } @else if (store.expenses().length === 0) {
+        <p
+          class="rounded-xl border border-outline-variant p-6 text-center text-on-surface-variant"
+          data-testid="no-results"
+        >
+          Nenhuma despesa encontrada com este filtro
+        </p>
+      } @else {
+        <div class="overflow-x-auto rounded-xl border border-outline-variant">
+          <table class="w-full border-collapse text-left" data-testid="expenses-table">
+            <caption class="sr-only">
+              Lista de despesas
+            </caption>
+            <thead>
+              <tr class="border-b border-outline-variant text-sm text-on-surface-variant">
+                <th scope="col" class="p-3 font-medium">Despesa</th>
+                <th scope="col" class="p-3 font-medium">Grupo</th>
+                <th scope="col" class="p-3 font-medium">Tipo</th>
+                <th scope="col" class="p-3 font-medium">Valor</th>
+                <th scope="col" class="p-3 font-medium">Período</th>
+                <th scope="col" class="p-3 font-medium">Situação</th>
+                <th scope="col" class="p-3 font-medium">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of store.expenses(); track item.id) {
+                <tr
+                  class="border-b border-outline-variant last:border-b-0"
+                  data-testid="expense-row"
+                >
+                  <td class="p-3">
+                    <span class="font-medium">{{ item.description }}</span>
+                    @if (item.supplier) {
+                      <span class="block text-sm text-on-surface-variant">{{ item.supplier }}</span>
+                    }
+                  </td>
+                  <td class="p-3">{{ store.groupName(item.groupId) }}</td>
+                  <td class="p-3">{{ kind(item.kind) }}</td>
+                  <td class="p-3 whitespace-nowrap">{{ amount(item) }}</td>
+                  <td class="p-3 whitespace-nowrap">{{ period(item) }}</td>
+                  <td class="p-3">
+                    @if (item.isEnded) {
+                      <span class="inline-flex items-center gap-1 text-on-surface-variant">
+                        <mat-icon svgIcon="event_busy" aria-hidden="true" />
+                        <span>Encerrada</span>
+                      </span>
+                    } @else {
+                      <span class="inline-flex items-center gap-1 text-success">
+                        <mat-icon svgIcon="check_circle" aria-hidden="true" />
+                        <span class="text-on-surface">Ativa</span>
+                      </span>
+                    }
+                  </td>
+                  <td class="p-1 whitespace-nowrap">
+                    <button
+                      mat-icon-button
+                      type="button"
+                      [attr.aria-label]="'Editar ' + item.description"
+                      [attr.title]="'Editar ' + item.description"
+                      [disabled]="store.busy()"
+                      (click)="edit(item)"
+                    >
+                      <mat-icon svgIcon="edit" />
+                    </button>
+                    @if (canAdjust(item)) {
+                      <button
+                        mat-icon-button
+                        type="button"
+                        [attr.aria-label]="'Reajustar valor de ' + item.description"
+                        [attr.title]="'Reajustar valor de ' + item.description"
+                        [disabled]="store.busy()"
+                        (click)="adjust(item)"
+                      >
+                        <mat-icon svgIcon="trending_up" />
+                      </button>
+                    }
+                    @if (canSetInstallment(item)) {
+                      <button
+                        mat-icon-button
+                        type="button"
+                        [attr.aria-label]="'Alterar parcela de ' + item.description"
+                        [attr.title]="'Alterar parcela de ' + item.description"
+                        [disabled]="store.busy()"
+                        (click)="setInstallment(item)"
+                      >
+                        <mat-icon svgIcon="payments" />
+                      </button>
+                    }
+                    @if (canEnd(item)) {
+                      <button
+                        mat-icon-button
+                        type="button"
+                        [attr.aria-label]="'Encerrar ' + item.description"
+                        [attr.title]="'Encerrar ' + item.description"
+                        [disabled]="store.busy()"
+                        (click)="end(item)"
+                      >
+                        <mat-icon svgIcon="event_busy" />
+                      </button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    }
+  }
+</section>

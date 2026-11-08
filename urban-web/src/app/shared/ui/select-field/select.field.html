@@ -1,0 +1,15 @@
+<mat-form-field appearance="outline" subscriptSizing="dynamic" class="w-full">
+  <mat-label>{{ label() }}</mat-label>
+  <select matNativeControl [formControlName]="name()" [attr.formControlName]="name()">
+    @if (emptyLabel(); as text) {
+      <option value="">{{ text }}</option>
+    }
+    @for (option of options(); track option.value) {
+      <option [value]="option.value">{{ option.label }}</option>
+    }
+  </select>
+  @if (hint(); as text) {
+    <mat-hint>{{ text }}</mat-hint>
+  }
+  <mat-error>{{ errorMessage() }}</mat-error>
+</mat-form-field>

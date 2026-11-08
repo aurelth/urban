@@ -6,6 +6,9 @@ using Urban.Condominium.Domain.Contacts;
 using Urban.Condominium.Domain.Documents;
 using Urban.Condominium.Domain.People;
 using Urban.Condominium.Domain.Units;
+using Urban.Finance.Domain;
+using Urban.Finance.Domain.Expenses;
+using Urban.Finance.Domain.Months;
 using Urban.Identity.Application.Authentication;
 using Urban.Identity.Application.Authentication.Login;
 using Urban.Identity.Application.Authentication.Refresh;
@@ -101,6 +104,32 @@ public static class ErrorHttp
         [UnitErrors.Deactivated.Code] = StatusCodes.Status409Conflict,
         [UnitErrors.AlreadyDeactivated.Code] = StatusCodes.Status409Conflict,
         [UnitErrors.AlreadyActive.Code] = StatusCodes.Status409Conflict,
+
+        [FinanceErrors.CondominiumNotFound.Code] = StatusCodes.Status404NotFound,
+        [FinanceErrors.VersionRequired.Code] = StatusCodes.Status400BadRequest,
+        [MonthErrors.Invalid.Code] = StatusCodes.Status400BadRequest,
+        [MonthErrors.TooFarAhead.Code] = StatusCodes.Status422UnprocessableEntity,
+        [ExpenseGroupErrors.NameInvalid.Code] = StatusCodes.Status400BadRequest,
+        [ExpenseGroupErrors.CondominiumRequired.Code] = StatusCodes.Status422UnprocessableEntity,
+        [ExpenseGroupErrors.NotFound.Code] = StatusCodes.Status404NotFound,
+        [ExpenseGroupErrors.NameAlreadyExists.Code] = StatusCodes.Status409Conflict,
+        [ExpenseErrors.DescriptionInvalid.Code] = StatusCodes.Status400BadRequest,
+        [ExpenseErrors.SupplierInvalid.Code] = StatusCodes.Status400BadRequest,
+        [ExpenseErrors.AmountInvalid.Code] = StatusCodes.Status400BadRequest,
+        [ExpenseErrors.InstallmentCountInvalid.Code] = StatusCodes.Status400BadRequest,
+        [ExpenseErrors.CurrentInstallmentInvalid.Code] = StatusCodes.Status400BadRequest,
+        [ExpenseErrors.GroupRequired.Code] = StatusCodes.Status400BadRequest,
+        [ExpenseErrors.EndBeforeStart.Code] = StatusCodes.Status400BadRequest,
+        [ExpenseErrors.ChangeBeforeStart.Code] = StatusCodes.Status400BadRequest,
+        [ExpenseErrors.KindInvalid.Code] = StatusCodes.Status400BadRequest,
+        [ExpenseErrors.CondominiumRequired.Code] = StatusCodes.Status422UnprocessableEntity,
+        [ExpenseErrors.NotFixed.Code] = StatusCodes.Status422UnprocessableEntity,
+        [ExpenseErrors.NotInstallment.Code] = StatusCodes.Status422UnprocessableEntity,
+        [ExpenseErrors.EndNotAllowed.Code] = StatusCodes.Status422UnprocessableEntity,
+        [ExpenseErrors.NotDueInMonth.Code] = StatusCodes.Status422UnprocessableEntity,
+        [ExpenseErrors.NotFound.Code] = StatusCodes.Status404NotFound,
+        [ExpenseErrors.InstallmentNotFound.Code] = StatusCodes.Status404NotFound,
+        [ExpenseErrors.EntryNotFound.Code] = StatusCodes.Status404NotFound,
 
         [PostalCodeErrors.NotFound.Code] = StatusCodes.Status404NotFound,
         [PostalCodeErrors.LookupUnavailable.Code] = StatusCodes.Status503ServiceUnavailable,

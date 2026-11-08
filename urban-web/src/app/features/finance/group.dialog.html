@@ -1,0 +1,38 @@
+<h2 mat-dialog-title>{{ editing ? 'Renomear grupo' : 'Novo grupo' }}</h2>
+<form [formGroup]="form" (ngSubmit)="confirm()" novalidate>
+  <mat-dialog-content>
+    <urban-text-field
+      name="name"
+      label="Nome do grupo"
+      hint="Ex.: Despesas ordinárias, Obras"
+      [errors]="nameErrors"
+    />
+
+    @if (error(); as message) {
+      <p role="alert" class="flex items-start gap-2 text-error">
+        <mat-icon svgIcon="error" aria-hidden="true" />
+        <span>{{ message }}</span>
+      </p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button
+      mat-button
+      type="button"
+      data-testid="cancel"
+      [disabled]="busy()"
+      (click)="ref.close(false)"
+    >
+      Cancelar
+    </button>
+    <button mat-flat-button type="submit" [disabled]="busy() || (editing && !changed())">
+      @if (busy()) {
+        Salvando
+      } @else if (editing) {
+        Salvar nome
+      } @else {
+        Criar grupo
+      }
+    </button>
+  </mat-dialog-actions>
+</form>

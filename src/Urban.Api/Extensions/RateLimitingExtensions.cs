@@ -31,6 +31,7 @@ public static class RateLimitingExtensions
             limiter.AddPolicy(RateLimitPolicies.SensitiveChange, http => PerClient(http, options.SensitiveChange));
             limiter.AddPolicy(RateLimitPolicies.Units, http => PerClient(http, options.Units));
             limiter.AddPolicy(RateLimitPolicies.UnitBatch, http => PerClient(http, options.UnitBatch));
+            limiter.AddPolicy(RateLimitPolicies.Finance, http => PerClient(http, options.Finance));
         });
 
         return services;

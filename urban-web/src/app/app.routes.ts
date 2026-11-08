@@ -57,6 +57,20 @@ export const routes: Routes = [
             loadComponent: () =>
               import('./features/units/units-batch.page').then((m) => m.UnitsBatchPage),
           },
+          { path: 'financeiro', pathMatch: 'full', redirectTo: 'financeiro/despesas' },
+          {
+            path: 'financeiro/despesas',
+            title: 'Despesas',
+            canActivate: [managerGuard],
+            loadComponent: () =>
+              import('./features/finance/expenses.page').then((m) => m.ExpensesPage),
+          },
+          {
+            path: 'financeiro/lancamentos',
+            title: 'Lançamentos do mês',
+            canActivate: [managerGuard],
+            loadComponent: () => import('./features/finance/month.page').then((m) => m.MonthPage),
+          },
           {
             path: 'dashboard',
             title: 'Painel',

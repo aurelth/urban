@@ -8,6 +8,9 @@ using Urban.Condominium.Domain.Contacts;
 using Urban.Condominium.Domain.Documents;
 using Urban.Condominium.Domain.People;
 using Urban.Condominium.Domain.Units;
+using Urban.Finance.Domain;
+using Urban.Finance.Domain.Expenses;
+using Urban.Finance.Domain.Months;
 using Urban.Identity.Application.Authentication;
 using Urban.Identity.Application.Authentication.Login;
 using Urban.Identity.Application.Authentication.Refresh;
@@ -93,10 +96,36 @@ public sealed class ErrorHttpMappingTests
         { UnitErrors.AlreadyDeactivated.Code, 409 },
         { UnitErrors.AlreadyActive.Code, 409 },
         { UnitErrors.FractionSumExceeded.Code, 422 },
+        { FinanceErrors.CondominiumNotFound.Code, 404 },
+        { FinanceErrors.VersionRequired.Code, 400 },
+        { FinanceErrors.ConcurrencyConflict.Code, 409 },
+        { MonthErrors.Invalid.Code, 400 },
+        { MonthErrors.TooFarAhead.Code, 422 },
+        { ExpenseGroupErrors.NameInvalid.Code, 400 },
+        { ExpenseGroupErrors.CondominiumRequired.Code, 422 },
+        { ExpenseGroupErrors.NotFound.Code, 404 },
+        { ExpenseGroupErrors.NameAlreadyExists.Code, 409 },
+        { ExpenseErrors.DescriptionInvalid.Code, 400 },
+        { ExpenseErrors.SupplierInvalid.Code, 400 },
+        { ExpenseErrors.AmountInvalid.Code, 400 },
+        { ExpenseErrors.InstallmentCountInvalid.Code, 400 },
+        { ExpenseErrors.CurrentInstallmentInvalid.Code, 400 },
+        { ExpenseErrors.GroupRequired.Code, 400 },
+        { ExpenseErrors.EndBeforeStart.Code, 400 },
+        { ExpenseErrors.ChangeBeforeStart.Code, 400 },
+        { ExpenseErrors.KindInvalid.Code, 400 },
+        { ExpenseErrors.CondominiumRequired.Code, 422 },
+        { ExpenseErrors.NotFixed.Code, 422 },
+        { ExpenseErrors.NotInstallment.Code, 422 },
+        { ExpenseErrors.EndNotAllowed.Code, 422 },
+        { ExpenseErrors.NotDueInMonth.Code, 422 },
+        { ExpenseErrors.NotFound.Code, 404 },
+        { ExpenseErrors.InstallmentNotFound.Code, 404 },
+        { ExpenseErrors.EntryNotFound.Code, 404 },
     };
 
     [Fact]
-    public void Every_error_declared_by_the_identity_and_condominium_modules_has_a_status_code()
+    public void Every_error_declared_by_the_identity_condominium_and_finance_modules_has_a_status_code()
     {
         Assembly[] assemblies =
         [
@@ -104,6 +133,8 @@ public sealed class ErrorHttpMappingTests
             Urban.Identity.Application.AssemblyReference.Assembly,
             typeof(Cpf).Assembly,
             Urban.Condominium.Application.AssemblyReference.Assembly,
+            typeof(FinanceErrors).Assembly,
+            Urban.Finance.Application.AssemblyReference.Assembly,
         ];
 
         Error[] errors = assemblies
