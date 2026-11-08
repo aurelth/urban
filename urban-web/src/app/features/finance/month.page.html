@@ -1,7 +1,7 @@
 <section class="mx-auto max-w-4xl p-6">
   <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
     <div>
-      <h1 class="mb-1 text-3xl font-semibold tracking-tight">Lançamentos do mês</h1>
+      <h1 class="mb-1 text-3xl font-semibold tracking-tight text-primary">Lançamentos do mês</h1>
       <p class="m-0 text-on-surface-variant">Confira o que o condomínio paga em cada mês</p>
     </div>
     <a mat-stroked-button data-testid="expenses-link" routerLink="/financeiro/despesas">
@@ -21,7 +21,7 @@
     >
       <mat-icon svgIcon="chevron_left" />
     </button>
-    <h2 class="m-0 text-xl font-medium" aria-live="polite" data-testid="month-title">
+    <h2 class="m-0 text-xl font-medium text-primary" aria-live="polite" data-testid="month-title">
       {{ title(month()) }}
     </h2>
     <button
@@ -73,11 +73,11 @@
         <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
           <dl class="m-0 flex flex-wrap gap-x-8 gap-y-2">
             <div data-testid="total">
-              <dt class="text-sm text-on-surface-variant">Total do mês</dt>
+              <dt class="text-sm text-primary">Total do mês</dt>
               <dd class="m-0 text-2xl font-semibold">{{ money(data.total) }}</dd>
             </div>
             <div data-testid="needs-amount-count">
-              <dt class="text-sm text-on-surface-variant">Valores a informar</dt>
+              <dt class="text-sm text-primary">Valores a informar</dt>
               <dd class="m-0 flex items-center gap-1 text-lg">
                 @if (data.needsAmountCount > 0) {
                   <span class="inline-flex text-warning"
@@ -95,7 +95,7 @@
               </dd>
             </div>
             <div data-testid="overdue-count">
-              <dt class="text-sm text-on-surface-variant">Vencidos</dt>
+              <dt class="text-sm text-primary">Vencidos</dt>
               <dd class="m-0 flex items-center gap-1 text-lg">
                 @if (data.overdueCount > 0) {
                   <span class="inline-flex text-error"
@@ -127,7 +127,7 @@
         @for (section of store.sections(); track section.group.groupId) {
           <section class="mb-6" data-testid="group-section">
             <div class="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-              <h2 class="m-0 text-lg font-medium">{{ section.group.groupName }}</h2>
+              <h2 class="m-0 text-lg font-medium text-primary">{{ section.group.groupName }}</h2>
               <span class="text-on-surface-variant">{{ money(section.group.total) }}</span>
             </div>
             <div class="overflow-x-auto rounded-xl border border-outline-variant">
@@ -195,10 +195,14 @@
                           [disabled]="store.busy()"
                         >
                           <span class="inline-flex items-center gap-1">
-                            <span class="inline-flex" [class]="statusTone(item.status)"
-                              ><mat-icon [svgIcon]="statusIcon(item.status)" aria-hidden="true"
-                            /></span>
-                            <span>{{ statusLabel(item.status) }}</span>
+                            <span
+                              class="inline-flex items-center gap-1"
+                              data-testid="status-badge"
+                              [class]="statusTone(item.status)"
+                            >
+                              <mat-icon [svgIcon]="statusIcon(item.status)" aria-hidden="true" />
+                              <span>{{ statusLabel(item.status) }}</span>
+                            </span>
                             <mat-icon svgIcon="arrow_drop_down" aria-hidden="true" />
                           </span>
                         </button>
@@ -207,6 +211,7 @@
                             <button
                               mat-menu-item
                               type="button"
+                              [class]="statusMenuTone(choice.status)"
                               [disabled]="isChoiceDisabled(item, choice.status)"
                               (click)="setStatus(item, choice.status)"
                             >

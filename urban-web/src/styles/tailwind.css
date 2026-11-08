@@ -21,4 +21,7 @@
   /* Sucesso (verde) e andamento (laranja): tokens do Urban, em _tokens.scss, com versão para o tema escuro. */
   --color-success: var(--urban-success);
   --color-warning: var(--urban-warning);
+  /* Fundo de destaque (botao principal, cabecalho de tabela) e o texto sobre ele. */
+  --color-accent-fill: var(--urban-accent-fill);
+  --color-on-accent-fill: var(--urban-on-accent-fill);
 }

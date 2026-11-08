@@ -27,7 +27,7 @@ import {
   isChoiceDisabled,
   statusIcon,
   statusLabel,
-  statusNotice,
+  statusMenuTone,
   statusTone,
 } from './entry-status';
 import { FINANCE_ACTION_MESSAGES, FINANCE_FORM_MESSAGES } from './finance.messages';
@@ -61,6 +61,7 @@ export class MonthPage implements OnInit {
   protected readonly statusLabel = statusLabel;
   protected readonly statusIcon = statusIcon;
   protected readonly statusTone = statusTone;
+  protected readonly statusMenuTone = statusMenuTone;
   protected readonly isChoiceDisabled = isChoiceDisabled;
 
   ngOnInit(): void {
@@ -82,9 +83,8 @@ export class MonthPage implements OnInit {
   protected async setStatus(target: ExpenseEntry, status: SettableEntryStatus): Promise<void> {
     this.clearMessages();
     const problem = await this.store.setStatus(target, status);
-    if (problem === null) {
-      this.notice.set(statusNotice(status));
-    } else {
+    // Sem aviso de sucesso: a própria linha já mostra a nova situação.
+    if (problem !== null) {
       this.actionError.set(describeProblem(problem, FINANCE_ACTION_MESSAGES));
     }
   }
