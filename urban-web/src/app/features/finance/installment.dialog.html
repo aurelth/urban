@@ -1,0 +1,39 @@
+<h2 mat-dialog-title>Alterar parcela de {{ config.expense.description }}</h2>
+<form [formGroup]="form" (ngSubmit)="confirm()" novalidate>
+  <mat-dialog-content>
+    <div class="mb-3 grid gap-x-4 gap-y-3">
+      <urban-select-field name="installment" label="Parcela" [options]="parcels" />
+      <urban-text-field
+        name="amount"
+        label="Valor da parcela (R$)"
+        inputmode="decimal"
+        [errors]="amountErrors"
+      />
+    </div>
+
+    @if (error(); as message) {
+      <p role="alert" class="flex items-start gap-2 text-error">
+        <mat-icon svgIcon="error" aria-hidden="true" />
+        <span>{{ message }}</span>
+      </p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button
+      mat-button
+      type="button"
+      data-testid="cancel"
+      [disabled]="busy()"
+      (click)="ref.close(false)"
+    >
+      Cancelar
+    </button>
+    <button mat-flat-button type="submit" [disabled]="busy() || !changed()">
+      @if (busy()) {
+        Salvando
+      } @else {
+        Salvar parcela
+      }
+    </button>
+  </mat-dialog-actions>
+</form>

@@ -1,0 +1,98 @@
+<h2 mat-dialog-title>{{ editing ? 'Editar despesa' : 'Nova despesa' }}</h2>
+<form [formGroup]="form" (ngSubmit)="confirm()" novalidate>
+  <mat-dialog-content>
+    <div class="grid gap-x-4 gap-y-3 sm:grid-cols-2">
+      @if (!editing) {
+        <div class="sm:col-span-2">
+          <urban-select-field
+            name="kind"
+            label="Tipo de despesa"
+            [options]="kinds"
+            [hint]="kindHint()"
+          />
+        </div>
+      }
+
+      <div class="sm:col-span-2">
+        <urban-select-field name="groupId" label="Grupo" [options]="groupOptions" />
+      </div>
+      <div class="sm:col-span-2">
+        <urban-text-field name="description" label="Descrição" [errors]="descriptionErrors" />
+      </div>
+      <div class="sm:col-span-2">
+        <urban-text-field
+          name="supplier"
+          label="Fornecedor"
+          [optional]="true"
+          [errors]="supplierErrors"
+        />
+      </div>
+
+      @if (!editing) {
+        <urban-select-field name="startMonth" [label]="startLabel()" [options]="startOptions" />
+
+        @if (kind() === 'fixed' || kind() === 'variable') {
+          <urban-select-field
+            name="endMonth"
+            label="Termina em"
+            emptyLabel="Sem data final"
+            [options]="startOptions"
+            [errors]="endErrors"
+          />
+        }
+
+        @if (kind() !== 'variable') {
+          <urban-text-field
+            name="amount"
+            [label]="amountLabel()"
+            inputmode="decimal"
+            [errors]="amountErrors"
+          />
+        }
+
+        @if (kind() === 'installment') {
+          <urban-text-field
+            name="installmentCount"
+            label="Número de parcelas"
+            inputmode="numeric"
+            [errors]="countErrors"
+          />
+          <urban-text-field
+            name="currentInstallment"
+            label="Parcela deste mês"
+            hint="Use 1 se a primeira parcela cai no mês escolhido"
+            inputmode="numeric"
+            [errors]="currentErrors"
+          />
+        }
+      }
+    </div>
+
+    @if (error(); as message) {
+      <p role="alert" class="flex items-start gap-2 text-error">
+        <mat-icon svgIcon="error" aria-hidden="true" />
+        <span>{{ message }}</span>
+      </p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button
+      mat-button
+      type="button"
+      data-testid="cancel"
+      [disabled]="busy()"
+      (click)="ref.close(false)"
+    >
+      Cancelar
+    </button>
+    <button mat-flat-button type="submit" [disabled]="busy() || (editing && !changed())">
+      @if (busy()) {
+        Salvando
+      } @else if (editing) {
+        Salvar alterações
+      } @else {
+        Cadastrar despesa
+      }
+    </button>
+  </mat-dialog-actions>
+</form>

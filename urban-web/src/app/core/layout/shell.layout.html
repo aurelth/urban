@@ -21,6 +21,17 @@
     <a
       mat-button
       class="max-sm:min-w-0!"
+      data-testid="nav-finance"
+      routerLink="/financeiro"
+      routerLinkActive="font-semibold"
+      ariaCurrentWhenActive="page"
+    >
+      <mat-icon svgIcon="receipt_long" />
+      <span class="hidden sm:inline">Financeiro</span>
+    </a>
+    <a
+      mat-button
+      class="max-sm:min-w-0!"
       data-testid="nav-profile"
       routerLink="/condominio/meus-dados"
       routerLinkActive="font-semibold"

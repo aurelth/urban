@@ -1,0 +1,202 @@
+<section class="mx-auto max-w-4xl p-6">
+  <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="mb-1 text-3xl font-semibold tracking-tight">Lançamentos do mês</h1>
+      <p class="m-0 text-on-surface-variant">Confira o que o condomínio paga em cada mês</p>
+    </div>
+    <a mat-stroked-button data-testid="expenses-link" routerLink="/financeiro/despesas">
+      <mat-icon svgIcon="receipt_long" />
+      Despesas
+    </a>
+  </div>
+
+  <nav class="mb-6 flex items-center justify-between gap-2" aria-label="Meses">
+    <button
+      mat-icon-button
+      type="button"
+      aria-label="Mês anterior"
+      title="Mês anterior"
+      [disabled]="store.status() === 'loading' || store.busy()"
+      (click)="go(-1)"
+    >
+      <mat-icon svgIcon="chevron_left" />
+    </button>
+    <h2 class="m-0 text-xl font-medium" aria-live="polite" data-testid="month-title">
+      {{ title(month()) }}
+    </h2>
+    <button
+      mat-icon-button
+      type="button"
+      aria-label="Próximo mês"
+      title="Próximo mês"
+      [disabled]="!canGoForward() || store.status() === 'loading' || store.busy()"
+      (click)="go(1)"
+    >
+      <mat-icon svgIcon="chevron_right" />
+    </button>
+  </nav>
+
+  @switch (store.status()) {
+    @case ('loading') {
+      <p role="status" class="text-on-surface-variant" data-testid="loading">
+        Carregando os lançamentos
+      </p>
+    }
+    @case ('error') {
+      <div class="flex flex-col items-start gap-4" data-testid="load-error">
+        <p class="flex items-start gap-2 text-error">
+          <mat-icon svgIcon="error" aria-hidden="true" />
+          <span>Não foi possível carregar os lançamentos</span>
+        </p>
+        <button mat-stroked-button type="button" data-testid="retry" (click)="reload()">
+          Tentar de novo
+        </button>
+      </div>
+    }
+    @case ('ready') {
+      @if (notice(); as message) {
+        <p role="status" class="mb-4 flex items-start gap-2" data-testid="notice">
+          <span class="inline-flex text-success"
+            ><mat-icon svgIcon="check_circle" aria-hidden="true"
+          /></span>
+          <span>{{ message }}</span>
+        </p>
+      }
+      @if (actionError(); as message) {
+        <p role="alert" class="mb-4 flex items-start gap-2 text-error" data-testid="action-error">
+          <mat-icon svgIcon="error" aria-hidden="true" />
+          <span>{{ message }}</span>
+        </p>
+      }
+
+      @if (store.data(); as data) {
+        <div class="mb-6 flex flex-wrap items-center justify-between gap-4">
+          <dl class="m-0 flex flex-wrap gap-x-8 gap-y-2">
+            <div data-testid="total">
+              <dt class="text-sm text-on-surface-variant">Total do mês</dt>
+              <dd class="m-0 text-2xl font-semibold">{{ money(data.total) }}</dd>
+            </div>
+            <div data-testid="pending-count">
+              <dt class="text-sm text-on-surface-variant">Pendências</dt>
+              <dd class="m-0 flex items-center gap-1 text-lg">
+                @if (data.pendingCount > 0) {
+                  <span class="inline-flex text-warning"
+                    ><mat-icon svgIcon="schedule" aria-hidden="true"
+                  /></span>
+                  <span
+                    >{{ data.pendingCount }}
+                    {{
+                      data.pendingCount === 1 ? 'lançamento pendente' : 'lançamentos pendentes'
+                    }}</span
+                  >
+                } @else {
+                  <span>Nenhum lançamento pendente</span>
+                }
+              </dd>
+            </div>
+          </dl>
+          <button
+            mat-flat-button
+            type="button"
+            data-testid="open-month"
+            [disabled]="store.busy()"
+            (click)="openMonth()"
+          >
+            @if (isOpened()) {
+              Gerar lançamentos que faltam
+            } @else {
+              Abrir mês
+            }
+          </button>
+        </div>
+
+        @if (!isOpened()) {
+          <div class="rounded-xl border border-outline-variant p-6 text-center" data-testid="empty">
+            <p class="mb-1 text-lg font-medium">Este mês ainda não tem lançamentos</p>
+            <p class="m-0 text-on-surface-variant">
+              Abra o mês para gerar um lançamento por despesa ativa
+            </p>
+          </div>
+        }
+
+        @for (section of store.sections(); track section.group.groupId) {
+          <section class="mb-6" data-testid="group-section">
+            <div class="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+              <h2 class="m-0 text-lg font-medium">{{ section.group.groupName }}</h2>
+              <span class="text-on-surface-variant">{{ money(section.group.total) }}</span>
+            </div>
+            <div class="overflow-x-auto rounded-xl border border-outline-variant">
+              <table class="w-full border-collapse text-left">
+                <caption class="sr-only">
+                  Lançamentos de
+                  {{
+                    section.group.groupName
+                  }}
+                </caption>
+                <thead class="sr-only">
+                  <tr>
+                    <th scope="col">Despesa</th>
+                    <th scope="col">Valor</th>
+                    <th scope="col">Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (item of section.entries; track item.id) {
+                    <tr
+                      class="border-b border-outline-variant last:border-b-0"
+                      data-testid="entry-row"
+                    >
+                      <td class="p-3">
+                        <span class="font-medium">{{ item.description }}</span>
+                        @if (item.label) {
+                          <span class="ml-2 text-sm text-on-surface-variant"
+                            >Parcela {{ item.label }}</span
+                          >
+                        }
+                      </td>
+                      <td class="p-3 whitespace-nowrap">
+                        @if (item.isPending) {
+                          <span class="inline-flex items-center gap-1">
+                            <span class="inline-flex text-warning"
+                              ><mat-icon svgIcon="schedule" aria-hidden="true"
+                            /></span>
+                            <span>Pendente</span>
+                          </span>
+                          @if (item.suggestedAmount !== null) {
+                            <span class="text-sm text-on-surface-variant">
+                              · sugestão {{ money(item.suggestedAmount) }}</span
+                            >
+                          }
+                        } @else {
+                          <span>{{ money(item.amount) }}</span>
+                        }
+                      </td>
+                      <td class="p-1 text-right whitespace-nowrap">
+                        <button
+                          mat-icon-button
+                          type="button"
+                          [attr.aria-label]="
+                            (item.isPending ? 'Informar valor de ' : 'Corrigir valor de ') +
+                            item.description
+                          "
+                          [attr.title]="
+                            (item.isPending ? 'Informar valor de ' : 'Corrigir valor de ') +
+                            item.description
+                          "
+                          [disabled]="store.busy()"
+                          (click)="setAmount(item)"
+                        >
+                          <mat-icon svgIcon="edit" />
+                        </button>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+          </section>
+        }
+      }
+    }
+  }
+</section>
