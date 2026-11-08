@@ -7,7 +7,7 @@ using Urban.SharedKernel.Abstractions;
 
 namespace Urban.Finance.Application.Expenses;
 
-/// <summary>Muda descrição, fornecedor e grupo. Os lançamentos que já existem guardam o que valia na hora em que nasceram.</summary>
+/// <summary>Muda descrição, fornecedor, grupo e dia do vencimento. Os lançamentos que já existem guardam o que valia na hora em que nasceram.</summary>
 public sealed class UpdateExpenseCommandHandler(IExpenses expenses, IExpenseGroups groups, ITenantContext tenant, IClock clock)
     : IRequestHandler<UpdateExpenseCommand, Result<ExpenseView>>
 {
@@ -31,7 +31,7 @@ public sealed class UpdateExpenseCommandHandler(IExpenses expenses, IExpenseGrou
         }
 
         ExpenseRecord record = found.Value;
-        Result edited = record.Expense.Edit(request.Description, request.Supplier, request.GroupId);
+        Result edited = record.Expense.Edit(request.Description, request.Supplier, request.GroupId, request.DueDay ?? 0);
 
         if (edited.IsFailure)
         {

@@ -78,15 +78,15 @@ public static class FinanceEndpoints
             .WithDescription(
                 "O tipo (kind) é single (única), fixed (fixa mensal), variable (variável mensal) ou installment (parcelada). Única e fixa levam o valor (amount); a fixa pode ter mês final (endMonth); "
                 + "a parcelada leva o total, o número de parcelas (2 a 120) e a parcela que cai no mês inicial (currentInstallment); a variável não tem valor. Os centavos que sobram da divisão vão para a última parcela. "
-                + "Se o mês inicial já pode ser aberto, o lançamento dele é criado junto. Dado inválido responde 400 com o código do campo; grupo que não existe, 404. Devolve 201 com a despesa. " + RateLimitText)
+                + "O dia do vencimento (dueDay, de 1 a 31) é obrigatório em todos os tipos. Se o mês inicial já pode ser aberto, o lançamento dele é criado junto. Dado inválido responde 400 com o código do campo; grupo que não existe, 404. Devolve 201 com a despesa. " + RateLimitText)
             .Produces<ExpenseResponse>(StatusCodes.Status201Created)
             .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound, StatusCodes.Status409Conflict, StatusCodes.Status422UnprocessableEntity);
 
         finance.MapPut("/expenses/{id:guid}", (Guid id, ExpenseUpdateRequest request, ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken ct) =>
                 SendAsync(user, response, sender, FinanceMapper.ToCommand(request, id), view => FinanceMapper.ToResponse(view), ct))
             .WithName("UpdateExpense")
-            .WithSummary("Edita a descrição, o fornecedor e o grupo de uma despesa")
-            .WithDescription(VersionText + " Valores e meses não mudam aqui: use as rotas de reajuste, parcela e encerramento. Os lançamentos já gerados mantêm o que foi editado. " + RateLimitText)
+            .WithSummary("Edita a descrição, o fornecedor, o grupo e o dia do vencimento de uma despesa")
+            .WithDescription(VersionText + " Valores e meses não mudam aqui: use as rotas de reajuste, parcela e encerramento. Os lançamentos já gerados mantêm o que valia quando nasceram (inclusive o vencimento); a mudança vale para os próximos. " + RateLimitText)
             .Produces<ExpenseResponse>()
             .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound, StatusCodes.Status409Conflict);
 
@@ -121,7 +121,7 @@ public static class FinanceEndpoints
                 SendAsync(user, response, sender, new GetMonthQuery(month), view => FinanceMapper.ToResponse(view), ct))
             .WithName("GetMonth")
             .WithSummary("Lê os lançamentos de um mês")
-            .WithDescription("O mês vai como AAAA-MM (400 se não for). Devolve os lançamentos como estão, com o total, os totais por grupo e a quantidade de pendentes, sem gerar nada: um mês nunca aberto volta vazio. A resposta nunca é guardada em cache. " + RateLimitText)
+            .WithDescription("O mês vai como AAAA-MM (400 se não for). Devolve os lançamentos como estão, com o total, os totais por grupo (sem os cancelados), a quantidade que espera valor e a de vencidos, sem gerar nada: um mês nunca aberto volta vazio. A resposta nunca é guardada em cache. " + RateLimitText)
             .Produces<MonthResponse>()
             .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound);
 
@@ -129,7 +129,7 @@ public static class FinanceEndpoints
                 SendAsync(user, response, sender, new OpenMonthCommand(month), view => FinanceMapper.ToResponse(view), ct))
             .WithName("OpenMonth")
             .WithSummary("Abre um mês, gerando os lançamentos que faltam")
-            .WithDescription("Gera o lançamento de toda despesa que vence no mês e ainda não tem um; o que já existe, inclusive o que foi editado à mão, não é tocado. Pode ser repetido à vontade. Só abre o mês atual, os anteriores e o seguinte (422). Despesa variável nasce pendente, sugerindo o valor do mês anterior. " + RateLimitText)
+            .WithDescription("Gera o lançamento de toda despesa que vence no mês e ainda não tem um; o que já existe, inclusive o que foi editado à mão, não é tocado. Pode ser repetido à vontade. Abre qualquer mês até 5 anos à frente (422 além disso). Cada lançamento nasce pendente, com o vencimento do mês; a despesa variável espera o valor, sugerindo o do mês anterior. " + RateLimitText)
             .Produces<MonthResponse>()
             .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound, StatusCodes.Status409Conflict, StatusCodes.Status422UnprocessableEntity);
 
@@ -140,6 +140,14 @@ public static class FinanceEndpoints
             .WithDescription(VersionText + " Vale só para aquele mês: a despesa e os outros meses não mudam. " + RateLimitText)
             .Produces<ExpenseEntryResponse>()
             .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound, StatusCodes.Status409Conflict);
+
+        finance.MapPut("/entries/{id:guid}/status", (Guid id, EntryStatusRequest request, ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken ct) =>
+                SendAsync(user, response, sender, FinanceMapper.ToCommand(request, id), view => FinanceMapper.ToResponse(view), ct))
+            .WithName("SetEntryStatus")
+            .WithSummary("Marca um lançamento como pendente, pago ou cancelado")
+            .WithDescription(VersionText + " O status é pending, paid ou canceled; outro texto, inclusive overdue, responde 400, porque vencido é calculado pela data (pendente depois do vencimento). Pago exige o valor informado (422). Cancelado sai dos totais do mês. " + RateLimitText)
+            .Produces<ExpenseEntryResponse>()
+            .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound, StatusCodes.Status409Conflict, StatusCodes.Status422UnprocessableEntity);
     }
 
     private static async Task<IResult> ListExpensesAsync(string? status, ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken cancellationToken)

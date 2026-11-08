@@ -1,4 +1,5 @@
 using MediatR;
+using Urban.Finance.Domain.Expenses;
 using Urban.SharedKernel;
 
 namespace Urban.Finance.Application.Months;
@@ -14,3 +15,9 @@ public sealed record GetMonthQuery(string? Month) : IRequest<Result<MonthView>>;
 
 /// <summary>Informa ou corrige o valor de um lançamento. Vale só para aquele mês.</summary>
 public sealed record SetEntryAmountCommand(Guid EntryId, string? Version, decimal Amount) : IRequest<Result<ExpenseEntryView>>;
+
+/// <summary>
+/// Marca o lançamento como pendente, pago ou cancelado. Pago exige o valor informado. "Vencido" não se marca: é a situação de um
+/// pendente depois da data de vencimento, calculada a cada leitura.
+/// </summary>
+public sealed record SetEntryStatusCommand(Guid EntryId, string? Version, EntryStatus Status) : IRequest<Result<ExpenseEntryView>>;

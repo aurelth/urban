@@ -6,7 +6,7 @@ namespace Urban.Finance.Domain.Expenses;
 /// <summary>A despesa em um mês. Editar o valor aqui muda só este mês; a regra da despesa continua a mesma.</summary>
 public sealed class ExpenseEntry
 {
-    private ExpenseEntry(Expense expense, YearMonth month, decimal? amount, string? label, DateTimeOffset createdAt)
+    private ExpenseEntry(Expense expense, YearMonth month, decimal? amount, string? label, DateOnly dueDate, DateTimeOffset createdAt)
     {
         Id = Guid.CreateVersion7();
         CondominiumId = expense.CondominiumId;
@@ -16,6 +16,8 @@ public sealed class ExpenseEntry
         Description = expense.Description;
         Amount = amount;
         Label = label;
+        DueDate = dueDate;
+        Status = EntryStatus.Pending;
         CreatedAt = createdAt;
     }
 
@@ -43,12 +45,40 @@ public sealed class ExpenseEntry
     /// <summary>Rótulo da parcela, como "4/6". Nulo nas demais despesas.</summary>
     public string? Label { get; }
 
+    /// <summary>Vencimento deste mês, calculado quando o lançamento foi gerado. Mudar o dia na despesa não altera lançamentos já gerados.</summary>
+    public DateOnly DueDate { get; }
+
+    /// <summary>Situação guardada: Pending, Paid ou Canceled. Para saber se venceu, use <see cref="StatusOn"/>.</summary>
+    public EntryStatus Status { get; private set; }
+
     public DateTimeOffset CreatedAt { get; }
 
-    public bool IsPending => Amount is null;
+    /// <summary>Verdadeiro enquanto o valor de uma despesa variável não foi informado.</summary>
+    public bool NeedsAmount => Amount is null;
 
-    internal static ExpenseEntry Create(Expense expense, YearMonth month, decimal? amount, string? label, DateTimeOffset now) =>
-        new(expense, month, amount, label, now);
+    internal static ExpenseEntry Create(Expense expense, YearMonth month, decimal? amount, string? label, DateOnly dueDate, DateTimeOffset now) =>
+        new(expense, month, amount, label, dueDate, now);
+
+    /// <summary>Situação em uma data: pendente vira vencido só depois do dia do vencimento.</summary>
+    public EntryStatus StatusOn(DateOnly today) =>
+        Status == EntryStatus.Pending && DueDate < today ? EntryStatus.Overdue : Status;
+
+    /// <summary>Marca como pendente, pago ou cancelado. Pago exige o valor; vencido não se marca, é calculado.</summary>
+    public Result SetStatus(EntryStatus status)
+    {
+        if (status == EntryStatus.Overdue || !Enum.IsDefined(status))
+        {
+            return Result.Failure(ExpenseErrors.StatusInvalid);
+        }
+
+        if (status == EntryStatus.Paid && NeedsAmount)
+        {
+            return Result.Failure(ExpenseErrors.AmountRequiredToPay);
+        }
+
+        Status = status;
+        return Result.Success();
+    }
 
     public Result SetAmount(decimal amount)
     {

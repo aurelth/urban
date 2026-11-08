@@ -21,6 +21,7 @@ public sealed class Expense
         ExpenseText text,
         ExpenseKind kind,
         YearMonth startMonth,
+        int dueDay,
         DateTimeOffset createdAt)
     {
         Id = Guid.CreateVersion7();
@@ -30,6 +31,7 @@ public sealed class Expense
         Supplier = text.Supplier;
         Kind = kind;
         StartMonth = startMonth;
+        DueDay = dueDay;
         CreatedAt = createdAt;
     }
 
@@ -52,6 +54,9 @@ public sealed class Expense
     public ExpenseKind Kind { get; }
 
     public YearMonth StartMonth { get; private set; }
+
+    /// <summary>Dia do mês em que a despesa vence (1 a 31). Nos meses mais curtos vale o último dia do mês.</summary>
+    public int DueDay { get; private set; }
 
     public YearMonth? EndMonth { get; private set; }
 
@@ -79,9 +84,9 @@ public sealed class Expense
         .Sum(installment => installment.Amount);
 
     public static Result<Expense> CreateSingle(
-        Guid condominiumId, Guid groupId, string? description, string? supplier, YearMonth month, decimal amount, DateTimeOffset now)
+        Guid condominiumId, Guid groupId, string? description, string? supplier, YearMonth month, decimal amount, int dueDay, DateTimeOffset now)
     {
-        Result<Expense> created = CreateBase(condominiumId, groupId, description, supplier, ExpenseKind.Single, month, now);
+        Result<Expense> created = CreateBase(condominiumId, groupId, description, supplier, ExpenseKind.Single, month, dueDay, now);
 
         if (created.IsFailure)
         {
@@ -105,9 +110,10 @@ public sealed class Expense
         YearMonth startMonth,
         YearMonth? endMonth,
         decimal amount,
+        int dueDay,
         DateTimeOffset now)
     {
-        Result<Expense> created = CreateBase(condominiumId, groupId, description, supplier, ExpenseKind.Fixed, startMonth, now);
+        Result<Expense> created = CreateBase(condominiumId, groupId, description, supplier, ExpenseKind.Fixed, startMonth, dueDay, now);
 
         if (created.IsFailure)
         {
@@ -130,9 +136,9 @@ public sealed class Expense
     }
 
     public static Result<Expense> CreateVariable(
-        Guid condominiumId, Guid groupId, string? description, string? supplier, YearMonth startMonth, YearMonth? endMonth, DateTimeOffset now)
+        Guid condominiumId, Guid groupId, string? description, string? supplier, YearMonth startMonth, YearMonth? endMonth, int dueDay, DateTimeOffset now)
     {
-        Result<Expense> created = CreateBase(condominiumId, groupId, description, supplier, ExpenseKind.Variable, startMonth, now);
+        Result<Expense> created = CreateBase(condominiumId, groupId, description, supplier, ExpenseKind.Variable, startMonth, dueDay, now);
 
         if (created.IsFailure)
         {
@@ -161,9 +167,10 @@ public sealed class Expense
         int installmentCount,
         YearMonth firstMonth,
         int currentInstallment,
+        int dueDay,
         DateTimeOffset now)
     {
-        Result<Expense> created = CreateBase(condominiumId, groupId, description, supplier, ExpenseKind.Installment, firstMonth, now);
+        Result<Expense> created = CreateBase(condominiumId, groupId, description, supplier, ExpenseKind.Installment, firstMonth, dueDay, now);
 
         if (created.IsFailure)
         {
@@ -189,7 +196,7 @@ public sealed class Expense
         return created;
     }
 
-    public Result Edit(string? description, string? supplier, Guid groupId)
+    public Result Edit(string? description, string? supplier, Guid groupId, int dueDay)
     {
         Result<ExpenseText> text = ExpenseText.Create(description, supplier);
 
@@ -203,9 +210,15 @@ public sealed class Expense
             return Result.Failure(ExpenseErrors.GroupRequired);
         }
 
+        if (!IsValidDueDay(dueDay))
+        {
+            return Result.Failure(ExpenseErrors.DueDayInvalid);
+        }
+
         Description = text.Value.Description;
         Supplier = text.Value.Supplier;
         GroupId = groupId;
+        DueDay = dueDay;
         return Result.Success();
     }
 
@@ -300,6 +313,10 @@ public sealed class Expense
         };
     }
 
+    /// <summary>Data de vencimento da despesa em um mês. Dia 31 em setembro vira 30; em fevereiro, 28 ou 29.</summary>
+    public DateOnly DueDateIn(YearMonth month) =>
+        new(month.Year, month.Month, Math.Min(DueDay, DateTime.DaysInMonth(month.Year, month.Month)));
+
     public Result<ExpenseEntry> GenerateEntry(YearMonth month, DateTimeOffset now)
     {
         if (!IsDueIn(month))
@@ -311,7 +328,7 @@ public sealed class Expense
             ? string.Create(CultureInfo.InvariantCulture, $"{InstallmentNumberIn(month)}/{InstallmentCount}")
             : null;
 
-        return Result.Success(ExpenseEntry.Create(this, month, AmountFor(month), label, now));
+        return Result.Success(ExpenseEntry.Create(this, month, AmountFor(month), label, DueDateIn(month), now));
     }
 
     private int InstallmentNumberIn(YearMonth month) => CurrentInstallment!.Value + StartMonth.MonthsUntil(month);
@@ -320,7 +337,7 @@ public sealed class Expense
         _installments.FirstOrDefault(installment => installment.Number == InstallmentNumberIn(month));
 
     private static Result<Expense> CreateBase(
-        Guid condominiumId, Guid groupId, string? description, string? supplier, ExpenseKind kind, YearMonth startMonth, DateTimeOffset now)
+        Guid condominiumId, Guid groupId, string? description, string? supplier, ExpenseKind kind, YearMonth startMonth, int dueDay, DateTimeOffset now)
     {
         if (condominiumId == Guid.Empty)
         {
@@ -332,12 +349,19 @@ public sealed class Expense
             return Result.Failure<Expense>(ExpenseErrors.GroupRequired);
         }
 
+        if (!IsValidDueDay(dueDay))
+        {
+            return Result.Failure<Expense>(ExpenseErrors.DueDayInvalid);
+        }
+
         Result<ExpenseText> text = ExpenseText.Create(description, supplier);
 
         return text.IsFailure
             ? Result.Failure<Expense>(text.Error)
-            : Result.Success(new Expense(condominiumId, groupId, text.Value, kind, startMonth, now));
+            : Result.Success(new Expense(condominiumId, groupId, text.Value, kind, startMonth, dueDay, now));
     }
+
+    private static bool IsValidDueDay(int dueDay) => dueDay is >= 1 and <= 31;
 
     private sealed record ExpenseText(string Description, string? Supplier)
     {

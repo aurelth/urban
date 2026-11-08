@@ -47,6 +47,10 @@ namespace Urban.Finance.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(120)")
                         .HasColumnName("description");
 
+                    b.Property<int>("DueDay")
+                        .HasColumnType("integer")
+                        .HasColumnName("due_day");
+
                     b.Property<string>("EndMonth")
                         .HasMaxLength(7)
                         .HasColumnType("character varying(7)")
@@ -126,6 +130,10 @@ namespace Urban.Finance.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(120)")
                         .HasColumnName("description");
 
+                    b.Property<DateOnly>("DueDate")
+                        .HasColumnType("date")
+                        .HasColumnName("due_date");
+
                     b.Property<Guid>("ExpenseId")
                         .HasColumnType("uuid")
                         .HasColumnName("expense_id");
@@ -144,6 +152,12 @@ namespace Urban.Finance.Infrastructure.Persistence.Migrations
                         .HasMaxLength(7)
                         .HasColumnType("character varying(7)")
                         .HasColumnName("month");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
 
                     b.Property<uint>("xmin")
                         .IsConcurrencyToken()

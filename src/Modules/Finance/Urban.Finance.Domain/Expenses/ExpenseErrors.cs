@@ -36,5 +36,11 @@ public static class ExpenseErrors
 
     public static readonly Error NotFound = new("expense.not_found", "Despesa não encontrada");
 
+    public static readonly Error DueDayInvalid = new("expense.due_day.invalid", "Informe o dia do vencimento, de 1 a 31");
+
+    public static readonly Error StatusInvalid = new("expense_entry.status.invalid", "Escolha pendente, pago ou cancelado; vencido é calculado pela data");
+
+    public static readonly Error AmountRequiredToPay = new("expense_entry.amount_required", "Informe o valor do lançamento antes de marcá-lo como pago");
+
     public static readonly Error EntryNotFound = new("expense_entry.not_found", "Lançamento não encontrado");
 }

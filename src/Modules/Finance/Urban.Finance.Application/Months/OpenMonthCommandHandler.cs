@@ -59,6 +59,6 @@ public sealed class OpenMonthCommandHandler(IExpenses expenses, IExpenseEntries 
             }
         }
 
-        return Result.Success(await MonthReader.ReadAsync(entries, groups, month, cancellationToken));
+        return Result.Success(await MonthReader.ReadAsync(entries, groups, month, FinanceCalendar.Today(now), cancellationToken));
     }
 }

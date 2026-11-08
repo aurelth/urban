@@ -1,3 +1,4 @@
+using System.Globalization;
 using Riok.Mapperly.Abstractions;
 using Urban.Api.Endpoints;
 using Urban.Finance.Application.Expenses;
@@ -22,10 +23,11 @@ public static partial class FinanceMapper
             request.EndMonth,
             request.Amount,
             request.InstallmentCount,
-            request.CurrentInstallment);
+            request.CurrentInstallment,
+            request.DueDay);
 
     public static UpdateExpenseCommand ToCommand(ExpenseUpdateRequest request, Guid expenseId) =>
-        new(expenseId, request.Version, request.Description, request.Supplier, request.GroupId ?? Guid.Empty);
+        new(expenseId, request.Version, request.Description, request.Supplier, request.GroupId ?? Guid.Empty, request.DueDay);
 
     public static ChangeExpenseAmountCommand ToCommand(ExpenseAmountRequest request, Guid expenseId) =>
         new(expenseId, request.Version, request.FromMonth, request.Amount ?? 0m);
@@ -38,6 +40,9 @@ public static partial class FinanceMapper
 
     public static SetEntryAmountCommand ToCommand(EntryAmountRequest request, Guid entryId) =>
         new(entryId, request.Version, request.Amount ?? 0m);
+
+    public static SetEntryStatusCommand ToCommand(EntryStatusRequest request, Guid entryId) =>
+        new(entryId, request.Version, ParseEntryStatus(request.Status));
 
     // ---- Do resultado para a resposta ----
 
@@ -64,6 +69,15 @@ public static partial class FinanceMapper
         _ => 0,
     };
 
+    /// <summary>Só pendente, pago e cancelado podem ser enviados. Qualquer outro texto vira um valor fora do enum, que o domínio recusa com o código do campo.</summary>
+    public static EntryStatus ParseEntryStatus(string? text) => text?.Trim().ToLowerInvariant() switch
+    {
+        "pending" => EntryStatus.Pending,
+        "paid" => EntryStatus.Paid,
+        "canceled" => EntryStatus.Canceled,
+        _ => (EntryStatus)(-1),
+    };
+
     /// <returns>Falso quando o texto não é um estado conhecido; vazio é o padrão (ativas).</returns>
     public static bool TryParseStatus(string? text, out ExpenseStatusFilter status)
     {
@@ -84,6 +98,17 @@ public static partial class FinanceMapper
                 return false;
         }
     }
+
+    private static string EntryStatusName(EntryStatus status) => status switch
+    {
+        EntryStatus.Pending => "pending",
+        EntryStatus.Paid => "paid",
+        EntryStatus.Overdue => "overdue",
+        EntryStatus.Canceled => "canceled",
+        _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Situação de lançamento desconhecida."),
+    };
+
+    private static string DateText(DateOnly date) => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
     private static string KindName(ExpenseKind kind) => kind switch
     {

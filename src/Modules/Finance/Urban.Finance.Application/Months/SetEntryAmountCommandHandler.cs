@@ -7,7 +7,7 @@ using Urban.SharedKernel.Abstractions;
 
 namespace Urban.Finance.Application.Months;
 
-public sealed class SetEntryAmountCommandHandler(IExpenseEntries entries, ITenantContext tenant)
+public sealed class SetEntryAmountCommandHandler(IExpenseEntries entries, ITenantContext tenant, IClock clock)
     : IRequestHandler<SetEntryAmountCommand, Result<ExpenseEntryView>>
 {
     public async Task<Result<ExpenseEntryView>> Handle(SetEntryAmountCommand request, CancellationToken cancellationToken)
@@ -44,7 +44,7 @@ public sealed class SetEntryAmountCommandHandler(IExpenseEntries entries, ITenan
         Result<string> saved = await entries.SaveAsync(record, cancellationToken);
 
         return saved.IsSuccess
-            ? Result.Success(ExpenseEntryView.From(record with { Version = saved.Value }, null))
+            ? Result.Success(ExpenseEntryView.From(record with { Version = saved.Value }, null, FinanceCalendar.Today(clock.UtcNow)))
             : Result.Failure<ExpenseEntryView>(saved.Error);
     }
 }

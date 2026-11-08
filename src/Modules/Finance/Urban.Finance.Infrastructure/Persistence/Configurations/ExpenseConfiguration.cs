@@ -23,6 +23,7 @@ internal sealed class ExpenseConfiguration : IEntityTypeConfiguration<Expense>
         builder.Property(expense => expense.Kind).HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(expense => expense.StartMonth).HasConversion<YearMonthConverter>().HasMaxLength(YearMonthConverter.Length).IsRequired();
         builder.Property(expense => expense.EndMonth).HasConversion<YearMonthConverter>().HasMaxLength(YearMonthConverter.Length);
+        builder.Property(expense => expense.DueDay);
         builder.Property(expense => expense.InstallmentCount);
         builder.Property(expense => expense.CurrentInstallment);
         builder.Property(expense => expense.CreatedAt);

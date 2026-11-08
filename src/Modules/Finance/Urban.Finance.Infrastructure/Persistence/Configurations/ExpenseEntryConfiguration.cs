@@ -24,9 +24,13 @@ internal sealed class ExpenseEntryConfiguration : IEntityTypeConfiguration<Expen
         builder.Property(entry => entry.Description).HasMaxLength(Expense.TextMaxLength).IsRequired();
         builder.Property(entry => entry.Amount).HasPrecision(9, 2);
         builder.Property(entry => entry.Label).HasMaxLength(10);
+        builder.Property(entry => entry.DueDate);
+
+        // Só Pending, Paid e Canceled são gravados: "vencido" é calculado pela data de vencimento a cada leitura.
+        builder.Property(entry => entry.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(entry => entry.CreatedAt);
 
-        builder.Ignore(entry => entry.IsPending);
+        builder.Ignore(entry => entry.NeedsAmount);
 
         builder.HasIndex(entry => new { entry.ExpenseId, entry.Month }).IsUnique().HasDatabaseName(ExpenseMonthIndex);
         builder.HasIndex(entry => new { entry.CondominiumId, entry.Month });
