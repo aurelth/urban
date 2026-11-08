@@ -4,10 +4,11 @@ import { jest } from '@jest/globals';
 import { flushPromises } from '../../testing/async';
 import {
   alertOf,
+  choiceOf,
+  choicesOf,
   chooseIn,
   configureDialogTest,
   dialogOf,
-  fieldOf,
   removeOverlays,
   submitDialog,
 } from '../../testing/dialog.harness';
@@ -42,13 +43,13 @@ describe('EndExpenseDialog', () => {
     expect(dialogOf(TAG).textContent).toContain(
       'deixa de gerar lançamentos depois do mês escolhido',
     );
-    expect(fieldOf(TAG, 'lastMonth').value).toBe('2026-11');
+    expect(choiceOf(TAG, 'lastMonth')).toBe('2026-11');
   });
 
   it('oferece os meses desde o inicio da despesa ate dois anos a frente', () => {
     setup();
 
-    const months = [...fieldOf(TAG, 'lastMonth').options].map((option) => option.value);
+    const months = choicesOf(TAG, 'lastMonth').map((option) => option.value);
 
     expect(months[0]).toBe('2026-09');
     expect(months.at(-1)).toBe('2028-11');
@@ -57,7 +58,7 @@ describe('EndExpenseDialog', () => {
   it('sugere o primeiro mes quando a despesa ainda nao comecou', () => {
     setup('2027-02');
 
-    expect(fieldOf(TAG, 'lastMonth').value).toBe('2027-02');
+    expect(choiceOf(TAG, 'lastMonth')).toBe('2027-02');
   });
 
   it('grava o ultimo mes escolhido e fecha', async () => {

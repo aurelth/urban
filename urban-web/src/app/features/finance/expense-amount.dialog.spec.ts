@@ -4,6 +4,8 @@ import { jest } from '@jest/globals';
 import { flushPromises } from '../../testing/async';
 import {
   alertOf,
+  choiceOf,
+  choicesOf,
   chooseIn,
   configureDialogTest,
   dialogOf,
@@ -42,13 +44,13 @@ describe('ExpenseAmountDialog', () => {
 
     expect(dialogOf(TAG).querySelector('h2')?.textContent?.trim()).toBe('Reajustar Portaria');
     expect(fieldOf(TAG, 'amount').value).toBe('4200,00');
-    expect(fieldOf(TAG, 'fromMonth').value).toBe('2026-11');
+    expect(choiceOf(TAG, 'fromMonth')).toBe('2026-11');
   });
 
   it('oferece os meses desde o inicio da despesa ate dois anos a frente', () => {
     setup();
 
-    const months = [...fieldOf(TAG, 'fromMonth').options].map((option) => option.value);
+    const months = choicesOf(TAG, 'fromMonth').map((option) => option.value);
 
     expect(months[0]).toBe('2026-09');
     expect(months.at(-1)).toBe('2028-11');

@@ -6,6 +6,7 @@ import {
   stubRegisterCondominium,
   stubRegistrationThatWorks,
 } from '../support/condominio';
+import { chooseMenu } from '../support/menu';
 import { PALETTE, expectErrorsToStayInTheirOwnSpace, themeErrorColor } from '../support/layout';
 import { MANAGER, stubSignedIn } from '../support/session';
 
@@ -35,7 +36,7 @@ function fillAddress(section: () => Cypress.Chainable<JQuery<HTMLElement>>, cep:
   field(section, 'complement').click('right').type('Apto 42');
   field(section, 'neighborhood').click('right').type('Centro');
   field(section, 'city').click('right').type('Blumenau');
-  field(section, 'state').select('SC');
+  chooseMenu(field(section, 'state'), 'SC');
 }
 
 function fillManagerPerson(): void {
@@ -214,7 +215,7 @@ describe('Cadastro do condomínio', () => {
       field(manager, 'street').should('have.value', 'Rua XV de Novembro');
       field(manager, 'neighborhood').should('have.value', 'Centro');
       field(manager, 'city').should('have.value', 'Blumenau');
-      field(manager, 'state').should('have.value', 'SC');
+      field(manager, 'state').find('button').should('have.attr', 'data-value', 'SC');
       field(manager, 'number').should('have.value', '');
       manager().find('[role="status"]').should('contain.text', 'Endereço preenchido');
       field(condominium, 'street').should('have.value', '');

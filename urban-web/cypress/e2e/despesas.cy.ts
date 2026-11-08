@@ -9,6 +9,7 @@ import {
   stubFinanceRejected,
 } from '../support/financeiro';
 import { PALETTE, expectErrorsToStayInTheirOwnSpace } from '../support/layout';
+import { chooseMenu } from '../support/menu';
 import { stubSignedIn } from '../support/session';
 
 function rows(): Cypress.Chainable<JQuery<HTMLElement>> {
@@ -83,7 +84,7 @@ describe('Despesas', () => {
     cy.visit(EXPENSES_PATH);
 
     cy.get('[data-testid="new-expense"]').click();
-    cy.get('urban-expense-dialog select[formControlName="kind"]').select('Parcelada');
+    chooseMenu('urban-expense-dialog [formControlName="kind"]', 'Parcelada');
     cy.get('urban-expense-dialog [formControlName="installmentCount"]').should('be.visible');
     cy.get('urban-expense-dialog [formControlName="endMonth"]').should('not.exist');
     enter('urban-expense-dialog [formControlName="description"]', 'Elevador');
@@ -198,9 +199,7 @@ describe('Despesas', () => {
       'have.value',
       '4200,00',
     );
-    cy.get('urban-expense-amount-dialog select[formControlName="fromMonth"]').select(
-      'Janeiro de 2027',
-    );
+    chooseMenu('urban-expense-amount-dialog [formControlName="fromMonth"]', 'Janeiro de 2027');
     enter('urban-expense-amount-dialog [formControlName="amount"]', '4400');
     cy.get('urban-expense-amount-dialog').contains('button', 'Reajustar valor').click();
 
@@ -392,7 +391,7 @@ describe('Despesas', () => {
     });
 
     cy.get('[data-testid="new-expense"]').click();
-    cy.get('urban-expense-dialog select[formControlName="kind"]').select('Parcelada');
+    chooseMenu('urban-expense-dialog [formControlName="kind"]', 'Parcelada');
     cy.get('urban-expense-dialog [formControlName="currentInstallment"]').should('be.visible');
     cy.get('urban-expense-dialog').contains('button', 'Cadastrar despesa').should('be.visible');
     cy.get('urban-expense-dialog').should(($dialog) => {

@@ -12,10 +12,11 @@ import {
   signInAs,
   tokenResponse,
 } from '../../../testing/auth.fixtures';
+import { fieldValueOf, setFieldValue } from '../../../testing/menu-select';
 import { Harness, settle, setupComponent, submitForm } from '../../../testing/component.harness';
 import { RegisterCondominiumPage } from './register-condominium.page';
 
-type Field = HTMLInputElement | HTMLSelectElement;
+type Field = HTMLInputElement;
 
 function section(html: HTMLElement, name: 'manager' | 'condominium'): HTMLElement {
   return html.querySelector<HTMLElement>(`[data-testid="${name}-section"]`)!;
@@ -26,9 +27,7 @@ function field(root: HTMLElement, name: string): Field {
 }
 
 function fill(root: HTMLElement, name: string, value: string): void {
-  const element = field(root, name);
-  element.value = value;
-  element.dispatchEvent(new Event(element instanceof HTMLSelectElement ? 'change' : 'input'));
+  setFieldValue(field(root, name), value);
 }
 
 function fillAll(root: HTMLElement, values: Record<string, string>): void {
@@ -561,7 +560,7 @@ describe('RegisterCondominiumPage', () => {
       expect(field(manager, 'postalCode').value).toBe('89010-000');
       expect(field(manager, 'street').value).toBe('Rua das Flores');
       expect(field(manager, 'complement').value).toBe('Apto 42');
-      expect(field(manager, 'state').value).toBe('SC');
+      expect(fieldValueOf(field(manager, 'state'))).toBe('SC');
       expect(field(condominium, 'name').value).toBe('Residencial das Flores');
       expect(field(condominium, 'cnpj').value).toBe('11.222.333/0001-81');
       expect(field(condominium, 'street').value).toBe('Rua XV de Novembro');

@@ -1,3 +1,4 @@
+import { chooseMenu } from '../support/menu';
 import { PALETTE, expectErrorsToStayInTheirOwnSpace } from '../support/layout';
 import { MANAGER, stubSignedIn } from '../support/session';
 import {
@@ -140,7 +141,7 @@ describe('Unidades', () => {
     rows().should('have.length', 2);
 
     stubUnits([DEACTIVATED_UNIT], stubSummary(), 'deactivatedUnits');
-    cy.get('[data-testid="filter-status"]').select('Desativadas');
+    chooseMenu('[data-testid="filter-status"]', 'Desativadas');
 
     cy.wait('@deactivatedUnits').its('request.url').should('contain', 'status=deactivated');
     rows().should('have.length', 1).and('contain.text', 'Desativada');

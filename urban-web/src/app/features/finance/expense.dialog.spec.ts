@@ -5,6 +5,8 @@ import { ExpensePayload } from '../../core/finance/finance.models';
 import { flushPromises } from '../../testing/async';
 import {
   alertOf,
+  choiceOf,
+  choicesOf,
   chooseIn,
   configureDialogTest,
   dialogOf,
@@ -58,17 +60,17 @@ describe('ExpenseDialog (nova despesa)', () => {
     setup();
 
     expect(dialogOf(TAG).querySelector('h2')?.textContent?.trim()).toBe('Nova despesa');
-    expect(fieldOf(TAG, 'kind').value).toBe('fixed');
-    expect(fieldOf(TAG, 'groupId').value).toBe(ordinary.id);
-    expect(fieldOf(TAG, 'startMonth').value).toBe('2026-11');
-    expect(fieldOf(TAG, 'endMonth').value).toBe('');
+    expect(choiceOf(TAG, 'kind')).toBe('fixed');
+    expect(choiceOf(TAG, 'groupId')).toBe(ordinary.id);
+    expect(choiceOf(TAG, 'startMonth')).toBe('2026-11');
+    expect(choiceOf(TAG, 'endMonth')).toBe('');
     expect(submitButtonOf(TAG).textContent?.trim()).toBe('Cadastrar despesa');
   });
 
   it('oferece tres anos para tras e cinco para a frente no mes inicial', () => {
     setup();
 
-    const months = [...fieldOf(TAG, 'startMonth').options].map((option) => option.value);
+    const months = choicesOf(TAG, 'startMonth').map((option) => option.value);
 
     expect(months[0]).toBe('2023-11');
     expect(months.at(-1)).toBe('2031-11');
@@ -108,7 +110,7 @@ describe('ExpenseDialog (nova despesa)', () => {
       true,
       true,
     ]);
-    expect(fieldOf(TAG, 'currentInstallment').value).toBe('1');
+    expect(choiceOf(TAG, 'currentInstallment')).toBe('1');
   });
 
   it('explica o tipo escolhido', () => {
@@ -423,7 +425,7 @@ describe('ExpenseDialog (editar despesa)', () => {
     expect(dialogOf(TAG).querySelector('h2')?.textContent?.trim()).toBe('Editar despesa');
     expect(fieldOf(TAG, 'description').value).toBe('Portaria');
     expect(fieldOf(TAG, 'supplier').value).toBe('Segura Ltda');
-    expect(fieldOf(TAG, 'groupId').value).toBe(ordinary.id);
+    expect(choiceOf(TAG, 'groupId')).toBe(ordinary.id);
     expect(fieldOf(TAG, 'dueDay').value).toBe('10');
     expect(['kind', 'startMonth', 'endMonth', 'amount'].map(has)).toEqual([
       false,

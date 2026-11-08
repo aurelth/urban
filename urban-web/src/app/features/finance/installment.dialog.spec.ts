@@ -4,7 +4,9 @@ import { jest } from '@jest/globals';
 import { flushPromises } from '../../testing/async';
 import {
   alertOf,
+  choiceOf,
   chooseIn,
+  choicesOf,
   configureDialogTest,
   dialogOf,
   errorsOf,
@@ -41,9 +43,7 @@ describe('InstallmentDialog', () => {
   it('lista as parcelas com mes e valor e escolhe a primeira que ainda vem', () => {
     setup('2026-12');
 
-    const labels = [...fieldOf(TAG, 'installment').options].map((option) =>
-      option.textContent?.replaceAll(' ', ' ').trim(),
-    );
+    const labels = choicesOf(TAG, 'installment').map((option) => option.label);
 
     expect(dialogOf(TAG).querySelector('h2')?.textContent?.trim()).toBe(
       'Alterar parcela de Elevador',
@@ -51,14 +51,14 @@ describe('InstallmentDialog', () => {
     expect(labels).toHaveLength(6);
     expect(labels[0]).toBe('Parcela 1 de 6 · 11/2026 · R$ 166,66');
     expect(labels[5]).toBe('Parcela 6 de 6 · 04/2027 · R$ 166,70');
-    expect(fieldOf(TAG, 'installment').value).toBe('2');
+    expect(choiceOf(TAG, 'installment')).toBe('2');
     expect(fieldOf(TAG, 'amount').value).toBe('166,66');
   });
 
   it('escolhe a ultima parcela quando todas ja passaram', () => {
     setup('2027-09');
 
-    expect(fieldOf(TAG, 'installment').value).toBe('6');
+    expect(choiceOf(TAG, 'installment')).toBe('6');
     expect(fieldOf(TAG, 'amount').value).toBe('166,70');
   });
 
