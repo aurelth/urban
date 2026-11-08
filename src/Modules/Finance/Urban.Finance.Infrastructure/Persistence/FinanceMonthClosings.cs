@@ -13,6 +13,7 @@ public sealed class FinanceMonthClosings(FinanceDbContext db) : IMonthClosings
     public async Task<MonthClosing?> FindAsync(YearMonth month, CancellationToken cancellationToken) =>
         await db.MonthClosings
             .Include(closing => closing.Charges.OrderBy(charge => charge.Position))
+            .ThenInclude(charge => charge.Lines.OrderBy(line => line.Position))
             .SingleOrDefaultAsync(closing => closing.Month == month, cancellationToken);
 
     public async Task<IReadOnlySet<YearMonth>> ClosedMonthsFromAsync(YearMonth from, CancellationToken cancellationToken)

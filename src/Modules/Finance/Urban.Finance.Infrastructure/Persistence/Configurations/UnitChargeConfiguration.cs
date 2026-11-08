@@ -24,6 +24,9 @@ internal sealed class UnitChargeConfiguration : IEntityTypeConfiguration<UnitCha
         builder.Property(charge => charge.Weight).HasPrecision(14, 8);
         builder.Property(charge => charge.Amount).HasPrecision(9, 2);
 
+        builder.HasMany(charge => charge.Lines).WithOne().HasForeignKey(line => line.ChargeId).OnDelete(DeleteBehavior.Cascade);
+        builder.Navigation(charge => charge.Lines).HasField("_lines").UsePropertyAccessMode(PropertyAccessMode.Field);
+
         builder.HasIndex(charge => new { charge.ClosingId, charge.UnitId }).IsUnique();
         builder.HasIndex(charge => new { charge.CondominiumId, charge.UnitId });
     }

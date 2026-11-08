@@ -23,6 +23,8 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options,
 
     public DbSet<UnitCharge> UnitCharges => Set<UnitCharge>();
 
+    public DbSet<UnitChargeLine> UnitChargeLines => Set<UnitChargeLine>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(Schema);
@@ -31,6 +33,7 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options,
         modelBuilder.ApplyConfiguration(new Configurations.ExpenseEntryConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.MonthClosingConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.UnitChargeConfiguration());
+        modelBuilder.ApplyConfiguration(new Configurations.UnitChargeLineConfiguration());
 
         // Sem tenant a comparação com nulo não casa com nenhuma linha: o padrão é não ver nada.
         modelBuilder.Entity<ExpenseGroup>().HasQueryFilter(group => group.CondominiumId == tenant.CondominiumId);
@@ -38,5 +41,6 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options,
         modelBuilder.Entity<ExpenseEntry>().HasQueryFilter(entry => entry.CondominiumId == tenant.CondominiumId);
         modelBuilder.Entity<MonthClosing>().HasQueryFilter(closing => closing.CondominiumId == tenant.CondominiumId);
         modelBuilder.Entity<UnitCharge>().HasQueryFilter(charge => charge.CondominiumId == tenant.CondominiumId);
+        modelBuilder.Entity<UnitChargeLine>().HasQueryFilter(line => line.CondominiumId == tenant.CondominiumId);
     }
 }

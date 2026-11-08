@@ -9,6 +9,7 @@ using Urban.Condominium.Domain.Units;
 using Urban.Finance.Domain;
 using Urban.Finance.Domain.Expenses;
 using Urban.Finance.Domain.Closing;
+using Urban.Finance.Domain.Consumption;
 using Urban.Finance.Domain.Months;
 using Urban.Identity.Application.Authentication;
 using Urban.Identity.Application.Authentication.Login;
@@ -143,6 +144,14 @@ public static class ErrorHttp
         [ClosingErrors.AlreadyClosed.Code] = StatusCodes.Status409Conflict,
         [ClosingErrors.NotClosed.Code] = StatusCodes.Status409Conflict,
         [ClosingErrors.MonthIsClosed.Code] = StatusCodes.Status409Conflict,
+        [ClosingErrors.ReadingsPending(1, 1).Code] = StatusCodes.Status422UnprocessableEntity,
+        [ConsumptionErrors.BandsInvalid.Code] = StatusCodes.Status400BadRequest,
+        [ConsumptionErrors.GasInvalid.Code] = StatusCodes.Status400BadRequest,
+        [ConsumptionErrors.SewagePercentInvalid.Code] = StatusCodes.Status400BadRequest,
+        [ConsumptionErrors.ReserveFundPercentInvalid.Code] = StatusCodes.Status400BadRequest,
+        [ConsumptionErrors.ReadingInvalid.Code] = StatusCodes.Status400BadRequest,
+        [ConsumptionErrors.CondominiumRequired.Code] = StatusCodes.Status422UnprocessableEntity,
+        [ConsumptionErrors.UnitRequired.Code] = StatusCodes.Status422UnprocessableEntity,
         [CondominiumErrors.ApportionmentNotReady.Code] = StatusCodes.Status422UnprocessableEntity,
 
         [PostalCodeErrors.NotFound.Code] = StatusCodes.Status404NotFound,
