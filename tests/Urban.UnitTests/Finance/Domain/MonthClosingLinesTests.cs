@@ -162,6 +162,14 @@ public class MonthClosingLinesTests
     }
 
     [Fact]
+    public void Close_GroupLinesComeInAlphabeticalOrderWhateverTheOrderOfTheEntries()
+    {
+        MonthClosing closing = Close(Options(reservePercent: 0m), [Fixed(Garages, 300m, "Benedett"), Fixed(Ordinary, 700m, "Zeladora")]).Value;
+
+        closing.Charges[0].Lines.Select(line => line.Label).Should().Equal("Despesas ordinárias", "Manutenção das garagens");
+    }
+
+    [Fact]
     public void Close_AGroupWithoutAnyAmountGetsNoLine()
     {
         ExpenseEntry canceled = Fixed(Garages, 300m, "Benedett");

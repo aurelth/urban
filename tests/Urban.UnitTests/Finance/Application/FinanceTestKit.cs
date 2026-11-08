@@ -37,6 +37,8 @@ internal sealed class FinanceTestKit
 
     public FakeConsumptionTariffs Tariffs { get; } = new();
 
+    public FakeMeterReadings Readings { get; } = new();
+
     public FinanceTestKit()
     {
         Tenant = new FixedTenant(CondominiumId);

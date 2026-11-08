@@ -343,3 +343,39 @@ internal sealed class FakeConsumptionTariffs : IConsumptionTariffs
         return Task.CompletedTask;
     }
 }
+
+/// <summary>Leituras em memória. Guardar adiciona as novas e apaga as removidas, como a gravação do banco faria numa operação só.</summary>
+internal sealed class FakeMeterReadings : IMeterReadings
+{
+    private readonly List<MeterReading> _items = [];
+
+    public IReadOnlyList<MeterReading> All => _items;
+
+    public int Saves { get; private set; }
+
+    public Error? SaveFailure { get; set; }
+
+    public MeterReading Existing(MeterReading reading)
+    {
+        _items.Add(reading);
+
+        return reading;
+    }
+
+    public Task<IReadOnlyList<MeterReading>> ListAsync(YearMonth month, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<MeterReading>>([.. _items.Where(reading => reading.Month == month)]);
+
+    public Task<Result> SaveAsync(IReadOnlyList<MeterReading> added, IReadOnlyList<MeterReading> removed, CancellationToken cancellationToken)
+    {
+        if (SaveFailure is { } failure)
+        {
+            return Task.FromResult(Result.Failure(failure));
+        }
+
+        _items.AddRange(added);
+        _items.RemoveAll(removed.Contains);
+        Saves++;
+
+        return Task.FromResult(Result.Success());
+    }
+}

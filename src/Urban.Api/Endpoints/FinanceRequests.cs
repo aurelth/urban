@@ -51,3 +51,11 @@ public sealed record ConsumptionTariffRequest(
     IReadOnlyList<TariffBandRequest>? Sewage,
     decimal? SewagePercent,
     GasTariffRequest? Gas);
+
+/// <param name="UnitId">A unidade do medidor.</param>
+/// <param name="Service">"water" ou "gas".</param>
+/// <param name="Previous">A leitura anterior em m³. Omitida, vale a leitura atual do mês passado (ou zero na primeira vez).</param>
+/// <param name="Current">A leitura atual em m³. Omitida, a leitura da unidade e do serviço é retirada.</param>
+public sealed record MeterReadingRequest(Guid? UnitId, string? Service, decimal? Previous, decimal? Current);
+
+public sealed record MonthReadingsRequest(IReadOnlyList<MeterReadingRequest>? Readings);

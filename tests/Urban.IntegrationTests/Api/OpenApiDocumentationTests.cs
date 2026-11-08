@@ -207,6 +207,8 @@ public sealed class OpenApiDocumentationTests
     [InlineData("/api/finance/months/{month}/open", "post")]
     [InlineData("/api/finance/months/{month}/close", "post")]
     [InlineData("/api/finance/months/{month}/reopen", "post")]
+    [InlineData("/api/finance/months/{month}/readings", "get")]
+    [InlineData("/api/finance/months/{month}/readings", "put")]
     [InlineData("/api/finance/entries/{id}/amount", "put")]
     [InlineData("/api/finance/entries/{id}/status", "put")]
     public async Task Development_documents_every_finance_route_as_protected_with_a_summary_and_the_error_statuses(string path, string method)

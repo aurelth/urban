@@ -2,8 +2,10 @@ using FluentAssertions;
 using Urban.Finance.Application.Months;
 using Urban.Finance.Domain;
 using Urban.Finance.Domain.Closing;
+using Urban.Finance.Domain.Consumption;
 using Urban.Finance.Domain.Expenses;
 using Urban.Finance.Domain.Months;
+using Urban.Finance.Domain.Settings;
 using Urban.SharedKernel;
 using Urban.SharedKernel.Contracts;
 
@@ -25,7 +27,7 @@ public class ClosingHandlersTests
 
     private static YearMonth M(int year, int month) => FinanceTestKit.M(year, month);
 
-    private CloseMonthCommandHandler CloseHandler() => new(_kit.Entries, _kit.Closings, _kit.Groups, _kit.Basis, _kit.Tenant, _kit.Atomic, _kit.Clock);
+    private CloseMonthCommandHandler CloseHandler() => new(_kit.Entries, _kit.Closings, _kit.Groups, _kit.Settings, _kit.Tariffs, _kit.Readings, _kit.Basis, _kit.Tenant, _kit.Atomic, _kit.Clock);
 
     private ReopenMonthCommandHandler ReopenHandler() => new(_kit.Entries, _kit.Closings, _kit.Groups, _kit.Tenant, _kit.Atomic, _kit.Clock);
 
@@ -124,6 +126,158 @@ public class ClosingHandlersTests
         _kit.WithoutATenant();
 
         (await CloseHandler().Handle(new CloseMonthCommand("2026-11", DueDate, Manager), default)).Error.Should().Be(FinanceErrors.CondominiumNotFound);
+    }
+
+    // ---- close with the condominium's rules ----
+
+    private void ConfigureReserveFund(decimal percent) =>
+        _kit.Settings.Existing(FinanceSettings.Create(_kit.CondominiumId, percent, FinanceTestKit.Now).Value);
+
+    private ConsumptionTariff ConfigureTariff(string from = "2026-01", bool gas = true) =>
+        _kit.Tariffs.Existing(ConsumptionTariff.Create(
+            _kit.CondominiumId,
+            YearMonth.Parse(from).Value,
+            TariffScale.Create([new TariffBand(10m, 47.43m, 0m), new TariffBand(30m, 0m, 8.63m), new TariffBand(null, 0m, 11m)]).Value,
+            TariffScale.Create([new TariffBand(10m, 52.63m, 0m), new TariffBand(null, 0m, 9.635m)]).Value,
+            100m,
+            gas ? GasTariff.Create(2.4m, 15.71m).Value : null,
+            FinanceTestKit.Now).Value);
+
+    private void ReadMeters(Guid unit, decimal waterPrevious, decimal waterCurrent, decimal? gasPrevious = null, decimal? gasCurrent = null)
+    {
+        _kit.Readings.Existing(MeterReading.Create(_kit.CondominiumId, unit, M(2026, 11), ConsumptionService.Water, waterPrevious, waterCurrent, FinanceTestKit.Now).Value);
+
+        if (gasPrevious is { } previous && gasCurrent is { } current)
+        {
+            _kit.Readings.Existing(MeterReading.Create(_kit.CondominiumId, unit, M(2026, 11), ConsumptionService.Gas, previous, current, FinanceTestKit.Now).Value);
+        }
+    }
+
+    private static List<(ChargeLineKind Kind, string Label, decimal Amount)> Lines(UnitChargeView charge) =>
+        [.. charge.Lines.Select(line => (line.Kind, line.Label, line.Amount))];
+
+    [Fact]
+    public async Task Close_NamesEachExpenseLineAfterItsGroup()
+    {
+        ExpenseGroup garages = _kit.NewGroup("Manutenção das garagens");
+        _kit.NewEntry(_kit.NewFixed(garages, M(2026, 9), 100m, "Portão"), M(2026, 11));
+        NovemberEntry(900m);
+
+        MonthView view = (await CloseHandler().Handle(new CloseMonthCommand("2026-11", DueDate, Manager), default)).Value;
+
+        Lines(view.Closing!.Charges[0]).Should().Equal(
+            (ChargeLineKind.Expenses, "Despesas ordinárias", 540m),
+            (ChargeLineKind.Expenses, "Manutenção das garagens", 60m));
+    }
+
+    [Fact]
+    public async Task Close_AddsTheReserveFundFromTheConfiguredPercentageOverTheMarkedGroupsOnly()
+    {
+        _group.SetReserveFundBase(true);
+        ExpenseGroup garages = _kit.NewGroup("Manutenção das garagens");
+        _kit.NewEntry(_kit.NewFixed(garages, M(2026, 9), 100m, "Portão"), M(2026, 11));
+        NovemberEntry(900m);
+        ConfigureReserveFund(15m);
+
+        MonthView view = (await CloseHandler().Handle(new CloseMonthCommand("2026-11", DueDate, Manager), default)).Value;
+
+        view.Closing!.Charges.Select(charge => charge.Lines.Single(line => line.Kind == ChargeLineKind.ReserveFund).Amount).Should().Equal(81m, 54m);
+        view.Closing.Total.Should().Be(1000m);
+        view.Closing.Charges.Select(charge => charge.Amount).Should().Equal(681m, 454m);
+    }
+
+    [Fact]
+    public async Task Close_WithoutAConfiguredPercentage_HasNoReserveFund()
+    {
+        _group.SetReserveFundBase(true);
+        NovemberEntry(900m);
+
+        MonthView view = (await CloseHandler().Handle(new CloseMonthCommand("2026-11", DueDate, Manager), default)).Value;
+
+        view.Closing!.Charges.SelectMany(charge => charge.Lines).Should().NotContain(line => line.Kind == ChargeLineKind.ReserveFund);
+    }
+
+    [Fact]
+    public async Task Close_ChargesWaterSewageAndGasFromTheTariffAndTheReadings()
+    {
+        NovemberEntry(1000m);
+        ConfigureTariff();
+        ReadMeters(FakeApportionmentBasis.First.UnitId, 1551.913m, 1569.562m, 117.825m, 118.677m);
+        ReadMeters(FakeApportionmentBasis.Second.UnitId, 10m, 18m, 5m, 5m);
+
+        MonthView view = (await CloseHandler().Handle(new CloseMonthCommand("2026-11", DueDate, Manager), default)).Value;
+
+        Lines(view.Closing!.Charges[0]).Should().Equal(
+            (ChargeLineKind.Expenses, "Despesas ordinárias", 600m),
+            (ChargeLineKind.Water, "Água", 113.44m),
+            (ChargeLineKind.Sewage, "Esgoto", 126.33m),
+            (ChargeLineKind.Gas, "Gás", 32.12m));
+        Lines(view.Closing.Charges[1]).Should().Equal(
+            (ChargeLineKind.Expenses, "Despesas ordinárias", 400m),
+            (ChargeLineKind.Water, "Água", 47.43m),
+            (ChargeLineKind.Sewage, "Esgoto", 52.63m));
+        ChargeLineView water = view.Closing.Charges[0].Lines.Single(line => line.Kind == ChargeLineKind.Water);
+        (water.Quantity, water.PreviousReading, water.CurrentReading).Should().Be((17.649m, 1551.913m, 1569.562m));
+    }
+
+    [Fact]
+    public async Task Close_UsesTheTariffThatAppliesToTheMonth()
+    {
+        NovemberEntry(1000m);
+        ConfigureTariff("2026-01");
+        _kit.Tariffs.Existing(ConsumptionTariff.Create(
+            _kit.CondominiumId,
+            M(2026, 10),
+            TariffScale.Create([new TariffBand(null, 100m, 0m)]).Value,
+            null,
+            100m,
+            null,
+            FinanceTestKit.Now).Value);
+        ReadMeters(FakeApportionmentBasis.First.UnitId, 0m, 5m);
+        ReadMeters(FakeApportionmentBasis.Second.UnitId, 0m, 5m);
+
+        MonthView view = (await CloseHandler().Handle(new CloseMonthCommand("2026-11", DueDate, Manager), default)).Value;
+
+        view.Closing!.Charges.Select(charge => charge.Lines.Single(line => line.Kind == ChargeLineKind.Water).Amount).Should().Equal(100m, 100m);
+        view.Closing.Charges.SelectMany(charge => charge.Lines).Should().NotContain(line => line.Kind == ChargeLineKind.Sewage);
+    }
+
+    [Fact]
+    public async Task Close_WithATariffAndAMissingReading_FailsAndClosesNothing()
+    {
+        NovemberEntry(1000m);
+        ConfigureTariff(gas: false);
+        ReadMeters(FakeApportionmentBasis.First.UnitId, 0m, 5m);
+
+        Result<MonthView> result = await CloseHandler().Handle(new CloseMonthCommand("2026-11", DueDate, Manager), default);
+
+        result.Error.Code.Should().Be("closing.readings_pending");
+        _kit.Closings.Added.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Close_WithoutATariffTheReadingsAreIgnored()
+    {
+        NovemberEntry(1000m);
+        ReadMeters(FakeApportionmentBasis.First.UnitId, 0m, 5m);
+
+        MonthView view = (await CloseHandler().Handle(new CloseMonthCommand("2026-11", DueDate, Manager), default)).Value;
+
+        view.Closing!.Charges.SelectMany(charge => charge.Lines).Should().OnlyContain(line => line.Kind == ChargeLineKind.Expenses);
+    }
+
+    [Fact]
+    public async Task Reopen_KeepsTheReadings()
+    {
+        NovemberEntry(1000m);
+        ConfigureTariff(gas: false);
+        ReadMeters(FakeApportionmentBasis.First.UnitId, 0m, 5m);
+        ReadMeters(FakeApportionmentBasis.Second.UnitId, 0m, 5m);
+        await CloseHandler().Handle(new CloseMonthCommand("2026-11", DueDate, Manager), default);
+
+        await ReopenHandler().Handle(new ReopenMonthCommand("2026-11"), default);
+
+        _kit.Readings.All.Should().HaveCount(2);
     }
 
     // ---- reopen ----

@@ -26,6 +26,7 @@ public static class FinanceEndpoints
         MapExpenseGroupReserveFund(finance);
         MapExpenses(finance);
         MapMonths(finance);
+        MapReadings(finance);
         MapSettings(finance);
         MapTariffs(finance);
 
@@ -125,6 +126,29 @@ public static class FinanceEndpoints
             .WithDescription("Responde 204. Mês sem tarifa responde 404. Os meses já fechados não mudam: o fechamento guarda o que cobrou. " + RateLimitText)
             .Produces(StatusCodes.Status204NoContent)
             .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound);
+    }
+
+    private static void MapReadings(RouteGroupBuilder finance)
+    {
+        finance.MapGet("/months/{month}/readings", (string month, ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken ct) =>
+                SendAsync(user, response, sender, FinanceMapper.ToReadingsQuery(month), view => FinanceMapper.ToResponse(view), ct))
+            .WithName("GetMonthReadings")
+            .WithSummary("Lê as leituras de água e gás do mês, uma linha por unidade")
+            .WithDescription(
+                "O mês vai como AAAA-MM (400 se não for). Devolve as unidades na ordem do rateio, com a leitura de água e de gás do mês (nulas enquanto não informadas) e a leitura atual do mês passado, para a tela sugerir como leitura anterior. "
+                + "Diz também se o mês está fechado (isClosed), se há tarifa em vigor (hasTariff) e se ela cobra gás (hasGas). A resposta nunca é guardada em cache. " + RateLimitText)
+            .Produces<MonthReadingsResponse>()
+            .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound, StatusCodes.Status422UnprocessableEntity);
+
+        finance.MapPut("/months/{month}/readings", (string month, MonthReadingsRequest request, ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken ct) =>
+                SendAsync(user, response, sender, FinanceMapper.ToCommand(request, month), view => FinanceMapper.ToResponse(view), ct))
+            .WithName("SaveMonthReadings")
+            .WithSummary("Informa, corrige ou retira leituras do mês")
+            .WithDescription(
+                "Cada item leva a unidade (unitId), o serviço (service: water ou gas), a leitura anterior em m³ (previous, opcional: sem ela vale a leitura atual do mês passado, ou zero) e a atual (current: sem ela a leitura é retirada). Até 3 casas decimais; a atual não pode ser menor que a anterior. "
+                + "O pedido é aceito inteiro ou recusado inteiro: leitura inválida, serviço desconhecido ou valor fora do limite respondem 400; unidade que não é do condomínio, 404; mês fechado, 409. Responde com as leituras do mês. " + RateLimitText)
+            .Produces<MonthReadingsResponse>()
+            .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound, StatusCodes.Status409Conflict, StatusCodes.Status422UnprocessableEntity);
     }
 
     private static void MapExpenses(RouteGroupBuilder finance)
