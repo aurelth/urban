@@ -308,19 +308,31 @@ describe('ExpensesPage', () => {
     expect(tones[2]).toContain('--mat-menu-item-label-text-color:var(--mat-sys-primary)');
   });
 
-  it('usa a cor de destaque nos titulos e no rotulo do filtro', async () => {
+  it('mantem os titulos e os grupos na cor do texto e o rotulo do filtro em cinza', async () => {
     const { html } = await setup();
 
-    const highlighted = [
-      html.querySelector('h1'),
-      html.querySelector('#groups-title'),
-      testId(html, 'filter-label'),
-    ];
-
-    for (const element of highlighted) {
-      expect(element?.classList.contains('text-primary')).toBe(true);
+    for (const element of [html.querySelector('h1'), html.querySelector('#groups-title')]) {
+      expect(element?.classList.contains('text-primary')).toBe(false);
     }
+    const label = testId(html, 'filter-label');
+    expect(label?.classList.contains('text-on-surface-variant')).toBe(true);
+    expect(label?.classList.contains('text-primary')).toBe(false);
     expect(text(html, 'filter-label')).toBe('Situação');
+  });
+
+  it('deixa a seta do filtro cinza e so a pinta de destaque com o menu aberto', async () => {
+    const { html } = await setup();
+
+    const trigger = testId(html, 'filter-status')!;
+    const arrow = testId(html, 'filter-arrow')!;
+
+    expect(trigger.classList.contains('group')).toBe(true);
+    expect(arrow.classList.contains('[--mat-icon-color:var(--mat-sys-on-surface-variant)]')).toBe(
+      true,
+    );
+    expect(
+      arrow.classList.contains('group-aria-expanded:[--mat-icon-color:var(--mat-sys-primary)]'),
+    ).toBe(true);
   });
 
   it('pinta o cabecalho da tabela com o fundo do botao Nova despesa, com texto legivel', async () => {
@@ -370,7 +382,7 @@ describe('ExpensesPage', () => {
         const name = item.querySelector('span')!;
         expect(name.classList.contains('text-lg')).toBe(true);
         expect(name.classList.contains('font-medium')).toBe(true);
-        expect(name.classList.contains('text-primary')).toBe(true);
+        expect(name.classList.contains('text-primary')).toBe(false);
         expect(item.className).not.toMatch(/rounded|border/);
       }
     });

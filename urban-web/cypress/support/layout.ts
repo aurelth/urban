@@ -73,6 +73,9 @@ export const PALETTE = {
     warning: 'rgb(178, 80, 0)',
     primary: 'rgb(88, 86, 214)',
     onPrimary: 'rgb(255, 255, 255)',
+    /** Texto principal e texto secundario (cinza) do tema claro. */
+    onSurface: 'rgb(28, 28, 30)',
+    onSurfaceVariant: 'rgb(101, 101, 122)',
     /** Fundo do botao principal e do cabecalho das tabelas. */
     accentFill: 'rgb(88, 86, 214)',
     onAccentFill: 'rgb(255, 255, 255)',

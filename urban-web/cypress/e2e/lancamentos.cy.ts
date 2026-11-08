@@ -87,21 +87,41 @@ describe('Lançamentos do mês', () => {
       });
   });
 
-  it('usa a cor de destaque nos titulos, no mes, nos rotulos do resumo e nos grupos', () => {
+  it('mantem o titulo e o mes na cor do texto, os rotulos do resumo em cinza e o grupo em destaque', () => {
     stubMonth();
     cy.visit(ENTRIES_PATH);
 
+    for (const selector of ['h1', '[data-testid="month-title"]']) {
+      cy.get(selector).first().should('have.css', 'color', PALETTE.light.onSurface);
+    }
     for (const selector of [
-      'h1',
-      '[data-testid="month-title"]',
       '[data-testid="total"] dt',
       '[data-testid="needs-amount-count"] dt',
       '[data-testid="overdue-count"] dt',
-      '[data-testid="group-section"] h2',
     ]) {
-      cy.get(selector).first().should('have.css', 'color', PALETTE.light.primary);
+      cy.get(selector).first().should('have.css', 'color', PALETTE.light.onSurfaceVariant);
     }
-    cy.get('[data-testid="group-section"] h2').first().should('have.css', 'font-weight', '500');
+    cy.get('[data-testid="group-section"] h2')
+      .first()
+      .should('have.css', 'color', PALETTE.light.primary)
+      .and('have.css', 'font-weight', '500');
+  });
+
+  it('deixa a seta do menu de situacao cinza e so a pinta de indigo enquanto o menu esta aberto', () => {
+    stubMonth();
+    cy.visit(ENTRIES_PATH);
+
+    const arrow = () =>
+      cy.get('button[aria-label^="Situação de Portaria"] [data-testid="status-arrow"]');
+    arrow().should('have.css', 'color', PALETTE.light.onSurfaceVariant);
+
+    cy.get('button[aria-label^="Situação de Portaria"]').click();
+    cy.get('[role="menuitem"]').should('have.length', 3);
+    arrow().should('have.css', 'color', PALETTE.light.primary);
+
+    cy.get('body').type('{esc}');
+    cy.get('[role="menuitem"]').should('not.exist');
+    arrow().should('have.css', 'color', PALETTE.light.onSurfaceVariant);
   });
 
   it('pinta o texto e o icone de cada situacao com a mesma cor', () => {
