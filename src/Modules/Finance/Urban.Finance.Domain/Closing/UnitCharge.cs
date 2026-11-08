@@ -6,7 +6,9 @@ namespace Urban.Finance.Domain.Closing;
 /// </summary>
 public sealed class UnitCharge
 {
-    internal UnitCharge(Guid closingId, Guid condominiumId, Guid unitId, int position, string? block, string number, decimal weight, decimal amount)
+    private readonly List<UnitChargeLine> _lines = [];
+
+    internal UnitCharge(Guid closingId, Guid condominiumId, Guid unitId, int position, string? block, string number, decimal weight)
     {
         Id = Guid.CreateVersion7();
         ClosingId = closingId;
@@ -16,7 +18,6 @@ public sealed class UnitCharge
         Block = block;
         Number = number;
         Weight = weight;
-        Amount = amount;
     }
 
     // Usado só pelo EF Core ao ler do banco.
@@ -42,5 +43,14 @@ public sealed class UnitCharge
 
     public decimal Weight { get; }
 
-    public decimal Amount { get; }
+    /// <summary>A soma das linhas.</summary>
+    public decimal Amount { get; private set; }
+
+    public IReadOnlyList<UnitChargeLine> Lines => _lines;
+
+    internal void AddLine(ChargeLineKind kind, string label, decimal amount, decimal? quantity = null, decimal? previousReading = null, decimal? currentReading = null)
+    {
+        _lines.Add(new UnitChargeLine(Id, CondominiumId, _lines.Count, kind, label, amount, quantity, previousReading, currentReading));
+        Amount += amount;
+    }
 }
