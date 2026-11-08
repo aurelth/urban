@@ -358,6 +358,18 @@ describe('Lançamentos do mês', () => {
         .should('match', /R\$\s4\.200,00/);
     });
 
+    it('destaca o card do mes fechado em branco sobre o fundo cinza da pagina', () => {
+      stubMonth(CLOSED_MONTH);
+      cy.visit(ENTRIES_PATH);
+
+      cy.get('body').should('have.css', 'background-color', PALETTE.light.page);
+      cy.get('[data-testid="closing-card"]').should(
+        'have.css',
+        'background-color',
+        PALETTE.light.card,
+      );
+    });
+
     it('nao deixa fechar enquanto faltam valores', () => {
       stubMonth();
       cy.visit(ENTRIES_PATH);

@@ -128,7 +128,10 @@
       </div>
 
       @if (store.expenses().length === 0 && store.filter() === 'active') {
-        <div class="rounded-xl border border-outline-variant p-6 text-center" data-testid="empty">
+        <div
+          class="rounded-xl border border-outline-variant bg-surface-container p-6 text-center"
+          data-testid="empty"
+        >
           <p class="mb-1 text-lg font-medium">Nenhuma despesa ativa</p>
           <p class="m-0 text-on-surface-variant">
             Cadastre a primeira despesa para gerar os lançamentos do mês
@@ -136,13 +139,13 @@
         </div>
       } @else if (store.expenses().length === 0) {
         <p
-          class="rounded-xl border border-outline-variant p-6 text-center text-on-surface-variant"
+          class="rounded-xl border border-outline-variant bg-surface-container p-6 text-center text-on-surface-variant"
           data-testid="no-results"
         >
           Nenhuma despesa encontrada com este filtro
         </p>
       } @else {
-        <div class="overflow-x-auto rounded-xl border border-outline-variant">
+        <div class="overflow-x-auto rounded-xl border border-outline-variant bg-surface-container">
           <table class="w-full border-collapse text-left" data-testid="expenses-table">
             <caption class="sr-only">
               Lista de despesas

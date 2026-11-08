@@ -15,7 +15,7 @@
   @if (store.created(); as created) {
     <div
       role="status"
-      class="flex flex-col items-start gap-4 rounded-xl border border-outline-variant p-6"
+      class="flex flex-col items-start gap-4 rounded-xl border border-outline-variant bg-surface-container p-6"
       data-testid="batch-done"
     >
       <p class="m-0 flex items-start gap-2 text-lg font-medium">
@@ -190,7 +190,10 @@
         </p>
         <ul class="m-0 flex list-none flex-col gap-3 p-0">
           @for (view of views(); track $index; let position = $index) {
-            <li class="rounded-xl border border-outline-variant p-3" data-testid="batch-row">
+            <li
+              class="rounded-xl border border-outline-variant bg-surface-container p-3"
+              data-testid="batch-row"
+            >
               <div
                 class="grid grid-cols-2 gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_9rem_minmax(0,1fr)_minmax(0,1fr)_auto]"
               >

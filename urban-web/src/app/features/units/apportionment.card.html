@@ -13,7 +13,7 @@
       (change)="choose($event)"
     >
       @for (option of options; track option.method) {
-        <div class="rounded-xl border border-outline-variant p-3">
+        <div class="rounded-xl border border-outline-variant bg-surface-container p-3">
           <mat-radio-button [value]="option.method">{{ option.label }}</mat-radio-button>
           <p class="m-0 ml-10 text-sm text-on-surface-variant">{{ option.description }}</p>
           <p
