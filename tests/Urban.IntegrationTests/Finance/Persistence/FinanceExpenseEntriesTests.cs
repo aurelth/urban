@@ -18,7 +18,7 @@ public class FinanceExpenseEntriesTests(FinancePostgresFixture postgres)
         ExpenseGroup group = await _kit.StoreGroupAsync();
         Expense zeladoria = await _kit.StoreFixedAsync(group, FinanceStoreKit.M(2026, 9));
         Expense obra = await _kit.StoreInstallmentAsync(group, FinanceStoreKit.M(2026, 9), current: 4);
-        Expense energy = Expense.CreateVariable(_kit.CondominiumId, group.Id, "Energia elétrica", null, FinanceStoreKit.M(2026, 9), null, FinanceStoreKit.Now).Value;
+        Expense energy = Expense.CreateVariable(_kit.CondominiumId, group.Id, "Energia elétrica", null, FinanceStoreKit.M(2026, 9), null, 10, FinanceStoreKit.Now).Value;
         await _kit.Expenses().AddAsync(energy, default);
         List<ExpenseEntry> entries =
         [
@@ -38,7 +38,7 @@ public class FinanceExpenseEntriesTests(FinancePostgresFixture postgres)
         november.Single(record => record.Entry.Description == "Obra da garagem").Entry.Label.Should().Be("6/6");
         ExpenseEntry pending = november.Single(record => record.Entry.Description == "Energia elétrica").Entry;
         pending.Amount.Should().BeNull();
-        pending.IsPending.Should().BeTrue();
+        pending.NeedsAmount.Should().BeTrue();
         november.Should().OnlyContain(record => record.Entry.CondominiumId == _kit.CondominiumId && record.Entry.GroupId == group.Id);
     }
 
@@ -96,7 +96,7 @@ public class FinanceExpenseEntriesTests(FinancePostgresFixture postgres)
     public async Task Save_AfterSettingTheAmount_PersistsItAndChangesTheVersion()
     {
         ExpenseGroup group = await _kit.StoreGroupAsync();
-        Expense energy = Expense.CreateVariable(_kit.CondominiumId, group.Id, "Energia elétrica", null, FinanceStoreKit.M(2026, 9), null, FinanceStoreKit.Now).Value;
+        Expense energy = Expense.CreateVariable(_kit.CondominiumId, group.Id, "Energia elétrica", null, FinanceStoreKit.M(2026, 9), null, 10, FinanceStoreKit.Now).Value;
         await _kit.Expenses().AddAsync(energy, default);
         ExpenseEntry entry = await _kit.StoreEntryAsync(energy, FinanceStoreKit.M(2026, 11));
         FinanceExpenseEntries store = _kit.Entries();
@@ -109,7 +109,7 @@ public class FinanceExpenseEntriesTests(FinancePostgresFixture postgres)
         saved.Value.Should().NotBe(record.Version);
         ExpenseEntry reloaded = (await _kit.Entries().FindAsync(entry.Id, default))!.Entry;
         reloaded.Amount.Should().Be(412.37m);
-        reloaded.IsPending.Should().BeFalse();
+        reloaded.NeedsAmount.Should().BeFalse();
     }
 
     [Fact]
@@ -140,5 +140,42 @@ public class FinanceExpenseEntriesTests(FinancePostgresFixture postgres)
         ExpenseEntry entry = await _kit.StoreEntryAsync(zeladoria, FinanceStoreKit.M(2026, 11));
 
         (await _kit.Entries(Guid.CreateVersion7()).FindAsync(entry.Id, default)).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Save_AfterChangingTheStatus_PersistsItAndChangesTheVersion()
+    {
+        ExpenseGroup group = await _kit.StoreGroupAsync();
+        Expense zeladoria = await _kit.StoreFixedAsync(group, FinanceStoreKit.M(2026, 9));
+        ExpenseEntry entry = await _kit.StoreEntryAsync(zeladoria, FinanceStoreKit.M(2026, 11));
+        FinanceExpenseEntries store = _kit.Entries();
+        ExpenseEntryRecord record = (await store.FindAsync(entry.Id, default))!;
+        record.Entry.SetStatus(EntryStatus.Paid);
+
+        Result<string> saved = await store.SaveAsync(record, default);
+
+        saved.IsSuccess.Should().BeTrue();
+        saved.Value.Should().NotBe(record.Version);
+        (await _kit.Entries().FindAsync(entry.Id, default))!.Entry.Status.Should().Be(EntryStatus.Paid);
+    }
+
+    [Theory]
+    [InlineData(EntryStatus.Pending)]
+    [InlineData(EntryStatus.Paid)]
+    [InlineData(EntryStatus.Canceled)]
+    public async Task Entries_KeepTheirDueDateAndStatus(EntryStatus status)
+    {
+        ExpenseGroup group = await _kit.StoreGroupAsync();
+        Expense zeladoria = await _kit.StoreFixedAsync(group, FinanceStoreKit.M(2026, 9));
+        ExpenseEntry entry = await _kit.StoreEntryAsync(zeladoria, FinanceStoreKit.M(2026, 11));
+        FinanceExpenseEntries store = _kit.Entries();
+        ExpenseEntryRecord record = (await store.FindAsync(entry.Id, default))!;
+        record.Entry.SetStatus(status);
+        await store.SaveAsync(record, default);
+
+        ExpenseEntry reloaded = (await _kit.Entries().FindAsync(entry.Id, default))!.Entry;
+
+        reloaded.DueDate.Should().Be(new DateOnly(2026, 11, 10));
+        reloaded.Status.Should().Be(status);
     }
 }

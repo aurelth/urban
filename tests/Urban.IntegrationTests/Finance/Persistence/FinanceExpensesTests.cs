@@ -38,7 +38,7 @@ public class FinanceExpensesTests(FinancePostgresFixture postgres)
     public async Task Add_ThenFind_RoundTripsAFixedExpenseWithItsHistoryAndEnd()
     {
         ExpenseGroup group = await _kit.StoreGroupAsync();
-        Expense fixedExpense = Expense.CreateFixed(_kit.CondominiumId, group.Id, "Seguro", null, FinanceStoreKit.M(2026, 1), FinanceStoreKit.M(2027, 6), 200m, FinanceStoreKit.Now).Value;
+        Expense fixedExpense = Expense.CreateFixed(_kit.CondominiumId, group.Id, "Seguro", null, FinanceStoreKit.M(2026, 1), FinanceStoreKit.M(2027, 6), 200m, 10, FinanceStoreKit.Now).Value;
         fixedExpense.ChangeAmountFrom(FinanceStoreKit.M(2026, 7), 230.50m);
         await _kit.Expenses().AddAsync(fixedExpense, default);
 
@@ -55,8 +55,8 @@ public class FinanceExpensesTests(FinancePostgresFixture postgres)
     public async Task Add_ThenFind_RoundTripsASingleAndAVariableExpense()
     {
         ExpenseGroup group = await _kit.StoreGroupAsync();
-        Expense single = Expense.CreateSingle(_kit.CondominiumId, group.Id, "Troca da lâmpada", null, FinanceStoreKit.M(2026, 11), 250m, FinanceStoreKit.Now).Value;
-        Expense variable = Expense.CreateVariable(_kit.CondominiumId, group.Id, "Energia elétrica", "Enel", FinanceStoreKit.M(2026, 9), null, FinanceStoreKit.Now).Value;
+        Expense single = Expense.CreateSingle(_kit.CondominiumId, group.Id, "Troca da lâmpada", null, FinanceStoreKit.M(2026, 11), 250m, 10, FinanceStoreKit.Now).Value;
+        Expense variable = Expense.CreateVariable(_kit.CondominiumId, group.Id, "Energia elétrica", "Enel", FinanceStoreKit.M(2026, 9), null, 10, FinanceStoreKit.Now).Value;
         await _kit.Expenses().AddAsync(single, default);
         await _kit.Expenses().AddAsync(variable, default);
 
@@ -174,7 +174,7 @@ public class FinanceExpensesTests(FinancePostgresFixture postgres)
         Expense stored = await _kit.StoreFixedAsync(group, FinanceStoreKit.M(2026, 9));
         FinanceExpenses store = _kit.Expenses();
         ExpenseRecord record = (await store.FindAsync(stored.Id, default))!;
-        record.Expense.Edit("Zeladoria e limpeza", null, group.Id);
+        record.Expense.Edit("Zeladoria e limpeza", null, group.Id, 10);
         record.Expense.End(FinanceStoreKit.M(2027, 2));
 
         (await store.SaveAsync(record, default)).IsSuccess.Should().BeTrue();

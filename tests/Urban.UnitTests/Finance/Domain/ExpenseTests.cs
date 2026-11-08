@@ -14,16 +14,16 @@ public class ExpenseTests
     private static YearMonth M(int year, int month) => YearMonth.Create(year, month).Value;
 
     private static Expense Single(decimal amount = 250m, YearMonth? month = null) =>
-        Expense.CreateSingle(CondominiumId, GroupId, "Troca da lâmpada", "Eletro Silva", month ?? M(2026, 9), amount, Now).Value;
+        Expense.CreateSingle(CondominiumId, GroupId, "Troca da lâmpada", "Eletro Silva", month ?? M(2026, 9), amount, 10, Now).Value;
 
     private static Expense Fixed(decimal amount = 300m, YearMonth? start = null, YearMonth? end = null) =>
-        Expense.CreateFixed(CondominiumId, GroupId, "Zeladoria", null, start ?? M(2026, 9), end, amount, Now).Value;
+        Expense.CreateFixed(CondominiumId, GroupId, "Zeladoria", null, start ?? M(2026, 9), end, amount, 10, Now).Value;
 
     private static Expense Variable(YearMonth? start = null) =>
-        Expense.CreateVariable(CondominiumId, GroupId, "Energia elétrica", "Enel", start ?? M(2026, 9), null, Now).Value;
+        Expense.CreateVariable(CondominiumId, GroupId, "Energia elétrica", "Enel", start ?? M(2026, 9), null, 10, Now).Value;
 
     private static Expense Installment(decimal total = 600m, int count = 6, int current = 1, YearMonth? first = null) =>
-        Expense.CreateInstallment(CondominiumId, GroupId, "Obra da garagem", "Benedett", total, count, first ?? M(2026, 9), current, Now).Value;
+        Expense.CreateInstallment(CondominiumId, GroupId, "Obra da garagem", "Benedett", total, count, first ?? M(2026, 9), current, 10, Now).Value;
 
     // ---- common rules ----
 
@@ -46,7 +46,7 @@ public class ExpenseTests
     [Fact]
     public void Create_NormalizesDescriptionAndSupplier_AndEmptySupplierBecomesNull()
     {
-        Expense expense = Expense.CreateSingle(CondominiumId, GroupId, "  Troca   da lâmpada ", "   ", M(2026, 9), 10m, Now).Value;
+        Expense expense = Expense.CreateSingle(CondominiumId, GroupId, "  Troca   da lâmpada ", "   ", M(2026, 9), 10m, 10, Now).Value;
 
         expense.Description.Should().Be("Troca da lâmpada");
         expense.Supplier.Should().BeNull();
@@ -58,27 +58,27 @@ public class ExpenseTests
     [InlineData("  ")]
     public void Create_WithoutDescription_Fails(string? description)
     {
-        Expense.CreateSingle(CondominiumId, GroupId, description, null, M(2026, 9), 10m, Now)
+        Expense.CreateSingle(CondominiumId, GroupId, description, null, M(2026, 9), 10m, 10, Now)
             .Error.Should().Be(ExpenseErrors.DescriptionInvalid);
     }
 
     [Fact]
     public void Create_DescriptionAndSupplierLimits_AreOneHundredAndTwentyCharacters()
     {
-        Expense.CreateSingle(CondominiumId, GroupId, new string('a', 120), new string('b', 120), M(2026, 9), 10m, Now)
+        Expense.CreateSingle(CondominiumId, GroupId, new string('a', 120), new string('b', 120), M(2026, 9), 10m, 10, Now)
             .IsSuccess.Should().BeTrue();
-        Expense.CreateSingle(CondominiumId, GroupId, new string('a', 121), null, M(2026, 9), 10m, Now)
+        Expense.CreateSingle(CondominiumId, GroupId, new string('a', 121), null, M(2026, 9), 10m, 10, Now)
             .Error.Should().Be(ExpenseErrors.DescriptionInvalid);
-        Expense.CreateSingle(CondominiumId, GroupId, "Troca", new string('b', 121), M(2026, 9), 10m, Now)
+        Expense.CreateSingle(CondominiumId, GroupId, "Troca", new string('b', 121), M(2026, 9), 10m, 10, Now)
             .Error.Should().Be(ExpenseErrors.SupplierInvalid);
     }
 
     [Fact]
     public void Create_WithoutCondominiumOrGroup_Fails()
     {
-        Expense.CreateSingle(Guid.Empty, GroupId, "Troca", null, M(2026, 9), 10m, Now)
+        Expense.CreateSingle(Guid.Empty, GroupId, "Troca", null, M(2026, 9), 10m, 10, Now)
             .Error.Should().Be(ExpenseErrors.CondominiumRequired);
-        Expense.CreateSingle(CondominiumId, Guid.Empty, "Troca", null, M(2026, 9), 10m, Now)
+        Expense.CreateSingle(CondominiumId, Guid.Empty, "Troca", null, M(2026, 9), 10m, 10, Now)
             .Error.Should().Be(ExpenseErrors.GroupRequired);
     }
 
@@ -89,9 +89,9 @@ public class ExpenseTests
     [InlineData(10000000)]
     public void Create_AnInvalidAmount_Fails(double amount)
     {
-        Expense.CreateSingle(CondominiumId, GroupId, "Troca", null, M(2026, 9), (decimal)amount, Now)
+        Expense.CreateSingle(CondominiumId, GroupId, "Troca", null, M(2026, 9), (decimal)amount, 10, Now)
             .Error.Should().Be(ExpenseErrors.AmountInvalid);
-        Expense.CreateFixed(CondominiumId, GroupId, "Zeladoria", null, M(2026, 9), null, (decimal)amount, Now)
+        Expense.CreateFixed(CondominiumId, GroupId, "Zeladoria", null, M(2026, 9), null, (decimal)amount, 10, Now)
             .Error.Should().Be(ExpenseErrors.AmountInvalid);
     }
 
@@ -100,7 +100,7 @@ public class ExpenseTests
     [InlineData(9999999.99)]
     public void Create_TheAmountLimits_Work(double amount)
     {
-        Expense.CreateSingle(CondominiumId, GroupId, "Troca", null, M(2026, 9), (decimal)amount, Now)
+        Expense.CreateSingle(CondominiumId, GroupId, "Troca", null, M(2026, 9), (decimal)amount, 10, Now)
             .IsSuccess.Should().BeTrue();
     }
 
@@ -110,15 +110,15 @@ public class ExpenseTests
         Expense expense = Single();
         Guid otherGroup = Guid.CreateVersion7();
 
-        expense.Edit(" Troca da lâmpada LED ", "Eletro Brasil", otherGroup).IsSuccess.Should().BeTrue();
+        expense.Edit(" Troca da lâmpada LED ", "Eletro Brasil", otherGroup, 15).IsSuccess.Should().BeTrue();
 
         expense.Description.Should().Be("Troca da lâmpada LED");
         expense.Supplier.Should().Be("Eletro Brasil");
         expense.GroupId.Should().Be(otherGroup);
 
-        expense.Edit("", null, otherGroup).Error.Should().Be(ExpenseErrors.DescriptionInvalid);
-        expense.Edit("x", new string('a', 121), otherGroup).Error.Should().Be(ExpenseErrors.SupplierInvalid);
-        expense.Edit("x", null, Guid.Empty).Error.Should().Be(ExpenseErrors.GroupRequired);
+        expense.Edit("", null, otherGroup, 15).Error.Should().Be(ExpenseErrors.DescriptionInvalid);
+        expense.Edit("x", new string('a', 121), otherGroup, 15).Error.Should().Be(ExpenseErrors.SupplierInvalid);
+        expense.Edit("x", null, Guid.Empty, 15).Error.Should().Be(ExpenseErrors.GroupRequired);
         expense.Description.Should().Be("Troca da lâmpada LED");
     }
 
@@ -162,7 +162,7 @@ public class ExpenseTests
     [Fact]
     public void Fixed_EndBeforeStart_Fails()
     {
-        Expense.CreateFixed(CondominiumId, GroupId, "Zeladoria", null, M(2026, 9), M(2026, 8), 300m, Now)
+        Expense.CreateFixed(CondominiumId, GroupId, "Zeladoria", null, M(2026, 9), M(2026, 8), 300m, 10, Now)
             .Error.Should().Be(ExpenseErrors.EndBeforeStart);
     }
 
@@ -299,16 +299,16 @@ public class ExpenseTests
     [InlineData(-1)]
     public void Installment_ACurrentParcelOutsideTheRange_Fails(int current)
     {
-        Expense.CreateInstallment(CondominiumId, GroupId, "Obra", null, 600m, 6, M(2026, 9), current, Now)
+        Expense.CreateInstallment(CondominiumId, GroupId, "Obra", null, 600m, 6, M(2026, 9), current, 10, Now)
             .Error.Should().Be(ExpenseErrors.CurrentInstallmentInvalid);
     }
 
     [Fact]
     public void Installment_InvalidTotalOrCount_FailsWithTheSplitErrors()
     {
-        Expense.CreateInstallment(CondominiumId, GroupId, "Obra", null, 0m, 6, M(2026, 9), 1, Now)
+        Expense.CreateInstallment(CondominiumId, GroupId, "Obra", null, 0m, 6, M(2026, 9), 1, 10, Now)
             .Error.Should().Be(ExpenseErrors.AmountInvalid);
-        Expense.CreateInstallment(CondominiumId, GroupId, "Obra", null, 600m, 1, M(2026, 9), 1, Now)
+        Expense.CreateInstallment(CondominiumId, GroupId, "Obra", null, 600m, 1, M(2026, 9), 1, 10, Now)
             .Error.Should().Be(ExpenseErrors.InstallmentCountInvalid);
     }
 
@@ -419,7 +419,7 @@ public class ExpenseTests
         entry.Month.Should().Be(M(2026, 9));
         entry.Description.Should().Be("Troca da lâmpada");
         entry.Amount.Should().Be(250m);
-        entry.IsPending.Should().BeFalse();
+        entry.NeedsAmount.Should().BeFalse();
         entry.Label.Should().BeNull();
         entry.CreatedAt.Should().Be(Now);
     }
@@ -440,7 +440,7 @@ public class ExpenseTests
         ExpenseEntry entry = Variable().GenerateEntry(M(2026, 9), Now).Value;
 
         entry.Amount.Should().BeNull();
-        entry.IsPending.Should().BeTrue();
+        entry.NeedsAmount.Should().BeTrue();
     }
 
     [Fact]
@@ -469,8 +469,90 @@ public class ExpenseTests
     public void GenerateEntry_UsesTheCurrentDescription_NotTheOldOne()
     {
         Expense expense = Fixed();
-        expense.Edit("Zeladoria e limpeza", null, GroupId);
+        expense.Edit("Zeladoria e limpeza", null, GroupId, 10);
 
         expense.GenerateEntry(M(2026, 10), Now).Value.Description.Should().Be("Zeladoria e limpeza");
+    }
+
+    // ---- due day ----
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(32)]
+    public void Create_WithADueDayOutsideOneToThirtyOne_Fails(int dueDay)
+    {
+        Expense.CreateSingle(CondominiumId, GroupId, "Troca", null, M(2026, 9), 10m, dueDay, Now)
+            .Error.Should().Be(ExpenseErrors.DueDayInvalid);
+        Expense.CreateFixed(CondominiumId, GroupId, "Zeladoria", null, M(2026, 9), null, 10m, dueDay, Now)
+            .Error.Should().Be(ExpenseErrors.DueDayInvalid);
+        Expense.CreateVariable(CondominiumId, GroupId, "Energia", null, M(2026, 9), null, dueDay, Now)
+            .Error.Should().Be(ExpenseErrors.DueDayInvalid);
+        Expense.CreateInstallment(CondominiumId, GroupId, "Obra", null, 600m, 6, M(2026, 9), 1, dueDay, Now)
+            .Error.Should().Be(ExpenseErrors.DueDayInvalid);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(15)]
+    [InlineData(31)]
+    public void Create_KeepsTheDueDay(int dueDay)
+    {
+        Expense.CreateFixed(CondominiumId, GroupId, "Zeladoria", null, M(2026, 9), null, 10m, dueDay, Now)
+            .Value.DueDay.Should().Be(dueDay);
+    }
+
+    [Fact]
+    public void Edit_ChangesTheDueDay_AndAnInvalidOneChangesNothing()
+    {
+        Expense expense = Fixed();
+
+        expense.Edit("Zeladoria", null, GroupId, 25).IsSuccess.Should().BeTrue();
+        expense.DueDay.Should().Be(25);
+
+        expense.Edit("Zeladoria", null, GroupId, 0).Error.Should().Be(ExpenseErrors.DueDayInvalid);
+        expense.Edit("Outra", null, GroupId, 32).Error.Should().Be(ExpenseErrors.DueDayInvalid);
+        expense.DueDay.Should().Be(25);
+        expense.Description.Should().Be("Zeladoria");
+    }
+
+    [Theory]
+    [InlineData(10, 2026, 9, 10)]
+    [InlineData(31, 2026, 9, 30)]
+    [InlineData(31, 2026, 12, 31)]
+    [InlineData(31, 2027, 2, 28)]
+    [InlineData(31, 2028, 2, 29)]
+    [InlineData(30, 2027, 2, 28)]
+    [InlineData(29, 2027, 2, 28)]
+    public void DueDateIn_UsesTheLastDayOfShorterMonths(int dueDay, int year, int month, int expectedDay)
+    {
+        Expense expense = Expense.CreateFixed(CondominiumId, GroupId, "Zeladoria", null, M(2026, 1), null, 10m, dueDay, Now).Value;
+
+        expense.DueDateIn(M(year, month)).Should().Be(new DateOnly(year, month, expectedDay));
+    }
+
+    [Fact]
+    public void GenerateEntry_SetsTheDueDateOfThatMonth_AndStartsPending()
+    {
+        Expense expense = Expense.CreateFixed(CondominiumId, GroupId, "Zeladoria", null, M(2026, 9), null, 300m, 31, Now).Value;
+
+        ExpenseEntry october = expense.GenerateEntry(M(2026, 10), Now).Value;
+        ExpenseEntry february = expense.GenerateEntry(M(2027, 2), Now).Value;
+
+        october.DueDate.Should().Be(new DateOnly(2026, 10, 31));
+        february.DueDate.Should().Be(new DateOnly(2027, 2, 28));
+        october.Status.Should().Be(EntryStatus.Pending);
+    }
+
+    [Fact]
+    public void GenerateEntry_AfterAChangeOfDueDay_UsesTheNewDayOnlyForNewEntries()
+    {
+        Expense expense = Fixed();
+        ExpenseEntry before = expense.GenerateEntry(M(2026, 10), Now).Value;
+
+        expense.Edit("Zeladoria", null, GroupId, 20);
+
+        before.DueDate.Should().Be(new DateOnly(2026, 10, 10));
+        expense.GenerateEntry(M(2026, 11), Now).Value.DueDate.Should().Be(new DateOnly(2026, 11, 20));
     }
 }

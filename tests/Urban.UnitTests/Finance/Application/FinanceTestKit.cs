@@ -46,17 +46,17 @@ internal sealed class FinanceTestKit
         Groups.Existing(ExpenseGroup.Create(CondominiumId, name, Now).Value);
 
     public Expense NewSingle(ExpenseGroup group, YearMonth month, decimal amount = 250m, string description = "Troca da lâmpada") =>
-        Expenses.Existing(Expense.CreateSingle(CondominiumId, group.Id, description, null, month, amount, Now).Value);
+        Expenses.Existing(Expense.CreateSingle(CondominiumId, group.Id, description, null, month, amount, 10, Now).Value);
 
     public Expense NewFixed(ExpenseGroup group, YearMonth start, decimal amount = 300m, string description = "Zeladoria", YearMonth? end = null) =>
-        Expenses.Existing(Expense.CreateFixed(CondominiumId, group.Id, description, null, start, end, amount, Now).Value);
+        Expenses.Existing(Expense.CreateFixed(CondominiumId, group.Id, description, null, start, end, amount, 10, Now).Value);
 
     public Expense NewVariable(ExpenseGroup group, YearMonth start, string description = "Energia elétrica") =>
-        Expenses.Existing(Expense.CreateVariable(CondominiumId, group.Id, description, null, start, null, Now).Value);
+        Expenses.Existing(Expense.CreateVariable(CondominiumId, group.Id, description, null, start, null, 10, Now).Value);
 
     public Expense NewInstallment(
         ExpenseGroup group, YearMonth first, decimal total = 600m, int count = 6, int current = 1, string description = "Obra da garagem") =>
-        Expenses.Existing(Expense.CreateInstallment(CondominiumId, group.Id, description, null, total, count, first, current, Now).Value);
+        Expenses.Existing(Expense.CreateInstallment(CondominiumId, group.Id, description, null, total, count, first, current, 10, Now).Value);
 
     public ExpenseEntry NewEntry(Expense expense, YearMonth month, int version = 5) =>
         Entries.Existing(expense.GenerateEntry(month, Now).Value, version);

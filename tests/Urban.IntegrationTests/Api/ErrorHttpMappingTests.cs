@@ -122,6 +122,9 @@ public sealed class ErrorHttpMappingTests
         { ExpenseErrors.NotFound.Code, 404 },
         { ExpenseErrors.InstallmentNotFound.Code, 404 },
         { ExpenseErrors.EntryNotFound.Code, 404 },
+        { ExpenseErrors.DueDayInvalid.Code, 400 },
+        { ExpenseErrors.StatusInvalid.Code, 400 },
+        { ExpenseErrors.AmountRequiredToPay.Code, 422 },
     };
 
     [Fact]

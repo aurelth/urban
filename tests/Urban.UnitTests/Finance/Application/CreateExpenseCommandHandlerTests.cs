@@ -20,16 +20,16 @@ public class CreateExpenseCommandHandlerTests
     private CreateExpenseCommandHandler Handler() => new(_kit.Expenses, _kit.Groups, _kit.Entries, _kit.Tenant, _kit.Atomic, _kit.Clock);
 
     private CreateExpenseCommand Single(string? month = "2026-11", decimal? amount = 250m) =>
-        new(ExpenseKind.Single, _group.Id, "Troca da lâmpada", "Eletro Silva", month, null, amount, null, null);
+        new(ExpenseKind.Single, _group.Id, "Troca da lâmpada", "Eletro Silva", month, null, amount, null, null, 10);
 
     private CreateExpenseCommand Fixed(string? start = "2026-09", string? end = null, decimal? amount = 300m) =>
-        new(ExpenseKind.Fixed, _group.Id, "Zeladoria", null, start, end, amount, null, null);
+        new(ExpenseKind.Fixed, _group.Id, "Zeladoria", null, start, end, amount, null, null, 10);
 
     private CreateExpenseCommand Variable(string? start = "2026-09") =>
-        new(ExpenseKind.Variable, _group.Id, "Energia elétrica", "Enel", start, null, null, null, null);
+        new(ExpenseKind.Variable, _group.Id, "Energia elétrica", "Enel", start, null, null, null, null, 10);
 
     private CreateExpenseCommand Installment(string? start = "2026-09", decimal? total = 600m, int? count = 6, int? current = 4) =>
-        new(ExpenseKind.Installment, _group.Id, "Obra da garagem", "Benedett", start, null, total, count, current);
+        new(ExpenseKind.Installment, _group.Id, "Obra da garagem", "Benedett", start, null, total, count, current, 10);
 
     // ---- one-off ----
 
@@ -63,12 +63,35 @@ public class CreateExpenseCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_Single_FurtherAhead_StoresOnlyTheExpense_AndTheEntryComesWhenTheMonthOpens()
+    public async Task Handle_Single_FurtherThanFiveYearsAhead_StoresOnlyTheExpense_AndTheEntryComesWhenTheMonthOpens()
+    {
+        Result<ExpenseView> result = await Handler().Handle(Single(month: "2032-01"), default);
+
+        result.IsSuccess.Should().BeTrue();
+        _kit.Expenses.All.Should().HaveCount(1);
+        _kit.Entries.Added.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_Single_WithinFiveYears_GeneratesTheEntryWithTheDueDateOfThatMonth()
     {
         Result<ExpenseView> result = await Handler().Handle(Single(month: "2027-01"), default);
 
         result.IsSuccess.Should().BeTrue();
-        _kit.Expenses.All.Should().HaveCount(1);
+        result.Value.DueDay.Should().Be(10);
+        _kit.Entries.Added.Should().ContainSingle().Which.DueDate.Should().Be(new DateOnly(2027, 1, 10));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(0)]
+    [InlineData(32)]
+    public async Task Handle_WithoutAValidDueDay_Fails_AndStoresNothing(int? dueDay)
+    {
+        Result<ExpenseView> result = await Handler().Handle(Single(month: "2026-11") with { DueDay = dueDay }, default);
+
+        result.Error.Should().Be(ExpenseErrors.DueDayInvalid);
+        _kit.Expenses.All.Should().BeEmpty();
         _kit.Entries.Added.Should().BeEmpty();
     }
 
@@ -101,7 +124,7 @@ public class CreateExpenseCommandHandlerTests
         result.Value.Kind.Should().Be(ExpenseKind.Variable);
         result.Value.CurrentAmount.Should().BeNull();
         ExpenseEntry entry = _kit.Entries.Added.Should().ContainSingle().Subject;
-        entry.IsPending.Should().BeTrue();
+        entry.NeedsAmount.Should().BeTrue();
     }
 
     [Fact]
