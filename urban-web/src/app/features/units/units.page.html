@@ -59,43 +59,52 @@
 
       @if (store.summary(); as summary) {
         <dl class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7" data-testid="summary">
-          <div class="rounded-xl border border-outline-variant p-4" data-testid="summary-active">
+          <div
+            class="rounded-xl border border-outline-variant bg-surface-container p-4"
+            data-testid="summary-active"
+          >
             <dt class="text-sm text-on-surface-variant">Ativas</dt>
             <dd class="m-0 text-2xl font-semibold">{{ summary.active }}</dd>
           </div>
           <div
-            class="rounded-xl border border-outline-variant p-4"
+            class="rounded-xl border border-outline-variant bg-surface-container p-4"
             data-testid="summary-deactivated"
           >
             <dt class="text-sm text-on-surface-variant">Desativadas</dt>
             <dd class="m-0 text-2xl font-semibold">{{ summary.deactivated }}</dd>
           </div>
           <div
-            class="rounded-xl border border-outline-variant p-4"
+            class="rounded-xl border border-outline-variant bg-surface-container p-4"
             data-testid="summary-apartments"
           >
             <dt class="text-sm text-on-surface-variant">Apartamentos</dt>
             <dd class="m-0 text-2xl font-semibold">{{ summary.apartments }}</dd>
           </div>
-          <div class="rounded-xl border border-outline-variant p-4" data-testid="summary-houses">
+          <div
+            class="rounded-xl border border-outline-variant bg-surface-container p-4"
+            data-testid="summary-houses"
+          >
             <dt class="text-sm text-on-surface-variant">Casas</dt>
             <dd class="m-0 text-2xl font-semibold">{{ summary.houses }}</dd>
           </div>
-          <div class="rounded-xl border border-outline-variant p-4" data-testid="summary-fraction">
+          <div
+            class="rounded-xl border border-outline-variant bg-surface-container p-4"
+            data-testid="summary-fraction"
+          >
             <dt class="text-sm text-on-surface-variant">Fração ideal ocupada</dt>
             <dd class="m-0 text-2xl font-semibold">
               {{ percent(summary.idealFractionTotal) }} de 100%
             </dd>
           </div>
           <div
-            class="rounded-xl border border-outline-variant p-4"
+            class="rounded-xl border border-outline-variant bg-surface-container p-4"
             data-testid="summary-without-fraction"
           >
             <dt class="text-sm text-on-surface-variant">Sem fração ideal</dt>
             <dd class="m-0 text-2xl font-semibold">{{ summary.withoutIdealFraction }}</dd>
           </div>
           <div
-            class="rounded-xl border border-outline-variant p-4"
+            class="rounded-xl border border-outline-variant bg-surface-container p-4"
             data-testid="summary-without-area"
           >
             <dt class="text-sm text-on-surface-variant">Sem área</dt>
@@ -188,7 +197,10 @@
       }
 
       @if (store.total() === 0 && !store.hasFilters()) {
-        <div class="rounded-xl border border-outline-variant p-6 text-center" data-testid="empty">
+        <div
+          class="rounded-xl border border-outline-variant bg-surface-container p-6 text-center"
+          data-testid="empty"
+        >
           <p class="mb-1 text-lg font-medium">Nenhuma unidade cadastrada ainda</p>
           <p class="m-0 text-on-surface-variant">
             Cadastre uma unidade por vez ou várias de uma vez, pelo cadastro em lote
@@ -196,7 +208,7 @@
         </div>
       } @else if (store.items().length === 0) {
         <p
-          class="rounded-xl border border-outline-variant p-6 text-center text-on-surface-variant"
+          class="rounded-xl border border-outline-variant bg-surface-container p-6 text-center text-on-surface-variant"
           data-testid="no-results"
         >
           Nenhuma unidade encontrada com estes filtros
@@ -205,7 +217,7 @@
         <p class="mb-2 text-sm text-on-surface-variant" data-testid="total">
           {{ store.total() }} {{ store.total() === 1 ? 'unidade' : 'unidades' }}
         </p>
-        <div class="overflow-x-auto rounded-xl border border-outline-variant">
+        <div class="overflow-x-auto rounded-xl border border-outline-variant bg-surface-container">
           <table class="w-full border-collapse text-left" data-testid="units-table">
             <caption class="sr-only">
               Lista de unidades
