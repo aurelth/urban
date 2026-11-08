@@ -1,12 +1,13 @@
 using MediatR;
 using Urban.Finance.Application.Abstractions;
 using Urban.Finance.Domain;
+using Urban.Finance.Domain.Months;
 using Urban.SharedKernel;
 using Urban.SharedKernel.Abstractions;
 
 namespace Urban.Finance.Application.Expenses;
 
-public sealed class SetInstallmentAmountCommandHandler(IExpenses expenses, IExpenseEntries entries, ITenantContext tenant, IAtomicWork atomicWork, IClock clock)
+public sealed class SetInstallmentAmountCommandHandler(IExpenses expenses, IExpenseEntries entries, IMonthClosings closings, ITenantContext tenant, IAtomicWork atomicWork, IClock clock)
     : IRequestHandler<SetInstallmentAmountCommand, Result<ExpenseView>>
 {
     public async Task<Result<ExpenseView>> Handle(SetInstallmentAmountCommand request, CancellationToken cancellationToken)
@@ -24,7 +25,11 @@ public sealed class SetInstallmentAmountCommandHandler(IExpenses expenses, IExpe
         }
 
         ExpenseRecord record = found.Value;
-        IReadOnlyList<ExpenseEntryRecord> existing = await entries.ListForExpenseFromAsync(record.Expense.Id, record.Expense.StartMonth, cancellationToken);
+        IReadOnlySet<YearMonth> closed = await closings.ClosedMonthsFromAsync(record.Expense.StartMonth, cancellationToken);
+
+        // Os lançamentos de meses fechados não acompanham o novo valor: o que foi cobrado fica como está.
+        IReadOnlyList<ExpenseEntryRecord> existing =
+            [.. (await entries.ListForExpenseFromAsync(record.Expense.Id, record.Expense.StartMonth, cancellationToken)).Where(entry => !closed.Contains(entry.Entry.Month))];
         Dictionary<Guid, decimal?> before = ExpenseLookup.AmountsOf(record.Expense, existing);
 
         return await Atomic.RunAsync(atomicWork, ct => ApplyAsync(record, request, existing, before, ct), cancellationToken);

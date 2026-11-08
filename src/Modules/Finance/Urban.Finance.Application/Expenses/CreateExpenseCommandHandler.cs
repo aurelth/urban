@@ -10,12 +10,14 @@ namespace Urban.Finance.Application.Expenses;
 
 /// <summary>
 /// Cria a despesa e, se o mês inicial já pode ser aberto, o lançamento dele, numa unidade atômica só. Os meses seguintes
-/// ganham o lançamento quando o mês é aberto (<c>OpenMonthCommand</c>).
+/// ganham o lançamento quando o mês é aberto (<c>OpenMonthCommand</c>). Se o mês inicial já está fechado, o lançamento dele
+/// fica para depois de reabrir o mês: o que foi cobrado não muda.
 /// </summary>
 public sealed class CreateExpenseCommandHandler(
     IExpenses expenses,
     IExpenseGroups groups,
     IExpenseEntries entries,
+    IMonthClosings closings,
     ITenantContext tenant,
     IAtomicWork atomicWork,
     IClock clock) : IRequestHandler<CreateExpenseCommand, Result<ExpenseView>>
@@ -68,7 +70,9 @@ public sealed class CreateExpenseCommandHandler(
             return Result.Failure<ExpenseView>(added.Error);
         }
 
-        if (MonthRules.CanOpen(expense.StartMonth, FinanceCalendar.Today(now)).IsSuccess)
+        bool monthIsClosed = await closings.FindAsync(expense.StartMonth, cancellationToken) is not null;
+
+        if (!monthIsClosed && MonthRules.CanOpen(expense.StartMonth, FinanceCalendar.Today(now)).IsSuccess)
         {
             Result stored = await entries.AddRangeAsync([expense.GenerateEntry(expense.StartMonth, now).Value], cancellationToken);
 

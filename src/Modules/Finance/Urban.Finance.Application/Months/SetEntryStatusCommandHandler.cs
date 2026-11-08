@@ -1,13 +1,14 @@
 using MediatR;
 using Urban.Finance.Application.Abstractions;
 using Urban.Finance.Domain;
+using Urban.Finance.Domain.Closing;
 using Urban.Finance.Domain.Expenses;
 using Urban.SharedKernel;
 using Urban.SharedKernel.Abstractions;
 
 namespace Urban.Finance.Application.Months;
 
-public sealed class SetEntryStatusCommandHandler(IExpenseEntries entries, ITenantContext tenant, IClock clock)
+public sealed class SetEntryStatusCommandHandler(IExpenseEntries entries, IMonthClosings closings, ITenantContext tenant, IClock clock)
     : IRequestHandler<SetEntryStatusCommand, Result<ExpenseEntryView>>
 {
     public async Task<Result<ExpenseEntryView>> Handle(SetEntryStatusCommand request, CancellationToken cancellationToken)
@@ -32,6 +33,14 @@ public sealed class SetEntryStatusCommandHandler(IExpenseEntries entries, ITenan
         if (request.Version != record.Version)
         {
             return Result.Failure<ExpenseEntryView>(FinanceErrors.ConcurrencyConflict);
+        }
+
+        // Pagar não mexe nas cobranças dos moradores; cancelar (ou desfazer o cancelamento) muda o total que foi repartido.
+        bool changesTheTotal = (request.Status == EntryStatus.Canceled) != (record.Entry.Status == EntryStatus.Canceled);
+
+        if (changesTheTotal && await closings.FindAsync(record.Entry.Month, cancellationToken) is not null)
+        {
+            return Result.Failure<ExpenseEntryView>(ClosingErrors.MonthIsClosed);
         }
 
         Result changed = record.Entry.SetStatus(request.Status);

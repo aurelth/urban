@@ -25,6 +25,7 @@ public static class FinanceInfrastructureExtensions
         services.AddScoped<IExpenseGroups, FinanceExpenseGroups>();
         services.AddScoped<IExpenses, FinanceExpenses>();
         services.AddScoped<IExpenseEntries, FinanceExpenseEntries>();
+        services.AddScoped<IMonthClosings, FinanceMonthClosings>();
 
         return services;
     }

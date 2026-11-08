@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Urban.Finance.Domain.Closing;
 using Urban.Finance.Domain.Expenses;
 using Urban.SharedKernel.Abstractions;
 
@@ -18,16 +19,24 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options,
 
     public DbSet<ExpenseEntry> ExpenseEntries => Set<ExpenseEntry>();
 
+    public DbSet<MonthClosing> MonthClosings => Set<MonthClosing>();
+
+    public DbSet<UnitCharge> UnitCharges => Set<UnitCharge>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(Schema);
         modelBuilder.ApplyConfiguration(new Configurations.ExpenseGroupConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.ExpenseConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.ExpenseEntryConfiguration());
+        modelBuilder.ApplyConfiguration(new Configurations.MonthClosingConfiguration());
+        modelBuilder.ApplyConfiguration(new Configurations.UnitChargeConfiguration());
 
         // Sem tenant a comparação com nulo não casa com nenhuma linha: o padrão é não ver nada.
         modelBuilder.Entity<ExpenseGroup>().HasQueryFilter(group => group.CondominiumId == tenant.CondominiumId);
         modelBuilder.Entity<Expense>().HasQueryFilter(expense => expense.CondominiumId == tenant.CondominiumId);
         modelBuilder.Entity<ExpenseEntry>().HasQueryFilter(entry => entry.CondominiumId == tenant.CondominiumId);
+        modelBuilder.Entity<MonthClosing>().HasQueryFilter(closing => closing.CondominiumId == tenant.CondominiumId);
+        modelBuilder.Entity<UnitCharge>().HasQueryFilter(charge => charge.CondominiumId == tenant.CondominiumId);
     }
 }

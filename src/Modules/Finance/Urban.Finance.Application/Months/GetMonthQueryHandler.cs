@@ -7,7 +7,7 @@ using Urban.SharedKernel.Abstractions;
 
 namespace Urban.Finance.Application.Months;
 
-public sealed class GetMonthQueryHandler(IExpenseEntries entries, IExpenseGroups groups, ITenantContext tenant, IClock clock)
+public sealed class GetMonthQueryHandler(IExpenseEntries entries, IMonthClosings closings, IExpenseGroups groups, ITenantContext tenant, IClock clock)
     : IRequestHandler<GetMonthQuery, Result<MonthView>>
 {
     public async Task<Result<MonthView>> Handle(GetMonthQuery request, CancellationToken cancellationToken)
@@ -21,6 +21,6 @@ public sealed class GetMonthQueryHandler(IExpenseEntries entries, IExpenseGroups
 
         return month.IsFailure
             ? Result.Failure<MonthView>(month.Error)
-            : Result.Success(await MonthReader.ReadAsync(entries, groups, month.Value, FinanceCalendar.Today(clock.UtcNow), cancellationToken));
+            : Result.Success(await MonthReader.ReadAsync(entries, closings, groups, month.Value, FinanceCalendar.Today(clock.UtcNow), cancellationToken));
     }
 }

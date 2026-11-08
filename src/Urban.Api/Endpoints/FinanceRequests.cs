@@ -34,3 +34,6 @@ public sealed record EntryAmountRequest(string? Version, decimal? Amount);
 
 /// <param name="Status">"pending", "paid" ou "canceled". "Vencido" não se envia: é calculado pela data.</param>
 public sealed record EntryStatusRequest(string? Version, string? Status);
+
+/// <param name="DueDate">O vencimento de todas as cobranças do mês, como AAAA-MM-DD. Não pode ser antes do primeiro dia do mês.</param>
+public sealed record MonthCloseRequest(string? DueDate);

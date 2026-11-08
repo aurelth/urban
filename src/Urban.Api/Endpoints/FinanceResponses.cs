@@ -54,4 +54,13 @@ public sealed record MonthResponse(
     IReadOnlyList<GroupTotalResponse> Groups,
     decimal Total,
     int NeedsAmountCount,
-    int OverdueCount);
+    int OverdueCount,
+    MonthClosingResponse? Closing);
+
+/// <param name="Weight">O peso da unidade no rateio (fração ideal de 0 a 1, área em m² ou 1), como era quando o mês fechou.</param>
+public sealed record UnitChargeResponse(Guid UnitId, string? Block, string Number, decimal Weight, decimal Amount);
+
+/// <param name="Basis">Em que o rateio se baseou: idealFraction, equalShare ou area.</param>
+/// <param name="DueDate">O vencimento das cobranças, AAAA-MM-DD.</param>
+/// <param name="Total">Soma dos lançamentos não cancelados quando o mês fechou.</param>
+public sealed record MonthClosingResponse(DateTimeOffset ClosedAt, string DueDate, decimal Total, string Basis, IReadOnlyList<UnitChargeResponse> Charges);

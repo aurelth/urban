@@ -23,6 +23,111 @@ namespace Urban.Finance.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Urban.Finance.Domain.Closing.MonthClosing", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("BasisKind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("basis_kind");
+
+                    b.Property<DateTimeOffset>("ClosedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closed_at");
+
+                    b.Property<Guid>("ClosedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("closed_by");
+
+                    b.Property<Guid>("CondominiumId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("condominium_id");
+
+                    b.Property<DateOnly>("DueDate")
+                        .HasColumnType("date")
+                        .HasColumnName("due_date");
+
+                    b.Property<string>("Month")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .HasColumnType("character varying(7)")
+                        .HasColumnName("month");
+
+                    b.Property<decimal>("Total")
+                        .HasPrecision(9, 2)
+                        .HasColumnType("numeric(9,2)")
+                        .HasColumnName("total");
+
+                    b.HasKey("Id")
+                        .HasName("pk_month_closing");
+
+                    b.HasIndex("CondominiumId", "Month")
+                        .IsUnique()
+                        .HasDatabaseName("ix_month_closing_condominium_month");
+
+                    b.ToTable("month_closing", "finance");
+                });
+
+            modelBuilder.Entity("Urban.Finance.Domain.Closing.UnitCharge", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(9, 2)
+                        .HasColumnType("numeric(9,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<string>("Block")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("block");
+
+                    b.Property<Guid>("ClosingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("closing_id");
+
+                    b.Property<Guid>("CondominiumId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("condominium_id");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("number");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer")
+                        .HasColumnName("position");
+
+                    b.Property<Guid>("UnitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("unit_id");
+
+                    b.Property<decimal>("Weight")
+                        .HasPrecision(14, 8)
+                        .HasColumnType("numeric(14,8)")
+                        .HasColumnName("weight");
+
+                    b.HasKey("Id")
+                        .HasName("pk_unit_charge");
+
+                    b.HasIndex("ClosingId", "UnitId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_unit_charge_closing_id_unit_id");
+
+                    b.HasIndex("CondominiumId", "UnitId")
+                        .HasDatabaseName("ix_unit_charge_condominium_id_unit_id");
+
+                    b.ToTable("unit_charge", "finance");
+                });
+
             modelBuilder.Entity("Urban.Finance.Domain.Expenses.Expense", b =>
                 {
                     b.Property<Guid>("Id")
@@ -216,6 +321,16 @@ namespace Urban.Finance.Infrastructure.Persistence.Migrations
                     b.ToTable("expense_group", "finance");
                 });
 
+            modelBuilder.Entity("Urban.Finance.Domain.Closing.UnitCharge", b =>
+                {
+                    b.HasOne("Urban.Finance.Domain.Closing.MonthClosing", null)
+                        .WithMany("Charges")
+                        .HasForeignKey("ClosingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_unit_charge_month_closing_closing_id");
+                });
+
             modelBuilder.Entity("Urban.Finance.Domain.Expenses.Expense", b =>
                 {
                     b.HasOne("Urban.Finance.Domain.Expenses.ExpenseGroup", null)
@@ -313,6 +428,11 @@ namespace Urban.Finance.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_expense_entry_expense_group_group_id");
+                });
+
+            modelBuilder.Entity("Urban.Finance.Domain.Closing.MonthClosing", b =>
+                {
+                    b.Navigation("Charges");
                 });
 #pragma warning restore 612, 618
         }

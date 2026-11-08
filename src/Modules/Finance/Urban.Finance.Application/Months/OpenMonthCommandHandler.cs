@@ -11,8 +11,9 @@ namespace Urban.Finance.Application.Months;
 /// <summary>
 /// Confere quais despesas vencem no mês e quais já têm lançamento, e grava só as que faltam numa gravação única. Se duas
 /// aberturas acontecerem juntas, o índice único (despesa + mês) deixa só uma gravar e a outra recebe um conflito para repetir.
+/// Num mês fechado nada é gerado: os valores já foram cobrados. Para incluir uma despesa nova, reabra o mês.
 /// </summary>
-public sealed class OpenMonthCommandHandler(IExpenses expenses, IExpenseEntries entries, IExpenseGroups groups, ITenantContext tenant, IClock clock)
+public sealed class OpenMonthCommandHandler(IExpenses expenses, IExpenseEntries entries, IMonthClosings closings, IExpenseGroups groups, ITenantContext tenant, IClock clock)
     : IRequestHandler<OpenMonthCommand, Result<MonthView>>
 {
     public async Task<Result<MonthView>> Handle(OpenMonthCommand request, CancellationToken cancellationToken)
@@ -38,6 +39,11 @@ public sealed class OpenMonthCommandHandler(IExpenses expenses, IExpenseEntries 
             return Result.Failure<MonthView>(allowed.Error);
         }
 
+        if (await closings.FindAsync(month, cancellationToken) is not null)
+        {
+            return Result.Success(await MonthReader.ReadAsync(entries, closings, groups, month, FinanceCalendar.Today(now), cancellationToken));
+        }
+
         IReadOnlyList<ExpenseEntryRecord> existing = await entries.ListAsync(month, cancellationToken);
         HashSet<Guid> alreadyGenerated = [.. existing.Select(record => record.Entry.ExpenseId)];
         IReadOnlyList<ExpenseRecord> all = await expenses.ListAsync(cancellationToken);
@@ -59,6 +65,6 @@ public sealed class OpenMonthCommandHandler(IExpenses expenses, IExpenseEntries 
             }
         }
 
-        return Result.Success(await MonthReader.ReadAsync(entries, groups, month, FinanceCalendar.Today(now), cancellationToken));
+        return Result.Success(await MonthReader.ReadAsync(entries, closings, groups, month, FinanceCalendar.Today(now), cancellationToken));
     }
 }

@@ -19,4 +19,6 @@ public static class CondominiumErrors
     public static readonly Error VersionRequired = new("condominium.version.required", "Informe a versão dos dados que você está editando");
 
     public static readonly Error ApportionmentMethodInvalid = new("condominium.apportionment_method.invalid", "Escolha fração ideal, valor igual ou área");
+
+    public static readonly Error ApportionmentNotReady = new("condominium.apportionment_not_ready", "Os dados das unidades ainda não bastam para o método de rateio escolhido. Complete-os na tela de unidades");
 }

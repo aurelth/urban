@@ -1,5 +1,7 @@
 using Urban.Finance.Application.Abstractions;
+using Urban.Finance.Domain.Closing;
 using Urban.Finance.Domain.Expenses;
+using Urban.SharedKernel.Contracts;
 
 namespace Urban.Finance.Application.Months;
 
@@ -47,10 +49,31 @@ public sealed record GroupTotalView(Guid GroupId, string GroupName, decimal Tota
 /// <param name="Total">Soma dos valores do mês, sem os cancelados.</param>
 /// <param name="NeedsAmountCount">Quantos lançamentos (não cancelados) ainda esperam o valor.</param>
 /// <param name="OverdueCount">Quantos lançamentos estão vencidos hoje.</param>
+/// <param name="Closing">Nulo enquanto o mês está aberto; no mês fechado, o total congelado e as cobranças por unidade.</param>
 public sealed record MonthView(
     string Month,
     IReadOnlyList<ExpenseEntryView> Entries,
     IReadOnlyList<GroupTotalView> Groups,
     decimal Total,
     int NeedsAmountCount,
-    int OverdueCount);
+    int OverdueCount,
+    MonthClosingView? Closing);
+
+/// <param name="Weight">O peso da unidade no rateio (fração ideal, área ou 1), como era quando o mês fechou.</param>
+public sealed record UnitChargeView(Guid UnitId, string? Block, string Number, decimal Weight, decimal Amount);
+
+/// <param name="Total">Soma dos lançamentos não cancelados quando o mês fechou.</param>
+public sealed record MonthClosingView(
+    DateTimeOffset ClosedAt,
+    DateOnly DueDate,
+    decimal Total,
+    ApportionmentBasisKind Basis,
+    IReadOnlyList<UnitChargeView> Charges)
+{
+    public static MonthClosingView From(MonthClosing closing) => new(
+        closing.ClosedAt,
+        closing.DueDate,
+        closing.Total,
+        closing.BasisKind,
+        [.. closing.Charges.Select(charge => new UnitChargeView(charge.UnitId, charge.Block, charge.Number, charge.Weight, charge.Amount))]);
+}

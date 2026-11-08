@@ -1,4 +1,5 @@
 using Urban.Finance.Application.Abstractions;
+using Urban.Finance.Domain.Closing;
 using Urban.Finance.Domain.Expenses;
 using Urban.Finance.Domain.Months;
 
@@ -15,7 +16,8 @@ internal static class MonthViewBuilder
         DateOnly today,
         IReadOnlyList<ExpenseEntryRecord> current,
         IReadOnlyList<ExpenseEntryRecord> previous,
-        IReadOnlyList<ExpenseGroupRecord> groups)
+        IReadOnlyList<ExpenseGroupRecord> groups,
+        MonthClosing? closing)
     {
         Dictionary<Guid, string> groupNames = groups.ToDictionary(record => record.Group.Id, record => record.Group.Name);
         Dictionary<Guid, decimal?> previousAmounts = previous.ToDictionary(record => record.Entry.ExpenseId, record => record.Entry.Amount);
@@ -47,7 +49,8 @@ internal static class MonthViewBuilder
             totals,
             totals.Sum(group => group.Total),
             totals.Sum(group => group.NeedsAmountCount),
-            entries.Count(entry => entry.Status == EntryStatus.Overdue));
+            entries.Count(entry => entry.Status == EntryStatus.Overdue),
+            closing is null ? null : MonthClosingView.From(closing));
     }
 
     private static string NameOf(Dictionary<Guid, string> names, Guid groupId) => names.GetValueOrDefault(groupId, string.Empty);
