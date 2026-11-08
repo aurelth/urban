@@ -219,23 +219,20 @@ describe('MonthPage', () => {
     expect(plain(html.textContent)).not.toContain('Gerar lançamentos que faltam');
   });
 
-  it('usa a cor de destaque nos titulos, no mes, nos rotulos do resumo e nos grupos', async () => {
+  it('mantem o titulo e o mes na cor do texto e os rotulos do resumo em cinza', async () => {
     const { html } = await setup();
 
-    const highlighted: (Element | null)[] = [
-      html.querySelector('h1'),
-      testId(html, 'month-title'),
-      testId(html, 'total')?.querySelector('dt') ?? null,
-      testId(html, 'needs-amount-count')?.querySelector('dt') ?? null,
-      testId(html, 'overdue-count')?.querySelector('dt') ?? null,
-      ...html.querySelectorAll('[data-testid="group-section"] h2'),
-    ];
-
-    expect(highlighted).toHaveLength(7);
-    for (const element of highlighted) {
-      expect(element?.classList.contains('text-primary')).toBe(true);
+    for (const element of [html.querySelector('h1'), testId(html, 'month-title')]) {
+      expect(element?.classList.contains('text-primary')).toBe(false);
     }
-    expect(plain(testId(html, 'total')?.querySelector('dt')?.textContent)).toBe('Total do mês');
+    const labels = ['total', 'needs-amount-count', 'overdue-count'].map((id) =>
+      testId(html, id)?.querySelector('dt'),
+    );
+    for (const label of labels) {
+      expect(label?.classList.contains('text-on-surface-variant')).toBe(true);
+      expect(label?.classList.contains('text-primary')).toBe(false);
+    }
+    expect(plain(labels[0]?.textContent)).toBe('Total do mês');
   });
 
   it('mostra o nome do grupo com o mesmo visual do grupo da tela de despesas', async () => {
@@ -431,6 +428,21 @@ describe('MonthPage', () => {
       expect(badge('Elevador').classList.contains('text-warning')).toBe(true);
       expect(plain(badge('Conta de luz').textContent)).toBe('Vencido');
       expect(badge('Conta de luz').classList.contains('text-error')).toBe(true);
+    });
+
+    it('deixa a seta do menu cinza e so a pinta de destaque com o menu aberto', async () => {
+      const { html } = await setup();
+
+      const trigger = statusButton(html, 'Elevador');
+      const arrow = trigger.querySelector<HTMLElement>('[data-testid="status-arrow"]')!;
+
+      expect(trigger.classList.contains('group')).toBe(true);
+      expect(arrow.classList.contains('[--mat-icon-color:var(--mat-sys-on-surface-variant)]')).toBe(
+        true,
+      );
+      expect(
+        arrow.classList.contains('group-aria-expanded:[--mat-icon-color:var(--mat-sys-primary)]'),
+      ).toBe(true);
     });
 
     it('pinta cada opcao do menu com a cor da sua situacao', async () => {

@@ -288,18 +288,33 @@ describe('Despesas', () => {
     cy.get('button[aria-label="Encerrar Jardinagem"]').should('not.exist');
   });
 
-  it('usa a cor de destaque nos titulos, nos grupos e no rotulo do filtro', () => {
+  it('mantem os titulos e os grupos na cor do texto e o rotulo do filtro em cinza', () => {
     cy.visit(EXPENSES_PATH);
 
-    for (const selector of [
-      'h1',
-      '#groups-title',
-      '[data-testid="filter-label"]',
-      '[data-testid="group-item"] span',
-    ]) {
-      cy.get(selector).first().should('have.css', 'color', PALETTE.light.primary);
+    for (const selector of ['h1', '#groups-title', '[data-testid="group-item"] span']) {
+      cy.get(selector).first().should('have.css', 'color', PALETTE.light.onSurface);
     }
+    cy.get('[data-testid="filter-label"]').should(
+      'have.css',
+      'color',
+      PALETTE.light.onSurfaceVariant,
+    );
     cy.get('[data-testid="group-item"] span').first().should('have.css', 'font-weight', '500');
+  });
+
+  it('deixa a seta do filtro cinza e so a pinta de indigo enquanto o menu esta aberto', () => {
+    cy.visit(EXPENSES_PATH);
+
+    const arrow = () => cy.get('[data-testid="filter-arrow"]');
+    arrow().should('have.css', 'color', PALETTE.light.onSurfaceVariant);
+
+    cy.get('[data-testid="filter-status"]').click();
+    cy.get('[role="menuitem"]').should('have.length', 3);
+    arrow().should('have.css', 'color', PALETTE.light.primary);
+
+    cy.get('body').type('{esc}');
+    cy.get('[role="menuitem"]').should('not.exist');
+    arrow().should('have.css', 'color', PALETTE.light.onSurfaceVariant);
   });
 
   it('mostra Ativa em verde, junto com o icone', () => {
