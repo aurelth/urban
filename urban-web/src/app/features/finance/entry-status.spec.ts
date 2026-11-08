@@ -51,6 +51,30 @@ describe('entry-status', () => {
   });
 
   describe('isChoiceDisabled', () => {
+    describe('com o mes fechado', () => {
+      it('nao deixa cancelar, porque isso mudaria o total ja rateado', () => {
+        expect(isChoiceDisabled(entry({ status: 'pending' }), 'canceled', true)).toBe(true);
+        expect(isChoiceDisabled(entry({ status: 'overdue' }), 'canceled', true)).toBe(true);
+        expect(isChoiceDisabled(entry({ status: 'paid' }), 'canceled', true)).toBe(true);
+      });
+
+      it('nao deixa desfazer um cancelamento', () => {
+        const canceled = entry({ status: 'canceled' });
+
+        expect(isChoiceDisabled(canceled, 'pending', true)).toBe(true);
+        expect(isChoiceDisabled(canceled, 'paid', true)).toBe(true);
+      });
+
+      it('continua deixando pagar e voltar para pendente, que nao mexem nas cobrancas', () => {
+        expect(isChoiceDisabled(entry({ status: 'pending' }), 'paid', true)).toBe(false);
+        expect(isChoiceDisabled(entry({ status: 'paid' }), 'pending', true)).toBe(false);
+      });
+
+      it('sem o terceiro argumento o mes e considerado aberto', () => {
+        expect(isChoiceDisabled(entry({ status: 'pending' }), 'canceled')).toBe(false);
+      });
+    });
+
     it('nao repete a situacao atual, e vencido conta como pendente', () => {
       expect(isChoiceDisabled(entry({ status: 'pending' }), 'pending')).toBe(true);
       expect(isChoiceDisabled(entry({ status: 'overdue' }), 'pending')).toBe(true);

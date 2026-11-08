@@ -5,6 +5,7 @@ using Urban.Finance.Application.Expenses;
 using Urban.Finance.Application.Groups;
 using Urban.Finance.Application.Months;
 using Urban.Finance.Domain.Expenses;
+using Urban.SharedKernel.Contracts;
 
 namespace Urban.Api.Mapping;
 
@@ -44,6 +45,10 @@ public static partial class FinanceMapper
     public static SetEntryStatusCommand ToCommand(EntryStatusRequest request, Guid entryId) =>
         new(entryId, request.Version, ParseEntryStatus(request.Status));
 
+    /// <returns>Falso quando a data falta ou não está em AAAA-MM-DD.</returns>
+    public static bool TryParseDueDate(string? text, out DateOnly dueDate) =>
+        DateOnly.TryParseExact(text, "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out dueDate);
+
     // ---- Do resultado para a resposta ----
 
     public static partial ExpenseGroupResponse ToResponse(ExpenseGroupView view);
@@ -57,6 +62,10 @@ public static partial class FinanceMapper
     public static partial ExpenseEntryResponse ToResponse(ExpenseEntryView view);
 
     public static partial MonthResponse ToResponse(MonthView view);
+
+    private static partial MonthClosingResponse ToResponse(MonthClosingView view);
+
+    private static partial UnitChargeResponse ToResponse(UnitChargeView view);
 
     // ---- Texto da API <-> enum (camelCase). Valor desconhecido vira 0, que o Application recusa com o código do campo ----
 
@@ -106,6 +115,14 @@ public static partial class FinanceMapper
         EntryStatus.Overdue => "overdue",
         EntryStatus.Canceled => "canceled",
         _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Situação de lançamento desconhecida."),
+    };
+
+    private static string BasisName(ApportionmentBasisKind basis) => basis switch
+    {
+        ApportionmentBasisKind.IdealFraction => "idealFraction",
+        ApportionmentBasisKind.EqualShare => "equalShare",
+        ApportionmentBasisKind.Area => "area",
+        _ => throw new ArgumentOutOfRangeException(nameof(basis), basis, "Base de rateio desconhecida."),
     };
 
     private static string DateText(DateOnly date) => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);

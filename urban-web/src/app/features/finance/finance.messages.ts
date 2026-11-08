@@ -23,6 +23,18 @@ const FIELD_MESSAGES: MessagesByCode = {
   'month.too_far_ahead': 'Só é possível abrir meses até 5 anos à frente',
   'expense_entry.amount_required': 'Informe o valor do lançamento antes de marcá-lo como pago',
   'expense_entry.status.invalid': 'Escolha pendente, pago ou cancelado',
+  'closing.due_date_invalid':
+    'Informe uma data de vencimento válida, a partir do primeiro dia do mês',
+  'closing.month_not_open': 'Este mês ainda não tem lançamentos para fechar',
+  'closing.amounts_pending':
+    'Informe o valor de todos os lançamentos variáveis antes de fechar o mês',
+  'closing.nothing_to_charge': 'O mês não tem nada a cobrar: todos os lançamentos estão cancelados',
+  'closing.total_invalid':
+    'O total do mês deve ter no máximo 2 casas decimais e não passar de R$ 9.999.999,99',
+  'closing.no_weights': 'Cadastre as unidades do condomínio antes de fechar o mês',
+  'closing.month_is_closed': 'O mês está fechado. Reabra o mês para mudar os lançamentos',
+  'condominium.apportionment_not_ready':
+    'Complete os dados das unidades, na tela de unidades, para o método de rateio escolhido',
   'finance.version.required': 'Recarregue a lista antes de continuar',
   'finance.condominium_not_found': 'Cadastre o condomínio antes de usar o financeiro',
   'identity.user.not_manager': 'Só o síndico pode usar o financeiro',
@@ -42,6 +54,10 @@ export const FINANCE_FORM_MESSAGES: MessagesByCode = {
     'Este grupo não existe mais. Feche esta janela e confira a tela, que já foi atualizada',
   'expense_entry.not_found':
     'Este lançamento não existe mais. Feche esta janela e confira a tela, que já foi atualizada',
+  'closing.already_closed':
+    'Este mês já está fechado. Feche esta janela e confira a tela, que já foi atualizada',
+  'closing.not_closed':
+    'Este mês não está fechado. Feche esta janela e confira a tela, que já foi atualizada',
 };
 
 /** Ações na própria tela, que já foi atualizada quando o aviso aparece. */
@@ -51,4 +67,6 @@ export const FINANCE_ACTION_MESSAGES: MessagesByCode = {
   'expense.not_found': 'Esta despesa não existe mais. A tela já foi atualizada',
   'expense_group.not_found': 'Este grupo não existe mais. A tela já foi atualizada',
   'expense_entry.not_found': 'Este lançamento não existe mais. A tela já foi atualizada',
+  'closing.already_closed': 'Este mês já está fechado. A tela já foi atualizada',
+  'closing.not_closed': 'Este mês não está fechado. A tela já foi atualizada',
 };

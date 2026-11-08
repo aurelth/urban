@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { flushPromises } from '../../testing/async';
 import { problem } from '../../testing/auth.fixtures';
-import { entry, groupTotal, monthEntries } from '../../testing/finance.fixtures';
+import { entry, groupTotal, monthClosing, monthEntries } from '../../testing/finance.fixtures';
 import { MonthStore } from './month.store';
 
 const OPEN_2026_11 = { method: 'POST', url: '/api/finance/months/2026-11/open' };
@@ -285,6 +285,109 @@ describe('MonthStore', () => {
 
       expect((await saving)?.code).toBe('expense_entry.amount_required');
       expect(store.busy()).toBe(false);
+    });
+  });
+
+  describe('fechamento', () => {
+    const CLOSE_2026_11 = { method: 'POST', url: '/api/finance/months/2026-11/close' };
+    const REOPEN_2026_11 = { method: 'POST', url: '/api/finance/months/2026-11/reopen' };
+
+    async function shown(
+      data = monthEntries({ entries: [entry()], total: 4200 }),
+    ): Promise<ReturnType<typeof setup>> {
+      const harness = setup();
+      const showing = harness.store.show('2026-11');
+      harness.http.expectOne(OPEN_2026_11).flush(data);
+      await showing;
+      return harness;
+    }
+
+    it('um mes aberto nao tem fechamento', async () => {
+      const { store } = await shown();
+
+      expect(store.closing()).toBeNull();
+      expect(store.isClosed()).toBe(false);
+    });
+
+    it('um mes fechado expoe o fechamento', async () => {
+      const closing = monthClosing();
+      const { store } = await shown(monthEntries({ entries: [entry()], closing }));
+
+      expect(store.closing()).toEqual(closing);
+      expect(store.isClosed()).toBe(true);
+    });
+
+    it('fecha o mes com o vencimento e passa a mostrar o fechamento, sem reler', async () => {
+      const { store, http } = await shown();
+      const closed = monthEntries({ entries: [entry()], total: 4200, closing: monthClosing() });
+
+      const closing = store.close('2026-12-10');
+      expect(store.busy()).toBe(true);
+      const post = http.expectOne(CLOSE_2026_11);
+      expect(post.request.body).toEqual({ dueDate: '2026-12-10' });
+      post.flush(closed);
+
+      expect(await closing).toBeNull();
+      expect(store.busy()).toBe(false);
+      expect(store.data()).toEqual(closed);
+      expect(store.isClosed()).toBe(true);
+      http.expectNone({ method: 'GET', url: '/api/finance/months/2026-11' });
+    });
+
+    it('devolve o problema quando o mes nao pode fechar e deixa a tela como estava', async () => {
+      const { store, http } = await shown();
+      const before = store.data();
+
+      const closing = store.close('2026-12-10');
+      http.expectOne(CLOSE_2026_11).flush(...fail(422, 'condominium.apportionment_not_ready'));
+
+      expect((await closing)?.code).toBe('condominium.apportionment_not_ready');
+      expect(store.data()).toBe(before);
+      expect(store.busy()).toBe(false);
+      http.expectNone({ method: 'GET', url: '/api/finance/months/2026-11' });
+    });
+
+    it('rele o mes quando ele ja estava fechado em outro lugar', async () => {
+      const { store, http } = await shown();
+
+      const closing = store.close('2026-12-10');
+      http.expectOne(CLOSE_2026_11).flush(...fail(409, 'closing.already_closed'));
+      await flushPromises();
+      http
+        .expectOne({ method: 'GET', url: '/api/finance/months/2026-11' })
+        .flush(monthEntries({ closing: monthClosing() }));
+
+      expect((await closing)?.code).toBe('closing.already_closed');
+      expect(store.isClosed()).toBe(true);
+    });
+
+    it('reabre o mes e volta a mostrar os lancamentos editaveis, sem reler', async () => {
+      const { store, http } = await shown(
+        monthEntries({ entries: [entry()], closing: monthClosing() }),
+      );
+      const reopened = monthEntries({ entries: [entry()], total: 4200 });
+
+      const reopening = store.reopen();
+      http.expectOne(REOPEN_2026_11).flush(reopened);
+
+      expect(await reopening).toBeNull();
+      expect(store.data()).toEqual(reopened);
+      expect(store.isClosed()).toBe(false);
+      http.expectNone({ method: 'GET', url: '/api/finance/months/2026-11' });
+    });
+
+    it('rele o mes quando ele ja tinha sido reaberto em outro lugar', async () => {
+      const { store, http } = await shown(
+        monthEntries({ entries: [entry()], closing: monthClosing() }),
+      );
+
+      const reopening = store.reopen();
+      http.expectOne(REOPEN_2026_11).flush(...fail(409, 'closing.not_closed'));
+      await flushPromises();
+      http.expectOne({ method: 'GET', url: '/api/finance/months/2026-11' }).flush(monthEntries());
+
+      expect((await reopening)?.code).toBe('closing.not_closed');
+      expect(store.isClosed()).toBe(false);
     });
   });
 });

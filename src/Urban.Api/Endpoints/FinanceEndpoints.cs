@@ -5,6 +5,7 @@ using Urban.Api.Mapping;
 using Urban.Finance.Application.Expenses;
 using Urban.Finance.Application.Groups;
 using Urban.Finance.Application.Months;
+using Urban.Finance.Domain.Closing;
 using Urban.SharedKernel;
 
 namespace Urban.Api.Endpoints;
@@ -133,6 +134,25 @@ public static class FinanceEndpoints
             .Produces<MonthResponse>()
             .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound, StatusCodes.Status409Conflict, StatusCodes.Status422UnprocessableEntity);
 
+        finance.MapPost("/months/{month}/close", (string month, MonthCloseRequest request, ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken ct) =>
+                CloseMonthAsync(month, request, user, response, sender, ct))
+            .WithName("CloseMonth")
+            .WithSummary("Fecha o mês e reparte o total entre as unidades")
+            .WithDescription(
+                "Soma os lançamentos não cancelados e reparte o total entre as unidades ativas pelo método de rateio do condomínio (fração ideal, valor igual ou área), em centavos que fecham exatamente o total. "
+                + "O corpo leva o vencimento (dueDate, AAAA-MM-DD, não antes do primeiro dia do mês) de todas as cobranças. Com o mês fechado, valores e cancelamentos não mudam (409); marcar como pago continua valendo. "
+                + "Mês nunca aberto, valor variável ainda por informar, nada a cobrar e dados das unidades que não bastam para o método escolhido respondem 422; mês já fechado, 409. " + RateLimitText)
+            .Produces<MonthResponse>()
+            .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound, StatusCodes.Status409Conflict, StatusCodes.Status422UnprocessableEntity);
+
+        finance.MapPost("/months/{month}/reopen", (string month, ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken ct) =>
+                SendAsync(user, response, sender, new ReopenMonthCommand(month), view => FinanceMapper.ToResponse(view), ct))
+            .WithName("ReopenMonth")
+            .WithSummary("Reabre um mês fechado")
+            .WithDescription("Apaga o fechamento e as cobranças do mês; os lançamentos voltam a poder ser editados e o mês pode ser fechado de novo, refazendo as cobranças. Mês que não está fechado responde 409. " + RateLimitText)
+            .Produces<MonthResponse>()
+            .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound, StatusCodes.Status409Conflict);
+
         finance.MapPut("/entries/{id:guid}/amount", (Guid id, EntryAmountRequest request, ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken ct) =>
                 SendAsync(user, response, sender, FinanceMapper.ToCommand(request, id), view => FinanceMapper.ToResponse(view), ct))
             .WithName("SetEntryAmount")
@@ -165,6 +185,29 @@ public static class FinanceEndpoints
         Result<IReadOnlyList<ExpenseView>> result = await sender.Send(new ListExpensesQuery(filter), cancellationToken);
 
         return ApiResults.Respond(result, response, views => FinanceMapper.ToResponse(views));
+    }
+
+    private static async Task<IResult> CloseMonthAsync(
+        string month,
+        MonthCloseRequest request,
+        ClaimsPrincipal user,
+        HttpResponse response,
+        ISender sender,
+        CancellationToken cancellationToken)
+    {
+        if (!ManagerAccess.TryRead(user, out Guid userId, out IResult? refusal))
+        {
+            return refusal;
+        }
+
+        if (!FinanceMapper.TryParseDueDate(request.DueDate, out DateOnly dueDate))
+        {
+            return ErrorHttp.ToProblem(ClosingErrors.DueDateInvalid);
+        }
+
+        Result<MonthView> result = await sender.Send(new CloseMonthCommand(month, dueDate, userId), cancellationToken);
+
+        return ApiResults.Respond(result, response, view => FinanceMapper.ToResponse(view));
     }
 
     private static async Task<IResult> SendAsync<T, TResponse>(

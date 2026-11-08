@@ -121,6 +121,16 @@ describe('FinanceApi', () => {
     expectCall('POST', '/api/finance/months/2026-11/open', {});
   });
 
+  it('closes a month with the due date of the charges', () => {
+    api.closeMonth('2026-11', '2026-12-10').subscribe();
+    expectCall('POST', '/api/finance/months/2026-11/close', { dueDate: '2026-12-10' });
+  });
+
+  it('reopens a closed month', () => {
+    api.reopenMonth('2026-11').subscribe();
+    expectCall('POST', '/api/finance/months/2026-11/reopen', {});
+  });
+
   it('sets the amount of an entry', () => {
     api.setEntryAmount('n1', '9', 812.34).subscribe();
     expectCall('PUT', '/api/finance/entries/n1/amount', { version: '9', amount: 812.34 });

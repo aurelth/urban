@@ -11,7 +11,13 @@ import { provideUrbanIcons } from '../../core/theme/icons';
 import { flushPromises } from '../../testing/async';
 import { REGISTERED_MANAGER, problem, signInAs } from '../../testing/auth.fixtures';
 import { removeOverlays, submitDialog, typeIn } from '../../testing/dialog.harness';
-import { entry, groupTotal, monthEntries } from '../../testing/finance.fixtures';
+import {
+  entry,
+  groupTotal,
+  monthClosing,
+  monthEntries,
+  unitCharge,
+} from '../../testing/finance.fixtures';
 import { MonthPage } from './month.page';
 
 const ORDINARY = '0199bbbb-0001-7000-8000-000000000001';
@@ -65,6 +71,27 @@ const OPENED = monthEntries({
   total: 4366.66,
   needsAmountCount: 1,
   overdueCount: 1,
+});
+
+const FILLED = monthEntries({
+  entries: [PORTARIA, ELEVADOR],
+  groups: OPENED.groups,
+  total: 4366.66,
+  needsAmountCount: 0,
+  overdueCount: 0,
+});
+
+const CLOSED = monthEntries({
+  ...FILLED,
+  closing: monthClosing({
+    dueDate: '2026-12-10',
+    total: 4366.66,
+    basis: 'idealFraction',
+    charges: [
+      unitCharge({ unitId: 'u1', block: null, number: '101', weight: 0.6, amount: 2620 }),
+      unitCharge({ unitId: 'u2', block: 'A', number: '102', weight: 0.4, amount: 1746.66 }),
+    ],
+  }),
 });
 
 interface Harness {
@@ -642,6 +669,135 @@ describe('MonthPage', () => {
         document.querySelector('urban-entry-amount-dialog [role="alert"]')?.textContent,
       ).toContain('Informe um valor maior que zero');
       expect(testId(html, 'notice')).toBeNull();
+    });
+  });
+
+  describe('fechamento', () => {
+    const CLOSE_2026_11 = { method: 'POST', url: '/api/finance/months/2026-11/close' };
+    const REOPEN_2026_11 = { method: 'POST', url: '/api/finance/months/2026-11/reopen' };
+
+    function chargeRows(html: HTMLElement): string[] {
+      return [...html.querySelectorAll('[data-testid="charge-row"]')].map(pieces);
+    }
+
+    it('oferece fechar o mes quando todos os valores estao informados', async () => {
+      const { html } = await setup(FILLED);
+
+      const close = testId(html, 'close-month') as HTMLButtonElement;
+      expect(close.disabled).toBe(false);
+      expect(plain(close.textContent)).toBe('Fechar mês');
+      expect(testId(html, 'close-hint')).toBeNull();
+      expect(testId(html, 'closing-card')).toBeNull();
+    });
+
+    it('nao deixa fechar enquanto faltam valores e diz por que', async () => {
+      const { html } = await setup();
+
+      expect((testId(html, 'close-month') as HTMLButtonElement).disabled).toBe(true);
+      expect(text(html, 'close-hint')).toBe('Informe os valores pendentes para poder fechar o mês');
+    });
+
+    it('nao oferece fechar um mes sem lancamentos', async () => {
+      const { html } = await setup(monthEntries());
+
+      expect(testId(html, 'close-month')).toBeNull();
+      expect(testId(html, 'closing-card')).toBeNull();
+    });
+
+    it('fecha o mes pelo dialogo, ja com o vencimento sugerido, e mostra as cobrancas', async () => {
+      const { fixture, html, http } = await setup(FILLED);
+
+      testId(html, 'close-month')!.click();
+      await settle(fixture);
+      const dialog = document.querySelector<HTMLElement>('urban-close-month-dialog')!;
+      expect(plain(dialog.querySelector('h2')?.textContent)).toBe('Fechar Novembro de 2026');
+      expect(document.querySelector<HTMLInputElement>('[formControlName="dueDate"]')!.value).toBe(
+        '10/12/2026',
+      );
+      submitDialog('urban-close-month-dialog');
+      await flushPromises();
+      const close = http.expectOne(CLOSE_2026_11);
+      expect(close.request.body).toEqual({ dueDate: '2026-12-10' });
+      close.flush(CLOSED);
+      await settle(fixture);
+
+      expect(document.querySelector('urban-close-month-dialog')).toBeNull();
+      expect(text(html, 'notice')).toBe('Mês fechado');
+      expect(testId(html, 'closing-card')).not.toBeNull();
+      expect(testId(html, 'close-month')).toBeNull();
+    });
+
+    it('explica no dialogo quando as unidades ainda nao bastam para o rateio', async () => {
+      const { fixture, html, http } = await setup(FILLED);
+
+      testId(html, 'close-month')!.click();
+      await settle(fixture);
+      submitDialog('urban-close-month-dialog');
+      await flushPromises();
+      http.expectOne(CLOSE_2026_11).flush(problem(422, 'condominium.apportionment_not_ready'), {
+        status: 422,
+        statusText: 'Inválido',
+      });
+      await settle(fixture);
+
+      expect(
+        document.querySelector('urban-close-month-dialog [role="alert"]')?.textContent,
+      ).toContain('Complete os dados das unidades');
+      expect(testId(html, 'closing-card')).toBeNull();
+    });
+
+    it('mostra o fechamento: vencimento, metodo, total e a cobranca de cada unidade', async () => {
+      const { html } = await setup(CLOSED);
+
+      const card = text(html, 'closing-card');
+      expect(card).toContain('Mês fechado');
+      expect(card).toContain('Vencimento das cobranças: 10/12/2026');
+      expect(card).toContain('Rateio por fração ideal');
+      expect(chargeRows(html)).toEqual(['101 60% R$ 2.620,00', 'Bloco A · 102 40% R$ 1.746,66']);
+      expect(pieces(testId(html, 'charges-total')!)).toBe('Total das cobranças R$ 4.366,66');
+    });
+
+    it('trava a correcao de valores e o cancelamento, mas deixa marcar como pago', async () => {
+      const { fixture, html } = await setup(CLOSED);
+
+      expect(button(html, 'Corrigir valor de Portaria')!.disabled).toBe(true);
+      expect(button(html, 'Corrigir valor de Elevador')!.disabled).toBe(true);
+      await openStatusMenu(fixture, html, 'Elevador');
+
+      expect(menuItems()).toEqual([
+        { label: 'Pendente', disabled: true },
+        { label: 'Pago', disabled: false },
+        { label: 'Cancelado', disabled: true },
+      ]);
+    });
+
+    it('no mes aberto continua deixando corrigir valores e cancelar', async () => {
+      const { fixture, html } = await setup(FILLED);
+
+      expect(button(html, 'Corrigir valor de Portaria')!.disabled).toBe(false);
+      await openStatusMenu(fixture, html, 'Elevador');
+      expect(menuItems()[2]).toEqual({ label: 'Cancelado', disabled: false });
+    });
+
+    it('reabre o mes pelo dialogo e volta a deixar editar e fechar', async () => {
+      const { fixture, html, http } = await setup(CLOSED);
+
+      testId(html, 'reopen-month')!.click();
+      await settle(fixture);
+      const dialog = document.querySelector<HTMLElement>('urban-reopen-month-dialog')!;
+      expect(plain(dialog.querySelector('h2')?.textContent)).toBe('Reabrir Novembro de 2026');
+      submitDialog('urban-reopen-month-dialog');
+      await flushPromises();
+      const reopen = http.expectOne(REOPEN_2026_11);
+      expect(reopen.request.body).toEqual({});
+      reopen.flush(FILLED);
+      await settle(fixture);
+
+      expect(document.querySelector('urban-reopen-month-dialog')).toBeNull();
+      expect(text(html, 'notice')).toBe('Mês reaberto');
+      expect(testId(html, 'closing-card')).toBeNull();
+      expect(testId(html, 'close-month')).not.toBeNull();
+      expect(button(html, 'Corrigir valor de Portaria')!.disabled).toBe(false);
     });
   });
 });

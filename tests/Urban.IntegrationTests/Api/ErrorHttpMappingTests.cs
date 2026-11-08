@@ -9,6 +9,7 @@ using Urban.Condominium.Domain.Documents;
 using Urban.Condominium.Domain.People;
 using Urban.Condominium.Domain.Units;
 using Urban.Finance.Domain;
+using Urban.Finance.Domain.Closing;
 using Urban.Finance.Domain.Expenses;
 using Urban.Finance.Domain.Months;
 using Urban.Identity.Application.Authentication;
@@ -125,6 +126,16 @@ public sealed class ErrorHttpMappingTests
         { ExpenseErrors.DueDayInvalid.Code, 400 },
         { ExpenseErrors.StatusInvalid.Code, 400 },
         { ExpenseErrors.AmountRequiredToPay.Code, 422 },
+        { ClosingErrors.TotalInvalid.Code, 422 },
+        { ClosingErrors.NoWeights.Code, 422 },
+        { ClosingErrors.MonthNotOpen.Code, 422 },
+        { ClosingErrors.AmountsPending.Code, 422 },
+        { ClosingErrors.NothingToCharge.Code, 422 },
+        { ClosingErrors.DueDateInvalid.Code, 400 },
+        { ClosingErrors.AlreadyClosed.Code, 409 },
+        { ClosingErrors.NotClosed.Code, 409 },
+        { ClosingErrors.MonthIsClosed.Code, 409 },
+        { CondominiumErrors.ApportionmentNotReady.Code, 422 },
     };
 
     [Fact]

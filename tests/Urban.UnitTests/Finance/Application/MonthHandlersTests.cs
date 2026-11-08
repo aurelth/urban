@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Urban.Finance.Domain.Closing;
 using Urban.Finance.Application.Months;
 using Urban.Finance.Domain;
 using Urban.Finance.Domain.Expenses;
@@ -21,13 +22,13 @@ public class MonthHandlersTests
 
     private static YearMonth M(int year, int month) => FinanceTestKit.M(year, month);
 
-    private OpenMonthCommandHandler OpenHandler() => new(_kit.Expenses, _kit.Entries, _kit.Groups, _kit.Tenant, _kit.Clock);
+    private OpenMonthCommandHandler OpenHandler() => new(_kit.Expenses, _kit.Entries, _kit.Closings, _kit.Groups, _kit.Tenant, _kit.Clock);
 
-    private GetMonthQueryHandler GetHandler() => new(_kit.Entries, _kit.Groups, _kit.Tenant, _kit.Clock);
+    private GetMonthQueryHandler GetHandler() => new(_kit.Entries, _kit.Closings, _kit.Groups, _kit.Tenant, _kit.Clock);
 
-    private SetEntryAmountCommandHandler SetHandler() => new(_kit.Entries, _kit.Tenant, _kit.Clock);
+    private SetEntryAmountCommandHandler SetHandler() => new(_kit.Entries, _kit.Closings, _kit.Tenant, _kit.Clock);
 
-    private SetEntryStatusCommandHandler StatusHandler() => new(_kit.Entries, _kit.Tenant, _kit.Clock);
+    private SetEntryStatusCommandHandler StatusHandler() => new(_kit.Entries, _kit.Closings, _kit.Tenant, _kit.Clock);
 
     // ---- open ----
 
@@ -382,5 +383,98 @@ public class MonthHandlersTests
 
         _kit.WithoutATenant();
         (await StatusHandler().Handle(new SetEntryStatusCommand(entry.Id, "5", EntryStatus.Canceled), default)).Error.Should().Be(FinanceErrors.CondominiumNotFound);
+    }
+
+    // ---- closed months ----
+
+    [Fact]
+    public async Task Get_AClosedMonth_ShowsTheClosingAndItsCharges()
+    {
+        ExpenseEntry entry = _kit.NewEntry(_kit.NewFixed(_ordinary, M(2026, 9), 600m), M(2026, 11));
+        _kit.CloseMonth(M(2026, 11));
+
+        Result<MonthView> result = await GetHandler().Handle(new GetMonthQuery("2026-11"), default);
+
+        result.Value.Entries.Should().ContainSingle().Which.Id.Should().Be(entry.Id);
+        result.Value.Closing.Should().NotBeNull();
+        result.Value.Closing!.Total.Should().Be(600m);
+        result.Value.Closing.Charges.Sum(charge => charge.Amount).Should().Be(600m);
+    }
+
+    [Fact]
+    public async Task Get_AnOpenMonth_HasNoClosing()
+    {
+        _kit.NewEntry(_kit.NewFixed(_ordinary, M(2026, 9), 600m), M(2026, 11));
+
+        (await GetHandler().Handle(new GetMonthQuery("2026-11"), default)).Value.Closing.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Open_AClosedMonth_GeneratesNothingNew()
+    {
+        _kit.NewEntry(_kit.NewFixed(_ordinary, M(2026, 9), 600m), M(2026, 11));
+        _kit.CloseMonth(M(2026, 11));
+        _kit.NewFixed(_ordinary, M(2026, 9), 100m, "Jardinagem");
+
+        Result<MonthView> result = await OpenHandler().Handle(new OpenMonthCommand("2026-11"), default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Entries.Should().ContainSingle();
+        result.Value.Closing.Should().NotBeNull();
+        _kit.Entries.Added.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task SetAmount_InAClosedMonth_Fails()
+    {
+        ExpenseEntry entry = _kit.NewEntry(_kit.NewFixed(_ordinary, M(2026, 9), 600m), M(2026, 11));
+        _kit.CloseMonth(M(2026, 11));
+
+        (await SetHandler().Handle(new SetEntryAmountCommand(entry.Id, "5", 700m), default)).Error.Should().Be(ClosingErrors.MonthIsClosed);
+        entry.Amount.Should().Be(600m);
+    }
+
+    [Fact]
+    public async Task SetAmount_InAnotherMonth_StillWorksWhileThisOneIsClosed()
+    {
+        _kit.NewEntry(_kit.NewFixed(_ordinary, M(2026, 9), 600m), M(2026, 11));
+        _kit.CloseMonth(M(2026, 11));
+        ExpenseEntry december = _kit.NewEntry(_kit.NewFixed(_ordinary, M(2026, 9), 100m, "Jardinagem"), M(2026, 12));
+
+        (await SetHandler().Handle(new SetEntryAmountCommand(december.Id, "5", 120m), default)).IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SetStatus_PaidInAClosedMonth_StillWorks_BecauseThePaymentDoesNotChangeTheCharges()
+    {
+        ExpenseEntry entry = _kit.NewEntry(_kit.NewFixed(_ordinary, M(2026, 9), 600m), M(2026, 11));
+        _kit.CloseMonth(M(2026, 11));
+
+        Result<ExpenseEntryView> result = await StatusHandler().Handle(new SetEntryStatusCommand(entry.Id, "5", EntryStatus.Paid), default);
+
+        result.IsSuccess.Should().BeTrue();
+        entry.Status.Should().Be(EntryStatus.Paid);
+    }
+
+    [Fact]
+    public async Task SetStatus_CancelingInAClosedMonth_Fails_BecauseItWouldChangeTheTotal()
+    {
+        ExpenseEntry entry = _kit.NewEntry(_kit.NewFixed(_ordinary, M(2026, 9), 600m), M(2026, 11));
+        _kit.CloseMonth(M(2026, 11));
+
+        (await StatusHandler().Handle(new SetEntryStatusCommand(entry.Id, "5", EntryStatus.Canceled), default)).Error.Should().Be(ClosingErrors.MonthIsClosed);
+        entry.Status.Should().Be(EntryStatus.Pending);
+    }
+
+    [Fact]
+    public async Task SetStatus_RestoringACanceledEntryInAClosedMonth_Fails()
+    {
+        ExpenseEntry entry = _kit.NewEntry(_kit.NewFixed(_ordinary, M(2026, 9), 600m), M(2026, 11));
+        _kit.NewEntry(_kit.NewFixed(_ordinary, M(2026, 9), 100m, "Jardinagem"), M(2026, 11));
+        entry.SetStatus(EntryStatus.Canceled);
+        _kit.CloseMonth(M(2026, 11));
+
+        (await StatusHandler().Handle(new SetEntryStatusCommand(entry.Id, "5", EntryStatus.Pending), default)).Error.Should().Be(ClosingErrors.MonthIsClosed);
+        entry.Status.Should().Be(EntryStatus.Canceled);
     }
 }

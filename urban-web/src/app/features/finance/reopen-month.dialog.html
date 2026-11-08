@@ -1,0 +1,34 @@
+<h2 mat-dialog-title>Reabrir {{ title }}</h2>
+<form (submit)="$event.preventDefault(); confirm()" novalidate>
+  <mat-dialog-content>
+    <p class="mt-0">
+      As cobranças deste mês serão apagadas e os lançamentos voltam a poder ser editados
+    </p>
+    <p>Ao fechar de novo, as cobranças são calculadas outra vez</p>
+
+    @if (error(); as message) {
+      <p role="alert" class="flex items-start gap-2 text-error">
+        <mat-icon svgIcon="error" aria-hidden="true" />
+        <span>{{ message }}</span>
+      </p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button
+      mat-button
+      type="button"
+      data-testid="cancel"
+      [disabled]="busy()"
+      (click)="ref.close(false)"
+    >
+      Cancelar
+    </button>
+    <button mat-flat-button type="submit" [disabled]="busy()">
+      @if (busy()) {
+        Reabrindo
+      } @else {
+        Reabrir mês
+      }
+    </button>
+  </mat-dialog-actions>
+</form>

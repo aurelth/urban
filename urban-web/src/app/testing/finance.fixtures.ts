@@ -3,7 +3,9 @@ import {
   ExpenseEntry,
   ExpenseGroup,
   GroupTotal,
+  MonthClosing,
   MonthEntries,
+  UnitCharge,
 } from '../core/finance/finance.models';
 
 let sequence = 0;
@@ -98,6 +100,29 @@ export function monthEntries(overrides: Partial<MonthEntries> = {}): MonthEntrie
     total: 0,
     needsAmountCount: 0,
     overdueCount: 0,
+    closing: null,
+    ...overrides,
+  };
+}
+
+export function unitCharge(overrides: Partial<UnitCharge> = {}): UnitCharge {
+  return {
+    unitId: nextId('0004'),
+    block: null,
+    number: '101',
+    weight: 0.5,
+    amount: 2100,
+    ...overrides,
+  };
+}
+
+export function monthClosing(overrides: Partial<MonthClosing> = {}): MonthClosing {
+  return {
+    closedAt: '2026-11-15T15:00:00-03:00',
+    dueDate: '2026-12-10',
+    total: 4200,
+    basis: 'idealFraction',
+    charges: [unitCharge({ number: '101' }), unitCharge({ number: '102' })],
     ...overrides,
   };
 }

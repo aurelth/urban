@@ -1,5 +1,7 @@
 import {
+  CLOSED_MONTH,
   EMPTY_MONTH,
+  FILLED_MONTH,
   ENTRIES_PATH,
   FIXED_ENTRY,
   OPENED_MONTH,
@@ -318,6 +320,102 @@ describe('Lançamentos do mês', () => {
     cy.get('[data-testid="entry-row"]').should('have.length', 3);
     cy.document().should((doc) => {
       expect(doc.documentElement.scrollWidth).to.be.at.most(doc.documentElement.clientWidth);
+    });
+  });
+
+  describe('fechamento do mes', () => {
+    const CLOSE = '/api/finance/months/2026-11/close';
+    const REOPEN = '/api/finance/months/2026-11/reopen';
+
+    it('fecha o mes com o vencimento sugerido e mostra a cobranca de cada unidade', () => {
+      stubMonth(FILLED_MONTH);
+      cy.intercept('POST', CLOSE, { statusCode: 200, body: CLOSED_MONTH }).as('close');
+      cy.visit(ENTRIES_PATH);
+
+      cy.get('[data-testid="close-month"]').should('be.enabled').click();
+      cy.get('urban-close-month-dialog h2').should('contain.text', 'Fechar Novembro de 2026');
+      cy.get('urban-close-month-dialog [formControlName="dueDate"]').should(
+        'have.value',
+        '10/12/2026',
+      );
+      cy.get('urban-close-month-dialog').contains('button', 'Fechar mês').click();
+
+      cy.wait('@close').its('request.body').should('deep.equal', { dueDate: '2026-12-10' });
+      cy.get('urban-close-month-dialog').should('not.exist');
+      cy.get('[data-testid="notice"]').should('contain.text', 'Mês fechado');
+      cy.get('[data-testid="closing-card"]')
+        .should('contain.text', 'Vencimento das cobranças: 10/12/2026')
+        .and('contain.text', 'Rateio por fração ideal');
+      cy.get('[data-testid="charge-row"]').should('have.length', 2);
+      // O Intl separa o "R$" do valor com espaço não separável; \s casa com ele.
+      cy.get('[data-testid="charge-row"]')
+        .first()
+        .invoke('text')
+        .should('match', /R\$\s2\.520,00/);
+      cy.get('[data-testid="charge-row"]').last().should('contain.text', 'Bloco A · 102');
+      cy.get('[data-testid="charges-total"]')
+        .invoke('text')
+        .should('match', /R\$\s4\.200,00/);
+    });
+
+    it('nao deixa fechar enquanto faltam valores', () => {
+      stubMonth();
+      cy.visit(ENTRIES_PATH);
+
+      cy.get('[data-testid="close-month"]').should('be.disabled');
+      cy.get('[data-testid="close-hint"]').should(
+        'contain.text',
+        'Informe os valores pendentes para poder fechar o mês',
+      );
+    });
+
+    it('explica no dialogo quando as unidades ainda nao bastam para o rateio', () => {
+      stubMonth(FILLED_MONTH);
+      stubFinanceRejected('POST', CLOSE, 422, 'condominium.apportionment_not_ready', 'close');
+      cy.visit(ENTRIES_PATH);
+
+      cy.get('[data-testid="close-month"]').click();
+      cy.get('urban-close-month-dialog').contains('button', 'Fechar mês').click();
+
+      cy.wait('@close');
+      cy.get('urban-close-month-dialog [role="alert"]').should(
+        'contain.text',
+        'Complete os dados das unidades',
+      );
+      cy.get('[data-testid="closing-card"]').should('not.exist');
+    });
+
+    it('no mes fechado trava a correcao e o cancelamento, e reabre pelo dialogo', () => {
+      stubMonth(CLOSED_MONTH);
+      cy.intercept('POST', REOPEN, { statusCode: 200, body: FILLED_MONTH }).as('reopen');
+      cy.visit(ENTRIES_PATH);
+
+      cy.get('[data-testid="close-month"]').should('not.exist');
+      cy.get('button[aria-label="Corrigir valor de Portaria"]').should('be.disabled');
+      cy.get('button[aria-label^="Situação de Portaria"]').click();
+      cy.get('[role="menuitem"]').contains('Cancelado').closest('button').should('be.disabled');
+      cy.get('body').type('{esc}');
+
+      cy.get('[data-testid="reopen-month"]').click();
+      cy.get('urban-reopen-month-dialog h2').should('contain.text', 'Reabrir Novembro de 2026');
+      cy.get('urban-reopen-month-dialog').contains('button', 'Reabrir mês').click();
+
+      cy.wait('@reopen');
+      cy.get('urban-reopen-month-dialog').should('not.exist');
+      cy.get('[data-testid="notice"]').should('contain.text', 'Mês reaberto');
+      cy.get('[data-testid="closing-card"]').should('not.exist');
+      cy.get('button[aria-label="Corrigir valor de Portaria"]').should('be.enabled');
+    });
+
+    it('cabe numa tela de 360 px, sem rolagem horizontal da pagina', () => {
+      cy.viewport(360, 640);
+      stubMonth(CLOSED_MONTH);
+      cy.visit(ENTRIES_PATH);
+
+      cy.get('[data-testid="charge-row"]').should('have.length', 2);
+      cy.document().should((doc) => {
+        expect(doc.documentElement.scrollWidth).to.be.at.most(doc.documentElement.clientWidth);
+      });
     });
   });
 });

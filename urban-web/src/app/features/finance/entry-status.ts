@@ -62,8 +62,19 @@ export function statusMenuTone(status: EntryStatus): string {
   return MENU_TONES[status];
 }
 
-/** Não repete a situação atual (vencido conta como pendente) e só deixa pagar depois de informar o valor. */
-export function isChoiceDisabled(item: ExpenseEntry, choice: SettableEntryStatus): boolean {
+/**
+ * Não repete a situação atual (vencido conta como pendente) e só deixa pagar depois de informar o valor. Com o mês
+ * fechado, cancelar e desfazer um cancelamento ficam travados, porque mudariam o total já dividido entre as unidades;
+ * pagar e voltar para pendente continuam, porque não mexem nas cobranças.
+ */
+export function isChoiceDisabled(
+  item: ExpenseEntry,
+  choice: SettableEntryStatus,
+  monthClosed = false,
+): boolean {
+  if (monthClosed && (choice === 'canceled' || item.status === 'canceled')) {
+    return true;
+  }
   switch (choice) {
     case 'pending':
       return item.status === 'pending' || item.status === 'overdue';

@@ -179,6 +179,7 @@ export const OPENED_MONTH = {
   total: 4200,
   needsAmountCount: 1,
   overdueCount: 0,
+  closing: null,
 };
 
 export const EMPTY_MONTH = {
@@ -188,6 +189,48 @@ export const EMPTY_MONTH = {
   total: 0,
   needsAmountCount: 0,
   overdueCount: 0,
+  closing: null,
+};
+
+/** Todos os valores informados: o mês já pode ser fechado. */
+export const FILLED_MONTH = {
+  ...OPENED_MONTH,
+  entries: [FIXED_ENTRY],
+  groups: [
+    {
+      groupId: ORDINARY_GROUP.id,
+      groupName: ORDINARY_GROUP.name,
+      total: 4200,
+      needsAmountCount: 0,
+    },
+  ],
+  needsAmountCount: 0,
+};
+
+export const CLOSED_MONTH = {
+  ...FILLED_MONTH,
+  closing: {
+    closedAt: '2026-11-15T15:00:00Z',
+    dueDate: '2026-12-10',
+    total: 4200,
+    basis: 'idealFraction',
+    charges: [
+      {
+        unitId: '0199bbbb-0004-7000-8000-000000000001',
+        block: null,
+        number: '101',
+        weight: 0.6,
+        amount: 2520,
+      },
+      {
+        unitId: '0199bbbb-0004-7000-8000-000000000002',
+        block: 'A',
+        number: '102',
+        weight: 0.4,
+        amount: 1680,
+      },
+    ],
+  },
 };
 
 /**

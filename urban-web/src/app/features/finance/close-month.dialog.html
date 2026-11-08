@@ -1,0 +1,45 @@
+<h2 mat-dialog-title>Fechar {{ title }}</h2>
+<form [formGroup]="form" (ngSubmit)="confirm()" novalidate>
+  <mat-dialog-content>
+    <p class="mt-0">
+      O total de {{ total }} será dividido entre as unidades, conforme o método de rateio do
+      condomínio
+    </p>
+    <p>
+      Depois de fechado, os valores e os cancelamentos do mês ficam travados. Se precisar corrigir
+      algo, você pode reabrir o mês
+    </p>
+    <urban-text-field
+      name="dueDate"
+      label="Vencimento das cobranças"
+      mask="date"
+      hint="Ex.: 10/12/2026"
+      [errors]="dueDateErrors"
+    />
+
+    @if (error(); as message) {
+      <p role="alert" class="flex items-start gap-2 text-error">
+        <mat-icon svgIcon="error" aria-hidden="true" />
+        <span>{{ message }}</span>
+      </p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button
+      mat-button
+      type="button"
+      data-testid="cancel"
+      [disabled]="busy()"
+      (click)="ref.close(false)"
+    >
+      Cancelar
+    </button>
+    <button mat-flat-button type="submit" [disabled]="busy()">
+      @if (busy()) {
+        Fechando
+      } @else {
+        Fechar mês
+      }
+    </button>
+  </mat-dialog-actions>
+</form>

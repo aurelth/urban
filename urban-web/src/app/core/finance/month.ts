@@ -58,6 +58,36 @@ export function formatDate(date: string): string {
   return `${day}/${month}/${year}`;
 }
 
+const DUE_DATE_DIGITS = 8;
+const SUGGESTED_DUE_DAY = 10;
+
+/** Sugestão de vencimento das cobranças: dia 10 do mês seguinte, como dd/mm/aaaa. */
+export function suggestedDueDate(month: string): string {
+  const [year, number] = addMonths(month, 1).split('-');
+  return `${String(SUGGESTED_DUE_DAY)}/${number}/${year}`;
+}
+
+/** "10/12/2026" vira "2026-12-10". Nulo quando não é uma data real ou cai antes do primeiro dia do mês. */
+export function parseDueDate(text: string, month: string): string | null {
+  const digits = text.replaceAll(/\D/g, '');
+  if (digits.length !== DUE_DATE_DIGITS) {
+    return null;
+  }
+  const day = Number(digits.slice(0, 2));
+  const number = Number(digits.slice(2, 4));
+  const year = Number(digits.slice(4));
+  const date = new Date(Date.UTC(year, number - 1, day));
+  const real =
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === number - 1 &&
+    date.getUTCDate() === day;
+  if (!real) {
+    return null;
+  }
+  const iso = `${digits.slice(4)}-${digits.slice(2, 4)}-${digits.slice(0, 2)}`;
+  return iso >= `${month}-01` ? iso : null;
+}
+
 /** Os meses de `first` a `last`, inclusive, do mais antigo ao mais novo. */
 export function monthOptions(first: string, last: string): MonthOption[] {
   const options: MonthOption[] = [];

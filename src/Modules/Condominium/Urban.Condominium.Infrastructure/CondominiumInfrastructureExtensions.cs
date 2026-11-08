@@ -3,9 +3,11 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Urban.Condominium.Application.Abstractions;
+using Urban.Condominium.Application.Units;
 using Urban.Condominium.Infrastructure.Persistence;
 using Urban.Condominium.Infrastructure.Security;
 using Urban.SharedKernel.Abstractions;
+using Urban.SharedKernel.Contracts;
 using Urban.SharedKernel.Time;
 
 namespace Urban.Condominium.Infrastructure;
@@ -32,6 +34,7 @@ public static class CondominiumInfrastructureExtensions
         services.AddScoped<ICondominiumProfiles, CondominiumProfiles>();
         services.AddScoped<IUnits, CondominiumUnits>();
         services.AddScoped<IApportionments, ApportionmentSettings>();
+        services.AddScoped<IApportionmentBasis, ApportionmentBasisProvider>();
 
         return services;
     }

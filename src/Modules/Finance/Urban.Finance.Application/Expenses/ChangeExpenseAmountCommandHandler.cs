@@ -8,7 +8,7 @@ using Urban.SharedKernel.Abstractions;
 
 namespace Urban.Finance.Application.Expenses;
 
-public sealed class ChangeExpenseAmountCommandHandler(IExpenses expenses, IExpenseEntries entries, ITenantContext tenant, IAtomicWork atomicWork, IClock clock)
+public sealed class ChangeExpenseAmountCommandHandler(IExpenses expenses, IExpenseEntries entries, IMonthClosings closings, ITenantContext tenant, IAtomicWork atomicWork, IClock clock)
     : IRequestHandler<ChangeExpenseAmountCommand, Result<ExpenseView>>
 {
     public async Task<Result<ExpenseView>> Handle(ChangeExpenseAmountCommand request, CancellationToken cancellationToken)
@@ -33,7 +33,11 @@ public sealed class ChangeExpenseAmountCommandHandler(IExpenses expenses, IExpen
         }
 
         ExpenseRecord record = found.Value;
-        IReadOnlyList<ExpenseEntryRecord> existing = await entries.ListForExpenseFromAsync(record.Expense.Id, from.Value, cancellationToken);
+        IReadOnlySet<YearMonth> closed = await closings.ClosedMonthsFromAsync(from.Value, cancellationToken);
+
+        // Os lançamentos de meses fechados não acompanham o novo valor: o que foi cobrado fica como está.
+        IReadOnlyList<ExpenseEntryRecord> existing =
+            [.. (await entries.ListForExpenseFromAsync(record.Expense.Id, from.Value, cancellationToken)).Where(entry => !closed.Contains(entry.Entry.Month))];
         Dictionary<Guid, decimal?> before = ExpenseLookup.AmountsOf(record.Expense, existing);
 
         return await Atomic.RunAsync(atomicWork, ct => ApplyAsync(record, from.Value, request.Amount, existing, before, ct), cancellationToken);

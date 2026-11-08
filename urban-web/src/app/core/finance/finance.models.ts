@@ -70,6 +70,29 @@ export interface GroupTotal {
   readonly needsAmountCount: number;
 }
 
+/** Em que o rateio do condomínio se baseia: o nome do método escolhido na tela de unidades. */
+export type ApportionmentBasis = 'idealFraction' | 'equalShare' | 'area';
+
+/** O que uma unidade paga num mês fechado. Bloco, número e peso são cópias de quando o mês fechou. */
+export interface UnitCharge {
+  readonly unitId: string;
+  readonly block: string | null;
+  readonly number: string;
+  /** A fração ideal (0 a 1), a área em m² ou 1 quando todas pagam igual. */
+  readonly weight: number;
+  readonly amount: number;
+}
+
+export interface MonthClosing {
+  /** Instante do fechamento, em ISO 8601. */
+  readonly closedAt: string;
+  /** "AAAA-MM-DD". O vencimento de todas as cobranças do mês. */
+  readonly dueDate: string;
+  readonly total: number;
+  readonly basis: ApportionmentBasis;
+  readonly charges: readonly UnitCharge[];
+}
+
 export interface MonthEntries {
   readonly month: string;
   readonly entries: readonly ExpenseEntry[];
@@ -77,6 +100,8 @@ export interface MonthEntries {
   readonly total: number;
   readonly needsAmountCount: number;
   readonly overdueCount: number;
+  /** Nulo enquanto o mês está aberto. */
+  readonly closing: MonthClosing | null;
 }
 
 /** Corpo de POST /api/finance/expenses. Os campos que o tipo não usa vão nulos. */

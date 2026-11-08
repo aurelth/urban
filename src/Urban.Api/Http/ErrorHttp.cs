@@ -8,6 +8,7 @@ using Urban.Condominium.Domain.People;
 using Urban.Condominium.Domain.Units;
 using Urban.Finance.Domain;
 using Urban.Finance.Domain.Expenses;
+using Urban.Finance.Domain.Closing;
 using Urban.Finance.Domain.Months;
 using Urban.Identity.Application.Authentication;
 using Urban.Identity.Application.Authentication.Login;
@@ -133,6 +134,16 @@ public static class ErrorHttp
         [ExpenseErrors.DueDayInvalid.Code] = StatusCodes.Status400BadRequest,
         [ExpenseErrors.StatusInvalid.Code] = StatusCodes.Status400BadRequest,
         [ExpenseErrors.AmountRequiredToPay.Code] = StatusCodes.Status422UnprocessableEntity,
+        [ClosingErrors.TotalInvalid.Code] = StatusCodes.Status422UnprocessableEntity,
+        [ClosingErrors.NoWeights.Code] = StatusCodes.Status422UnprocessableEntity,
+        [ClosingErrors.MonthNotOpen.Code] = StatusCodes.Status422UnprocessableEntity,
+        [ClosingErrors.AmountsPending.Code] = StatusCodes.Status422UnprocessableEntity,
+        [ClosingErrors.NothingToCharge.Code] = StatusCodes.Status422UnprocessableEntity,
+        [ClosingErrors.DueDateInvalid.Code] = StatusCodes.Status400BadRequest,
+        [ClosingErrors.AlreadyClosed.Code] = StatusCodes.Status409Conflict,
+        [ClosingErrors.NotClosed.Code] = StatusCodes.Status409Conflict,
+        [ClosingErrors.MonthIsClosed.Code] = StatusCodes.Status409Conflict,
+        [CondominiumErrors.ApportionmentNotReady.Code] = StatusCodes.Status422UnprocessableEntity,
 
         [PostalCodeErrors.NotFound.Code] = StatusCodes.Status404NotFound,
         [PostalCodeErrors.LookupUnavailable.Code] = StatusCodes.Status503ServiceUnavailable,

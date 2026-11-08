@@ -11,7 +11,11 @@ import { MatIcon } from '@angular/material/icon';
 import { MatMenu, MatMenuItem, MatMenuTrigger } from '@angular/material/menu';
 import { RouterLink } from '@angular/router';
 import { NOW } from '../../core/finance/clock';
-import { ExpenseEntry, SettableEntryStatus } from '../../core/finance/finance.models';
+import {
+  ApportionmentBasis,
+  ExpenseEntry,
+  SettableEntryStatus,
+} from '../../core/finance/finance.models';
 import { formatMoney } from '../../core/finance/money';
 import {
   addMonths,
@@ -21,6 +25,9 @@ import {
   monthTitle,
 } from '../../core/finance/month';
 import { describeProblem } from '../../core/http/problem-message';
+import { unitLabel } from '../units/unit-values';
+import { basisLabel, chargeShare } from './closing';
+import { openCloseMonthDialog } from './close-month.dialog';
 import { openEntryAmountDialog } from './entry-amount.dialog';
 import {
   STATUS_CHOICES,
@@ -32,11 +39,13 @@ import {
 } from './entry-status';
 import { FINANCE_ACTION_MESSAGES, FINANCE_FORM_MESSAGES } from './finance.messages';
 import { MonthStore } from './month.store';
+import { openReopenMonthDialog } from './reopen-month.dialog';
 
 /**
  * Lançamentos de um mês: navegação entre meses (5 anos para cada lado), total por grupo, vencimento e situação de
  * pagamento de cada lançamento. Os lançamentos do mês são gerados sozinhos ao entrar na tela ou trocar de mês, sem
- * botão. As despesas variáveis sem valor mostram a sugestão do mês anterior.
+ * botão. As despesas variáveis sem valor mostram a sugestão do mês anterior. Com todos os valores informados, o mês
+ * pode ser fechado: o total é dividido entre as unidades e os valores ficam travados até o mês ser reaberto.
  */
 @Component({
   selector: 'urban-month-page',
@@ -63,6 +72,10 @@ export class MonthPage implements OnInit {
   protected readonly statusTone = statusTone;
   protected readonly statusMenuTone = statusMenuTone;
   protected readonly isChoiceDisabled = isChoiceDisabled;
+  protected readonly unitLabel = unitLabel;
+  protected readonly chargeShare = chargeShare;
+  protected readonly basisName = (basis: ApportionmentBasis): string =>
+    basisLabel(basis).toLowerCase();
 
   ngOnInit(): void {
     void this.show(this.month());
@@ -99,6 +112,41 @@ export class MonthPage implements OnInit {
           return describeProblem(problem, FINANCE_FORM_MESSAGES);
         }
         this.notice.set(target.needsAmount ? 'Valor informado' : 'Valor corrigido');
+        return null;
+      },
+    });
+  }
+
+  protected async closeMonth(): Promise<void> {
+    this.clearMessages();
+    const data = this.store.data();
+    if (data === null) {
+      return;
+    }
+    await openCloseMonthDialog(this.injector, {
+      month: this.month(),
+      total: data.total,
+      save: async (dueDate) => {
+        const problem = await this.store.close(dueDate);
+        if (problem !== null) {
+          return describeProblem(problem, FINANCE_FORM_MESSAGES);
+        }
+        this.notice.set('Mês fechado');
+        return null;
+      },
+    });
+  }
+
+  protected async reopenMonth(): Promise<void> {
+    this.clearMessages();
+    await openReopenMonthDialog(this.injector, {
+      month: this.month(),
+      save: async () => {
+        const problem = await this.store.reopen();
+        if (problem !== null) {
+          return describeProblem(problem, FINANCE_FORM_MESSAGES);
+        }
+        this.notice.set('Mês reaberto');
         return null;
       },
     });

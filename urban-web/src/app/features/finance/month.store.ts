@@ -12,6 +12,7 @@ import { ApiProblem, toApiProblem } from '../../core/http/api-problem';
 import { CONCURRENCY_CONFLICT, FinanceStatus } from './expenses.store';
 
 const NOT_FOUND_STATUS = 404;
+const CONFLICT_STATUS = 409;
 const OPEN_RETRIES = 1;
 
 export interface GroupSection {
@@ -30,6 +31,7 @@ interface MonthState {
 export const MonthStore = signalStore(
   withState<MonthState>({ status: 'loading', month: '', data: null, busy: false }),
   withComputed((store) => ({
+    closing: computed(() => store.data()?.closing ?? null),
     sections: computed<readonly GroupSection[]>(() => {
       const data = store.data();
       return (data?.groups ?? []).map((group) => ({
@@ -37,6 +39,9 @@ export const MonthStore = signalStore(
         entries: (data?.entries ?? []).filter((entry) => entry.groupId === group.groupId),
       }));
     }),
+  })),
+  withComputed((store) => ({
+    isClosed: computed(() => store.closing() !== null),
   })),
   withMethods((store) => {
     const api = inject(FinanceApi);
@@ -83,6 +88,25 @@ export const MonthStore = signalStore(
       return problem;
     };
 
+    /**
+     * Fecha ou reabre o mês: a API devolve o mês já no novo estado, que substitui o da tela. Se a tela estava
+     * desatualizada (o mês já estava fechado, ou já tinha sido reaberto, em outro lugar), relê o mês.
+     */
+    const change = async (request: Observable<MonthEntries>): Promise<ApiProblem | null> => {
+      patchState(store, { busy: true });
+      let problem: ApiProblem | null = null;
+      try {
+        patchState(store, { data: await firstValueFrom(request) });
+      } catch (error) {
+        problem = toApiProblem(error);
+      }
+      if (problem !== null && (isStale(problem) || problem.status === CONFLICT_STATUS)) {
+        await read(store.month());
+      }
+      patchState(store, { busy: false });
+      return problem;
+    };
+
     return {
       /**
        * Mostra o mês: abre (gera os lançamentos que faltam) e lê. Não há botão para isso; quem entra na tela, ou troca de
@@ -92,6 +116,9 @@ export const MonthStore = signalStore(
         patchState(store, { status: 'loading', month });
         await open(month);
       },
+      close: (dueDate: string): Promise<ApiProblem | null> =>
+        change(api.closeMonth(store.month(), dueDate)),
+      reopen: (): Promise<ApiProblem | null> => change(api.reopenMonth(store.month())),
       setAmount: (target: ExpenseEntry, amount: number): Promise<ApiProblem | null> =>
         act(api.setEntryAmount(target.id, target.version, amount)),
       setStatus: (target: ExpenseEntry, status: SettableEntryStatus): Promise<ApiProblem | null> =>

@@ -115,6 +115,94 @@
           </dl>
         </div>
 
+        @if (store.closing(); as closing) {
+          <section
+            class="mb-6 rounded-xl border border-outline-variant p-4"
+            data-testid="closing-card"
+            aria-labelledby="closing-title"
+          >
+            <div class="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h2 id="closing-title" class="m-0 flex items-center gap-2 text-lg font-medium">
+                  <mat-icon svgIcon="lock" aria-hidden="true" />
+                  <span>Mês fechado</span>
+                </h2>
+                <p class="m-0 mt-1 text-on-surface-variant">
+                  Vencimento das cobranças: {{ date(closing.dueDate) }}
+                </p>
+                <p class="m-0 text-on-surface-variant">Rateio por {{ basisName(closing.basis) }}</p>
+              </div>
+              <button
+                mat-stroked-button
+                type="button"
+                data-testid="reopen-month"
+                [disabled]="store.busy()"
+                (click)="reopenMonth()"
+              >
+                <mat-icon svgIcon="lock_open" />
+                Reabrir mês
+              </button>
+            </div>
+            <div class="mt-4 overflow-x-auto rounded-xl border border-outline-variant">
+              <table class="w-full border-collapse text-left">
+                <caption class="sr-only">
+                  Cobrança de cada unidade
+                </caption>
+                <thead>
+                  <tr class="border-b border-outline-variant text-sm text-on-surface-variant">
+                    <th scope="col" class="p-3 font-medium">Unidade</th>
+                    <th scope="col" class="p-3 font-medium">Participação</th>
+                    <th scope="col" class="p-3 text-right font-medium">Valor</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (charge of closing.charges; track charge.unitId) {
+                    <tr
+                      class="border-b border-outline-variant last:border-b-0"
+                      data-testid="charge-row"
+                    >
+                      <td class="p-3 font-medium">{{ unitLabel(charge) }}</td>
+                      <td class="p-3 whitespace-nowrap text-on-surface-variant">
+                        {{ chargeShare(closing.basis, charge.weight) }}
+                      </td>
+                      <td class="p-3 text-right whitespace-nowrap">{{ money(charge.amount) }}</td>
+                    </tr>
+                  }
+                </tbody>
+                <tfoot>
+                  <tr
+                    class="border-t border-outline-variant font-medium"
+                    data-testid="charges-total"
+                  >
+                    <th scope="row" colspan="2" class="p-3 text-left font-medium">
+                      Total das cobranças
+                    </th>
+                    <td class="p-3 text-right whitespace-nowrap">{{ money(closing.total) }}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </section>
+        } @else if (data.entries.length > 0) {
+          <div class="mb-6 flex flex-wrap items-center gap-3">
+            <button
+              mat-flat-button
+              type="button"
+              data-testid="close-month"
+              [disabled]="data.needsAmountCount > 0 || store.busy()"
+              (click)="closeMonth()"
+            >
+              <mat-icon svgIcon="lock" />
+              Fechar mês
+            </button>
+            @if (data.needsAmountCount > 0) {
+              <p class="m-0 text-sm text-on-surface-variant" data-testid="close-hint">
+                Informe os valores pendentes para poder fechar o mês
+              </p>
+            }
+          </div>
+        }
+
         @if (data.entries.length === 0) {
           <div class="rounded-xl border border-outline-variant p-6 text-center" data-testid="empty">
             <p class="mb-1 text-lg font-medium">Este mês não tem lançamentos</p>
@@ -218,7 +306,7 @@
                               mat-menu-item
                               type="button"
                               [class]="statusMenuTone(choice.status)"
-                              [disabled]="isChoiceDisabled(item, choice.status)"
+                              [disabled]="isChoiceDisabled(item, choice.status, store.isClosed())"
                               (click)="setStatus(item, choice.status)"
                             >
                               <mat-icon [svgIcon]="statusIcon(choice.status)" aria-hidden="true" />
@@ -244,7 +332,7 @@
                             (item.needsAmount ? 'Informar valor de ' : 'Corrigir valor de ') +
                             item.description
                           "
-                          [disabled]="store.busy()"
+                          [disabled]="store.busy() || store.isClosed()"
                           (click)="setAmount(item)"
                         >
                           <mat-icon svgIcon="edit" />
