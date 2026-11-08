@@ -37,6 +37,7 @@ describe('Despesas', () => {
     rows().should('have.length', 3);
     rows().first().should('contain.text', 'Portaria').and('contain.text', 'Segura Ltda');
     rows().first().should('contain.text', 'Fixa mensal').and('contain.text', '4.200,00');
+    rows().first().should('contain.text', 'Todo dia 10');
     rows().eq(1).should('contain.text', 'Informado a cada mês');
     rows().eq(2).should('contain.text', 'em 6x').and('contain.text', '11/2026 a 04/2027');
   });
@@ -52,6 +53,7 @@ describe('Despesas', () => {
     cy.get('urban-expense-dialog h2').should('contain.text', 'Nova despesa');
     enter('urban-expense-dialog [formControlName="description"]', 'Seguro predial');
     enter('urban-expense-dialog [formControlName="amount"]', '900');
+    enter('urban-expense-dialog [formControlName="dueDay"]', '10');
     cy.get('urban-expense-dialog').contains('button', 'Cadastrar despesa').click();
 
     cy.wait('@createExpense').its('request.body').should('deep.equal', {
@@ -64,6 +66,7 @@ describe('Despesas', () => {
       amount: 900,
       installmentCount: null,
       currentInstallment: null,
+      dueDay: 10,
     });
     cy.get('urban-expense-dialog').should('not.exist');
     cy.get('[data-testid="notice"]')
@@ -86,6 +89,7 @@ describe('Despesas', () => {
     enter('urban-expense-dialog [formControlName="description"]', 'Elevador');
     enter('urban-expense-dialog [formControlName="amount"]', '1000');
     enter('urban-expense-dialog [formControlName="installmentCount"]', '6');
+    enter('urban-expense-dialog [formControlName="dueDay"]', '15');
     cy.get('urban-expense-dialog').contains('button', 'Cadastrar despesa').click();
 
     cy.wait('@createExpense').its('request.body').should('include', {
@@ -94,6 +98,7 @@ describe('Despesas', () => {
       installmentCount: 6,
       currentInstallment: 1,
       startMonth: '2026-11',
+      dueDay: 15,
     });
   });
 
@@ -105,6 +110,7 @@ describe('Despesas', () => {
 
     cy.get('urban-expense-dialog').should('contain.text', 'Informe a descrição da despesa');
     cy.get('urban-expense-dialog').should('contain.text', 'Informe um valor maior que zero');
+    cy.get('urban-expense-dialog').should('contain.text', 'Informe o dia do vencimento, de 1 a 31');
     expectErrorsToStayInTheirOwnSpace();
   });
 
@@ -121,6 +127,7 @@ describe('Despesas', () => {
     cy.get('[data-testid="new-expense"]').click();
     enter('urban-expense-dialog [formControlName="description"]', 'Seguro predial');
     enter('urban-expense-dialog [formControlName="amount"]', '900');
+    enter('urban-expense-dialog [formControlName="dueDay"]', '10');
     cy.get('urban-expense-dialog').contains('button', 'Cadastrar despesa').click();
 
     cy.get('urban-expense-dialog [role="alert"]').should(
@@ -146,8 +153,37 @@ describe('Despesas', () => {
       description: 'Portaria 24h',
       supplier: 'Segura Ltda',
       groupId: '0199bbbb-0001-7000-8000-000000000001',
+      dueDay: 10,
     });
     cy.get('urban-expense-dialog').should('not.exist');
+  });
+
+  it('muda o dia do vencimento e avisa que vale para os proximos lancamentos', () => {
+    cy.intercept('PUT', `/api/finance/expenses/${FIXED_EXPENSE.id}`, {
+      statusCode: 200,
+      body: stubExpense({ dueDay: 20 }),
+    }).as('updateExpense');
+    cy.visit(EXPENSES_PATH);
+
+    cy.get('button[aria-label="Editar Portaria"]').click();
+    cy.get('urban-expense-dialog [formControlName="dueDay"]').should('have.value', '10');
+    cy.get('urban-expense-dialog').should('contain.text', 'Vale para os próximos lançamentos');
+    enter('urban-expense-dialog [formControlName="dueDay"]', '20');
+    cy.get('urban-expense-dialog').contains('button', 'Salvar alterações').click();
+
+    cy.wait('@updateExpense').its('request.body').should('include', { dueDay: 20 });
+  });
+
+  it('mostra o nome dos grupos como texto simples, sem pilula', () => {
+    cy.visit(EXPENSES_PATH);
+
+    cy.get('[data-testid="group-item"]')
+      .first()
+      .should('have.css', 'border-top-width', '0px')
+      .find('span')
+      .first()
+      .should('have.css', 'font-size', '18px')
+      .and('have.css', 'font-weight', '500');
   });
 
   it('reajusta o valor de uma despesa fixa a partir de um mes', () => {

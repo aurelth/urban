@@ -43,9 +43,19 @@ export function monthTitle(month: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
-/** A API só abre o mês atual, os anteriores e o seguinte. */
-export function canOpenMonth(month: string, now: Date): boolean {
-  return month <= addMonths(currentMonth(now), 1);
+/** Quantos meses para trás e para a frente da tela de lançamentos: 5 anos, como a API. */
+export const MONTH_WINDOW = 60;
+
+/** Se o mês cabe na janela de 5 anos para trás e para a frente do mês atual. */
+export function isMonthInWindow(month: string, now: Date): boolean {
+  const current = currentMonth(now);
+  return month >= addMonths(current, -MONTH_WINDOW) && month <= addMonths(current, MONTH_WINDOW);
+}
+
+/** "2026-11-10" vira "10/11/2026". */
+export function formatDate(date: string): string {
+  const [year, month, day] = date.split('-');
+  return `${day}/${month}/${year}`;
 }
 
 /** Os meses de `first` a `last`, inclusive, do mais antigo ao mais novo. */

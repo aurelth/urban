@@ -4,6 +4,7 @@ import {
   canAdjust,
   canEnd,
   canSetInstallment,
+  dueText,
   kindLabel,
   periodText,
 } from './expense-values';
@@ -62,6 +63,32 @@ describe('expense-values', () => {
 
     it('vai da primeira a ultima parcela', () => {
       expect(periodText(installmentExpense())).toBe('11/2026 a 04/2027');
+    });
+  });
+
+  describe('dueText', () => {
+    it('diz o dia de cada mes nas despesas que se repetem', () => {
+      expect(dueText(expense({ kind: 'fixed', dueDay: 5 }))).toBe('Todo dia 5');
+      expect(dueText(expense({ kind: 'variable', dueDay: 20 }))).toBe('Todo dia 20');
+      expect(dueText(installmentExpense({ dueDay: 15 }))).toBe('Todo dia 15');
+    });
+
+    it('mostra a data completa da despesa unica', () => {
+      expect(dueText(expense({ kind: 'single', startMonth: '2026-11', dueDay: 12 }))).toBe(
+        '12/11/2026',
+      );
+    });
+
+    it('usa o ultimo dia do mes quando o dia nao existe nele', () => {
+      expect(dueText(expense({ kind: 'single', startMonth: '2026-11', dueDay: 31 }))).toBe(
+        '30/11/2026',
+      );
+      expect(dueText(expense({ kind: 'single', startMonth: '2027-02', dueDay: 30 }))).toBe(
+        '28/02/2027',
+      );
+      expect(dueText(expense({ kind: 'single', startMonth: '2028-02', dueDay: 31 }))).toBe(
+        '29/02/2028',
+      );
     });
   });
 

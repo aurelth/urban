@@ -130,6 +130,9 @@ public static class ErrorHttp
         [ExpenseErrors.NotFound.Code] = StatusCodes.Status404NotFound,
         [ExpenseErrors.InstallmentNotFound.Code] = StatusCodes.Status404NotFound,
         [ExpenseErrors.EntryNotFound.Code] = StatusCodes.Status404NotFound,
+        [ExpenseErrors.DueDayInvalid.Code] = StatusCodes.Status400BadRequest,
+        [ExpenseErrors.StatusInvalid.Code] = StatusCodes.Status400BadRequest,
+        [ExpenseErrors.AmountRequiredToPay.Code] = StatusCodes.Status422UnprocessableEntity,
 
         [PostalCodeErrors.NotFound.Code] = StatusCodes.Status404NotFound,
         [PostalCodeErrors.LookupUnavailable.Code] = StatusCodes.Status503ServiceUnavailable,

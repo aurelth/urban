@@ -32,7 +32,7 @@ internal sealed class FinanceStoreKit(FinancePostgresFixture postgres)
 
     public async Task<Expense> StoreFixedAsync(ExpenseGroup group, YearMonth start, decimal amount = 300m, string description = "Zeladoria")
     {
-        Expense expense = Expense.CreateFixed(group.CondominiumId, group.Id, description, "Limpa Tudo", start, null, amount, Now).Value;
+        Expense expense = Expense.CreateFixed(group.CondominiumId, group.Id, description, "Limpa Tudo", start, null, amount, 10, Now).Value;
         (await Expenses(group.CondominiumId).AddAsync(expense, default)).IsSuccess.Should().BeTrue();
 
         return expense;
@@ -40,7 +40,7 @@ internal sealed class FinanceStoreKit(FinancePostgresFixture postgres)
 
     public async Task<Expense> StoreInstallmentAsync(ExpenseGroup group, YearMonth first, decimal total = 600m, int count = 6, int current = 4)
     {
-        Expense expense = Expense.CreateInstallment(group.CondominiumId, group.Id, "Obra da garagem", "Benedett", total, count, first, current, Now).Value;
+        Expense expense = Expense.CreateInstallment(group.CondominiumId, group.Id, "Obra da garagem", "Benedett", total, count, first, current, 10, Now).Value;
         (await Expenses(group.CondominiumId).AddAsync(expense, default)).IsSuccess.Should().BeTrue();
 
         return expense;

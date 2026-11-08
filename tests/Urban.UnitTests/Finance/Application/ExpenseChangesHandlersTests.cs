@@ -35,7 +35,7 @@ public class ExpenseChangesHandlersTests
         Expense expense = _kit.NewFixed(_group, M(2026, 9));
         ExpenseGroup other = _kit.NewGroup("Manutenção das garagens");
 
-        Result<ExpenseView> result = await UpdateHandler().Handle(new UpdateExpenseCommand(expense.Id, "5", " Zeladoria e limpeza ", "Limpa Tudo", other.Id), default);
+        Result<ExpenseView> result = await UpdateHandler().Handle(new UpdateExpenseCommand(expense.Id, "5", " Zeladoria e limpeza ", "Limpa Tudo", other.Id, 10), default);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Description.Should().Be("Zeladoria e limpeza");
@@ -50,9 +50,9 @@ public class ExpenseChangesHandlersTests
     {
         Expense expense = _kit.NewFixed(_group, M(2026, 9));
 
-        (await UpdateHandler().Handle(new UpdateExpenseCommand(expense.Id, null, "x", null, _group.Id), default))
+        (await UpdateHandler().Handle(new UpdateExpenseCommand(expense.Id, null, "x", null, _group.Id, 10), default))
             .Error.Should().Be(FinanceErrors.VersionRequired);
-        (await UpdateHandler().Handle(new UpdateExpenseCommand(expense.Id, "4", "x", null, _group.Id), default))
+        (await UpdateHandler().Handle(new UpdateExpenseCommand(expense.Id, "4", "x", null, _group.Id, 10), default))
             .Error.Should().Be(FinanceErrors.ConcurrencyConflict);
         expense.Description.Should().Be("Zeladoria");
         _kit.Expenses.Saved.Should().BeEmpty();
@@ -63,9 +63,9 @@ public class ExpenseChangesHandlersTests
     {
         Expense expense = _kit.NewFixed(_group, M(2026, 9));
 
-        (await UpdateHandler().Handle(new UpdateExpenseCommand(Guid.CreateVersion7(), "5", "x", null, _group.Id), default))
+        (await UpdateHandler().Handle(new UpdateExpenseCommand(Guid.CreateVersion7(), "5", "x", null, _group.Id, 10), default))
             .Error.Should().Be(ExpenseErrors.NotFound);
-        (await UpdateHandler().Handle(new UpdateExpenseCommand(expense.Id, "5", "x", null, Guid.CreateVersion7()), default))
+        (await UpdateHandler().Handle(new UpdateExpenseCommand(expense.Id, "5", "x", null, Guid.CreateVersion7(), 10), default))
             .Error.Should().Be(ExpenseGroupErrors.NotFound);
     }
 
@@ -74,7 +74,7 @@ public class ExpenseChangesHandlersTests
     {
         Expense expense = _kit.NewFixed(_group, M(2026, 9));
 
-        (await UpdateHandler().Handle(new UpdateExpenseCommand(expense.Id, "5", "", null, _group.Id), default))
+        (await UpdateHandler().Handle(new UpdateExpenseCommand(expense.Id, "5", "", null, _group.Id, 10), default))
             .Error.Should().Be(ExpenseErrors.DescriptionInvalid);
     }
 
@@ -84,7 +84,7 @@ public class ExpenseChangesHandlersTests
         Expense expense = _kit.NewFixed(_group, M(2026, 9));
         _kit.WithoutATenant();
 
-        (await UpdateHandler().Handle(new UpdateExpenseCommand(expense.Id, "5", "x", null, _group.Id), default))
+        (await UpdateHandler().Handle(new UpdateExpenseCommand(expense.Id, "5", "x", null, _group.Id, 10), default))
             .Error.Should().Be(FinanceErrors.CondominiumNotFound);
     }
 

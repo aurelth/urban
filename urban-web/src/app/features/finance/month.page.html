@@ -16,7 +16,7 @@
       type="button"
       aria-label="Mês anterior"
       title="Mês anterior"
-      [disabled]="store.status() === 'loading' || store.busy()"
+      [disabled]="!canGo(-1) || store.status() === 'loading' || store.busy()"
       (click)="go(-1)"
     >
       <mat-icon svgIcon="chevron_left" />
@@ -29,7 +29,7 @@
       type="button"
       aria-label="Próximo mês"
       title="Próximo mês"
-      [disabled]="!canGoForward() || store.status() === 'loading' || store.busy()"
+      [disabled]="!canGo(1) || store.status() === 'loading' || store.busy()"
       (click)="go(1)"
     >
       <mat-icon svgIcon="chevron_right" />
@@ -76,45 +76,50 @@
               <dt class="text-sm text-on-surface-variant">Total do mês</dt>
               <dd class="m-0 text-2xl font-semibold">{{ money(data.total) }}</dd>
             </div>
-            <div data-testid="pending-count">
-              <dt class="text-sm text-on-surface-variant">Pendências</dt>
+            <div data-testid="needs-amount-count">
+              <dt class="text-sm text-on-surface-variant">Valores a informar</dt>
               <dd class="m-0 flex items-center gap-1 text-lg">
-                @if (data.pendingCount > 0) {
+                @if (data.needsAmountCount > 0) {
                   <span class="inline-flex text-warning"
                     ><mat-icon svgIcon="schedule" aria-hidden="true"
                   /></span>
                   <span
-                    >{{ data.pendingCount }}
+                    >{{ data.needsAmountCount }}
                     {{
-                      data.pendingCount === 1 ? 'lançamento pendente' : 'lançamentos pendentes'
+                      data.needsAmountCount === 1 ? 'lançamento sem valor' : 'lançamentos sem valor'
                     }}</span
                   >
                 } @else {
-                  <span>Nenhum lançamento pendente</span>
+                  <span>Nenhum lançamento sem valor</span>
+                }
+              </dd>
+            </div>
+            <div data-testid="overdue-count">
+              <dt class="text-sm text-on-surface-variant">Vencidos</dt>
+              <dd class="m-0 flex items-center gap-1 text-lg">
+                @if (data.overdueCount > 0) {
+                  <span class="inline-flex text-error"
+                    ><mat-icon svgIcon="error" aria-hidden="true"
+                  /></span>
+                  <span
+                    >{{ data.overdueCount }}
+                    {{
+                      data.overdueCount === 1 ? 'lançamento vencido' : 'lançamentos vencidos'
+                    }}</span
+                  >
+                } @else {
+                  <span>Nenhum lançamento vencido</span>
                 }
               </dd>
             </div>
           </dl>
-          <button
-            mat-flat-button
-            type="button"
-            data-testid="open-month"
-            [disabled]="store.busy()"
-            (click)="openMonth()"
-          >
-            @if (isOpened()) {
-              Gerar lançamentos que faltam
-            } @else {
-              Abrir mês
-            }
-          </button>
         </div>
 
-        @if (!isOpened()) {
+        @if (data.entries.length === 0) {
           <div class="rounded-xl border border-outline-variant p-6 text-center" data-testid="empty">
-            <p class="mb-1 text-lg font-medium">Este mês ainda não tem lançamentos</p>
+            <p class="mb-1 text-lg font-medium">Este mês não tem lançamentos</p>
             <p class="m-0 text-on-surface-variant">
-              Abra o mês para gerar um lançamento por despesa ativa
+              Cadastre uma despesa que vença neste mês ou escolha outro mês
             </p>
           </div>
         }
@@ -135,8 +140,9 @@
                 </caption>
                 <thead class="sr-only">
                   <tr>
-                    <th scope="col">Despesa</th>
+                    <th scope="col">Despesa e vencimento</th>
                     <th scope="col">Valor</th>
+                    <th scope="col">Situação</th>
                     <th scope="col">Ações</th>
                   </tr>
                 </thead>
@@ -147,21 +153,23 @@
                       data-testid="entry-row"
                     >
                       <td class="p-3">
-                        <span class="font-medium">{{ item.description }}</span>
+                        <span
+                          class="font-medium"
+                          [class.text-on-surface-variant]="item.status === 'canceled'"
+                          >{{ item.description }}</span
+                        >
                         @if (item.label) {
                           <span class="ml-2 text-sm text-on-surface-variant"
                             >Parcela {{ item.label }}</span
                           >
                         }
+                        <span class="block text-sm text-on-surface-variant"
+                          >Vence em {{ date(item.dueDate) }}</span
+                        >
                       </td>
                       <td class="p-3 whitespace-nowrap">
-                        @if (item.isPending) {
-                          <span class="inline-flex items-center gap-1">
-                            <span class="inline-flex text-warning"
-                              ><mat-icon svgIcon="schedule" aria-hidden="true"
-                            /></span>
-                            <span>Pendente</span>
-                          </span>
+                        @if (item.needsAmount) {
+                          <span>Valor a informar</span>
                           @if (item.suggestedAmount !== null) {
                             <span class="text-sm text-on-surface-variant">
                               · sugestão {{ money(item.suggestedAmount) }}</span
@@ -171,16 +179,58 @@
                           <span>{{ money(item.amount) }}</span>
                         }
                       </td>
+                      <td class="p-1 whitespace-nowrap">
+                        <button
+                          mat-button
+                          type="button"
+                          [matMenuTriggerFor]="statusMenu"
+                          [attr.aria-label]="
+                            'Situação de ' +
+                            item.description +
+                            ': ' +
+                            statusLabel(item.status) +
+                            '. Alterar'
+                          "
+                          [attr.title]="'Alterar a situação de ' + item.description"
+                          [disabled]="store.busy()"
+                        >
+                          <span class="inline-flex items-center gap-1">
+                            <span class="inline-flex" [class]="statusTone(item.status)"
+                              ><mat-icon [svgIcon]="statusIcon(item.status)" aria-hidden="true"
+                            /></span>
+                            <span>{{ statusLabel(item.status) }}</span>
+                            <mat-icon svgIcon="arrow_drop_down" aria-hidden="true" />
+                          </span>
+                        </button>
+                        <mat-menu #statusMenu="matMenu">
+                          @for (choice of choices; track choice.status) {
+                            <button
+                              mat-menu-item
+                              type="button"
+                              [disabled]="isChoiceDisabled(item, choice.status)"
+                              (click)="setStatus(item, choice.status)"
+                            >
+                              <mat-icon [svgIcon]="statusIcon(choice.status)" aria-hidden="true" />
+                              <span>{{ choice.label }}</span>
+                              @if (choice.status === 'paid' && item.needsAmount) {
+                                <span class="ml-2 text-sm text-on-surface-variant"
+                                  >{{ ' ' }}Informe o valor primeiro</span
+                                >
+                              }
+                            </button>
+                          }
+                        </mat-menu>
+                      </td>
                       <td class="p-1 text-right whitespace-nowrap">
                         <button
                           mat-icon-button
                           type="button"
                           [attr.aria-label]="
-                            (item.isPending ? 'Informar valor de ' : 'Corrigir valor de ') +
+                            (item.needsAmount ? 'Informar valor de ' : 'Corrigir valor de ') +
                             item.description
                           "
                           [attr.title]="
-                            (item.isPending ? 'Informar valor de ' : 'Corrigir valor de ') +
+                            (item.needsAmount ? 'Informar valor de ' : 'Corrigir valor de ') +
                             item.description
                           "
                           [disabled]="store.busy()"

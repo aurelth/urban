@@ -44,6 +44,16 @@ export function periodText(item: Expense): string {
     : `${formatMonth(item.startMonth)} a ${formatMonth(last)}`;
 }
 
+/** O vencimento da lista: o dia de cada mês, ou a data completa na despesa única (que só vence uma vez). */
+export function dueText(item: Expense): string {
+  if (item.kind !== 'single') {
+    return `Todo dia ${item.dueDay}`;
+  }
+  const [year, month] = item.startMonth.split('-').map(Number);
+  const day = Math.min(item.dueDay, new Date(Date.UTC(year, month, 0)).getUTCDate());
+  return `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+}
+
 export function canAdjust(item: Expense): boolean {
   return item.kind === 'fixed' && !item.isEnded;
 }

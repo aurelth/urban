@@ -112,4 +112,14 @@ public class ListExpensesQueryHandlerTests
 
         (await Handler().Handle(new ListExpensesQuery(), default)).Error.Should().Be(FinanceErrors.CondominiumNotFound);
     }
+
+    [Fact]
+    public async Task Handle_ShowsTheDueDayOfEachExpense()
+    {
+        _kit.NewFixed(_group, M(2026, 9), description: "Zeladoria");
+
+        IReadOnlyList<ExpenseView> active = await ListAsync(ExpenseStatusFilter.Active);
+
+        active.Single().DueDay.Should().Be(10);
+    }
 }

@@ -6,6 +6,7 @@ import { provideRouter } from '@angular/router';
 import { SessionStore } from '../../core/auth/session.store';
 import { NOW } from '../../core/finance/clock';
 import { MonthEntries } from '../../core/finance/finance.models';
+import { addMonths } from '../../core/finance/month';
 import { provideUrbanIcons } from '../../core/theme/icons';
 import { flushPromises } from '../../testing/async';
 import { REGISTERED_MANAGER, problem, signInAs } from '../../testing/auth.fixtures';
@@ -16,14 +17,38 @@ import { MonthPage } from './month.page';
 const ORDINARY = '0199bbbb-0001-7000-8000-000000000001';
 const WORKS = '0199bbbb-0001-7000-8000-000000000002';
 
-const PORTARIA = entry({ description: 'Portaria', amount: 4200, version: '21' });
-const ELEVADOR = entry({ description: 'Elevador', amount: 166.66, label: '4/6', groupId: WORKS });
+const OPEN_2026_11 = { method: 'POST', url: '/api/finance/months/2026-11/open' };
+
+const PORTARIA = entry({
+  description: 'Portaria',
+  amount: 4200,
+  version: '21',
+  dueDate: '2026-11-10',
+  status: 'paid',
+});
+const ELEVADOR = entry({
+  description: 'Elevador',
+  amount: 166.66,
+  label: '4/6',
+  groupId: WORKS,
+  dueDate: '2026-11-20',
+  status: 'pending',
+});
 const LUZ = entry({
   description: 'Conta de luz',
   amount: null,
-  isPending: true,
+  needsAmount: true,
   suggestedAmount: 812.4,
   version: '22',
+  dueDate: '2026-11-10',
+  status: 'overdue',
+});
+const JARDINAGEM = entry({
+  description: 'Jardinagem',
+  amount: 300,
+  version: '23',
+  dueDate: '2026-11-25',
+  status: 'canceled',
 });
 
 const OPENED = monthEntries({
@@ -33,12 +58,13 @@ const OPENED = monthEntries({
       groupId: ORDINARY,
       groupName: 'Despesas ordinárias',
       total: 4200,
-      pendingCount: 1,
+      needsAmountCount: 1,
     }),
-    groupTotal({ groupId: WORKS, groupName: 'Obras', total: 166.66, pendingCount: 0 }),
+    groupTotal({ groupId: WORKS, groupName: 'Obras', total: 166.66, needsAmountCount: 0 }),
   ],
   total: 4366.66,
-  pendingCount: 1,
+  needsAmountCount: 1,
+  overdueCount: 1,
 });
 
 interface Harness {
@@ -63,7 +89,7 @@ async function setup(data: MonthEntries | 'pending' = OPENED): Promise<Harness> 
   const fixture = TestBed.createComponent(MonthPage);
   fixture.detectChanges();
   if (data !== 'pending') {
-    http.expectOne({ method: 'GET', url: '/api/finance/months/2026-11' }).flush(data);
+    http.expectOne(OPEN_2026_11).flush(data);
     await settle(fixture);
   }
   return { fixture, http, html: fixture.nativeElement };
@@ -112,6 +138,42 @@ function rowsOf(html: HTMLElement): string[] {
   return [...html.querySelectorAll('[data-testid="entry-row"]')].map(pieces);
 }
 
+function statusButton(html: HTMLElement, description: string): HTMLButtonElement {
+  return html.querySelector<HTMLButtonElement>(
+    `button[aria-label^="Situação de ${description}:"]`,
+  )!;
+}
+
+async function openStatusMenu(
+  fixture: ComponentFixture<unknown>,
+  html: HTMLElement,
+  description: string,
+): Promise<void> {
+  statusButton(html, description).click();
+  await settle(fixture);
+}
+
+function menuItems(): { label: string; disabled: boolean }[] {
+  return [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].map((item) => ({
+    label: plain(item.textContent),
+    disabled: item.disabled || item.getAttribute('aria-disabled') === 'true',
+  }));
+}
+
+async function changeStatus(
+  fixture: ComponentFixture<unknown>,
+  html: HTMLElement,
+  description: string,
+  label: string,
+): Promise<void> {
+  await openStatusMenu(fixture, html, description);
+  const item = [...document.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')].find(
+    (candidate) => plain(candidate.textContent) === label,
+  );
+  item!.click();
+  await settle(fixture);
+}
+
 describe('MonthPage', () => {
   afterEach(() => {
     removeOverlays();
@@ -124,20 +186,18 @@ describe('MonthPage', () => {
     const { html, http } = await setup('pending');
 
     expect(testId(html, 'loading')).not.toBeNull();
-    http.expectOne('/api/finance/months/2026-11');
+    http.expectOne(OPEN_2026_11);
   });
 
   it('mostra o erro e tenta de novo', async () => {
     const { fixture, html, http } = await setup('pending');
-    http
-      .expectOne('/api/finance/months/2026-11')
-      .flush(problem(500, 'x'), { status: 500, statusText: 'Erro' });
+    http.expectOne(OPEN_2026_11).flush(problem(500, 'x'), { status: 500, statusText: 'Erro' });
     await settle(fixture);
 
     expect(testId(html, 'load-error')).not.toBeNull();
 
     testId(html, 'retry')!.click();
-    http.expectOne('/api/finance/months/2026-11').flush(OPENED);
+    http.expectOne(OPEN_2026_11).flush(OPENED);
     await settle(fixture);
 
     expect(testId(html, 'load-error')).toBeNull();
@@ -151,24 +211,33 @@ describe('MonthPage', () => {
     expect(testId(html, 'expenses-link')?.getAttribute('href')).toBe('/financeiro/despesas');
   });
 
-  it('mostra o total, os pendentes e os grupos com seus lancamentos', async () => {
+  it('gera os lancamentos do mes sozinho, sem botoes para abrir o mes', async () => {
+    const { html } = await setup();
+
+    expect(testId(html, 'open-month')).toBeNull();
+    expect(plain(html.textContent)).not.toContain('Abrir mês');
+    expect(plain(html.textContent)).not.toContain('Gerar lançamentos que faltam');
+  });
+
+  it('mostra o total, os valores a informar, os vencidos e os grupos com seus lancamentos', async () => {
     const { html } = await setup();
 
     expect(text(html, 'total')).toContain('R$ 4.366,66');
-    expect(text(html, 'pending-count')).toContain('1 lançamento pendente');
+    expect(text(html, 'needs-amount-count')).toContain('1 lançamento sem valor');
+    expect(text(html, 'overdue-count')).toContain('1 lançamento vencido');
     expect(
       [...html.querySelectorAll('[data-testid="group-section"] h2')].map((title) =>
         plain(title.textContent),
       ),
     ).toEqual(['Despesas ordinárias', 'Obras']);
     expect(rowsOf(html)).toEqual([
-      'Portaria R$ 4.200,00',
-      'Conta de luz Pendente · sugestão R$ 812,40',
-      'Elevador Parcela 4/6 R$ 166,66',
+      'Portaria Vence em 10/11/2026 R$ 4.200,00 Pago',
+      'Conta de luz Vence em 10/11/2026 Valor a informar · sugestão R$ 812,40 Vencido',
+      'Elevador Parcela 4/6 Vence em 20/11/2026 R$ 166,66 Pendente',
     ]);
   });
 
-  it('diz que nao ha pendentes quando tudo tem valor', async () => {
+  it('diz que nao ha valores a informar nem vencidos quando esta tudo em dia', async () => {
     const { html } = await setup(
       monthEntries({
         entries: [PORTARIA],
@@ -177,94 +246,126 @@ describe('MonthPage', () => {
       }),
     );
 
-    expect(text(html, 'pending-count')).toContain('Nenhum lançamento pendente');
+    expect(text(html, 'needs-amount-count')).toContain('Nenhum lançamento sem valor');
+    expect(text(html, 'overdue-count')).toContain('Nenhum lançamento vencido');
   });
 
-  describe('mes ainda nao aberto', () => {
-    it('explica e oferece abrir', async () => {
-      const { html } = await setup(monthEntries());
+  it('conta no plural', async () => {
+    const { html } = await setup(
+      monthEntries({
+        entries: [PORTARIA, LUZ],
+        groups: [groupTotal({ groupId: ORDINARY })],
+        needsAmountCount: 2,
+        overdueCount: 3,
+      }),
+    );
 
-      expect(testId(html, 'empty')).not.toBeNull();
-      expect(text(html, 'open-month')).toBe('Abrir mês');
-    });
-
-    it('abre o mes e mostra os lancamentos', async () => {
-      const { fixture, html, http } = await setup(monthEntries());
-
-      testId(html, 'open-month')!.click();
-      http.expectOne({ method: 'POST', url: '/api/finance/months/2026-11/open' }).flush(OPENED);
-      await settle(fixture);
-
-      expect(testId(html, 'empty')).toBeNull();
-      expect(rowsOf(html)).toHaveLength(3);
-      expect(text(html, 'notice')).toBe('Mês aberto');
-      expect(text(html, 'open-month')).toBe('Gerar lançamentos que faltam');
-    });
-
-    it('explica o erro quando a API recusa', async () => {
-      const { fixture, html, http } = await setup(monthEntries());
-
-      testId(html, 'open-month')!.click();
-      http
-        .expectOne({ method: 'POST', url: '/api/finance/months/2026-11/open' })
-        .flush(problem(422, 'month.too_far_ahead'), { status: 422, statusText: 'Inválido' });
-      await settle(fixture);
-
-      expect(text(html, 'action-error')).toBe(
-        'Só é possível abrir o mês atual, os anteriores e o mês seguinte',
-      );
-    });
+    expect(text(html, 'needs-amount-count')).toContain('2 lançamentos sem valor');
+    expect(text(html, 'overdue-count')).toContain('3 lançamentos vencidos');
   });
 
-  describe('mes ja aberto', () => {
-    it('gera so o que falta e avisa', async () => {
-      const { fixture, html, http } = await setup();
+  it('mostra o cancelado na lista, como cancelado', async () => {
+    const { html } = await setup(
+      monthEntries({
+        entries: [JARDINAGEM],
+        groups: [groupTotal({ groupId: ORDINARY })],
+        total: 0,
+      }),
+    );
 
-      expect(text(html, 'open-month')).toBe('Gerar lançamentos que faltam');
-      testId(html, 'open-month')!.click();
-      http.expectOne({ method: 'POST', url: '/api/finance/months/2026-11/open' }).flush(OPENED);
-      await settle(fixture);
+    expect(rowsOf(html)).toEqual(['Jardinagem Vence em 25/11/2026 R$ 300,00 Cancelado']);
+  });
 
-      expect(text(html, 'notice')).toBe('Lançamentos atualizados');
-    });
+  it('avisa quando o mes nao tem lancamentos', async () => {
+    const { html } = await setup(monthEntries());
+
+    expect(testId(html, 'empty')).not.toBeNull();
+    expect(text(html, 'empty')).toContain('Este mês não tem lançamentos');
+    expect(testId(html, 'open-month')).toBeNull();
   });
 
   describe('navegacao', () => {
-    it('volta para o mes anterior', async () => {
+    async function walk(
+      harness: Harness,
+      label: string,
+      from: string,
+      delta: number,
+      times: number,
+    ): Promise<void> {
+      let month = from;
+      for (let step = 0; step < times; step++) {
+        month = addMonths(month, delta);
+        button(harness.html, label)!.click();
+        harness.http
+          .expectOne({ method: 'POST', url: `/api/finance/months/${month}/open` })
+          .flush(monthEntries({ month }));
+        await settle(harness.fixture);
+      }
+    }
+
+    it('volta para o mes anterior, gerando os lancamentos dele', async () => {
       const { fixture, html, http } = await setup();
 
       button(html, 'Mês anterior')!.click();
       http
-        .expectOne({ method: 'GET', url: '/api/finance/months/2026-10' })
+        .expectOne({ method: 'POST', url: '/api/finance/months/2026-10/open' })
         .flush(monthEntries({ month: '2026-10' }));
       await settle(fixture);
 
       expect(text(html, 'month-title')).toBe('Outubro de 2026');
     });
 
-    it('avanca ate o mes seguinte e nao passa dele', async () => {
+    it('avanca para o mes seguinte', async () => {
       const { fixture, html, http } = await setup();
 
       button(html, 'Próximo mês')!.click();
       http
-        .expectOne({ method: 'GET', url: '/api/finance/months/2026-12' })
+        .expectOne({ method: 'POST', url: '/api/finance/months/2026-12/open' })
         .flush(monthEntries({ month: '2026-12' }));
       await settle(fixture);
 
       expect(text(html, 'month-title')).toBe('Dezembro de 2026');
-      expect(button(html, 'Próximo mês')!.disabled).toBe(true);
+      expect(button(html, 'Próximo mês')!.disabled).toBe(false);
+    });
+
+    it('avanca ate 5 anos a frente e nao passa disso', async () => {
+      const harness = await setup();
+
+      await walk(harness, 'Próximo mês', '2026-11', 1, 59);
+      expect(text(harness.html, 'month-title')).toBe('Outubro de 2031');
+      expect(button(harness.html, 'Próximo mês')!.disabled).toBe(false);
+
+      await walk(harness, 'Próximo mês', '2031-10', 1, 1);
+      expect(text(harness.html, 'month-title')).toBe('Novembro de 2031');
+      expect(button(harness.html, 'Próximo mês')!.disabled).toBe(true);
+    });
+
+    it('volta ate 5 anos atras e nao passa disso', async () => {
+      const harness = await setup();
+
+      await walk(harness, 'Mês anterior', '2026-11', -1, 59);
+      expect(text(harness.html, 'month-title')).toBe('Dezembro de 2021');
+      expect(button(harness.html, 'Mês anterior')!.disabled).toBe(false);
+
+      await walk(harness, 'Mês anterior', '2021-12', -1, 1);
+      expect(text(harness.html, 'month-title')).toBe('Novembro de 2021');
+      expect(button(harness.html, 'Mês anterior')!.disabled).toBe(true);
     });
 
     it('limpa os avisos ao trocar de mes', async () => {
       const { fixture, html, http } = await setup();
-      testId(html, 'open-month')!.click();
-      http.expectOne({ method: 'POST', url: '/api/finance/months/2026-11/open' }).flush(OPENED);
+      await changeStatus(fixture, html, 'Portaria', 'Pendente');
+      http
+        .expectOne({ method: 'PUT', url: `/api/finance/entries/${PORTARIA.id}/status` })
+        .flush(PORTARIA);
+      await flushPromises();
+      http.expectOne({ method: 'GET', url: '/api/finance/months/2026-11' }).flush(OPENED);
       await settle(fixture);
       expect(testId(html, 'notice')).not.toBeNull();
 
       button(html, 'Mês anterior')!.click();
       http
-        .expectOne({ method: 'GET', url: '/api/finance/months/2026-10' })
+        .expectOne({ method: 'POST', url: '/api/finance/months/2026-10/open' })
         .flush(monthEntries({ month: '2026-10' }));
       await settle(fixture);
 
@@ -272,8 +373,142 @@ describe('MonthPage', () => {
     });
   });
 
+  describe('situacao do pagamento', () => {
+    it('oferece pendente, pago e cancelado, sem repetir a situacao atual', async () => {
+      const { fixture, html } = await setup();
+
+      await openStatusMenu(fixture, html, 'Elevador');
+
+      expect(menuItems()).toEqual([
+        { label: 'Pendente', disabled: true },
+        { label: 'Pago', disabled: false },
+        { label: 'Cancelado', disabled: false },
+      ]);
+    });
+
+    it('trata o vencido como pendente: so se pode marcar pago ou cancelado', async () => {
+      const { fixture, html } = await setup(
+        monthEntries({
+          entries: [{ ...LUZ, amount: 800, needsAmount: false }],
+          groups: [groupTotal({ groupId: ORDINARY })],
+        }),
+      );
+
+      await openStatusMenu(fixture, html, 'Conta de luz');
+
+      expect(menuItems()).toEqual([
+        { label: 'Pendente', disabled: true },
+        { label: 'Pago', disabled: false },
+        { label: 'Cancelado', disabled: false },
+      ]);
+    });
+
+    it('so deixa marcar como pago depois de informar o valor', async () => {
+      const { fixture, html } = await setup();
+
+      await openStatusMenu(fixture, html, 'Conta de luz');
+
+      expect(menuItems()).toEqual([
+        { label: 'Pendente', disabled: true },
+        { label: 'Pago Informe o valor primeiro', disabled: true },
+        { label: 'Cancelado', disabled: false },
+      ]);
+    });
+
+    it('marca como pago e atualiza o mes', async () => {
+      const { fixture, html, http } = await setup();
+
+      await changeStatus(fixture, html, 'Elevador', 'Pago');
+      const put = http.expectOne({
+        method: 'PUT',
+        url: `/api/finance/entries/${ELEVADOR.id}/status`,
+      });
+      expect(put.request.body).toEqual({ version: ELEVADOR.version, status: 'paid' });
+      put.flush({ ...ELEVADOR, status: 'paid' });
+      await flushPromises();
+      http.expectOne({ method: 'GET', url: '/api/finance/months/2026-11' }).flush(
+        monthEntries({
+          ...OPENED,
+          entries: [PORTARIA, LUZ, { ...ELEVADOR, status: 'paid' }],
+        }),
+      );
+      await settle(fixture);
+
+      expect(text(html, 'notice')).toBe('Lançamento marcado como pago');
+      expect(rowsOf(html)[2]).toBe('Elevador Parcela 4/6 Vence em 20/11/2026 R$ 166,66 Pago');
+    });
+
+    it('desfaz o pago voltando para pendente', async () => {
+      const { fixture, html, http } = await setup();
+
+      await changeStatus(fixture, html, 'Portaria', 'Pendente');
+      const put = http.expectOne({
+        method: 'PUT',
+        url: `/api/finance/entries/${PORTARIA.id}/status`,
+      });
+      expect(put.request.body).toEqual({ version: PORTARIA.version, status: 'pending' });
+      put.flush({ ...PORTARIA, status: 'pending' });
+      await flushPromises();
+      http.expectOne({ method: 'GET', url: '/api/finance/months/2026-11' }).flush(OPENED);
+      await settle(fixture);
+
+      expect(text(html, 'notice')).toBe('Lançamento marcado como pendente');
+    });
+
+    it('cancela o lancamento', async () => {
+      const { fixture, html, http } = await setup();
+
+      await changeStatus(fixture, html, 'Elevador', 'Cancelado');
+      const put = http.expectOne({
+        method: 'PUT',
+        url: `/api/finance/entries/${ELEVADOR.id}/status`,
+      });
+      expect(put.request.body).toEqual({ version: ELEVADOR.version, status: 'canceled' });
+      put.flush({ ...ELEVADOR, status: 'canceled' });
+      await flushPromises();
+      http.expectOne({ method: 'GET', url: '/api/finance/months/2026-11' }).flush(OPENED);
+      await settle(fixture);
+
+      expect(text(html, 'notice')).toBe('Lançamento cancelado');
+    });
+
+    it('explica o erro quando a API recusa e nao avisa sucesso', async () => {
+      const { fixture, html, http } = await setup();
+
+      await changeStatus(fixture, html, 'Elevador', 'Pago');
+      http
+        .expectOne({ method: 'PUT', url: `/api/finance/entries/${ELEVADOR.id}/status` })
+        .flush(problem(422, 'expense_entry.amount_required'), {
+          status: 422,
+          statusText: 'Inválido',
+        });
+      await settle(fixture);
+
+      expect(text(html, 'action-error')).toBe(
+        'Informe o valor do lançamento antes de marcá-lo como pago',
+      );
+      expect(testId(html, 'notice')).toBeNull();
+    });
+
+    it('avisa quando o lancamento mudou em outro lugar e mostra a tela atualizada', async () => {
+      const { fixture, html, http } = await setup();
+
+      await changeStatus(fixture, html, 'Elevador', 'Pago');
+      http
+        .expectOne({ method: 'PUT', url: `/api/finance/entries/${ELEVADOR.id}/status` })
+        .flush(problem(409, 'concurrency.conflict'), { status: 409, statusText: 'Conflito' });
+      await flushPromises();
+      http.expectOne({ method: 'GET', url: '/api/finance/months/2026-11' }).flush(OPENED);
+      await settle(fixture);
+
+      expect(text(html, 'action-error')).toBe(
+        'Este item foi alterado em outro lugar. A tela já foi atualizada',
+      );
+    });
+  });
+
   describe('valores', () => {
-    it('informa o valor de um lancamento pendente, ja com a sugestao', async () => {
+    it('informa o valor de um lancamento sem valor, ja com a sugestao', async () => {
       const { fixture, html, http } = await setup();
 
       button(html, 'Informar valor de Conta de luz')!.click();

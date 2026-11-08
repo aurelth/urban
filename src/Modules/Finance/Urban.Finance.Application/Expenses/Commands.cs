@@ -9,7 +9,7 @@ public sealed record ListExpensesQuery(ExpenseStatusFilter Status = ExpenseStatu
 /// <summary>
 /// Cria a despesa em uma das quatro formas. Os meses vão como texto "AAAA-MM". <paramref name="Amount"/> é o valor da única e da
 /// fixa, e o total da parcelada (a variável não tem valor). <paramref name="CurrentInstallment"/> é a parcela que cai em
-/// <paramref name="StartMonth"/>; sem ela, começa na primeira.
+/// <paramref name="StartMonth"/>; sem ela, começa na primeira. <paramref name="DueDay"/> (1 a 31) é obrigatório.
 /// </summary>
 public sealed record CreateExpenseCommand(
     ExpenseKind Kind,
@@ -20,9 +20,11 @@ public sealed record CreateExpenseCommand(
     string? EndMonth,
     decimal? Amount,
     int? InstallmentCount,
-    int? CurrentInstallment) : IRequest<Result<ExpenseView>>;
+    int? CurrentInstallment,
+    int? DueDay) : IRequest<Result<ExpenseView>>;
 
-public sealed record UpdateExpenseCommand(Guid ExpenseId, string? Version, string? Description, string? Supplier, Guid GroupId) : IRequest<Result<ExpenseView>>;
+public sealed record UpdateExpenseCommand(Guid ExpenseId, string? Version, string? Description, string? Supplier, Guid GroupId, int? DueDay)
+    : IRequest<Result<ExpenseView>>;
 
 /// <summary>Muda o valor de uma despesa fixa a partir de um mês. Os meses anteriores continuam como estavam.</summary>
 public sealed record ChangeExpenseAmountCommand(Guid ExpenseId, string? Version, string? FromMonth, decimal Amount) : IRequest<Result<ExpenseView>>;

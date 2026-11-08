@@ -83,18 +83,20 @@ public sealed class CreateExpenseCommandHandler(
 
     private static Result<Expense> Build(CreateExpenseCommand request, Guid condominiumId, YearMonth start, YearMonth? end, DateTimeOffset now)
     {
+        int dueDay = request.DueDay ?? 0;
+
         switch (request.Kind)
         {
             case ExpenseKind.Single:
                 return request.Amount is { } single
-                    ? Expense.CreateSingle(condominiumId, request.GroupId, request.Description, request.Supplier, start, single, now)
+                    ? Expense.CreateSingle(condominiumId, request.GroupId, request.Description, request.Supplier, start, single, dueDay, now)
                     : Result.Failure<Expense>(ExpenseErrors.AmountInvalid);
             case ExpenseKind.Fixed:
                 return request.Amount is { } monthly
-                    ? Expense.CreateFixed(condominiumId, request.GroupId, request.Description, request.Supplier, start, end, monthly, now)
+                    ? Expense.CreateFixed(condominiumId, request.GroupId, request.Description, request.Supplier, start, end, monthly, dueDay, now)
                     : Result.Failure<Expense>(ExpenseErrors.AmountInvalid);
             case ExpenseKind.Variable:
-                return Expense.CreateVariable(condominiumId, request.GroupId, request.Description, request.Supplier, start, end, now);
+                return Expense.CreateVariable(condominiumId, request.GroupId, request.Description, request.Supplier, start, end, dueDay, now);
             case ExpenseKind.Installment:
                 if (request.Amount is not { } total)
                 {
@@ -102,7 +104,7 @@ public sealed class CreateExpenseCommandHandler(
                 }
 
                 return request.InstallmentCount is { } count
-                    ? Expense.CreateInstallment(condominiumId, request.GroupId, request.Description, request.Supplier, total, count, start, request.CurrentInstallment ?? 1, now)
+                    ? Expense.CreateInstallment(condominiumId, request.GroupId, request.Description, request.Supplier, total, count, start, request.CurrentInstallment ?? 1, dueDay, now)
                     : Result.Failure<Expense>(ExpenseErrors.InstallmentCountInvalid);
             default:
                 return Result.Failure<Expense>(ExpenseErrors.KindInvalid);

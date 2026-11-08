@@ -14,6 +14,7 @@ const PAYLOAD: ExpensePayload = {
   amount: 1000,
   installmentCount: 6,
   currentInstallment: 4,
+  dueDay: 10,
 };
 
 describe('FinanceApi', () => {
@@ -79,6 +80,7 @@ describe('FinanceApi', () => {
         description: 'Portaria',
         supplier: 'Segura',
         groupId: 'g2',
+        dueDay: 15,
       })
       .subscribe();
     expectCall('PUT', '/api/finance/expenses/e1', {
@@ -86,6 +88,7 @@ describe('FinanceApi', () => {
       description: 'Portaria',
       supplier: 'Segura',
       groupId: 'g2',
+      dueDay: 15,
     });
   });
 
@@ -121,5 +124,10 @@ describe('FinanceApi', () => {
   it('sets the amount of an entry', () => {
     api.setEntryAmount('n1', '9', 812.34).subscribe();
     expectCall('PUT', '/api/finance/entries/n1/amount', { version: '9', amount: 812.34 });
+  });
+
+  it('sets the status of an entry', () => {
+    api.setEntryStatus('n1', '9', 'paid').subscribe();
+    expectCall('PUT', '/api/finance/entries/n1/status', { version: '9', status: 'paid' });
   });
 });

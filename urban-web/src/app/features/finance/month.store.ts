@@ -1,12 +1,18 @@
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
-import { firstValueFrom } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 import { FinanceApi } from '../../core/finance/finance.api';
-import { ExpenseEntry, GroupTotal, MonthEntries } from '../../core/finance/finance.models';
+import {
+  ExpenseEntry,
+  GroupTotal,
+  MonthEntries,
+  SettableEntryStatus,
+} from '../../core/finance/finance.models';
 import { ApiProblem, toApiProblem } from '../../core/http/api-problem';
 import { CONCURRENCY_CONFLICT, FinanceStatus } from './expenses.store';
 
 const NOT_FOUND_STATUS = 404;
+const OPEN_RETRIES = 1;
 
 export interface GroupSection {
   readonly group: GroupTotal;
@@ -43,37 +49,53 @@ export const MonthStore = signalStore(
       }
     };
 
+    /**
+     * Abre o mês: a API gera o que falta e devolve os lançamentos (repetir é seguro). Se duas aberturas se cruzarem, a
+     * segunda recebe um conflito e tenta mais uma vez, já encontrando o que a primeira gerou.
+     */
+    const open = async (month: string): Promise<void> => {
+      for (let attempt = 0; attempt <= OPEN_RETRIES; attempt++) {
+        try {
+          patchState(store, { data: await firstValueFrom(api.openMonth(month)), status: 'ready' });
+          return;
+        } catch (error) {
+          if (toApiProblem(error).code !== CONCURRENCY_CONFLICT || attempt === OPEN_RETRIES) {
+            patchState(store, { status: 'error' });
+            return;
+          }
+        }
+      }
+    };
+
+    /** Grava, e relê o mês quando deu certo ou quando a tela estava desatualizada, para refazer totais e vencidos. */
+    const act = async (request: Observable<unknown>): Promise<ApiProblem | null> => {
+      patchState(store, { busy: true });
+      let problem: ApiProblem | null = null;
+      try {
+        await firstValueFrom(request);
+      } catch (error) {
+        problem = toApiProblem(error);
+      }
+      if (problem === null || isStale(problem)) {
+        await read(store.month());
+      }
+      patchState(store, { busy: false });
+      return problem;
+    };
+
     return {
-      /** Lê os lançamentos do mês (sem gerar nada). Serve também para tentar de novo depois de um erro. */
+      /**
+       * Mostra o mês: abre (gera os lançamentos que faltam) e lê. Não há botão para isso; quem entra na tela, ou troca de
+       * mês, já vê os lançamentos. Serve também para tentar de novo depois de um erro.
+       */
       show: async (month: string): Promise<void> => {
         patchState(store, { status: 'loading', month });
-        await read(month);
+        await open(month);
       },
-      open: async (): Promise<ApiProblem | null> => {
-        patchState(store, { busy: true });
-        let problem: ApiProblem | null = null;
-        try {
-          patchState(store, { data: await firstValueFrom(api.openMonth(store.month())) });
-        } catch (error) {
-          problem = toApiProblem(error);
-        }
-        patchState(store, { busy: false });
-        return problem;
-      },
-      setAmount: async (target: ExpenseEntry, amount: number): Promise<ApiProblem | null> => {
-        patchState(store, { busy: true });
-        let problem: ApiProblem | null = null;
-        try {
-          await firstValueFrom(api.setEntryAmount(target.id, target.version, amount));
-        } catch (error) {
-          problem = toApiProblem(error);
-        }
-        if (problem === null || isStale(problem)) {
-          await read(store.month());
-        }
-        patchState(store, { busy: false });
-        return problem;
-      },
+      setAmount: (target: ExpenseEntry, amount: number): Promise<ApiProblem | null> =>
+        act(api.setEntryAmount(target.id, target.version, amount)),
+      setStatus: (target: ExpenseEntry, status: SettableEntryStatus): Promise<ApiProblem | null> =>
+        act(api.setEntryStatus(target.id, target.version, status)),
     };
   }),
 );

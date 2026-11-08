@@ -23,9 +23,11 @@ public class MonthHandlersTests
 
     private OpenMonthCommandHandler OpenHandler() => new(_kit.Expenses, _kit.Entries, _kit.Groups, _kit.Tenant, _kit.Clock);
 
-    private GetMonthQueryHandler GetHandler() => new(_kit.Entries, _kit.Groups, _kit.Tenant);
+    private GetMonthQueryHandler GetHandler() => new(_kit.Entries, _kit.Groups, _kit.Tenant, _kit.Clock);
 
-    private SetEntryAmountCommandHandler SetHandler() => new(_kit.Entries, _kit.Tenant);
+    private SetEntryAmountCommandHandler SetHandler() => new(_kit.Entries, _kit.Tenant, _kit.Clock);
+
+    private SetEntryStatusCommandHandler StatusHandler() => new(_kit.Entries, _kit.Tenant, _kit.Clock);
 
     // ---- open ----
 
@@ -43,7 +45,7 @@ public class MonthHandlersTests
         result.Value.Month.Should().Be("2026-11");
         result.Value.Entries.Select(entry => entry.Description).Should().Equal("Energia elétrica", "Troca da lâmpada", "Zeladoria", "Obra da garagem");
         result.Value.Total.Should().Be(650m);
-        result.Value.PendingCount.Should().Be(1);
+        result.Value.NeedsAmountCount.Should().Be(1);
         _kit.Entries.Added.Should().HaveCount(4);
     }
 
@@ -77,7 +79,7 @@ public class MonthHandlersTests
         second.Entries.Should().HaveCount(2);
         _kit.Entries.Added.Should().HaveCount(2);
         second.Entries.Single(entry => entry.Description == "Energia elétrica").Amount.Should().Be(412.37m);
-        second.PendingCount.Should().Be(0);
+        second.NeedsAmountCount.Should().Be(0);
     }
 
     [Fact]
@@ -146,12 +148,45 @@ public class MonthHandlersTests
     }
 
     [Fact]
-    public async Task Open_FurtherAhead_Fails()
+    public async Task Open_UpToFiveYearsAhead_IsAllowed()
     {
         _kit.NewFixed(_ordinary, M(2026, 9), 300m, "Zeladoria");
 
-        (await OpenHandler().Handle(new OpenMonthCommand("2027-01"), default)).Error.Should().Be(MonthErrors.TooFarAhead);
+        (await OpenHandler().Handle(new OpenMonthCommand("2027-01"), default)).IsSuccess.Should().BeTrue();
+        (await OpenHandler().Handle(new OpenMonthCommand("2031-11"), default)).Value.Entries.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task Open_FurtherThanFiveYearsAhead_Fails()
+    {
+        _kit.NewFixed(_ordinary, M(2026, 9), 300m, "Zeladoria");
+
+        (await OpenHandler().Handle(new OpenMonthCommand("2031-12"), default)).Error.Should().Be(MonthErrors.TooFarAhead);
         _kit.Entries.Added.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Open_GivesEachEntryItsDueDate_AndStartsPending()
+    {
+        _kit.NewFixed(_ordinary, M(2026, 9), 300m, "Zeladoria");
+
+        MonthView view = (await OpenHandler().Handle(new OpenMonthCommand("2026-11"), default)).Value;
+
+        view.Entries.Single().DueDate.Should().Be(new DateOnly(2026, 11, 10));
+        view.Entries.Single().Status.Should().Be(EntryStatus.Pending);
+        view.OverdueCount.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Open_AMonthAlreadyPast_ShowsItsUnpaidEntriesAsOverdue()
+    {
+        _kit.NewFixed(_ordinary, M(2026, 8), 300m, "Zeladoria");
+
+        MonthView view = (await OpenHandler().Handle(new OpenMonthCommand("2026-10"), default)).Value;
+
+        view.Entries.Single().DueDate.Should().Be(new DateOnly(2026, 10, 10));
+        view.Entries.Single().Status.Should().Be(EntryStatus.Overdue);
+        view.OverdueCount.Should().Be(1);
     }
 
     [Theory]
@@ -197,6 +232,47 @@ public class MonthHandlersTests
     }
 
     [Fact]
+    public async Task Get_ComputesTheStatusOfEachEntry_AndLeavesCanceledOutOfTheTotals()
+    {
+        Expense rent = _kit.NewFixed(_ordinary, M(2026, 9), 300m, "Zeladoria");
+        Expense security = _kit.NewFixed(_ordinary, M(2026, 9), 80m, "Portaria remota");
+        Expense gardener = _kit.NewFixed(_ordinary, M(2026, 9), 50m, "Jardinagem");
+        Expense energy = _kit.NewVariable(_ordinary, M(2026, 9), "Energia elétrica");
+        _kit.NewEntry(rent, M(2026, 10));
+        _kit.NewEntry(security, M(2026, 10)).SetStatus(EntryStatus.Paid);
+        _kit.NewEntry(gardener, M(2026, 10)).SetStatus(EntryStatus.Canceled);
+        _kit.NewEntry(energy, M(2026, 10));
+
+        MonthView view = (await GetHandler().Handle(new GetMonthQuery("2026-10"), default)).Value;
+
+        view.Entries.ToDictionary(entry => entry.Description, entry => entry.Status).Should().Equal(
+            new Dictionary<string, EntryStatus>
+            {
+                ["Zeladoria"] = EntryStatus.Overdue,
+                ["Portaria remota"] = EntryStatus.Paid,
+                ["Jardinagem"] = EntryStatus.Canceled,
+                ["Energia elétrica"] = EntryStatus.Overdue,
+            });
+        view.Total.Should().Be(380m);
+        view.OverdueCount.Should().Be(2);
+        view.NeedsAmountCount.Should().Be(1);
+        view.Groups.Should().ContainSingle().Which.Total.Should().Be(380m);
+    }
+
+    [Fact]
+    public async Task Get_ACanceledEntryWithoutAmount_DoesNotCountAsNeedingOne()
+    {
+        Expense energy = _kit.NewVariable(_ordinary, M(2026, 9), "Energia elétrica");
+        _kit.NewEntry(energy, M(2026, 11)).SetStatus(EntryStatus.Canceled);
+
+        MonthView view = (await GetHandler().Handle(new GetMonthQuery("2026-11"), default)).Value;
+
+        view.NeedsAmountCount.Should().Be(0);
+        view.Groups.Should().ContainSingle().Which.NeedsAmountCount.Should().Be(0);
+        view.Entries.Single().NeedsAmount.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task Get_OfAMonthWithoutEntries_IsEmptyNotAnError()
     {
         Result<MonthView> result = await GetHandler().Handle(new GetMonthQuery("2026-03"), default);
@@ -227,7 +303,7 @@ public class MonthHandlersTests
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Amount.Should().Be(412.37m);
-        result.Value.IsPending.Should().BeFalse();
+        result.Value.NeedsAmount.Should().BeFalse();
         result.Value.Version.Should().Be("6");
         entry.Amount.Should().Be(412.37m);
     }
@@ -256,9 +332,55 @@ public class MonthHandlersTests
         (await SetHandler().Handle(new SetEntryAmountCommand(entry.Id, "4", 10m), default)).Error.Should().Be(FinanceErrors.ConcurrencyConflict);
         (await SetHandler().Handle(new SetEntryAmountCommand(Guid.CreateVersion7(), "5", 10m), default)).Error.Should().Be(ExpenseErrors.EntryNotFound);
         (await SetHandler().Handle(new SetEntryAmountCommand(entry.Id, "5", 0m), default)).Error.Should().Be(ExpenseErrors.AmountInvalid);
-        entry.IsPending.Should().BeTrue();
+        entry.NeedsAmount.Should().BeTrue();
 
         _kit.WithoutATenant();
         (await SetHandler().Handle(new SetEntryAmountCommand(entry.Id, "5", 10m), default)).Error.Should().Be(FinanceErrors.CondominiumNotFound);
+    }
+
+    // ---- set the payment status of one entry ----
+
+    [Fact]
+    public async Task SetStatus_MarksAnEntryAsPaid_AndReturnsTheNewVersion()
+    {
+        Expense fixedExpense = _kit.NewFixed(_ordinary, M(2026, 9), 300m, "Zeladoria");
+        ExpenseEntry entry = _kit.NewEntry(fixedExpense, M(2026, 11));
+
+        Result<ExpenseEntryView> result = await StatusHandler().Handle(new SetEntryStatusCommand(entry.Id, "5", EntryStatus.Paid), default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Status.Should().Be(EntryStatus.Paid);
+        result.Value.Version.Should().Be("6");
+        entry.Status.Should().Be(EntryStatus.Paid);
+    }
+
+    [Fact]
+    public async Task SetStatus_GoingBackToPending_OfAnEntryPastDue_ShowsItAsOverdue()
+    {
+        Expense fixedExpense = _kit.NewFixed(_ordinary, M(2026, 9), 300m, "Zeladoria");
+        ExpenseEntry entry = _kit.NewEntry(fixedExpense, M(2026, 10));
+        entry.SetStatus(EntryStatus.Paid);
+
+        Result<ExpenseEntryView> result = await StatusHandler().Handle(new SetEntryStatusCommand(entry.Id, "5", EntryStatus.Pending), default);
+
+        entry.Status.Should().Be(EntryStatus.Pending);
+        result.Value.Status.Should().Be(EntryStatus.Overdue);
+    }
+
+    [Fact]
+    public async Task SetStatus_Failures()
+    {
+        Expense energy = _kit.NewVariable(_ordinary, M(2026, 9), "Energia elétrica");
+        ExpenseEntry entry = _kit.NewEntry(energy, M(2026, 11));
+
+        (await StatusHandler().Handle(new SetEntryStatusCommand(entry.Id, null, EntryStatus.Canceled), default)).Error.Should().Be(FinanceErrors.VersionRequired);
+        (await StatusHandler().Handle(new SetEntryStatusCommand(entry.Id, "4", EntryStatus.Canceled), default)).Error.Should().Be(FinanceErrors.ConcurrencyConflict);
+        (await StatusHandler().Handle(new SetEntryStatusCommand(Guid.CreateVersion7(), "5", EntryStatus.Canceled), default)).Error.Should().Be(ExpenseErrors.EntryNotFound);
+        (await StatusHandler().Handle(new SetEntryStatusCommand(entry.Id, "5", EntryStatus.Paid), default)).Error.Should().Be(ExpenseErrors.AmountRequiredToPay);
+        (await StatusHandler().Handle(new SetEntryStatusCommand(entry.Id, "5", EntryStatus.Overdue), default)).Error.Should().Be(ExpenseErrors.StatusInvalid);
+        entry.Status.Should().Be(EntryStatus.Pending);
+
+        _kit.WithoutATenant();
+        (await StatusHandler().Handle(new SetEntryStatusCommand(entry.Id, "5", EntryStatus.Canceled), default)).Error.Should().Be(FinanceErrors.CondominiumNotFound);
     }
 }

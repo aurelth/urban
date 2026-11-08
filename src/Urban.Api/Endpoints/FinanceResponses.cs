@@ -18,6 +18,7 @@ public sealed record ExpenseResponse(
     string? EndMonth,
     string? LastMonth,
     decimal? CurrentAmount,
+    int DueDay,
     int? InstallmentCount,
     int? CurrentInstallment,
     IReadOnlyList<InstallmentResponse> Installments,
@@ -25,9 +26,12 @@ public sealed record ExpenseResponse(
     bool IsEnded,
     string Version);
 
-/// <param name="Amount">Nulo enquanto o lançamento está pendente.</param>
+/// <param name="Amount">Nulo enquanto o valor de uma despesa variável não foi informado.</param>
 /// <param name="Label">A parcela, como "4/6"; nulo nas outras despesas.</param>
-/// <param name="SuggestedAmount">Só nos pendentes: o valor do mês anterior da mesma despesa.</param>
+/// <param name="DueDate">O vencimento, como "AAAA-MM-DD".</param>
+/// <param name="Status">"pending", "paid", "overdue" (pendente depois do vencimento) ou "canceled".</param>
+/// <param name="NeedsAmount">Verdadeiro enquanto o valor ainda não foi informado.</param>
+/// <param name="SuggestedAmount">Só nos que precisam de valor: o valor do mês anterior da mesma despesa.</param>
 public sealed record ExpenseEntryResponse(
     Guid Id,
     Guid ExpenseId,
@@ -36,15 +40,18 @@ public sealed record ExpenseEntryResponse(
     string Description,
     decimal? Amount,
     string? Label,
-    bool IsPending,
+    string DueDate,
+    string Status,
+    bool NeedsAmount,
     decimal? SuggestedAmount,
     string Version);
 
-public sealed record GroupTotalResponse(Guid GroupId, string GroupName, decimal Total, int PendingCount);
+public sealed record GroupTotalResponse(Guid GroupId, string GroupName, decimal Total, int NeedsAmountCount);
 
 public sealed record MonthResponse(
     string Month,
     IReadOnlyList<ExpenseEntryResponse> Entries,
     IReadOnlyList<GroupTotalResponse> Groups,
     decimal Total,
-    int PendingCount);
+    int NeedsAmountCount,
+    int OverdueCount);

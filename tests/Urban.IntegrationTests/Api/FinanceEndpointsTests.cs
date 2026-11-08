@@ -40,6 +40,7 @@ public sealed class FinanceEndpointsTests(ApiFixture fixture) : IDisposable
         { "GET", $"{Months}/2026-11" },
         { "POST", $"{Months}/2026-11/open" },
         { "PUT", $"{Entries}/{Guid.Empty}/amount" },
+        { "PUT", $"{Entries}/{Guid.Empty}/status" },
     };
 
     // ---- Acesso ----
@@ -213,6 +214,7 @@ public sealed class FinanceEndpointsTests(ApiFixture fixture) : IDisposable
         body.GetProperty("supplier").GetString().Should().Be("Tintas Sul");
         body.GetProperty("startMonth").GetString().Should().Be(Month(0));
         body.GetProperty("currentAmount").GetDecimal().Should().Be(1500.50m);
+        body.GetProperty("dueDay").GetInt32().Should().Be(10);
         body.GetProperty("isEnded").GetBoolean().Should().BeFalse();
         body.GetProperty("installments").GetArrayLength().Should().Be(0);
         body.GetProperty("version").GetString().Should().NotBeNullOrWhiteSpace();
@@ -298,6 +300,9 @@ public sealed class FinanceEndpointsTests(ApiFixture fixture) : IDisposable
     [InlineData("amount", 0, "expense.amount.invalid")]
     [InlineData("amount", -5, "expense.amount.invalid")]
     [InlineData("amount", 10.123, "expense.amount.invalid")]
+    [InlineData("dueDay", null, "expense.due_day.invalid")]
+    [InlineData("dueDay", 0, "expense.due_day.invalid")]
+    [InlineData("dueDay", 32, "expense.due_day.invalid")]
     [InlineData("startMonth", "2026-13", "month.invalid")]
     [InlineData("startMonth", "novembro", "month.invalid")]
     public async Task Post_with_an_invalid_field_answers_400_with_the_code_of_the_field(string field, object? value, string code)
@@ -404,17 +409,18 @@ public sealed class FinanceEndpointsTests(ApiFixture fixture) : IDisposable
         string version = expense.GetProperty("version").GetString()!;
 
         HttpResponseMessage edited = await _client.SendJsonAsync(
-            HttpMethod.Put, route, manager.AccessToken, new JsonObject { ["version"] = version, ["description"] = "Portaria 24h", ["supplier"] = "Segurança Ltda", ["groupId"] = contratos });
+            HttpMethod.Put, route, manager.AccessToken, new JsonObject { ["version"] = version, ["description"] = "Portaria 24h", ["supplier"] = "Segurança Ltda", ["groupId"] = contratos, ["dueDay"] = 15 });
         HttpResponseMessage stale = await _client.SendJsonAsync(
-            HttpMethod.Put, route, manager.AccessToken, new JsonObject { ["version"] = version, ["description"] = "Outra", ["groupId"] = contratos });
+            HttpMethod.Put, route, manager.AccessToken, new JsonObject { ["version"] = version, ["description"] = "Outra", ["groupId"] = contratos, ["dueDay"] = 15 });
         HttpResponseMessage missing = await _client.SendJsonAsync(
-            HttpMethod.Put, route, manager.AccessToken, new JsonObject { ["description"] = "Outra", ["groupId"] = contratos });
+            HttpMethod.Put, route, manager.AccessToken, new JsonObject { ["description"] = "Outra", ["groupId"] = contratos, ["dueDay"] = 15 });
 
         edited.StatusCode.Should().Be(HttpStatusCode.OK);
         JsonElement body = await edited.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("description").GetString().Should().Be("Portaria 24h");
         body.GetProperty("supplier").GetString().Should().Be("Segurança Ltda");
         body.GetProperty("groupId").GetGuid().Should().Be(contratos);
+        body.GetProperty("dueDay").GetInt32().Should().Be(15);
         body.GetProperty("version").GetString().Should().NotBe(version);
         stale.StatusCode.Should().Be(HttpStatusCode.Conflict);
         (await stale.CodeAsync()).Should().Be("concurrency.conflict");
@@ -549,7 +555,7 @@ public sealed class FinanceEndpointsTests(ApiFixture fixture) : IDisposable
         body.GetProperty("month").GetString().Should().Be(Month(-1));
         body.GetProperty("entries").GetArrayLength().Should().Be(0);
         body.GetProperty("total").GetDecimal().Should().Be(0m);
-        body.GetProperty("pendingCount").GetInt32().Should().Be(0);
+        body.GetProperty("needsAmountCount").GetInt32().Should().Be(0);
     }
 
     [Fact]
@@ -570,13 +576,13 @@ public sealed class FinanceEndpointsTests(ApiFixture fixture) : IDisposable
         JsonElement[] entries = [.. body.GetProperty("entries").EnumerateArray()];
         entries.Select(entry => entry.GetProperty("description").GetString()).Should().BeEquivalentTo("Portaria", "Água", "Elevador");
         entries.Single(entry => entry.GetProperty("description").GetString() == "Elevador").GetProperty("label").GetString().Should().Be("4/6");
-        entries.Single(entry => entry.GetProperty("description").GetString() == "Água").GetProperty("isPending").GetBoolean().Should().BeTrue();
+        entries.Single(entry => entry.GetProperty("description").GetString() == "Água").GetProperty("needsAmount").GetBoolean().Should().BeTrue();
         entries.Single(entry => entry.GetProperty("description").GetString() == "Água").GetProperty("amount").ValueKind.Should().Be(JsonValueKind.Null);
         body.GetProperty("total").GetDecimal().Should().Be(4100m);
-        body.GetProperty("pendingCount").GetInt32().Should().Be(1);
+        body.GetProperty("needsAmountCount").GetInt32().Should().Be(1);
         JsonElement[] totals = [.. body.GetProperty("groups").EnumerateArray()];
         totals.Single(group => group.GetProperty("groupId").GetGuid() == contratos).GetProperty("total").GetDecimal().Should().Be(4000m);
-        totals.Single(group => group.GetProperty("groupId").GetGuid() == contratos).GetProperty("pendingCount").GetInt32().Should().Be(1);
+        totals.Single(group => group.GetProperty("groupId").GetGuid() == contratos).GetProperty("needsAmountCount").GetInt32().Should().Be(1);
         totals.Single(group => group.GetProperty("groupId").GetGuid() == obras).GetProperty("total").GetDecimal().Should().Be(100m);
         second.StatusCode.Should().Be(HttpStatusCode.OK);
         (await second.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("entries").GetArrayLength().Should().Be(3);
@@ -614,16 +620,121 @@ public sealed class FinanceEndpointsTests(ApiFixture fixture) : IDisposable
     }
 
     [Fact]
-    public async Task Opening_a_month_more_than_one_ahead_answers_422_but_the_next_month_opens()
+    public async Task Opening_a_month_up_to_five_years_ahead_works_and_further_answers_422()
     {
         ManagerSession manager = await RegisterAsync();
 
-        HttpResponseMessage tooFar = await _client.SendJsonAsync(HttpMethod.Post, $"{Months}/{Month(2)}/open", manager.AccessToken, new JsonObject());
-        HttpResponseMessage next = await _client.SendJsonAsync(HttpMethod.Post, $"{Months}/{Month(1)}/open", manager.AccessToken, new JsonObject());
+        HttpResponseMessage tooFar = await _client.SendJsonAsync(HttpMethod.Post, $"{Months}/{Month(61)}/open", manager.AccessToken, new JsonObject());
+        HttpResponseMessage limit = await _client.SendJsonAsync(HttpMethod.Post, $"{Months}/{Month(60)}/open", manager.AccessToken, new JsonObject());
+        HttpResponseMessage next = await _client.SendJsonAsync(HttpMethod.Post, $"{Months}/{Month(2)}/open", manager.AccessToken, new JsonObject());
 
         tooFar.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
         (await tooFar.CodeAsync()).Should().Be("month.too_far_ahead");
+        limit.StatusCode.Should().Be(HttpStatusCode.OK);
         next.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task The_entries_come_with_the_due_date_of_their_month_and_start_pending()
+    {
+        ManagerSession manager = await RegisterAsync();
+        Guid group = await CreateGroupAsync(manager, "Consumo");
+        await CreateExpenseAsync(manager, ExpenseBody("single", group, "Troca da lâmpada", Month(1), amount: 250m, dueDay: 5));
+        await CreateExpenseAsync(manager, ExpenseBody("fixed", group, "Portaria", Month(1), amount: 4200m, dueDay: 31));
+
+        JsonElement month = await OpenAsync(manager, Month(1));
+
+        JsonElement[] entries = [.. month.GetProperty("entries").EnumerateArray()];
+        JsonElement single = entries.Single(entry => entry.GetProperty("description").GetString() == "Troca da lâmpada");
+        single.GetProperty("dueDate").GetString().Should().Be($"{Month(1)}-05");
+        single.GetProperty("status").GetString().Should().Be("pending");
+        string lastDay = entries.Single(entry => entry.GetProperty("description").GetString() == "Portaria").GetProperty("dueDate").GetString()!;
+        DateOnly parsed = DateOnly.ParseExact(lastDay, "yyyy-MM-dd", CultureInfo.InvariantCulture);
+        parsed.Day.Should().Be(Math.Min(31, DateTime.DaysInMonth(parsed.Year, parsed.Month)));
+        month.GetProperty("overdueCount").GetInt32().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task An_unpaid_entry_of_a_past_month_comes_back_as_overdue()
+    {
+        ManagerSession manager = await RegisterAsync();
+        Guid group = await CreateGroupAsync(manager, "Contratos");
+        await CreateExpenseAsync(manager, ExpenseBody("fixed", group, "Portaria", Month(-2), amount: 4200m, dueDay: 1));
+
+        JsonElement month = await OpenAsync(manager, Month(-1));
+
+        month.GetProperty("entries").EnumerateArray().Single().GetProperty("status").GetString().Should().Be("overdue");
+        month.GetProperty("overdueCount").GetInt32().Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Put_status_marks_an_entry_as_paid_and_back_and_the_overdue_comes_from_the_date()
+    {
+        ManagerSession manager = await RegisterAsync();
+        Guid group = await CreateGroupAsync(manager, "Contratos");
+        await CreateExpenseAsync(manager, ExpenseBody("fixed", group, "Portaria", Month(-2), amount: 4200m, dueDay: 1));
+        JsonElement entry = (await OpenAsync(manager, Month(-1))).GetProperty("entries").EnumerateArray().Single();
+        string route = $"{Entries}/{entry.GetProperty("id").GetGuid()}/status";
+
+        HttpResponseMessage paid = await _client.SendJsonAsync(HttpMethod.Put, route, manager.AccessToken, new JsonObject { ["version"] = entry.GetProperty("version").GetString(), ["status"] = "paid" });
+        JsonElement paidBody = await paid.Content.ReadFromJsonAsync<JsonElement>();
+        HttpResponseMessage undone = await _client.SendJsonAsync(HttpMethod.Put, route, manager.AccessToken, new JsonObject { ["version"] = paidBody.GetProperty("version").GetString(), ["status"] = "pending" });
+
+        paid.StatusCode.Should().Be(HttpStatusCode.OK);
+        paidBody.GetProperty("status").GetString().Should().Be("paid");
+        paidBody.GetProperty("version").GetString().Should().NotBe(entry.GetProperty("version").GetString());
+        undone.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await undone.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("status").GetString().Should().Be("overdue");
+        (await ReadMonthAsync(manager, Month(-1))).GetProperty("entries").EnumerateArray().Single().GetProperty("status").GetString().Should().Be("overdue");
+    }
+
+    [Fact]
+    public async Task Put_status_canceled_leaves_the_entry_out_of_the_totals()
+    {
+        ManagerSession manager = await RegisterAsync();
+        Guid group = await CreateGroupAsync(manager, "Contratos");
+        await CreateExpenseAsync(manager, ExpenseBody("fixed", group, "Portaria", Month(1), amount: 4200m));
+        await CreateExpenseAsync(manager, ExpenseBody("fixed", group, "Jardinagem", Month(1), amount: 300m));
+        JsonElement[] entries = [.. (await OpenAsync(manager, Month(1))).GetProperty("entries").EnumerateArray()];
+        JsonElement garden = entries.Single(entry => entry.GetProperty("description").GetString() == "Jardinagem");
+
+        HttpResponseMessage canceled = await _client.SendJsonAsync(
+            HttpMethod.Put, $"{Entries}/{garden.GetProperty("id").GetGuid()}/status", manager.AccessToken, new JsonObject { ["version"] = garden.GetProperty("version").GetString(), ["status"] = "canceled" });
+
+        canceled.StatusCode.Should().Be(HttpStatusCode.OK);
+        JsonElement month = await ReadMonthAsync(manager, Month(1));
+        month.GetProperty("total").GetDecimal().Should().Be(4200m);
+        month.GetProperty("groups").EnumerateArray().Single().GetProperty("total").GetDecimal().Should().Be(4200m);
+    }
+
+    [Fact]
+    public async Task Put_status_refuses_paying_without_an_amount_a_stale_version_a_bad_status_and_an_unknown_entry()
+    {
+        ManagerSession manager = await RegisterAsync();
+        Guid group = await CreateGroupAsync(manager, "Consumo");
+        await CreateExpenseAsync(manager, ExpenseBody("variable", group, "Água", Month(0)));
+        JsonElement entry = (await OpenAsync(manager, Month(0))).GetProperty("entries").EnumerateArray().Single();
+        string route = $"{Entries}/{entry.GetProperty("id").GetGuid()}/status";
+        string version = entry.GetProperty("version").GetString()!;
+
+        HttpResponseMessage noAmount = await _client.SendJsonAsync(HttpMethod.Put, route, manager.AccessToken, new JsonObject { ["version"] = version, ["status"] = "paid" });
+        HttpResponseMessage overdue = await _client.SendJsonAsync(HttpMethod.Put, route, manager.AccessToken, new JsonObject { ["version"] = version, ["status"] = "overdue" });
+        HttpResponseMessage unknownStatus = await _client.SendJsonAsync(HttpMethod.Put, route, manager.AccessToken, new JsonObject { ["version"] = version, ["status"] = "talvez" });
+        HttpResponseMessage missing = await _client.SendJsonAsync(HttpMethod.Put, route, manager.AccessToken, new JsonObject { ["status"] = "canceled" });
+        HttpResponseMessage stale = await _client.SendJsonAsync(HttpMethod.Put, route, manager.AccessToken, new JsonObject { ["version"] = "0", ["status"] = "canceled" });
+        HttpResponseMessage unknown = await _client.SendJsonAsync(HttpMethod.Put, $"{Entries}/{Guid.NewGuid()}/status", manager.AccessToken, new JsonObject { ["version"] = version, ["status"] = "canceled" });
+
+        noAmount.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        (await noAmount.CodeAsync()).Should().Be("expense_entry.amount_required");
+        overdue.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await overdue.CodeAsync()).Should().Be("expense_entry.status.invalid");
+        unknownStatus.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await unknownStatus.CodeAsync()).Should().Be("expense_entry.status.invalid");
+        missing.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await missing.CodeAsync()).Should().Be("finance.version.required");
+        stale.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await stale.CodeAsync()).Should().Be("concurrency.conflict");
+        unknown.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
     [Fact]
@@ -643,10 +754,10 @@ public sealed class FinanceEndpointsTests(ApiFixture fixture) : IDisposable
         filled.StatusCode.Should().Be(HttpStatusCode.OK);
         JsonElement body = await filled.Content.ReadFromJsonAsync<JsonElement>();
         body.GetProperty("amount").GetDecimal().Should().Be(812.34m);
-        body.GetProperty("isPending").GetBoolean().Should().BeFalse();
+        body.GetProperty("needsAmount").GetBoolean().Should().BeFalse();
         body.GetProperty("version").GetString().Should().NotBe(version);
         JsonElement next = current.GetProperty("entries").EnumerateArray().Single();
-        next.GetProperty("isPending").GetBoolean().Should().BeTrue();
+        next.GetProperty("needsAmount").GetBoolean().Should().BeTrue();
         next.GetProperty("suggestedAmount").GetDecimal().Should().Be(812.34m);
     }
 
@@ -696,7 +807,7 @@ public sealed class FinanceEndpointsTests(ApiFixture fixture) : IDisposable
         JsonElement otherMonth = await ReadMonthAsync(second, Month(0));
         HttpResponseMessage rename = await _client.SendJsonAsync(HttpMethod.Put, $"{Groups}/{group}", second.AccessToken, new JsonObject { ["version"] = "1", ["name"] = "Invadido" });
         HttpResponseMessage edit = await _client.SendJsonAsync(
-            HttpMethod.Put, $"{Expenses}/{expense.GetProperty("id").GetGuid()}", second.AccessToken, new JsonObject { ["version"] = "1", ["description"] = "Invadida", ["groupId"] = group });
+            HttpMethod.Put, $"{Expenses}/{expense.GetProperty("id").GetGuid()}", second.AccessToken, new JsonObject { ["version"] = "1", ["description"] = "Invadida", ["groupId"] = group, ["dueDay"] = 15 });
         HttpResponseMessage fill = await _client.SendJsonAsync(HttpMethod.Put, $"{Entries}/{entryId}/amount", second.AccessToken, new JsonObject { ["version"] = "1", ["amount"] = 1m });
 
         groups.Should().BeEmpty();
@@ -725,7 +836,8 @@ public sealed class FinanceEndpointsTests(ApiFixture fixture) : IDisposable
         decimal? amount = null,
         string? supplier = null,
         int? installmentCount = null,
-        int? currentInstallment = null) => new()
+        int? currentInstallment = null,
+        int? dueDay = 10) => new()
     {
         ["kind"] = kind,
         ["groupId"] = groupId,
@@ -735,6 +847,7 @@ public sealed class FinanceEndpointsTests(ApiFixture fixture) : IDisposable
         ["amount"] = amount,
         ["installmentCount"] = installmentCount,
         ["currentInstallment"] = currentInstallment,
+        ["dueDay"] = dueDay,
     };
 
     private async Task MigrateAsync() => await fixture.Factory.Services.MigrateFinanceAsync();
