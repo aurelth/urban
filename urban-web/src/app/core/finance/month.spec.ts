@@ -8,6 +8,8 @@ import {
   formatDate,
   isMonthInWindow,
   MONTH_WINDOW,
+  parseDueDate,
+  suggestedDueDate,
 } from './month';
 
 describe('currentMonth', () => {
@@ -101,4 +103,35 @@ describe('monthOptions', () => {
   it('is empty when the range is backwards', () => {
     expect(monthOptions('2027-01', '2026-11')).toEqual([]);
   });
+});
+
+describe('suggestedDueDate', () => {
+  it('suggests day 10 of the following month, as dd/mm/yyyy', () => {
+    expect(suggestedDueDate('2026-11')).toBe('10/12/2026');
+    expect(suggestedDueDate('2026-12')).toBe('10/01/2027');
+    expect(suggestedDueDate('2027-01')).toBe('10/02/2027');
+  });
+});
+
+describe('parseDueDate', () => {
+  it('turns dd/mm/yyyy into an ISO date', () => {
+    expect(parseDueDate('10/12/2026', '2026-11')).toBe('2026-12-10');
+    expect(parseDueDate('10122026', '2026-11')).toBe('2026-12-10');
+  });
+
+  it('accepts the first day of the month and anything after it', () => {
+    expect(parseDueDate('01/11/2026', '2026-11')).toBe('2026-11-01');
+    expect(parseDueDate('15/03/2027', '2026-11')).toBe('2027-03-15');
+  });
+
+  it.each(['31/10/2026', '01/01/2020'])('refuses %s, before the month starts', (text) => {
+    expect(parseDueDate(text, '2026-11')).toBeNull();
+  });
+
+  it.each(['', '10/12', '10/12/26', '31/02/2027', '00/12/2026', '32/12/2026', '10/13/2026', 'abc'])(
+    'refuses "%s", which is not a real date',
+    (text) => {
+      expect(parseDueDate(text, '2026-11')).toBeNull();
+    },
+  );
 });
