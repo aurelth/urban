@@ -4,6 +4,7 @@ import {
   INSTALLMENT_EXPENSE,
   TODAY,
   VARIABLE_EXPENSE,
+  WORKS_GROUP,
   stubExpense,
   stubExpenses,
   stubFinanceRejected,
@@ -245,14 +246,57 @@ describe('Despesas', () => {
     cy.get('[data-testid="notice"]').should('contain.text', 'Despesa encerrada');
   });
 
+  it('mostra com texto quais grupos sao a base do fundo de reserva', () => {
+    cy.visit(EXPENSES_PATH);
+
+    cy.get('[data-testid="group-item"]')
+      .first()
+      .find('[data-testid="reserve-base-badge"]')
+      .should('contain.text', 'Base do fundo de reserva');
+    cy.get('[data-testid="group-item"]')
+      .last()
+      .find('[data-testid="reserve-base-badge"]')
+      .should('not.exist');
+  });
+
+  it('marca um grupo como base do fundo de reserva sem renomear', () => {
+    cy.intercept(
+      'PUT',
+      '/api/finance/expense-groups/0199bbbb-0001-7000-8000-000000000002/reserve-fund-base',
+      {
+        statusCode: 200,
+        body: { ...WORKS_GROUP, reserveFundBase: true, version: '7' },
+      },
+    ).as('markGroup');
+    cy.visit(EXPENSES_PATH);
+
+    cy.get('button[aria-label="Editar grupo Obras"]').click();
+    cy.get('urban-group-dialog [data-testid="reserve-fund-base"] input').should('not.be.checked');
+    cy.get('urban-group-dialog [data-testid="reserve-fund-base"]').click();
+    cy.get('urban-group-dialog').contains('button', 'Salvar alterações').click();
+
+    cy.wait('@markGroup').its('request.body').should('deep.equal', { version: '6', enabled: true });
+    cy.get('[data-testid="notice"]').should('contain.text', 'Grupo atualizado');
+  });
+
   it('cria e renomeia grupos', () => {
     cy.intercept('POST', '/api/finance/expense-groups', {
       statusCode: 201,
-      body: { id: '0199bbbb-0001-7000-8000-000000000003', name: 'Reformas', version: '1' },
+      body: {
+        id: '0199bbbb-0001-7000-8000-000000000003',
+        name: 'Reformas',
+        reserveFundBase: false,
+        version: '1',
+      },
     }).as('createGroup');
     cy.intercept('PUT', '/api/finance/expense-groups/0199bbbb-0001-7000-8000-000000000002', {
       statusCode: 200,
-      body: { id: '0199bbbb-0001-7000-8000-000000000002', name: 'Obras gerais', version: '7' },
+      body: {
+        id: '0199bbbb-0001-7000-8000-000000000002',
+        name: 'Obras gerais',
+        reserveFundBase: false,
+        version: '7',
+      },
     }).as('renameGroup');
     cy.visit(EXPENSES_PATH);
 
@@ -262,9 +306,9 @@ describe('Despesas', () => {
     cy.wait('@createGroup').its('request.body').should('deep.equal', { name: 'Reformas' });
     cy.get('[data-testid="notice"]').should('contain.text', 'Grupo criado');
 
-    cy.get('button[aria-label="Renomear grupo Obras"]').click();
+    cy.get('button[aria-label="Editar grupo Obras"]').click();
     enter('urban-group-dialog [formControlName="name"]', 'Obras gerais');
-    cy.get('urban-group-dialog').contains('button', 'Salvar nome').click();
+    cy.get('urban-group-dialog').contains('button', 'Salvar alterações').click();
     cy.wait('@renameGroup')
       .its('request.body')
       .should('deep.equal', { version: '6', name: 'Obras gerais' });

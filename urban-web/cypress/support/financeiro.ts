@@ -7,11 +7,13 @@ export const TODAY = new Date('2026-11-15T15:00:00Z').getTime();
 export const ORDINARY_GROUP = {
   id: '0199bbbb-0001-7000-8000-000000000001',
   name: 'Despesas ordinárias',
+  reserveFundBase: true,
   version: '5',
 };
 export const WORKS_GROUP = {
   id: '0199bbbb-0001-7000-8000-000000000002',
   name: 'Obras',
+  reserveFundBase: false,
   version: '6',
 };
 
@@ -221,6 +223,16 @@ export const CLOSED_MONTH = {
         number: '101',
         weight: 0.6,
         amount: 2520,
+        lines: [
+          {
+            kind: 'expenses',
+            label: 'Despesas',
+            amount: 2520,
+            quantity: null,
+            previousReading: null,
+            currentReading: null,
+          },
+        ],
       },
       {
         unitId: '0199bbbb-0004-7000-8000-000000000002',
@@ -228,6 +240,93 @@ export const CLOSED_MONTH = {
         number: '102',
         weight: 0.4,
         amount: 1680,
+        lines: [
+          {
+            kind: 'expenses',
+            label: 'Despesas',
+            amount: 1680,
+            quantity: null,
+            previousReading: null,
+            currentReading: null,
+          },
+        ],
+      },
+    ],
+  },
+};
+
+/** Mês fechado com fundo de reserva e água: as cobranças somam mais que o total das despesas. */
+export const CLOSED_MONTH_WITH_CONSUMPTION = {
+  ...CLOSED_MONTH,
+  closing: {
+    ...CLOSED_MONTH.closing,
+    total: 1000,
+    charges: [
+      {
+        unitId: '0199bbbb-0004-7000-8000-000000000001',
+        block: null,
+        number: '101',
+        weight: 0.6,
+        amount: 803.44,
+        lines: [
+          {
+            kind: 'expenses',
+            label: 'Despesas ordinárias',
+            amount: 600,
+            quantity: null,
+            previousReading: null,
+            currentReading: null,
+          },
+          {
+            kind: 'reserveFund',
+            label: 'Fundo de reserva',
+            amount: 90,
+            quantity: null,
+            previousReading: null,
+            currentReading: null,
+          },
+          {
+            kind: 'water',
+            label: 'Água',
+            amount: 113.44,
+            quantity: 17.649,
+            previousReading: 100,
+            currentReading: 117.649,
+          },
+        ],
+      },
+      {
+        unitId: '0199bbbb-0004-7000-8000-000000000002',
+        block: 'A',
+        number: '102',
+        weight: 0.4,
+        amount: 507.43,
+        lines: [
+          {
+            kind: 'expenses',
+            label: 'Despesas ordinárias',
+            amount: 400,
+            quantity: null,
+            previousReading: null,
+            currentReading: null,
+          },
+          {
+            kind: 'reserveFund',
+            label: 'Fundo de reserva',
+            amount: 60,
+            quantity: null,
+            previousReading: null,
+            currentReading: null,
+          },
+          {
+            kind: 'water',
+            label: 'Água',
+            amount: 47.43,
+            quantity: 5,
+            previousReading: 50,
+            currentReading: 55,
+          },
+        ],
       },
     ],
   },

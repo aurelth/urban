@@ -1,5 +1,6 @@
 import {
   CLOSED_MONTH,
+  CLOSED_MONTH_WITH_CONSUMPTION,
   EMPTY_MONTH,
   FILLED_MONTH,
   ENTRIES_PATH,
@@ -356,6 +357,44 @@ describe('Lançamentos do mês', () => {
       cy.get('[data-testid="charges-total"]')
         .invoke('text')
         .should('match', /R\$\s4\.200,00/);
+    });
+
+    it('detalha o recibo com fundo de reserva e agua e separa o total das despesas do das cobrancas', () => {
+      stubMonth(CLOSED_MONTH_WITH_CONSUMPTION);
+      cy.visit(ENTRIES_PATH);
+
+      cy.get('[data-testid="charge-group"]').should('have.length', 2);
+      cy.get('[data-testid="charge-group"]')
+        .first()
+        .find('[data-testid="charge-line"]')
+        .should('have.length', 3)
+        .then((lines) => {
+          expect(lines[0].textContent).to.contain('Despesas ordinárias');
+          expect(lines[1].textContent).to.contain('Fundo de reserva');
+          expect(lines[2].textContent).to.contain('Água');
+          expect(lines[2].textContent).to.contain('17,649 m³ (leitura de 100 a 117,649)');
+        });
+      cy.get('[data-testid="expenses-total"]')
+        .invoke('text')
+        .should('match', /Despesas do mês\s*R\$\s1\.000,00/);
+      cy.get('[data-testid="charges-total"]')
+        .invoke('text')
+        .should('match', /R\$\s1\.310,87/);
+    });
+
+    it('explica quando falta a leitura de agua ou gas de alguma unidade', () => {
+      stubMonth(FILLED_MONTH);
+      stubFinanceRejected('POST', CLOSE, 422, 'closing.readings_pending', 'closePending');
+      cy.visit(ENTRIES_PATH);
+
+      cy.get('[data-testid="close-month"]').click();
+      cy.get('urban-close-month-dialog').contains('button', 'Fechar mês').click();
+
+      cy.wait('@closePending');
+      cy.get('urban-close-month-dialog [role="alert"]').should(
+        'contain.text',
+        'Falta a leitura de água ou gás de alguma unidade',
+      );
     });
 
     it('destaca o card do mes fechado em branco sobre o fundo cinza da pagina', () => {

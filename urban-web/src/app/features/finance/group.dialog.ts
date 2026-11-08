@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, Injector, inject, signal } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatButton } from '@angular/material/button';
+import { MatCheckbox } from '@angular/material/checkbox';
 import {
   MAT_DIALOG_DATA,
   MatDialogActions,
@@ -9,7 +10,7 @@ import {
   MatDialogTitle,
 } from '@angular/material/dialog';
 import { MatIcon } from '@angular/material/icon';
-import { ExpenseGroup } from '../../core/finance/finance.models';
+import { ExpenseGroup, ExpenseGroupValues } from '../../core/finance/finance.models';
 import { requiredText } from '../../shared/forms/required-text.validator';
 import { TextField } from '../../shared/ui/text-field/text.field';
 import { openFinanceDialog } from './finance.dialog';
@@ -19,16 +20,17 @@ const NAME_MAX_LENGTH = 60;
 export interface GroupDialogConfig {
   /** O grupo que está sendo renomeado; nulo quando é um grupo novo. */
   readonly group: ExpenseGroup | null;
-  /** Grava o nome. Devolve nulo quando deu certo ou o texto do erro (o diálogo continua aberto). */
-  readonly save: (name: string) => Promise<string | null>;
+  /** Grava o nome e a marca. Devolve nulo quando deu certo ou o texto do erro (o diálogo continua aberto). */
+  readonly save: (values: ExpenseGroupValues) => Promise<string | null>;
 }
 
-/** Cria ou renomeia um grupo de despesas. Na edição, o botão só habilita depois de mudar o nome. */
+/** Cria ou edita um grupo de despesas. Na edição, o botão só habilita depois de mudar o nome ou a marca do fundo de reserva. */
 @Component({
   selector: 'urban-group-dialog',
   imports: [
     ReactiveFormsModule,
     MatButton,
+    MatCheckbox,
     MatDialogActions,
     MatDialogContent,
     MatDialogTitle,
@@ -45,6 +47,7 @@ export class GroupDialog {
 
   protected readonly form = inject(NonNullableFormBuilder).group({
     name: [this.config.group?.name ?? '', [requiredText, Validators.maxLength(NAME_MAX_LENGTH)]],
+    reserveFundBase: [this.config.group?.reserveFundBase ?? false],
   });
 
   protected readonly busy = signal(false);
@@ -58,7 +61,11 @@ export class GroupDialog {
 
   constructor() {
     this.form.valueChanges.subscribe(() => {
-      this.changed.set(this.form.getRawValue().name.trim() !== (this.config.group?.name ?? ''));
+      const { name, reserveFundBase } = this.form.getRawValue();
+      this.changed.set(
+        name.trim() !== (this.config.group?.name ?? '') ||
+          reserveFundBase !== (this.config.group?.reserveFundBase ?? false),
+      );
     });
   }
 
@@ -73,7 +80,8 @@ export class GroupDialog {
 
     this.busy.set(true);
     this.error.set(null);
-    const message = await this.config.save(this.form.getRawValue().name.trim());
+    const { name, reserveFundBase } = this.form.getRawValue();
+    const message = await this.config.save({ name: name.trim(), reserveFundBase });
     this.busy.set(false);
 
     if (message === null) {

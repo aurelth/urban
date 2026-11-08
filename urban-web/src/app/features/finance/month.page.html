@@ -157,21 +157,43 @@
                     <th scope="col" class="p-3 text-right font-medium">Valor</th>
                   </tr>
                 </thead>
-                <tbody>
-                  @for (charge of closing.charges; track charge.unitId) {
-                    <tr
-                      class="border-b border-outline-variant last:border-b-0"
-                      data-testid="charge-row"
-                    >
+                @for (charge of closing.charges; track charge.unitId) {
+                  <tbody
+                    class="border-t border-outline-variant first-of-type:border-t-0"
+                    data-testid="charge-group"
+                  >
+                    <tr data-testid="charge-row">
                       <td class="p-3 font-medium">{{ unitLabel(charge) }}</td>
                       <td class="p-3 whitespace-nowrap text-on-surface-variant">
                         {{ chargeShare(closing.basis, charge.weight) }}
                       </td>
                       <td class="p-3 text-right whitespace-nowrap">{{ money(charge.amount) }}</td>
                     </tr>
-                  }
-                </tbody>
+                    @if (charge.lines.length > 1) {
+                      @for (line of charge.lines; track $index) {
+                        <tr class="text-sm text-on-surface-variant" data-testid="charge-line">
+                          <td class="py-1 pr-3 pl-6">{{ line.label }}</td>
+                          <td class="px-3 py-1">{{ lineDetail(line) }}</td>
+                          <td class="px-3 py-1 text-right whitespace-nowrap">
+                            {{ money(line.amount) }}
+                          </td>
+                        </tr>
+                      }
+                    }
+                  </tbody>
+                }
                 <tfoot>
+                  @if (chargesTotal(closing.charges) !== closing.total) {
+                    <tr
+                      class="border-t border-outline-variant text-on-surface-variant"
+                      data-testid="expenses-total"
+                    >
+                      <th scope="row" colspan="2" class="p-3 text-left font-normal">
+                        Despesas do mês
+                      </th>
+                      <td class="p-3 text-right whitespace-nowrap">{{ money(closing.total) }}</td>
+                    </tr>
+                  }
                   <tr
                     class="border-t border-outline-variant font-medium"
                     data-testid="charges-total"
@@ -179,7 +201,9 @@
                     <th scope="row" colspan="2" class="p-3 text-left font-medium">
                       Total das cobranças
                     </th>
-                    <td class="p-3 text-right whitespace-nowrap">{{ money(closing.total) }}</td>
+                    <td class="p-3 text-right whitespace-nowrap">
+                      {{ money(chargesTotal(closing.charges)) }}
+                    </td>
                   </tr>
                 </tfoot>
               </table>

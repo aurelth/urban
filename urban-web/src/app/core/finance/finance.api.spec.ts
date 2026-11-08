@@ -60,6 +60,14 @@ describe('FinanceApi', () => {
     expectCall('PUT', '/api/finance/expense-groups/g1', { version: '7', name: 'Reformas' });
   });
 
+  it('marks a group as part of the reserve fund base, with the version that was read', () => {
+    api.setGroupReserveFundBase('g1', '7', true).subscribe();
+    expectCall('PUT', '/api/finance/expense-groups/g1/reserve-fund-base', {
+      version: '7',
+      enabled: true,
+    });
+  });
+
   it('lists the expenses filtered by status', () => {
     api.listExpenses('ended').subscribe();
     const request = http.expectOne((r) => r.url === '/api/finance/expenses');

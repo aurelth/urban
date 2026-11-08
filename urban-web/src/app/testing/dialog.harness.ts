@@ -47,6 +47,18 @@ export function choicesOf(
   return menuSelectOptions(fieldOf(tag, name));
 }
 
+/** A caixa de marcar (`mat-checkbox`) do diálogo que leva o `data-testid` dado. */
+export function checkboxOf(tag: string, testId: string): HTMLInputElement {
+  return dialogOf(tag).querySelector<HTMLInputElement>(
+    `[data-testid="${testId}"] input[type="checkbox"]`,
+  )!;
+}
+
+/** Marca ou desmarca a caixa, como um clique da pessoa. */
+export function toggleIn(tag: string, testId: string): void {
+  checkboxOf(tag, testId).click();
+}
+
 export function submitDialog(tag: string): void {
   dialogOf(tag).querySelector('form')!.dispatchEvent(new Event('submit'));
 }

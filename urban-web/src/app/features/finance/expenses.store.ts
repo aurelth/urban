@@ -1,10 +1,11 @@
 import { inject } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
-import { Observable, firstValueFrom } from 'rxjs';
+import { Observable, firstValueFrom, of, switchMap } from 'rxjs';
 import { FinanceApi } from '../../core/finance/finance.api';
 import {
   Expense,
   ExpenseGroup,
+  ExpenseGroupValues,
   ExpensePayload,
   ExpenseStatusFilter,
   UpdateExpensePayload,
@@ -111,9 +112,38 @@ export const ExpensesStore = signalStore(
         act(api.setInstallment(target.id, target.version, number, amount)),
       end: (target: Expense, lastMonth: string): Promise<ApiProblem | null> =>
         act(api.endExpense(target.id, target.version, lastMonth)),
-      createGroup: (name: string): Promise<ApiProblem | null> => act(api.createGroup(name)),
-      renameGroup: (target: ExpenseGroup, name: string): Promise<ApiProblem | null> =>
-        act(api.renameGroup(target.id, target.version, name)),
+      /** Cria o grupo e, se ele entra na base do fundo de reserva, marca com a versão que a API acabou de devolver. */
+      createGroup: (values: ExpenseGroupValues): Promise<ApiProblem | null> =>
+        act(
+          api
+            .createGroup(values.name)
+            .pipe(
+              switchMap((created) =>
+                values.reserveFundBase
+                  ? api.setGroupReserveFundBase(created.id, created.version, true)
+                  : of(created),
+              ),
+            ),
+        ),
+      /** Renomeia e/ou muda a marca, uma chamada de cada vez: a segunda usa a versão devolvida pela primeira. */
+      updateGroup: (
+        target: ExpenseGroup,
+        values: ExpenseGroupValues,
+      ): Promise<ApiProblem | null> => {
+        const renamed: Observable<ExpenseGroup> =
+          values.name === target.name
+            ? of(target)
+            : api.renameGroup(target.id, target.version, values.name);
+        return act(
+          renamed.pipe(
+            switchMap((group) =>
+              values.reserveFundBase === target.reserveFundBase
+                ? of(group)
+                : api.setGroupReserveFundBase(group.id, group.version, values.reserveFundBase),
+            ),
+          ),
+        );
+      },
     };
   }),
 );

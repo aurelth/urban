@@ -1,4 +1,4 @@
-<h2 mat-dialog-title>{{ editing ? 'Renomear grupo' : 'Novo grupo' }}</h2>
+<h2 mat-dialog-title>{{ editing ? 'Editar grupo' : 'Novo grupo' }}</h2>
 <form [formGroup]="form" (ngSubmit)="confirm()" novalidate>
   <mat-dialog-content>
     <urban-text-field
@@ -7,6 +7,17 @@
       hint="Ex.: Despesas ordinárias, Obras"
       [errors]="nameErrors"
     />
+
+    <mat-checkbox
+      class="mt-2 self-start"
+      formControlName="reserveFundBase"
+      data-testid="reserve-fund-base"
+    >
+      Entra na base do fundo de reserva
+    </mat-checkbox>
+    <p class="m-0 mb-2 text-sm text-on-surface-variant">
+      O percentual do fundo de reserva é calculado sobre os grupos marcados
+    </p>
 
     @if (error(); as message) {
       <p role="alert" class="flex items-start gap-2 text-error">
@@ -29,7 +40,7 @@
       @if (busy()) {
         Salvando
       } @else if (editing) {
-        Salvar nome
+        Salvar alterações
       } @else {
         Criar grupo
       }

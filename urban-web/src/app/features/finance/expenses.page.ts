@@ -119,15 +119,15 @@ export class ExpensesPage implements OnInit {
     this.notice.set(null);
     await openGroupDialog(this.injector, {
       group: null,
-      save: (name) => this.saved(this.store.createGroup(name), 'Grupo criado'),
+      save: (values) => this.saved(this.store.createGroup(values), 'Grupo criado'),
     });
   }
 
-  protected async renameGroup(target: ExpenseGroup): Promise<void> {
+  protected async editGroup(target: ExpenseGroup): Promise<void> {
     this.notice.set(null);
     await openGroupDialog(this.injector, {
       group: target,
-      save: (name) => this.saved(this.store.renameGroup(target, name), 'Grupo renomeado'),
+      save: (values) => this.saved(this.store.updateGroup(target, values), 'Grupo atualizado'),
     });
   }
 
