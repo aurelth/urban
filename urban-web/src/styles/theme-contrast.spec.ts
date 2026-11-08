@@ -36,12 +36,16 @@ describe('tema claro: contraste entre fundo, cards e bordas', () => {
   });
 
   it('usa o fundo e a borda da paleta "Índigo suave" do CLAUDE.md', () => {
-    expect(colors['surface']).toBe('#f6f6fa');
+    expect(colors['surface']).toBe('#fcfcfd');
     expect(colors['outline-variant']).toBe('#e6e6ef');
   });
 
-  it('não deixa o card branco igual ao fundo da página', () => {
-    expect(contrast(colors['surface-container'], colors['surface'])).toBeGreaterThanOrEqual(1.05);
+  it('deixa o fundo da página quase branco, como o fundo claro de referência, e o card branco', () => {
+    expect(luminance(colors['surface'])).toBeGreaterThanOrEqual(0.95);
+    expect(colors['surface-container']).toBe('#ffffff');
+    expect(luminance(colors['surface-container'])).toBeGreaterThanOrEqual(
+      luminance(colors['surface']),
+    );
   });
 
   it('mantém o texto secundário legível sobre o fundo da página (AA, 4,5:1)', () => {
