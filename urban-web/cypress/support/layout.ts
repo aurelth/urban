@@ -76,8 +76,8 @@ export const PALETTE = {
     /** Texto principal e texto secundario (cinza) do tema claro. */
     onSurface: 'rgb(28, 28, 30)',
     onSurfaceVariant: 'rgb(101, 101, 122)',
-    /** Fundo cinza da pagina (#E8E8F0) e fundo branco dos cards, que tem que se destacar dele. */
-    page: 'rgb(232, 232, 240)',
+    /** Fundo da pagina (#F6F6FA) e fundo branco dos cards, que tem que se destacar dele. */
+    page: 'rgb(246, 246, 250)',
     card: 'rgb(255, 255, 255)',
     /** Fundo do botao principal e do cabecalho das tabelas. */
     accentFill: 'rgb(88, 86, 214)',
