@@ -53,13 +53,17 @@ class AloneHost {
   readonly value = signal('ended');
 }
 
-function setupForm(): { host: FormHost; html: HTMLElement; field: HTMLElement } {
+function setupForm(animationsDisabled = true): {
+  host: FormHost;
+  html: HTMLElement;
+  field: HTMLElement;
+} {
   TestBed.configureTestingModule({
     providers: [
       provideHttpClient(),
       provideHttpClientTesting(),
       provideUrbanIcons(),
-      { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
+      { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled } },
     ],
   });
   const fixture = TestBed.createComponent(FormHost);
@@ -191,6 +195,16 @@ describe('MenuSelect', () => {
 
     expect(document.activeElement).toBe(items()[0]);
     expect(items()[0].getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('não leva o foco a um item do menu que a escolha já fechou, com as animações ligadas', async () => {
+    const { field } = setupForm(false);
+
+    trigger(field).click();
+    items()[1].click();
+    await flushPromises();
+
+    expect(document.activeElement?.getAttribute('data-value')).not.toBe('ended');
   });
 
   it('acompanha o controle desabilitado', () => {
