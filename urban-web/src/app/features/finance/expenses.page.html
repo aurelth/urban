@@ -71,13 +71,18 @@
           @for (group of store.groups(); track group.id) {
             <li class="flex items-center gap-1" data-testid="group-item">
               <span class="text-lg font-medium">{{ group.name }}</span>
+              @if (group.reserveFundBase) {
+                <span class="text-sm text-on-surface-variant" data-testid="reserve-base-badge"
+                  >{{ ' ' }}Base do fundo de reserva</span
+                >
+              }
               <button
                 mat-icon-button
                 type="button"
-                [attr.aria-label]="'Renomear grupo ' + group.name"
-                [attr.title]="'Renomear grupo ' + group.name"
+                [attr.aria-label]="'Editar grupo ' + group.name"
+                [attr.title]="'Editar grupo ' + group.name"
                 [disabled]="store.busy()"
-                (click)="renameGroup(group)"
+                (click)="editGroup(group)"
               >
                 <mat-icon svgIcon="edit" />
               </button>

@@ -35,6 +35,13 @@ export class FinanceApi {
     return this.http.put<ExpenseGroup>(`${BASE}/expense-groups/${id}`, { version, name });
   }
 
+  setGroupReserveFundBase(id: string, version: string, enabled: boolean): Observable<ExpenseGroup> {
+    return this.http.put<ExpenseGroup>(`${BASE}/expense-groups/${id}/reserve-fund-base`, {
+      version,
+      enabled,
+    });
+  }
+
   listExpenses(status: ExpenseStatusFilter): Observable<Expense[]> {
     return this.http.get<Expense[]>(`${BASE}/expenses`, {
       params: new HttpParams().set('status', status),

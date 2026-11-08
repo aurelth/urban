@@ -26,7 +26,7 @@ import {
 } from '../../core/finance/month';
 import { describeProblem } from '../../core/http/problem-message';
 import { unitLabel } from '../units/unit-values';
-import { basisLabel, chargeShare } from './closing';
+import { basisLabel, chargeShare, chargesTotal, lineDetail } from './closing';
 import { openCloseMonthDialog } from './close-month.dialog';
 import { openEntryAmountDialog } from './entry-amount.dialog';
 import {
@@ -74,6 +74,8 @@ export class MonthPage implements OnInit {
   protected readonly isChoiceDisabled = isChoiceDisabled;
   protected readonly unitLabel = unitLabel;
   protected readonly chargeShare = chargeShare;
+  protected readonly chargesTotal = chargesTotal;
+  protected readonly lineDetail = lineDetail;
   protected readonly basisName = (basis: ApportionmentBasis): string =>
     basisLabel(basis).toLowerCase();
 

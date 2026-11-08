@@ -32,6 +32,8 @@ const FIELD_MESSAGES: MessagesByCode = {
   'closing.total_invalid':
     'O total do mês deve ter no máximo 2 casas decimais e não passar de R$ 9.999.999,99',
   'closing.no_weights': 'Cadastre as unidades do condomínio antes de fechar o mês',
+  'closing.readings_pending':
+    'Falta a leitura de água ou gás de alguma unidade. Informe as leituras do mês antes de fechar',
   'closing.month_is_closed': 'O mês está fechado. Reabra o mês para mudar os lançamentos',
   'condominium.apportionment_not_ready':
     'Complete os dados das unidades, na tela de unidades, para o método de rateio escolhido',

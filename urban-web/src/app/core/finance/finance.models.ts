@@ -11,7 +11,15 @@ export type SettableEntryStatus = Exclude<EntryStatus, 'overdue'>;
 export interface ExpenseGroup {
   readonly id: string;
   readonly name: string;
+  /** Verdadeiro quando o grupo faz parte da base sobre a qual se calcula o fundo de reserva. */
+  readonly reserveFundBase: boolean;
   readonly version: string;
+}
+
+/** O que a pessoa escolhe ao criar ou editar um grupo. */
+export interface ExpenseGroupValues {
+  readonly name: string;
+  readonly reserveFundBase: boolean;
 }
 
 export interface Installment {
@@ -73,6 +81,20 @@ export interface GroupTotal {
 /** Em que o rateio do condomínio se baseia: o nome do método escolhido na tela de unidades. */
 export type ApportionmentBasis = 'idealFraction' | 'equalShare' | 'area';
 
+/** De onde vem cada linha do recibo da unidade. */
+export type ChargeLineKind = 'expenses' | 'reserveFund' | 'water' | 'sewage' | 'gas';
+
+/** Uma linha do recibo, com o texto e os números de quando o mês fechou. */
+export interface ChargeLine {
+  readonly kind: ChargeLineKind;
+  readonly label: string;
+  readonly amount: number;
+  /** Consumo em m³ das linhas de água, esgoto e gás; nulo nas demais. */
+  readonly quantity: number | null;
+  readonly previousReading: number | null;
+  readonly currentReading: number | null;
+}
+
 /** O que uma unidade paga num mês fechado. Bloco, número e peso são cópias de quando o mês fechou. */
 export interface UnitCharge {
   readonly unitId: string;
@@ -80,7 +102,9 @@ export interface UnitCharge {
   readonly number: string;
   /** A fração ideal (0 a 1), a área em m² ou 1 quando todas pagam igual. */
   readonly weight: number;
+  /** A soma das linhas. */
   readonly amount: number;
+  readonly lines: readonly ChargeLine[];
 }
 
 export interface MonthClosing {
@@ -88,6 +112,7 @@ export interface MonthClosing {
   readonly closedAt: string;
   /** "AAAA-MM-DD". O vencimento de todas as cobranças do mês. */
   readonly dueDate: string;
+  /** A soma das despesas do mês. Com fundo de reserva e consumo, as cobranças somam mais que isso. */
   readonly total: number;
   readonly basis: ApportionmentBasis;
   readonly charges: readonly UnitCharge[];
