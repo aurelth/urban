@@ -8,12 +8,13 @@ public sealed class ExpenseGroup
     public const string DefaultName = "Despesas ordinárias";
     public const int NameMaxLength = 60;
 
-    private ExpenseGroup(Guid condominiumId, string name, DateTimeOffset createdAt)
+    private ExpenseGroup(Guid condominiumId, string name, DateTimeOffset createdAt, bool reserveFundBase)
     {
         Id = Guid.CreateVersion7();
         CondominiumId = condominiumId;
         Name = name;
         CreatedAt = createdAt;
+        ReserveFundBase = reserveFundBase;
     }
 
     // Usado só pelo EF Core ao ler do banco.
@@ -30,7 +31,10 @@ public sealed class ExpenseGroup
 
     public DateTimeOffset CreatedAt { get; }
 
-    public static Result<ExpenseGroup> Create(Guid condominiumId, string? name, DateTimeOffset now)
+    /// <summary>Se as despesas do grupo entram na base de cálculo do fundo de reserva.</summary>
+    public bool ReserveFundBase { get; private set; }
+
+    public static Result<ExpenseGroup> Create(Guid condominiumId, string? name, DateTimeOffset now, bool reserveFundBase = false)
     {
         if (condominiumId == Guid.Empty)
         {
@@ -38,7 +42,7 @@ public sealed class ExpenseGroup
         }
 
         return TextRules.IsValidText(name, NameMaxLength, out string normalized)
-            ? Result.Success(new ExpenseGroup(condominiumId, normalized, now))
+            ? Result.Success(new ExpenseGroup(condominiumId, normalized, now, reserveFundBase))
             : Result.Failure<ExpenseGroup>(ExpenseGroupErrors.NameInvalid);
     }
 
@@ -60,4 +64,6 @@ public sealed class ExpenseGroup
         Name = valid.Value;
         return Result.Success();
     }
+
+    public void SetReserveFundBase(bool enabled) => ReserveFundBase = enabled;
 }

@@ -2,9 +2,11 @@ using System.Security.Claims;
 using MediatR;
 using Urban.Api.Http;
 using Urban.Api.Mapping;
+using Urban.Finance.Application.Consumption;
 using Urban.Finance.Application.Expenses;
 using Urban.Finance.Application.Groups;
 using Urban.Finance.Application.Months;
+using Urban.Finance.Application.Settings;
 using Urban.Finance.Domain.Closing;
 using Urban.SharedKernel;
 
@@ -21,8 +23,11 @@ public static class FinanceEndpoints
         RouteGroupBuilder finance = app.MapGroup(FinanceRoutes.Prefix).WithTags("Financeiro").RequireAuthorization().RequireRateLimiting(RateLimitPolicies.Finance);
 
         MapGroups(finance);
+        MapExpenseGroupReserveFund(finance);
         MapExpenses(finance);
         MapMonths(finance);
+        MapSettings(finance);
+        MapTariffs(finance);
 
         return app;
     }
@@ -60,6 +65,66 @@ public static class FinanceEndpoints
             .WithDescription(VersionText + " As regras do nome são as da criação (400 e 409). " + RateLimitText)
             .Produces<ExpenseGroupResponse>()
             .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound, StatusCodes.Status409Conflict);
+    }
+
+    private static void MapExpenseGroupReserveFund(RouteGroupBuilder finance)
+    {
+        finance.MapPut("/expense-groups/{id:guid}/reserve-fund-base", (Guid id, ReserveFundBaseRequest request, ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken ct) =>
+                SetReserveFundBaseAsync(id, request, user, response, sender, ct))
+            .WithName("SetExpenseGroupReserveFundBase")
+            .WithSummary("Marca ou desmarca o grupo como base do fundo de reserva")
+            .WithDescription(VersionText + " O corpo leva enabled (true ou false; sem ele, 400). O fundo de reserva é o percentual das configurações aplicado à soma das despesas dos grupos marcados, no fechamento do mês. " + RateLimitText)
+            .Produces<ExpenseGroupResponse>()
+            .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound, StatusCodes.Status409Conflict);
+    }
+
+    private static void MapSettings(RouteGroupBuilder finance)
+    {
+        finance.MapGet("/settings", (ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken ct) =>
+                SendAsync(user, response, sender, new GetFinanceSettingsQuery(), view => FinanceMapper.ToResponse(view), ct))
+            .WithName("GetFinanceSettings")
+            .WithSummary("Lê as configurações financeiras do condomínio")
+            .WithDescription("Devolve o percentual do fundo de reserva (0 enquanto o condomínio não configurou nada: sem fundo de reserva no recibo). A resposta nunca é guardada em cache. " + RateLimitText)
+            .Produces<FinanceSettingsResponse>()
+            .WithErrors(StatusCodes.Status404NotFound);
+
+        finance.MapPut("/settings", (FinanceSettingsRequest request, ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken ct) =>
+                SetReserveFundPercentAsync(request, user, response, sender, ct))
+            .WithName("SetFinanceSettings")
+            .WithSummary("Muda o percentual do fundo de reserva")
+            .WithDescription("O percentual vai de 0 a 100, com até 2 casas (400 fora disso ou sem ele). O fechamento de um mês usa o percentual do momento em que fecha; meses já fechados não mudam. " + RateLimitText)
+            .Produces<FinanceSettingsResponse>()
+            .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound, StatusCodes.Status409Conflict);
+    }
+
+    private static void MapTariffs(RouteGroupBuilder finance)
+    {
+        finance.MapGet("/consumption-tariffs", (ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken ct) =>
+                SendAsync(user, response, sender, new ListConsumptionTariffsQuery(), views => FinanceMapper.ToResponse(views), ct))
+            .WithName("ListConsumptionTariffs")
+            .WithSummary("Lista as tarifas de água, esgoto e gás do condomínio")
+            .WithDescription("Da tarifa que começou mais recentemente para a mais antiga. Cada uma vale a partir do mês de início, até a próxima começar. A resposta nunca é guardada em cache. " + RateLimitText)
+            .Produces<IReadOnlyList<ConsumptionTariffResponse>>()
+            .WithErrors(StatusCodes.Status404NotFound);
+
+        finance.MapPut("/consumption-tariffs/{month}", (string month, ConsumptionTariffRequest request, ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken ct) =>
+                SendAsync(user, response, sender, FinanceMapper.ToCommand(request, month), view => FinanceMapper.ToResponse(view), ct))
+            .WithName("SaveConsumptionTariff")
+            .WithSummary("Guarda a tarifa que vale a partir de um mês")
+            .WithDescription(
+                "O mês vai como AAAA-MM (400 se não for). A água leva de 1 a 6 faixas (water): cada faixa tem o limite de cima em m³ (upToCubicMeters, nulo na última), o valor fixo (fixedAmount) e o preço por m³ (pricePerCubicMeter); só os m³ que caem na faixa pagam o preço dela. "
+                + "O esgoto (sewage) segue o mesmo formato, é opcional, e sewagePercent diz quanto das faixas se cobra (100 quando omitido; 50 na tarifa parcial). O gás (gas) leva os kg por m³ e o preço do kg, e o preço do m³ é o produto dos dois em centavos. "
+                + "Repetir o mês substitui a tarifa dele; um reajuste é uma tarifa nova com outro mês. Faixas, gás ou percentual inválidos respondem 400. " + RateLimitText)
+            .Produces<ConsumptionTariffResponse>()
+            .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound, StatusCodes.Status409Conflict);
+
+        finance.MapDelete("/consumption-tariffs/{month}", (string month, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
+                DeleteTariffAsync(month, user, sender, ct))
+            .WithName("DeleteConsumptionTariff")
+            .WithSummary("Apaga a tarifa que começa em um mês")
+            .WithDescription("Responde 204. Mês sem tarifa responde 404. Os meses já fechados não mudam: o fechamento guarda o que cobrou. " + RateLimitText)
+            .Produces(StatusCodes.Status204NoContent)
+            .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound);
     }
 
     private static void MapExpenses(RouteGroupBuilder finance)
@@ -168,6 +233,48 @@ public static class FinanceEndpoints
             .WithDescription(VersionText + " O status é pending, paid ou canceled; outro texto, inclusive overdue, responde 400, porque vencido é calculado pela data (pendente depois do vencimento). Pago exige o valor informado (422). Cancelado sai dos totais do mês. " + RateLimitText)
             .Produces<ExpenseEntryResponse>()
             .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound, StatusCodes.Status409Conflict, StatusCodes.Status422UnprocessableEntity);
+    }
+
+    private static async Task<IResult> SetReserveFundBaseAsync(Guid id, ReserveFundBaseRequest request, ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken cancellationToken)
+    {
+        if (!ManagerAccess.TryRead(user, out _, out IResult? refusal))
+        {
+            return refusal;
+        }
+
+        if (request.Enabled is null)
+        {
+            return ErrorHttp.ToProblem(RequestErrors.Invalid);
+        }
+
+        return ApiResults.Respond(await sender.Send(FinanceMapper.ToCommand(request, id), cancellationToken), response, view => FinanceMapper.ToResponse(view));
+    }
+
+    private static async Task<IResult> SetReserveFundPercentAsync(FinanceSettingsRequest request, ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken cancellationToken)
+    {
+        if (!ManagerAccess.TryRead(user, out _, out IResult? refusal))
+        {
+            return refusal;
+        }
+
+        if (request.ReserveFundPercent is null)
+        {
+            return ErrorHttp.ToProblem(RequestErrors.Invalid);
+        }
+
+        return ApiResults.Respond(await sender.Send(FinanceMapper.ToCommand(request), cancellationToken), response, view => FinanceMapper.ToResponse(view));
+    }
+
+    private static async Task<IResult> DeleteTariffAsync(string month, ClaimsPrincipal user, ISender sender, CancellationToken cancellationToken)
+    {
+        if (!ManagerAccess.TryRead(user, out _, out IResult? refusal))
+        {
+            return refusal;
+        }
+
+        Result result = await sender.Send(new DeleteConsumptionTariffCommand(month), cancellationToken);
+
+        return result.IsSuccess ? Results.NoContent() : ErrorHttp.ToProblem(result.Error);
     }
 
     private static async Task<IResult> ListExpensesAsync(string? status, ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken cancellationToken)

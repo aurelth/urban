@@ -152,6 +152,7 @@ public static class ErrorHttp
         [ConsumptionErrors.ReadingInvalid.Code] = StatusCodes.Status400BadRequest,
         [ConsumptionErrors.CondominiumRequired.Code] = StatusCodes.Status422UnprocessableEntity,
         [ConsumptionErrors.UnitRequired.Code] = StatusCodes.Status422UnprocessableEntity,
+        [ConsumptionErrors.TariffNotFound.Code] = StatusCodes.Status404NotFound,
         [CondominiumErrors.ApportionmentNotReady.Code] = StatusCodes.Status422UnprocessableEntity,
 
         [PostalCodeErrors.NotFound.Code] = StatusCodes.Status404NotFound,

@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Urban.Finance.Domain.Closing;
+using Urban.Finance.Domain.Consumption;
 using Urban.Finance.Domain.Expenses;
+using Urban.Finance.Domain.Settings;
 using Urban.SharedKernel.Abstractions;
 
 namespace Urban.Finance.Infrastructure.Persistence;
@@ -25,6 +27,10 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options,
 
     public DbSet<UnitChargeLine> UnitChargeLines => Set<UnitChargeLine>();
 
+    public DbSet<FinanceSettings> FinanceSettings => Set<FinanceSettings>();
+
+    public DbSet<ConsumptionTariff> ConsumptionTariffs => Set<ConsumptionTariff>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(Schema);
@@ -34,6 +40,8 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options,
         modelBuilder.ApplyConfiguration(new Configurations.MonthClosingConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.UnitChargeConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.UnitChargeLineConfiguration());
+        modelBuilder.ApplyConfiguration(new Configurations.FinanceSettingsConfiguration());
+        modelBuilder.ApplyConfiguration(new Configurations.ConsumptionTariffConfiguration());
 
         // Sem tenant a comparação com nulo não casa com nenhuma linha: o padrão é não ver nada.
         modelBuilder.Entity<ExpenseGroup>().HasQueryFilter(group => group.CondominiumId == tenant.CondominiumId);
@@ -42,5 +50,7 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options,
         modelBuilder.Entity<MonthClosing>().HasQueryFilter(closing => closing.CondominiumId == tenant.CondominiumId);
         modelBuilder.Entity<UnitCharge>().HasQueryFilter(charge => charge.CondominiumId == tenant.CondominiumId);
         modelBuilder.Entity<UnitChargeLine>().HasQueryFilter(line => line.CondominiumId == tenant.CondominiumId);
+        modelBuilder.Entity<FinanceSettings>().HasQueryFilter(settings => settings.CondominiumId == tenant.CondominiumId);
+        modelBuilder.Entity<ConsumptionTariff>().HasQueryFilter(tariff => tariff.CondominiumId == tenant.CondominiumId);
     }
 }

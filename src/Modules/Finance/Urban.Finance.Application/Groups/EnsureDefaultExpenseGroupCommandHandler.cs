@@ -26,7 +26,7 @@ public sealed class EnsureDefaultExpenseGroupCommandHandler(IExpenseGroups group
             return Result.Success(ExpenseGroupView.From(existing));
         }
 
-        ExpenseGroup group = ExpenseGroup.Create(condominiumId, ExpenseGroup.DefaultName, clock.UtcNow).Value;
+        ExpenseGroup group = ExpenseGroup.Create(condominiumId, ExpenseGroup.DefaultName, clock.UtcNow, reserveFundBase: true).Value;
         Result<string> added = await groups.AddAsync(group, cancellationToken);
 
         if (added.IsSuccess)
