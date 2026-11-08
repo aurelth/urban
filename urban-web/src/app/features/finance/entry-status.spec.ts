@@ -5,7 +5,7 @@ import {
   isChoiceDisabled,
   statusIcon,
   statusLabel,
-  statusNotice,
+  statusMenuTone,
   statusTone,
 } from './entry-status';
 
@@ -20,13 +20,26 @@ describe('entry-status', () => {
     expect(ALL.map(statusIcon)).toEqual(['schedule', 'check_circle', 'error', 'block']);
   });
 
-  it('usa a cor de aviso para pendente, de sucesso para pago e de erro para vencido', () => {
+  it('usa laranja para pendente, verde para pago e vermelho para vencido e para cancelado', () => {
     expect(ALL.map(statusTone)).toEqual([
       'text-warning',
       'text-success',
       'text-error',
-      'text-on-surface-variant',
+      'text-error',
     ]);
+  });
+
+  it('pinta o icone e o texto do item do menu com a cor da situacao', () => {
+    for (const [status, color] of [
+      ['pending', 'var(--urban-warning)'],
+      ['paid', 'var(--urban-success)'],
+      ['overdue', 'var(--mat-sys-error)'],
+      ['canceled', 'var(--mat-sys-error)'],
+    ] as const) {
+      expect(statusMenuTone(status)).toBe(
+        `[--mat-menu-item-icon-color:${color}] [--mat-menu-item-label-text-color:${color}]`,
+      );
+    }
   });
 
   it('oferece so o que se pode marcar: vencido e calculado, nao escolhido', () => {
@@ -59,11 +72,5 @@ describe('entry-status', () => {
         false,
       );
     });
-  });
-
-  it('avisa o que aconteceu', () => {
-    expect(statusNotice('paid')).toBe('Lançamento marcado como pago');
-    expect(statusNotice('pending')).toBe('Lançamento marcado como pendente');
-    expect(statusNotice('canceled')).toBe('Lançamento cancelado');
   });
 });

@@ -279,12 +279,85 @@ describe('Despesas', () => {
       [stubExpense({ description: 'Jardinagem', isEnded: true, lastMonth: '2026-10' })],
       'endedExpenses',
     );
-    cy.get('[data-testid="filter-status"]').select('Encerradas');
+    cy.get('[data-testid="filter-status"]').should('contain.text', 'Ativas').click();
+    cy.get('[role="menuitem"]').contains('Encerradas').click();
 
     cy.wait('@endedExpenses').its('request.url').should('contain', 'status=ended');
     rows().should('have.length', 1).and('contain.text', 'Encerrada');
     cy.get('button[aria-label="Editar Jardinagem"]').should('exist');
     cy.get('button[aria-label="Encerrar Jardinagem"]').should('not.exist');
+  });
+
+  it('usa a cor de destaque nos titulos, nos grupos e no rotulo do filtro', () => {
+    cy.visit(EXPENSES_PATH);
+
+    for (const selector of [
+      'h1',
+      '#groups-title',
+      '[data-testid="filter-label"]',
+      '[data-testid="group-item"] span',
+    ]) {
+      cy.get(selector).first().should('have.css', 'color', PALETTE.light.primary);
+    }
+    cy.get('[data-testid="group-item"] span').first().should('have.css', 'font-weight', '500');
+  });
+
+  it('mostra Ativa em verde, junto com o icone', () => {
+    cy.visit(EXPENSES_PATH);
+
+    cy.get('[data-testid="expense-situation"]')
+      .first()
+      .should('contain.text', 'Ativa')
+      .and('have.css', 'color', PALETTE.light.success)
+      .find('mat-icon')
+      .should('have.css', 'color', PALETTE.light.success);
+  });
+
+  it('pinta o cabecalho da tabela com o fundo do botao Nova despesa, nos dois temas', () => {
+    cy.visit(EXPENSES_PATH);
+
+    cy.get('[data-testid="expenses-table"] thead tr')
+      .should('have.css', 'background-color', PALETTE.light.accentFill)
+      .and('have.css', 'color', PALETTE.light.onAccentFill);
+    cy.get('[data-testid="new-expense"]').should(
+      'have.css',
+      'background-color',
+      PALETTE.light.accentFill,
+    );
+
+    cy.document().then((doc) => doc.documentElement.classList.add('app-dark'));
+    cy.get('[data-testid="expenses-table"] thead tr')
+      .should('have.css', 'background-color', PALETTE.dark.accentFill)
+      .and('have.css', 'color', PALETTE.dark.onAccentFill);
+    cy.get('[data-testid="new-expense"]').should(
+      'have.css',
+      'background-color',
+      PALETTE.dark.accentFill,
+    );
+  });
+
+  it('abre o filtro como o menu de situacao dos lancamentos, com cada opcao na cor do icone', () => {
+    cy.visit(EXPENSES_PATH);
+
+    cy.get('[data-testid="filter-status"]').should('not.have.prop', 'tagName', 'SELECT').click();
+    cy.get('[role="menuitem"]').should('have.length', 3);
+    cy.get('[role="menuitem"]')
+      .contains('Ativas')
+      .should('have.css', 'color', PALETTE.light.success);
+    cy.get('[role="menuitem"]')
+      .contains('Ativas')
+      .closest('[role="menuitem"]')
+      .find('mat-icon')
+      .should('have.css', 'color', PALETTE.light.success);
+    cy.get('[role="menuitem"]')
+      .contains('Todas')
+      .should('have.css', 'color', PALETTE.light.primary);
+  });
+
+  it('deixa o filtro mais estreito que a tela', () => {
+    cy.visit(EXPENSES_PATH);
+
+    cy.get('[data-testid="filter-status"]').invoke('outerWidth').should('be.lessThan', 200);
   });
 
   it('mostra o convite para cadastrar quando nao ha despesas', () => {

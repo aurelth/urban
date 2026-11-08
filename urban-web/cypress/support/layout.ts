@@ -73,8 +73,16 @@ export const PALETTE = {
     warning: 'rgb(178, 80, 0)',
     primary: 'rgb(88, 86, 214)',
     onPrimary: 'rgb(255, 255, 255)',
+    /** Fundo do botao principal e do cabecalho das tabelas. */
+    accentFill: 'rgb(88, 86, 214)',
+    onAccentFill: 'rgb(255, 255, 255)',
   },
-  dark: { success: 'rgb(48, 209, 88)', warning: 'rgb(255, 159, 10)' },
+  dark: {
+    success: 'rgb(48, 209, 88)',
+    warning: 'rgb(255, 159, 10)',
+    accentFill: 'rgb(94, 92, 230)',
+    onAccentFill: 'rgb(255, 255, 255)',
+  },
 } as const;
 
 /** Cor do papel "error" do tema atual, no formato que o navegador devolve (rgb(...)). */

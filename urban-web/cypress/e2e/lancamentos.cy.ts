@@ -78,13 +78,98 @@ describe('Lançamentos do mês', () => {
       .eq(2)
       .find('button[aria-label^="Situação de Zeladoria"]')
       .should('contain.text', 'Vencido')
-      .find('mat-icon')
-      .first()
-      .then(($icon) => {
+      .find('[data-testid="status-badge"]')
+      .then(($badge) => {
         themeErrorColor().then((error) => {
-          expect(getComputedStyle($icon[0]).color).to.equal(error);
+          expect(getComputedStyle($badge[0]).color).to.equal(error);
+          expect(getComputedStyle($badge.find('mat-icon')[0]).color).to.equal(error);
         });
       });
+  });
+
+  it('usa a cor de destaque nos titulos, no mes, nos rotulos do resumo e nos grupos', () => {
+    stubMonth();
+    cy.visit(ENTRIES_PATH);
+
+    for (const selector of [
+      'h1',
+      '[data-testid="month-title"]',
+      '[data-testid="total"] dt',
+      '[data-testid="needs-amount-count"] dt',
+      '[data-testid="overdue-count"] dt',
+      '[data-testid="group-section"] h2',
+    ]) {
+      cy.get(selector).first().should('have.css', 'color', PALETTE.light.primary);
+    }
+    cy.get('[data-testid="group-section"] h2').first().should('have.css', 'font-weight', '500');
+  });
+
+  it('pinta o texto e o icone de cada situacao com a mesma cor', () => {
+    stubMonth({
+      ...OPENED_MONTH,
+      entries: [
+        { ...FIXED_ENTRY, status: 'paid' },
+        stubEntry({
+          id: '0199bbbb-0005-7000-8000-000000000005',
+          description: 'Elevador',
+          amount: 166.66,
+          dueDate: '2026-11-20',
+          status: 'pending',
+          version: '25',
+        }),
+        stubEntry({
+          id: '0199bbbb-0004-7000-8000-000000000004',
+          description: 'Jardinagem',
+          amount: 150,
+          dueDate: '2026-11-25',
+          status: 'canceled',
+          version: '24',
+        }),
+      ],
+    });
+    cy.visit(ENTRIES_PATH);
+
+    const badge = (description: string) =>
+      cy.get(`button[aria-label^="Situação de ${description}"] [data-testid="status-badge"]`);
+
+    badge('Portaria')
+      .should('contain.text', 'Pago')
+      .and('have.css', 'color', PALETTE.light.success)
+      .find('mat-icon')
+      .should('have.css', 'color', PALETTE.light.success);
+    badge('Elevador')
+      .should('contain.text', 'Pendente')
+      .and('have.css', 'color', PALETTE.light.warning)
+      .find('mat-icon')
+      .should('have.css', 'color', PALETTE.light.warning);
+    badge('Jardinagem')
+      .should('contain.text', 'Cancelado')
+      .then(($badge) => {
+        themeErrorColor().then((error) => {
+          expect(getComputedStyle($badge[0]).color).to.equal(error);
+          expect(getComputedStyle($badge.find('mat-icon')[0]).color).to.equal(error);
+        });
+      });
+  });
+
+  it('pinta cada opcao do menu de situacao com a cor do seu icone', () => {
+    stubMonth();
+    cy.visit(ENTRIES_PATH);
+
+    cy.get('button[aria-label^="Situação de Portaria"]').click();
+
+    const option = (label: string) => cy.get('[role="menuitem"]').contains(label);
+    const icon = (label: string) =>
+      cy.get('[role="menuitem"]').contains(label).closest('[role="menuitem"]').find('mat-icon');
+
+    option('Pendente').should('have.css', 'color', PALETTE.light.warning);
+    icon('Pendente').should('have.css', 'color', PALETTE.light.warning);
+    option('Pago').should('have.css', 'color', PALETTE.light.success);
+    icon('Pago').should('have.css', 'color', PALETTE.light.success);
+    themeErrorColor().then((error) => {
+      option('Cancelado').should('have.css', 'color', error);
+      icon('Cancelado').should('have.css', 'color', error);
+    });
   });
 
   it('marca um lancamento como pago pelo menu e atualiza o mes', () => {
@@ -102,7 +187,7 @@ describe('Lançamentos do mês', () => {
       .its('request.body')
       .should('deep.equal', { version: '21', status: 'paid' });
     cy.wait('@monthRead');
-    cy.get('[data-testid="notice"]').should('contain.text', 'Lançamento marcado como pago');
+    cy.get('[data-testid="notice"]').should('not.exist');
   });
 
   it('nao deixa marcar como pago o que ainda espera o valor', () => {

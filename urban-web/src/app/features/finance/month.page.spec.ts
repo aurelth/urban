@@ -219,6 +219,35 @@ describe('MonthPage', () => {
     expect(plain(html.textContent)).not.toContain('Gerar lançamentos que faltam');
   });
 
+  it('usa a cor de destaque nos titulos, no mes, nos rotulos do resumo e nos grupos', async () => {
+    const { html } = await setup();
+
+    const highlighted: (Element | null)[] = [
+      html.querySelector('h1'),
+      testId(html, 'month-title'),
+      testId(html, 'total')?.querySelector('dt') ?? null,
+      testId(html, 'needs-amount-count')?.querySelector('dt') ?? null,
+      testId(html, 'overdue-count')?.querySelector('dt') ?? null,
+      ...html.querySelectorAll('[data-testid="group-section"] h2'),
+    ];
+
+    expect(highlighted).toHaveLength(7);
+    for (const element of highlighted) {
+      expect(element?.classList.contains('text-primary')).toBe(true);
+    }
+    expect(plain(testId(html, 'total')?.querySelector('dt')?.textContent)).toBe('Total do mês');
+  });
+
+  it('mostra o nome do grupo com o mesmo visual do grupo da tela de despesas', async () => {
+    const { html } = await setup();
+
+    for (const title of html.querySelectorAll('[data-testid="group-section"] h2')) {
+      expect(title.classList.contains('text-lg')).toBe(true);
+      expect(title.classList.contains('font-medium')).toBe(true);
+      expect(title.classList.contains('text-primary')).toBe(true);
+    }
+  });
+
   it('mostra o total, os valores a informar, os vencidos e os grupos com seus lancamentos', async () => {
     const { html } = await setup();
 
@@ -354,9 +383,13 @@ describe('MonthPage', () => {
 
     it('limpa os avisos ao trocar de mes', async () => {
       const { fixture, html, http } = await setup();
-      await changeStatus(fixture, html, 'Portaria', 'Pendente');
+      button(html, 'Corrigir valor de Portaria')!.click();
+      await settle(fixture);
+      typeIn('urban-entry-amount-dialog', 'amount', '4300');
+      submitDialog('urban-entry-amount-dialog');
+      await flushPromises();
       http
-        .expectOne({ method: 'PUT', url: `/api/finance/entries/${PORTARIA.id}/status` })
+        .expectOne({ method: 'PUT', url: `/api/finance/entries/${PORTARIA.id}/amount` })
         .flush(PORTARIA);
       await flushPromises();
       http.expectOne({ method: 'GET', url: '/api/finance/months/2026-11' }).flush(OPENED);
@@ -384,6 +417,37 @@ describe('MonthPage', () => {
         { label: 'Pago', disabled: false },
         { label: 'Cancelado', disabled: false },
       ]);
+    });
+
+    it('pinta o icone e o texto da situacao com a mesma cor', async () => {
+      const { html } = await setup();
+
+      const badge = (description: string): HTMLElement =>
+        statusButton(html, description).querySelector<HTMLElement>('[data-testid="status-badge"]')!;
+
+      expect(plain(badge('Portaria').textContent)).toBe('Pago');
+      expect(badge('Portaria').classList.contains('text-success')).toBe(true);
+      expect(plain(badge('Elevador').textContent)).toBe('Pendente');
+      expect(badge('Elevador').classList.contains('text-warning')).toBe(true);
+      expect(plain(badge('Conta de luz').textContent)).toBe('Vencido');
+      expect(badge('Conta de luz').classList.contains('text-error')).toBe(true);
+    });
+
+    it('pinta cada opcao do menu com a cor da sua situacao', async () => {
+      const { fixture, html } = await setup();
+
+      await openStatusMenu(fixture, html, 'Elevador');
+
+      const tones = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].map(
+        (item) => item.className,
+      );
+      expect(tones).toHaveLength(3);
+      expect(tones[0]).toContain('--mat-menu-item-icon-color:var(--urban-warning)');
+      expect(tones[0]).toContain('--mat-menu-item-label-text-color:var(--urban-warning)');
+      expect(tones[1]).toContain('--mat-menu-item-icon-color:var(--urban-success)');
+      expect(tones[1]).toContain('--mat-menu-item-label-text-color:var(--urban-success)');
+      expect(tones[2]).toContain('--mat-menu-item-icon-color:var(--mat-sys-error)');
+      expect(tones[2]).toContain('--mat-menu-item-label-text-color:var(--mat-sys-error)');
     });
 
     it('trata o vencido como pendente: so se pode marcar pago ou cancelado', async () => {
@@ -415,7 +479,7 @@ describe('MonthPage', () => {
       ]);
     });
 
-    it('marca como pago e atualiza o mes', async () => {
+    it('marca como pago, atualiza o mes e nao mostra aviso (a linha ja mostra a situacao)', async () => {
       const { fixture, html, http } = await setup();
 
       await changeStatus(fixture, html, 'Elevador', 'Pago');
@@ -434,7 +498,7 @@ describe('MonthPage', () => {
       );
       await settle(fixture);
 
-      expect(text(html, 'notice')).toBe('Lançamento marcado como pago');
+      expect(testId(html, 'notice')).toBeNull();
       expect(rowsOf(html)[2]).toBe('Elevador Parcela 4/6 Vence em 20/11/2026 R$ 166,66 Pago');
     });
 
@@ -452,7 +516,7 @@ describe('MonthPage', () => {
       http.expectOne({ method: 'GET', url: '/api/finance/months/2026-11' }).flush(OPENED);
       await settle(fixture);
 
-      expect(text(html, 'notice')).toBe('Lançamento marcado como pendente');
+      expect(testId(html, 'notice')).toBeNull();
     });
 
     it('cancela o lancamento', async () => {
@@ -469,7 +533,7 @@ describe('MonthPage', () => {
       http.expectOne({ method: 'GET', url: '/api/finance/months/2026-11' }).flush(OPENED);
       await settle(fixture);
 
-      expect(text(html, 'notice')).toBe('Lançamento cancelado');
+      expect(testId(html, 'notice')).toBeNull();
     });
 
     it('explica o erro quando a API recusa e nao avisa sucesso', async () => {
