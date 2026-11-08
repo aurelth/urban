@@ -77,6 +77,14 @@ export class FinanceApi {
     return this.http.post<MonthEntries>(`${BASE}/months/${month}/open`, {});
   }
 
+  closeMonth(month: string, dueDate: string): Observable<MonthEntries> {
+    return this.http.post<MonthEntries>(`${BASE}/months/${month}/close`, { dueDate });
+  }
+
+  reopenMonth(month: string): Observable<MonthEntries> {
+    return this.http.post<MonthEntries>(`${BASE}/months/${month}/reopen`, {});
+  }
+
   setEntryAmount(id: string, version: string, amount: number): Observable<ExpenseEntry> {
     return this.http.put<ExpenseEntry>(`${BASE}/entries/${id}/amount`, { version, amount });
   }
