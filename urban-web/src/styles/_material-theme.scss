@@ -23,8 +23,8 @@ html {
   );
 }
 
-// Modo claro: fixa os valores exatos da identidade visual (fundo cinza suave, cards brancos,
-// destaque #5856D6).
+// Modo claro: fixa os valores exatos da identidade visual (fundo quase branco #FCFCFD, cards
+// brancos com borda fina, destaque #5856D6).
 html:not(.app-dark) {
   @include mat.theme-overrides(
     (
@@ -32,7 +32,7 @@ html:not(.app-dark) {
       on-primary: #ffffff,
       error: #d70015,
       on-error: #ffffff,
-      surface: #f6f6fa,
+      surface: #fcfcfd,
       surface-container-lowest: #ffffff,
       surface-container-low: #ffffff,
       surface-container: #ffffff,
