@@ -17,7 +17,7 @@ public class CreateExpenseCommandHandlerTests
         _group = _kit.NewGroup();
     }
 
-    private CreateExpenseCommandHandler Handler() => new(_kit.Expenses, _kit.Groups, _kit.Entries, _kit.Tenant, _kit.Atomic, _kit.Clock);
+    private CreateExpenseCommandHandler Handler() => new(_kit.Expenses, _kit.Groups, _kit.Entries, _kit.Closings, _kit.Tenant, _kit.Atomic, _kit.Clock);
 
     private CreateExpenseCommand Single(string? month = "2026-11", decimal? amount = 250m) =>
         new(ExpenseKind.Single, _group.Id, "Troca da lâmpada", "Eletro Silva", month, null, amount, null, null, 10);
@@ -239,5 +239,21 @@ public class CreateExpenseCommandHandlerTests
 
         result.Error.Should().Be(FinanceErrors.ConcurrencyConflict);
         _kit.Atomic.Outcome!.IsFailure.Should().BeTrue();
+    }
+
+    // ---- closed months ----
+
+    [Fact]
+    public async Task Handle_Single_ForAClosedMonth_StoresTheExpenseButDoesNotAddAnEntryToTheClosedMonth()
+    {
+        _kit.NewEntry(_kit.NewFixed(_group, FinanceTestKit.M(2026, 9), 600m, "Zeladoria"), FinanceTestKit.M(2026, 11));
+        _kit.CloseMonth(FinanceTestKit.M(2026, 11));
+        _kit.Entries.Added.Clear();
+
+        Result<ExpenseView> result = await Handler().Handle(Single(), default);
+
+        result.IsSuccess.Should().BeTrue();
+        _kit.Expenses.All.Should().HaveCount(2);
+        _kit.Entries.Added.Should().BeEmpty();
     }
 }

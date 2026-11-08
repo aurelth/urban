@@ -39,6 +39,8 @@ public sealed class FinanceEndpointsTests(ApiFixture fixture) : IDisposable
         { "POST", $"{Expenses}/{Guid.Empty}/end" },
         { "GET", $"{Months}/2026-11" },
         { "POST", $"{Months}/2026-11/open" },
+        { "POST", $"{Months}/2026-11/close" },
+        { "POST", $"{Months}/2026-11/reopen" },
         { "PUT", $"{Entries}/{Guid.Empty}/amount" },
         { "PUT", $"{Entries}/{Guid.Empty}/status" },
     };
@@ -63,7 +65,7 @@ public sealed class FinanceEndpointsTests(ApiFixture fixture) : IDisposable
         User user = await fixture.Postgres.SeedUserWithPasswordAsync(ManagerSetup.Password, role: role);
         string token = await _client.SignInAsync(user);
 
-        foreach ((string method, string route) in new[] { ("GET", Groups), ("POST", Groups), ("GET", Expenses), ("POST", Expenses), ("GET", $"{Months}/{Month(0)}"), ("POST", $"{Months}/{Month(0)}/open") })
+        foreach ((string method, string route) in new[] { ("GET", Groups), ("POST", Groups), ("GET", Expenses), ("POST", Expenses), ("GET", $"{Months}/{Month(0)}"), ("POST", $"{Months}/{Month(0)}/open"), ("POST", $"{Months}/{Month(0)}/close"), ("POST", $"{Months}/{Month(0)}/reopen") })
         {
             HttpResponseMessage response = await _client.SendJsonAsync(new HttpMethod(method), route, token, method == "GET" ? null : new JsonObject());
 
@@ -849,6 +851,171 @@ public sealed class FinanceEndpointsTests(ApiFixture fixture) : IDisposable
         ["currentInstallment"] = currentInstallment,
         ["dueDay"] = dueDay,
     };
+
+    // ---- Fechar e reabrir o mês ----
+
+    [Fact]
+    public async Task Closing_the_month_splits_the_total_by_ideal_fraction_and_shows_it_when_the_month_is_read()
+    {
+        ManagerSession manager = await RegisterAsync();
+        Guid first = await CreateUnitAsync(manager, "101", 0.6m);
+        Guid second = await CreateUnitAsync(manager, "102", 0.4m);
+        await OpenMonthWithAFixedExpenseAsync(manager, 1000m);
+
+        HttpResponseMessage response = await CloseAsync(manager, Month(0), "2099-12-10");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
+        JsonElement closing = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("closing");
+        closing.GetProperty("total").GetDecimal().Should().Be(1000m);
+        closing.GetProperty("dueDate").GetString().Should().Be("2099-12-10");
+        closing.GetProperty("basis").GetString().Should().Be("idealFraction");
+        JsonElement[] charges = [.. closing.GetProperty("charges").EnumerateArray()];
+        charges.Select(charge => charge.GetProperty("unitId").GetGuid()).Should().Equal(first, second);
+        charges.Select(charge => charge.GetProperty("amount").GetDecimal()).Should().Equal(600m, 400m);
+        charges[0].GetProperty("number").GetString().Should().Be("101");
+        (await ReadMonthAsync(manager, Month(0))).GetProperty("closing").GetProperty("charges").GetArrayLength().Should().Be(2);
+    }
+
+    [Fact]
+    public async Task A_closed_month_refuses_changes_and_closing_it_again_is_409()
+    {
+        ManagerSession manager = await RegisterAsync();
+        await CreateUnitAsync(manager, "101", 1m);
+        JsonElement opened = await OpenMonthWithAFixedExpenseAsync(manager, 1000m);
+        JsonElement entry = opened.GetProperty("entries")[0];
+        await CloseAsync(manager, Month(0), "2099-12-10");
+
+        HttpResponseMessage amount = await _client.SendJsonAsync(
+            HttpMethod.Put,
+            $"{Entries}/{entry.GetProperty("id").GetGuid()}/amount",
+            manager.AccessToken,
+            new JsonObject { ["version"] = entry.GetProperty("version").GetString(), ["amount"] = 1200m });
+        HttpResponseMessage again = await CloseAsync(manager, Month(0), "2099-12-10");
+
+        amount.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await amount.CodeAsync()).Should().Be("closing.month_is_closed");
+        again.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await again.CodeAsync()).Should().Be("closing.already_closed");
+    }
+
+    [Fact]
+    public async Task Reopening_deletes_the_charges_lets_the_month_change_and_a_new_closing_uses_the_new_total()
+    {
+        ManagerSession manager = await RegisterAsync();
+        await CreateUnitAsync(manager, "101", 0.5m);
+        await CreateUnitAsync(manager, "102", 0.5m);
+        JsonElement opened = await OpenMonthWithAFixedExpenseAsync(manager, 1000m);
+        JsonElement entry = opened.GetProperty("entries")[0];
+        await CloseAsync(manager, Month(0), "2099-12-10");
+
+        HttpResponseMessage reopened = await _client.SendJsonAsync(HttpMethod.Post, $"{Months}/{Month(0)}/reopen", manager.AccessToken, new JsonObject());
+        HttpResponseMessage edited = await _client.SendJsonAsync(
+            HttpMethod.Put,
+            $"{Entries}/{entry.GetProperty("id").GetGuid()}/amount",
+            manager.AccessToken,
+            new JsonObject { ["version"] = entry.GetProperty("version").GetString(), ["amount"] = 1200m });
+        HttpResponseMessage closedAgain = await CloseAsync(manager, Month(0), "2099-12-15");
+
+        reopened.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await reopened.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("closing").ValueKind.Should().Be(JsonValueKind.Null);
+        edited.StatusCode.Should().Be(HttpStatusCode.OK);
+        JsonElement closing = (await closedAgain.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("closing");
+        closing.GetProperty("total").GetDecimal().Should().Be(1200m);
+        closing.GetProperty("dueDate").GetString().Should().Be("2099-12-15");
+        closing.GetProperty("charges").EnumerateArray().Select(charge => charge.GetProperty("amount").GetDecimal()).Should().Equal(600m, 600m);
+    }
+
+    [Fact]
+    public async Task Reopening_a_month_that_is_not_closed_is_409()
+    {
+        ManagerSession manager = await RegisterAsync();
+
+        HttpResponseMessage response = await _client.SendJsonAsync(HttpMethod.Post, $"{Months}/{Month(0)}/reopen", manager.AccessToken, new JsonObject());
+
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await response.CodeAsync()).Should().Be("closing.not_closed");
+    }
+
+    [Fact]
+    public async Task Closing_without_units_ready_for_the_apportionment_is_422_and_says_why()
+    {
+        ManagerSession manager = await RegisterAsync();
+        await OpenMonthWithAFixedExpenseAsync(manager, 1000m);
+
+        HttpResponseMessage response = await CloseAsync(manager, Month(0), "2099-12-10");
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        (await response.CodeAsync()).Should().Be("condominium.apportionment_not_ready");
+    }
+
+    [Fact]
+    public async Task Closing_a_month_that_was_never_opened_or_still_waits_for_an_amount_is_422()
+    {
+        ManagerSession manager = await RegisterAsync();
+        await CreateUnitAsync(manager, "101", 1m);
+        Guid group = await CreateGroupAsync(manager, "Contratos");
+
+        HttpResponseMessage neverOpened = await CloseAsync(manager, Month(0), "2099-12-10");
+        await CreateExpenseAsync(manager, ExpenseBody("variable", group, "Água", Month(0)));
+        await OpenAsync(manager, Month(0));
+        HttpResponseMessage waiting = await CloseAsync(manager, Month(0), "2099-12-10");
+
+        neverOpened.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        (await neverOpened.CodeAsync()).Should().Be("closing.month_not_open");
+        waiting.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        (await waiting.CodeAsync()).Should().Be("closing.amounts_pending");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("10/12/2099")]
+    [InlineData("2000-01-01")]
+    public async Task Closing_with_a_missing_or_invalid_due_date_is_400(string? dueDate)
+    {
+        ManagerSession manager = await RegisterAsync();
+        await CreateUnitAsync(manager, "101", 1m);
+        await OpenMonthWithAFixedExpenseAsync(manager, 1000m);
+
+        HttpResponseMessage response = await CloseAsync(manager, Month(0), dueDate);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.CodeAsync()).Should().Be("closing.due_date_invalid");
+    }
+
+    [Fact]
+    public async Task Closing_a_malformed_month_is_400()
+    {
+        ManagerSession manager = await RegisterAsync();
+
+        HttpResponseMessage response = await CloseAsync(manager, "abril", "2099-12-10");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.CodeAsync()).Should().Be("month.invalid");
+    }
+
+    private async Task<Guid> CreateUnitAsync(ManagerSession manager, string number, decimal idealFraction)
+    {
+        HttpResponseMessage response = await _client.SendJsonAsync(
+            HttpMethod.Post,
+            "/api/units",
+            manager.AccessToken,
+            new JsonObject { ["number"] = number, ["type"] = "apartment", ["idealFraction"] = idealFraction });
+        response.StatusCode.Should().Be(HttpStatusCode.Created, await response.Content.ReadAsStringAsync());
+
+        return (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+    }
+
+    private async Task<JsonElement> OpenMonthWithAFixedExpenseAsync(ManagerSession manager, decimal amount)
+    {
+        Guid group = await CreateGroupAsync(manager, "Contratos");
+        await CreateExpenseAsync(manager, ExpenseBody("fixed", group, "Portaria", Month(0), amount: amount));
+
+        return await OpenAsync(manager, Month(0));
+    }
+
+    private Task<HttpResponseMessage> CloseAsync(ManagerSession manager, string month, string? dueDate) =>
+        _client.SendJsonAsync(HttpMethod.Post, $"{Months}/{month}/close", manager.AccessToken, new JsonObject { ["dueDate"] = dueDate });
 
     private async Task MigrateAsync() => await fixture.Factory.Services.MigrateFinanceAsync();
 

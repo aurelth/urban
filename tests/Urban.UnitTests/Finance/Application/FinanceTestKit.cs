@@ -1,3 +1,4 @@
+using Urban.Finance.Domain.Closing;
 using Urban.Finance.Domain.Expenses;
 using Urban.Finance.Domain.Months;
 using Urban.SharedKernel.Abstractions;
@@ -27,6 +28,10 @@ internal sealed class FinanceTestKit
     public FakeExpenses Expenses { get; } = new();
 
     public FakeExpenseEntries Entries { get; } = new();
+
+    public FakeMonthClosings Closings { get; } = new();
+
+    public FakeApportionmentBasis Basis { get; } = new();
 
     public FinanceTestKit()
     {
@@ -60,4 +65,14 @@ internal sealed class FinanceTestKit
 
     public ExpenseEntry NewEntry(Expense expense, YearMonth month, int version = 5) =>
         Entries.Existing(expense.GenerateEntry(month, Now).Value, version);
+
+    /// <summary>Deixa o mês fechado como se o síndico já tivesse fechado: o total é o dos lançamentos que existirem e o rateio é o do <see cref="Basis"/>.</summary>
+    public MonthClosing CloseMonth(YearMonth month, DateOnly? dueDate = null)
+    {
+        IReadOnlyList<ExpenseEntry> entries = [.. Entries.All.Where(entry => entry.Month == month)];
+        MonthClosing closing = MonthClosing.Close(
+            CondominiumId, month, dueDate ?? month.AddMonths(1).FirstDay.AddDays(9), Guid.CreateVersion7(), Now, entries, Basis.Outcome.Value).Value;
+
+        return Closings.Existing(closing);
+    }
 }

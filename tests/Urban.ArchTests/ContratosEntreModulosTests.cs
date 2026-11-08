@@ -8,7 +8,7 @@ public class ContratosEntreModulosTests
 {
     private const string NamespaceDosContratos = "Urban.SharedKernel.Contracts";
 
-    public static TheoryData<string> Contratos => new("IManagerEnrollment", "IManagerProfile", "IPasswordConfirmation");
+    public static TheoryData<string> Contratos => new("IManagerEnrollment", "IManagerProfile", "IPasswordConfirmation", "IApportionmentBasis");
 
     [Theory]
     [MemberData(nameof(Contratos))]
@@ -48,6 +48,31 @@ public class ContratosEntreModulosTests
 
         usa.Should().BeTrue();
         Estrutura.Referencias(application).Should().NotContain(r => r.StartsWith("Urban.Identity.", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void O_contrato_do_rateio_e_implementado_pelo_Condominium_e_so_por_ele()
+    {
+        Type contrato = typeof(Urban.SharedKernel.AssemblyReference).Assembly.GetType($"{NamespaceDosContratos}.IApportionmentBasis")!;
+
+        foreach (string modulo in Estrutura.Modulos)
+        {
+            bool implementa = ImplementacoesEm(modulo, contrato).Any();
+
+            implementa.Should().Be(modulo == "Condominium", "só o Condominium conhece as unidades e os pesos ({0})", modulo);
+        }
+    }
+
+    [Fact]
+    public void O_Finance_usa_o_contrato_do_rateio_sem_conhecer_o_Condominium()
+    {
+        Type contrato = typeof(Urban.SharedKernel.AssemblyReference).Assembly.GetType($"{NamespaceDosContratos}.IApportionmentBasis")!;
+        Assembly application = Estrutura.Carregar("Finance", "Application");
+
+        bool usa = application.GetTypes().Any(t => t.GetConstructors().Any(c => c.GetParameters().Any(p => p.ParameterType == contrato)));
+
+        usa.Should().BeTrue();
+        Estrutura.Referencias(application).Should().NotContain(r => r.StartsWith("Urban.Condominium.", StringComparison.Ordinal));
     }
 
     [Fact]

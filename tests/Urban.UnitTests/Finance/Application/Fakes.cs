@@ -1,9 +1,11 @@
 using Urban.Finance.Application.Abstractions;
 using Urban.Finance.Domain;
+using Urban.Finance.Domain.Closing;
 using Urban.Finance.Domain.Expenses;
 using Urban.Finance.Domain.Months;
 using Urban.SharedKernel;
 using Urban.SharedKernel.Abstractions;
+using Urban.SharedKernel.Contracts;
 
 namespace Urban.UnitTests.Finance.Application;
 
@@ -197,5 +199,71 @@ internal sealed class FakeExpenseEntries : IExpenseEntries
         public ExpenseEntry Entry { get; } = entry;
 
         public int Version { get; set; } = version;
+    }
+}
+
+/// <summary>Fechamentos em memória. Um mês só pode ter um; repetir devolve o erro que o índice único do banco daria.</summary>
+internal sealed class FakeMonthClosings : IMonthClosings
+{
+    private readonly List<MonthClosing> _store = [];
+
+    public IReadOnlyList<MonthClosing> All => _store;
+
+    public List<MonthClosing> Added { get; } = [];
+
+    public List<MonthClosing> Removed { get; } = [];
+
+    public MonthClosing Existing(MonthClosing closing)
+    {
+        _store.Add(closing);
+
+        return closing;
+    }
+
+    public Task<MonthClosing?> FindAsync(YearMonth month, CancellationToken cancellationToken) =>
+        Task.FromResult(_store.Find(closing => closing.Month == month));
+
+    public Task<IReadOnlySet<YearMonth>> ClosedMonthsFromAsync(YearMonth from, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlySet<YearMonth>>(_store.Where(closing => closing.Month >= from).Select(closing => closing.Month).ToHashSet());
+
+    public Task<Result> AddAsync(MonthClosing closing, CancellationToken cancellationToken)
+    {
+        if (_store.Any(stored => stored.Month == closing.Month))
+        {
+            return Task.FromResult(Result.Failure(ClosingErrors.AlreadyClosed));
+        }
+
+        _store.Add(closing);
+        Added.Add(closing);
+
+        return Task.FromResult(Result.Success());
+    }
+
+    public Task RemoveAsync(MonthClosing closing, CancellationToken cancellationToken)
+    {
+        _store.Remove(closing);
+        Removed.Add(closing);
+
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>O contrato do Condomínio, com o que o teste mandar: por padrão, duas unidades de pesos 0,6 e 0,4.</summary>
+internal sealed class FakeApportionmentBasis : IApportionmentBasis
+{
+    public static readonly ApportionmentUnit First = new(Guid.CreateVersion7(), null, "101", 0.6m);
+
+    public static readonly ApportionmentUnit Second = new(Guid.CreateVersion7(), "A", "102", 0.4m);
+
+    public Result<ApportionmentBasis> Outcome { get; set; } =
+        Result.Success(new ApportionmentBasis(ApportionmentBasisKind.IdealFraction, [First, Second]));
+
+    public int Calls { get; private set; }
+
+    public Task<Result<ApportionmentBasis>> GetAsync(CancellationToken cancellationToken)
+    {
+        Calls++;
+
+        return Task.FromResult(Outcome);
     }
 }

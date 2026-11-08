@@ -21,9 +21,9 @@ public class ExpenseChangesHandlersTests
 
     private UpdateExpenseCommandHandler UpdateHandler() => new(_kit.Expenses, _kit.Groups, _kit.Tenant, _kit.Clock);
 
-    private ChangeExpenseAmountCommandHandler ChangeHandler() => new(_kit.Expenses, _kit.Entries, _kit.Tenant, _kit.Atomic, _kit.Clock);
+    private ChangeExpenseAmountCommandHandler ChangeHandler() => new(_kit.Expenses, _kit.Entries, _kit.Closings, _kit.Tenant, _kit.Atomic, _kit.Clock);
 
-    private SetInstallmentAmountCommandHandler InstallmentHandler() => new(_kit.Expenses, _kit.Entries, _kit.Tenant, _kit.Atomic, _kit.Clock);
+    private SetInstallmentAmountCommandHandler InstallmentHandler() => new(_kit.Expenses, _kit.Entries, _kit.Closings, _kit.Tenant, _kit.Atomic, _kit.Clock);
 
     private EndExpenseCommandHandler EndHandler() => new(_kit.Expenses, _kit.Tenant, _kit.Clock);
 
@@ -211,5 +211,35 @@ public class ExpenseChangesHandlersTests
         (await EndHandler().Handle(new EndExpenseCommand(expense.Id, "5", "2026-08"), default)).Error.Should().Be(ExpenseErrors.EndBeforeStart);
         (await EndHandler().Handle(new EndExpenseCommand(single.Id, "5", "2026-09"), default)).Error.Should().Be(ExpenseErrors.EndNotAllowed);
         _kit.Expenses.Saved.Should().BeEmpty();
+    }
+
+    // ---- closed months ----
+
+    [Fact]
+    public async Task ChangeAmount_DoesNotTouchTheEntriesOfAClosedMonth()
+    {
+        Expense expense = _kit.NewFixed(_group, M(2026, 9), 300m);
+        ExpenseEntry november = _kit.NewEntry(expense, M(2026, 11));
+        ExpenseEntry december = _kit.NewEntry(expense, M(2026, 12));
+        _kit.CloseMonth(M(2026, 11));
+
+        Result<ExpenseView> result = await ChangeHandler().Handle(new ChangeExpenseAmountCommand(expense.Id, "5", "2026-11", 330m), default);
+
+        result.IsSuccess.Should().BeTrue();
+        november.Amount.Should().Be(300m);
+        december.Amount.Should().Be(330m);
+    }
+
+    [Fact]
+    public async Task SetInstallmentAmount_DoesNotTouchTheEntryOfAClosedMonth()
+    {
+        Expense expense = _kit.NewInstallment(_group, M(2026, 9), total: 600m, count: 6, current: 1);
+        ExpenseEntry november = _kit.NewEntry(expense, M(2026, 11));
+        _kit.CloseMonth(M(2026, 11));
+
+        Result<ExpenseView> result = await InstallmentHandler().Handle(new SetInstallmentAmountCommand(expense.Id, "5", 3, 120.40m), default);
+
+        result.IsSuccess.Should().BeTrue();
+        november.Amount.Should().Be(100m);
     }
 }

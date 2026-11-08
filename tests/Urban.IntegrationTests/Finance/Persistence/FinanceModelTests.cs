@@ -24,6 +24,6 @@ public class FinanceModelTests(FinancePostgresFixture postgres)
             .SqlQuery<string>($"select table_name as \"Value\" from information_schema.tables where table_schema = 'finance' order by table_name")
             .ToListAsync();
 
-        tables.Should().Contain(["__ef_migrations_history", "expense", "expense_amount_change", "expense_entry", "expense_group", "expense_installment"]);
+        tables.Should().Contain(["__ef_migrations_history", "expense", "expense_amount_change", "expense_entry", "expense_group", "expense_installment", "month_closing", "unit_charge"]);
     }
 }
