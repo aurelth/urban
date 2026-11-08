@@ -21,4 +21,23 @@ public static class ClosingErrors
     public static readonly Error NotClosed = new("closing.not_closed", "Este mês não está fechado");
 
     public static readonly Error MonthIsClosed = new("closing.month_is_closed", "O mês está fechado. Reabra o mês para mudar os lançamentos");
+
+    public static Error ReadingsPending(int waterUnits, int gasUnits)
+    {
+        List<string> missing = [];
+
+        if (waterUnits > 0)
+        {
+            missing.Add($"água em {Units(waterUnits)}");
+        }
+
+        if (gasUnits > 0)
+        {
+            missing.Add($"gás em {Units(gasUnits)}");
+        }
+
+        return new Error("closing.readings_pending", $"Informe as leituras do mês antes de fechar: faltam leituras de {string.Join(" e de ", missing)}");
+    }
+
+    private static string Units(int count) => count == 1 ? "1 unidade" : $"{count} unidades";
 }

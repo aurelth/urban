@@ -128,6 +128,66 @@ namespace Urban.Finance.Infrastructure.Persistence.Migrations
                     b.ToTable("unit_charge", "finance");
                 });
 
+            modelBuilder.Entity("Urban.Finance.Domain.Closing.UnitChargeLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(9, 2)
+                        .HasColumnType("numeric(9,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<Guid>("ChargeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("charge_id");
+
+                    b.Property<Guid>("CondominiumId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("condominium_id");
+
+                    b.Property<decimal?>("CurrentReading")
+                        .HasPrecision(10, 3)
+                        .HasColumnType("numeric(10,3)")
+                        .HasColumnName("current_reading");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("label");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer")
+                        .HasColumnName("position");
+
+                    b.Property<decimal?>("PreviousReading")
+                        .HasPrecision(10, 3)
+                        .HasColumnType("numeric(10,3)")
+                        .HasColumnName("previous_reading");
+
+                    b.Property<decimal?>("Quantity")
+                        .HasPrecision(10, 3)
+                        .HasColumnType("numeric(10,3)")
+                        .HasColumnName("quantity");
+
+                    b.HasKey("Id")
+                        .HasName("pk_unit_charge_line");
+
+                    b.HasIndex("ChargeId", "Position")
+                        .IsUnique()
+                        .HasDatabaseName("ix_unit_charge_line_charge_id_position");
+
+                    b.ToTable("unit_charge_line", "finance");
+                });
+
             modelBuilder.Entity("Urban.Finance.Domain.Expenses.Expense", b =>
                 {
                     b.Property<Guid>("Id")
@@ -331,6 +391,16 @@ namespace Urban.Finance.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_unit_charge_month_closing_closing_id");
                 });
 
+            modelBuilder.Entity("Urban.Finance.Domain.Closing.UnitChargeLine", b =>
+                {
+                    b.HasOne("Urban.Finance.Domain.Closing.UnitCharge", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("ChargeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_unit_charge_line_unit_charge_charge_id");
+                });
+
             modelBuilder.Entity("Urban.Finance.Domain.Expenses.Expense", b =>
                 {
                     b.HasOne("Urban.Finance.Domain.Expenses.ExpenseGroup", null)
@@ -433,6 +503,11 @@ namespace Urban.Finance.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Urban.Finance.Domain.Closing.MonthClosing", b =>
                 {
                     b.Navigation("Charges");
+                });
+
+            modelBuilder.Entity("Urban.Finance.Domain.Closing.UnitCharge", b =>
+                {
+                    b.Navigation("Lines");
                 });
 #pragma warning restore 612, 618
         }

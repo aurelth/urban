@@ -1,6 +1,7 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Urban.Finance.Domain.Closing;
+using Urban.Finance.Domain.Consumption;
 using Urban.Finance.Domain.Expenses;
 using Urban.Finance.Domain.Months;
 using Urban.Finance.Infrastructure.Persistence;
@@ -52,6 +53,59 @@ public class FinanceMonthClosingsTests(FinancePostgresFixture postgres)
         found.Charges.Select(c => (c.UnitId, c.Position, c.Block, c.Number, c.Weight, c.Amount)).Should().Equal(
             closing.Charges.Select(c => (c.UnitId, c.Position, c.Block, c.Number, c.Weight, c.Amount)));
         found.Charges.Sum(c => c.Amount).Should().Be(1000m);
+    }
+
+    private MonthClosing NewClosingWithLines(YearMonth month, ApportionmentUnit unit)
+    {
+        Guid ordinary = Guid.CreateVersion7();
+        Expense expense = Expense.CreateFixed(_kit.CondominiumId, ordinary, "Zeladoria", null, month, null, 1000m, 10, FinanceStoreKit.Now).Value;
+        ExpenseEntry entry = expense.GenerateEntry(month, FinanceStoreKit.Now).Value;
+        ConsumptionTariff tariff = ConsumptionTariff.Create(
+            _kit.CondominiumId,
+            month,
+            TariffScale.Create([new TariffBand(10m, 47.43m, 0m), new TariffBand(null, 0m, 8.63m)]).Value,
+            null,
+            100m,
+            GasTariff.Create(2.4m, 15.71m).Value,
+            FinanceStoreKit.Now).Value;
+        MeterReading[] readings =
+        [
+            MeterReading.Create(_kit.CondominiumId, unit.UnitId, month, ConsumptionService.Water, 1551.913m, 1569.562m, FinanceStoreKit.Now).Value,
+            MeterReading.Create(_kit.CondominiumId, unit.UnitId, month, ConsumptionService.Gas, 117.825m, 118.677m, FinanceStoreKit.Now).Value,
+        ];
+        ClosingOptions options = new(new Dictionary<Guid, string> { [ordinary] = "Despesas ordinárias" }, new HashSet<Guid> { ordinary }, 15m, tariff, readings);
+
+        return MonthClosing.Close(_kit.CondominiumId, month, month.AddMonths(1).FirstDay.AddDays(9), Guid.CreateVersion7(), FinanceStoreKit.Now, [entry], new ApportionmentBasis(ApportionmentBasisKind.IdealFraction, [unit]), options).Value;
+    }
+
+    private static List<(int Position, ChargeLineKind Kind, string Label, decimal Amount, decimal? Quantity, decimal? Previous, decimal? Current)> LinesOf(UnitCharge charge) =>
+        [.. charge.Lines.Select(line => (line.Position, line.Kind, line.Label, line.Amount, line.Quantity, line.PreviousReading, line.CurrentReading))];
+
+    [Fact]
+    public async Task Add_ThenFind_ReturnsTheLinesOfTheChargeInOrderWithQuantitiesAndReadings()
+    {
+        MonthClosing closing = NewClosingWithLines(FinanceStoreKit.M(2026, 11), new ApportionmentUnit(Guid.CreateVersion7(), "A", "101", 1m));
+
+        await Closings().AddAsync(closing, default);
+        MonthClosing found = (await Closings().FindAsync(FinanceStoreKit.M(2026, 11), default))!;
+
+        LinesOf(found.Charges.Single()).Should().Equal(LinesOf(closing.Charges.Single()));
+        found.Charges.Single().Lines.Select(line => line.Kind).Should().Equal(ChargeLineKind.Expenses, ChargeLineKind.ReserveFund, ChargeLineKind.Water, ChargeLineKind.Gas);
+        found.Charges.Single().Amount.Should().Be(found.Charges.Single().Lines.Sum(line => line.Amount));
+    }
+
+    [Fact]
+    public async Task Remove_AlsoDeletesTheLinesOfTheCharges()
+    {
+        MonthClosing closing = NewClosingWithLines(FinanceStoreKit.M(2026, 11), new ApportionmentUnit(Guid.CreateVersion7(), null, "101", 1m));
+        await Closings().AddAsync(closing, default);
+        FinanceMonthClosings store = Closings();
+
+        await store.RemoveAsync((await store.FindAsync(FinanceStoreKit.M(2026, 11), default))!, default);
+
+        await using FinanceDbContext db = postgres.CreateContext(_kit.CondominiumId);
+        Guid chargeId = closing.Charges.Single().Id;
+        (await db.Set<UnitChargeLine>().CountAsync(line => line.ChargeId == chargeId)).Should().Be(0);
     }
 
     [Fact]
