@@ -229,7 +229,7 @@ describe('ExpensesStore', () => {
       const { store, http } = setup();
       await loaded(store, http);
 
-      const creating = store.createGroup('Obras');
+      const creating = store.createGroup({ name: 'Obras', reserveFundBase: false });
       const post = http.expectOne({ method: 'POST', url: '/api/finance/expense-groups' });
       expect(post.request.body).toEqual({ name: 'Obras' });
       post.flush(expenseGroup({ name: 'Obras' }));
@@ -237,13 +237,89 @@ describe('ExpensesStore', () => {
       answerRefresh(http);
       expect(await creating).toBeNull();
 
-      const renaming = store.renameGroup(GROUP, 'Contratos');
+      const renaming = store.updateGroup(GROUP, { name: 'Contratos', reserveFundBase: false });
       const put = http.expectOne({ method: 'PUT', url: `/api/finance/expense-groups/${GROUP.id}` });
       expect(put.request.body).toEqual({ version: '5', name: 'Contratos' });
       put.flush(GROUP);
       await flushPromises();
       answerRefresh(http);
       expect(await renaming).toBeNull();
+    });
+
+    it('cria o grupo ja marcado como base do fundo, com a versao que a API devolveu', async () => {
+      const { store, http } = setup();
+      await loaded(store, http);
+
+      const creating = store.createGroup({ name: 'Contratos', reserveFundBase: true });
+      http
+        .expectOne({ method: 'POST', url: '/api/finance/expense-groups' })
+        .flush(expenseGroup({ id: 'g-new', name: 'Contratos', version: '1' }));
+      await flushPromises();
+      const mark = http.expectOne({
+        method: 'PUT',
+        url: '/api/finance/expense-groups/g-new/reserve-fund-base',
+      });
+      expect(mark.request.body).toEqual({ version: '1', enabled: true });
+      mark.flush(expenseGroup({ id: 'g-new', name: 'Contratos', reserveFundBase: true }));
+      await flushPromises();
+      answerRefresh(http);
+
+      expect(await creating).toBeNull();
+    });
+
+    it('muda so a marca do grupo, sem renomear', async () => {
+      const { store, http } = setup();
+      await loaded(store, http);
+
+      const marking = store.updateGroup(GROUP, { name: GROUP.name, reserveFundBase: true });
+      const put = http.expectOne({
+        method: 'PUT',
+        url: `/api/finance/expense-groups/${GROUP.id}/reserve-fund-base`,
+      });
+      expect(put.request.body).toEqual({ version: '5', enabled: true });
+      put.flush({ ...GROUP, reserveFundBase: true });
+      await flushPromises();
+      answerRefresh(http);
+
+      expect(await marking).toBeNull();
+    });
+
+    it('renomeia e marca na ordem, usando a versao nova devolvida pelo nome', async () => {
+      const { store, http } = setup();
+      await loaded(store, http);
+
+      const saving = store.updateGroup(GROUP, { name: 'Contratos', reserveFundBase: true });
+      http
+        .expectOne({ method: 'PUT', url: `/api/finance/expense-groups/${GROUP.id}` })
+        .flush({ ...GROUP, name: 'Contratos', version: '6' });
+      await flushPromises();
+      const mark = http.expectOne({
+        method: 'PUT',
+        url: `/api/finance/expense-groups/${GROUP.id}/reserve-fund-base`,
+      });
+      expect(mark.request.body).toEqual({ version: '6', enabled: true });
+      mark.flush({ ...GROUP, name: 'Contratos', reserveFundBase: true, version: '7' });
+      await flushPromises();
+      answerRefresh(http);
+
+      expect(await saving).toBeNull();
+    });
+
+    it('devolve o problema da marca e atualiza a tela quando a versao ficou velha', async () => {
+      const { store, http } = setup();
+      await loaded(store, http);
+
+      const marking = store.updateGroup(GROUP, { name: GROUP.name, reserveFundBase: true });
+      http
+        .expectOne({
+          method: 'PUT',
+          url: `/api/finance/expense-groups/${GROUP.id}/reserve-fund-base`,
+        })
+        .flush(...fail(409, 'concurrency.conflict'));
+      await flushPromises();
+      answerRefresh(http);
+
+      expect((await marking)?.code).toBe('concurrency.conflict');
     });
 
     it('devolve o problema sem atualizar quando a API recusa um dado', async () => {

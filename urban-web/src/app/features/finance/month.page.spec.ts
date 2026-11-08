@@ -13,6 +13,7 @@ import { REGISTERED_MANAGER, problem, signInAs } from '../../testing/auth.fixtur
 import { removeOverlays, submitDialog, typeIn } from '../../testing/dialog.harness';
 import {
   entry,
+  chargeLine,
   groupTotal,
   monthClosing,
   monthEntries,
@@ -90,6 +91,55 @@ const CLOSED = monthEntries({
     charges: [
       unitCharge({ unitId: 'u1', block: null, number: '101', weight: 0.6, amount: 2620 }),
       unitCharge({ unitId: 'u2', block: 'A', number: '102', weight: 0.4, amount: 1746.66 }),
+    ],
+  }),
+});
+
+/** Mês fechado com consumo e fundo de reserva: o total das despesas é R$ 1.000,00 e as cobranças somam mais. */
+const CLOSED_WITH_CONSUMPTION = monthEntries({
+  ...FILLED,
+  closing: monthClosing({
+    dueDate: '2026-12-10',
+    total: 1000,
+    basis: 'idealFraction',
+    charges: [
+      unitCharge({
+        unitId: 'u1',
+        number: '101',
+        weight: 0.6,
+        amount: 803.44,
+        lines: [
+          chargeLine({ kind: 'expenses', label: 'Contratos', amount: 600 }),
+          chargeLine({ kind: 'reserveFund', label: 'Fundo de reserva', amount: 90 }),
+          chargeLine({
+            kind: 'water',
+            label: 'Água',
+            amount: 113.44,
+            quantity: 17.649,
+            previousReading: 100,
+            currentReading: 117.649,
+          }),
+        ],
+      }),
+      unitCharge({
+        unitId: 'u2',
+        block: 'A',
+        number: '102',
+        weight: 0.4,
+        amount: 507.43,
+        lines: [
+          chargeLine({ kind: 'expenses', label: 'Contratos', amount: 400 }),
+          chargeLine({ kind: 'reserveFund', label: 'Fundo de reserva', amount: 60 }),
+          chargeLine({
+            kind: 'water',
+            label: 'Água',
+            amount: 47.43,
+            quantity: 5,
+            previousReading: 50,
+            currentReading: 55,
+          }),
+        ],
+      }),
     ],
   }),
 });
@@ -727,6 +777,25 @@ describe('MonthPage', () => {
       expect(testId(html, 'close-month')).toBeNull();
     });
 
+    it('explica no dialogo quando falta a leitura de agua ou gas de alguma unidade', async () => {
+      const { fixture, html, http } = await setup(FILLED);
+
+      testId(html, 'close-month')!.click();
+      await settle(fixture);
+      submitDialog('urban-close-month-dialog');
+      await flushPromises();
+      http.expectOne(CLOSE_2026_11).flush(problem(422, 'closing.readings_pending'), {
+        status: 422,
+        statusText: 'Inválido',
+      });
+      await settle(fixture);
+
+      expect(
+        document.querySelector('urban-close-month-dialog [role="alert"]')?.textContent,
+      ).toContain('Falta a leitura de água ou gás de alguma unidade');
+      expect(testId(html, 'closing-card')).toBeNull();
+    });
+
     it('explica no dialogo quando as unidades ainda nao bastam para o rateio', async () => {
       const { fixture, html, http } = await setup(FILLED);
 
@@ -755,6 +824,40 @@ describe('MonthPage', () => {
       expect(card).toContain('Rateio por fração ideal');
       expect(chargeRows(html)).toEqual(['101 60% R$ 2.620,00', 'Bloco A · 102 40% R$ 1.746,66']);
       expect(pieces(testId(html, 'charges-total')!)).toBe('Total das cobranças R$ 4.366,66');
+    });
+
+    it('nao repete a linha de despesas quando a cobranca nao tem outras linhas', async () => {
+      const { html } = await setup(CLOSED);
+
+      expect(html.querySelectorAll('[data-testid="charge-line"]')).toHaveLength(0);
+      expect(testId(html, 'expenses-total')).toBeNull();
+    });
+
+    it('detalha as linhas do recibo de cada unidade: grupos, fundo de reserva e consumo', async () => {
+      const { html } = await setup(CLOSED_WITH_CONSUMPTION);
+
+      const groups = [...html.querySelectorAll('[data-testid="charge-group"]')];
+      expect(groups).toHaveLength(2);
+      const lines = (group: Element): string[] =>
+        [...group.querySelectorAll('[data-testid="charge-line"]')].map(pieces);
+      expect(chargeRows(html)).toEqual(['101 60% R$ 803,44', 'Bloco A · 102 40% R$ 507,43']);
+      expect(lines(groups[0])).toEqual([
+        'Contratos R$ 600,00',
+        'Fundo de reserva R$ 90,00',
+        'Água 17,649 m³ (leitura de 100 a 117,649) R$ 113,44',
+      ]);
+      expect(lines(groups[1])).toEqual([
+        'Contratos R$ 400,00',
+        'Fundo de reserva R$ 60,00',
+        'Água 5 m³ (leitura de 50 a 55) R$ 47,43',
+      ]);
+    });
+
+    it('mostra o total das despesas e o total das cobrancas quando eles diferem', async () => {
+      const { html } = await setup(CLOSED_WITH_CONSUMPTION);
+
+      expect(pieces(testId(html, 'expenses-total')!)).toBe('Despesas do mês R$ 1.000,00');
+      expect(pieces(testId(html, 'charges-total')!)).toBe('Total das cobranças R$ 1.310,87');
     });
 
     it('trava a correcao de valores e o cancelamento, mas deixa marcar como pago', async () => {

@@ -13,7 +13,13 @@ import { Expense, ExpenseGroup } from '../../core/finance/finance.models';
 import { provideUrbanIcons } from '../../core/theme/icons';
 import { flushPromises } from '../../testing/async';
 import { REGISTERED_MANAGER, problem, signInAs } from '../../testing/auth.fixtures';
-import { chooseIn, removeOverlays, submitDialog, typeIn } from '../../testing/dialog.harness';
+import {
+  chooseIn,
+  removeOverlays,
+  submitDialog,
+  toggleIn,
+  typeIn,
+} from '../../testing/dialog.harness';
 import { expense, expenseGroup, installmentExpense } from '../../testing/finance.fixtures';
 import { ExpensesPage } from './expenses.page';
 
@@ -372,6 +378,19 @@ describe('ExpensesPage', () => {
       expect(names).toEqual(['Despesas ordinárias', 'Obras']);
     });
 
+    it('avisa com texto quais grupos sao a base do fundo de reserva', async () => {
+      const { html } = await setup({ groups: [{ ...ORDINARY, reserveFundBase: true }, WORKS] });
+
+      const items = [...html.querySelectorAll('[data-testid="group-item"]')];
+
+      expect(plain(items[0].textContent ?? '')).toBe(
+        'Despesas ordinárias Base do fundo de reserva',
+      );
+      expect(plain(items[1].textContent ?? '')).toBe('Obras');
+      expect(items[0].querySelector('[data-testid="reserve-base-badge"]')).not.toBeNull();
+      expect(items[1].querySelector('[data-testid="reserve-base-badge"]')).toBeNull();
+    });
+
     it('mostra o nome do grupo com o mesmo visual do titulo de grupo dos lancamentos, sem pilula', async () => {
       const { html } = await setup();
 
@@ -406,10 +425,37 @@ describe('ExpensesPage', () => {
       expect(text(html, 'notice')).toBe('Grupo criado');
     });
 
+    it('cria um grupo ja marcado como base do fundo de reserva', async () => {
+      const { fixture, html, http } = await setup();
+
+      click(testId(html, 'new-group'));
+      await settle(fixture);
+      typeIn('urban-group-dialog', 'name', 'Contratos');
+      toggleIn('urban-group-dialog', 'reserve-fund-base');
+      submitDialog('urban-group-dialog');
+      await flushPromises();
+      http
+        .expectOne({ method: 'POST', url: '/api/finance/expense-groups' })
+        .flush(expenseGroup({ id: 'g-new', name: 'Contratos', version: '1' }));
+      await flushPromises();
+      const mark = http.expectOne({
+        method: 'PUT',
+        url: '/api/finance/expense-groups/g-new/reserve-fund-base',
+      });
+      expect(mark.request.body).toEqual({ version: '1', enabled: true });
+      mark.flush(expenseGroup({ id: 'g-new', reserveFundBase: true }));
+      await flushPromises();
+      answerRefresh(http);
+      await settle(fixture);
+
+      expect(dialog('urban-group-dialog')).toBeNull();
+      expect(text(html, 'notice')).toBe('Grupo criado');
+    });
+
     it('renomeia um grupo com a versao que a tela tem', async () => {
       const { fixture, html, http } = await setup();
 
-      click(button(html, 'Renomear grupo Despesas ordinárias'));
+      click(button(html, 'Editar grupo Despesas ordinárias'));
       await settle(fixture);
       typeIn('urban-group-dialog', 'name', 'Ordinárias');
       submitDialog('urban-group-dialog');
@@ -424,7 +470,28 @@ describe('ExpensesPage', () => {
       answerRefresh(http);
       await settle(fixture);
 
-      expect(text(html, 'notice')).toBe('Grupo renomeado');
+      expect(text(html, 'notice')).toBe('Grupo atualizado');
+    });
+
+    it('marca um grupo como base do fundo de reserva sem renomear', async () => {
+      const { fixture, html, http } = await setup();
+
+      click(button(html, 'Editar grupo Obras'));
+      await settle(fixture);
+      toggleIn('urban-group-dialog', 'reserve-fund-base');
+      submitDialog('urban-group-dialog');
+      await flushPromises();
+      const mark = http.expectOne({
+        method: 'PUT',
+        url: `/api/finance/expense-groups/${WORKS.id}/reserve-fund-base`,
+      });
+      expect(mark.request.body).toEqual({ version: WORKS.version, enabled: true });
+      mark.flush({ ...WORKS, reserveFundBase: true });
+      await flushPromises();
+      answerRefresh(http);
+      await settle(fixture);
+
+      expect(text(html, 'notice')).toBe('Grupo atualizado');
     });
 
     it('mantem o dialogo aberto com o erro quando o nome ja existe', async () => {

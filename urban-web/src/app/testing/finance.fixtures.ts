@@ -1,4 +1,5 @@
 import {
+  ChargeLine,
   Expense,
   ExpenseEntry,
   ExpenseGroup,
@@ -16,7 +17,13 @@ function nextId(prefix: string): string {
 }
 
 export function expenseGroup(overrides: Partial<ExpenseGroup> = {}): ExpenseGroup {
-  return { id: nextId('0001'), name: 'Despesas ordinárias', version: '5', ...overrides };
+  return {
+    id: nextId('0001'),
+    name: 'Despesas ordinárias',
+    reserveFundBase: false,
+    version: '5',
+    ...overrides,
+  };
 }
 
 /** Despesa fixa mensal ativa de teste; os outros tipos mudam só o que for preciso. */
@@ -105,13 +112,28 @@ export function monthEntries(overrides: Partial<MonthEntries> = {}): MonthEntrie
   };
 }
 
+export function chargeLine(overrides: Partial<ChargeLine> = {}): ChargeLine {
+  return {
+    kind: 'expenses',
+    label: 'Despesas',
+    amount: 2100,
+    quantity: null,
+    previousReading: null,
+    currentReading: null,
+    ...overrides,
+  };
+}
+
+/** Sem `lines`, a cobrança tem só a linha de despesas, com o valor todo (como os meses fechados antes do consumo). */
 export function unitCharge(overrides: Partial<UnitCharge> = {}): UnitCharge {
+  const amount = overrides.amount ?? 2100;
   return {
     unitId: nextId('0004'),
     block: null,
     number: '101',
     weight: 0.5,
-    amount: 2100,
+    amount,
+    lines: [chargeLine({ amount })],
     ...overrides,
   };
 }
