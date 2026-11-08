@@ -35,8 +35,13 @@ describe('tema claro: contraste entre fundo, cards e bordas', () => {
     expect(colors['outline-variant']).toMatch(/^#[0-9a-f]{6}$/);
   });
 
-  it('separa o card branco do fundo da página com folga', () => {
-    expect(contrast(colors['surface-container'], colors['surface'])).toBeGreaterThanOrEqual(1.2);
+  it('usa o fundo e a borda da paleta "Índigo suave" do CLAUDE.md', () => {
+    expect(colors['surface']).toBe('#f6f6fa');
+    expect(colors['outline-variant']).toBe('#e6e6ef');
+  });
+
+  it('não deixa o card branco igual ao fundo da página', () => {
+    expect(contrast(colors['surface-container'], colors['surface'])).toBeGreaterThanOrEqual(1.05);
   });
 
   it('mantém o texto secundário legível sobre o fundo da página (AA, 4,5:1)', () => {
@@ -50,9 +55,9 @@ describe('tema claro: contraste entre fundo, cards e bordas', () => {
 
   it('desenha a borda dos cards visível tanto sobre o card quanto sobre o fundo', () => {
     expect(contrast(colors['outline-variant'], colors['surface-container'])).toBeGreaterThanOrEqual(
-      1.6,
+      1.2,
     );
-    expect(contrast(colors['outline-variant'], colors['surface'])).toBeGreaterThanOrEqual(1.3);
+    expect(contrast(colors['outline-variant'], colors['surface'])).toBeGreaterThanOrEqual(1.1);
   });
 
   it('deixa o contorno dos campos mais forte que a borda dos cards', () => {
