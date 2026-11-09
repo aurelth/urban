@@ -288,6 +288,12 @@ describe('MonthPage', () => {
     expect(testId(html, 'expenses-link')?.getAttribute('href')).toBe('/financeiro/despesas');
   });
 
+  it('aponta para as tarifas de consumo', async () => {
+    const { html } = await setup();
+
+    expect(testId(html, 'tariffs-link')?.getAttribute('href')).toBe('/financeiro/tarifas');
+  });
+
   it('gera os lancamentos do mes sozinho, sem botoes para abrir o mes', async () => {
     const { html } = await setup();
 

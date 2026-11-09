@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { FinanceApi } from './finance.api';
-import { ExpensePayload } from './finance.models';
+import { ConsumptionTariffPayload, ExpensePayload } from './finance.models';
 
 const PAYLOAD: ExpensePayload = {
   kind: 'installment',
@@ -147,5 +147,41 @@ describe('FinanceApi', () => {
   it('sets the status of an entry', () => {
     api.setEntryStatus('n1', '9', 'paid').subscribe();
     expectCall('PUT', '/api/finance/entries/n1/status', { version: '9', status: 'paid' });
+  });
+
+  it('lists the consumption tariffs', () => {
+    api.listTariffs().subscribe();
+    expectCall('GET', '/api/finance/consumption-tariffs');
+  });
+
+  it('saves the tariff that starts in a month', () => {
+    const payload: ConsumptionTariffPayload = {
+      water: [
+        { upToCubicMeters: 10, fixedAmount: 28.41, pricePerCubicMeter: 0 },
+        { upToCubicMeters: null, fixedAmount: 0, pricePerCubicMeter: 5.1 },
+      ],
+      sewage: null,
+      sewagePercent: 100,
+      gas: { kilosPerCubicMeter: 2.4, pricePerKilo: 15.71 },
+    };
+
+    api.saveTariff('2026-11', payload).subscribe();
+
+    expectCall('PUT', '/api/finance/consumption-tariffs/2026-11', payload);
+  });
+
+  it('deletes the tariff that starts in a month', () => {
+    api.deleteTariff('2026-11').subscribe();
+    expectCall('DELETE', '/api/finance/consumption-tariffs/2026-11');
+  });
+
+  it('reads the finance settings', () => {
+    api.getSettings().subscribe();
+    expectCall('GET', '/api/finance/settings');
+  });
+
+  it('sets the reserve fund percent', () => {
+    api.setReserveFundPercent(2.5).subscribe();
+    expectCall('PUT', '/api/finance/settings', { reserveFundPercent: 2.5 });
   });
 });
