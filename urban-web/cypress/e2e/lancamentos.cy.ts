@@ -397,7 +397,7 @@ describe('Lançamentos do mês', () => {
       );
     });
 
-    it('destaca o card do mes fechado em branco sobre o fundo cinza da pagina', () => {
+    it('destaca o card do mes fechado em branco sobre o fundo claro da pagina', () => {
       stubMonth(CLOSED_MONTH);
       cy.visit(ENTRIES_PATH);
 

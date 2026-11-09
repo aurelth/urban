@@ -205,7 +205,7 @@ Estilo Apple: limpo, minimalista, muito espaço em branco, bordas finas, um úni
 
 | Papel | Claro | Escuro |
 | --- | --- | --- |
-| Fundo | `#F6F6FA` | `#000000` |
+| Fundo | `#FCFCFD` | `#000000` |
 | Superfície (cards) | `#FFFFFF` | `#1C1C1E` |
 | Texto | `#1C1C1E` | `#F5F5F7` |
 | Texto secundário | `#65657A` | `#A1A1A6` |
@@ -217,7 +217,7 @@ Estilo Apple: limpo, minimalista, muito espaço em branco, bordas finas, um úni
 | Alerta / pendente | `#B25000` | `#FF9F0A` |
 | Erro / atrasado | `#D70015` | `#FF453A` |
 
-Em 8/11/2026 o fundo do claro chegou a escurecer para `#E8E8F0`, mas o Aurel preferiu o branco original e a paleta voltou a `#F6F6FA` e `#E6E6EF`: não escureça o fundo do claro. Toda caixa com borda (`rounded-xl border border-outline-variant`) leva também `bg-surface-container`, o fundo de card (branco no claro, grafite no escuro); sem ele a caixa fica transparente. `src/styles/theme-contrast.spec.ts` confere as cores da paleta e o contraste do texto, e uma varredura dos templates barra caixa com borda sem fundo.
+Em 8/11/2026 o fundo do claro chegou a escurecer para `#E8E8F0`, mas o Aurel preferiu o branco original; depois, ainda no mesmo dia, mandou seguir o fundo da tela de entrada do SonarQube Cloud (`#FCFCFD`, quase branco, com caixas brancas de borda fina) e o fundo passou de `#F6F6FA` para `#FCFCFD`, com as bordas em `#E6E6EF`: não escureça o fundo do claro. Como o fundo e o card quase não diferem em tom, é a borda fina que separa a caixa da página. Toda caixa com borda (`rounded-xl border border-outline-variant`) leva também `bg-surface-container`, o fundo de card (branco no claro, grafite no escuro); sem ele a caixa fica transparente. `src/styles/theme-contrast.spec.ts` confere as cores da paleta e o contraste do texto, e uma varredura dos templates barra caixa com borda sem fundo.
 
 O escuro segue o estilo Apple e não é mais gerado a partir da cor-semente: é definido à mão em `html.app-dark` (preto puro, cards grafite sem borda, destaque em índigo mais claro). O `primary` do escuro é o índigo de texto (`#9E9CFF`); o preenchimento do botão principal usa tokens próprios do botão (`#5E5CE6`), porque o índigo de texto não tem contraste com texto branco.
 
