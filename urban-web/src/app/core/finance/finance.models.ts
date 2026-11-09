@@ -194,3 +194,42 @@ export interface FinanceSettings {
   /** De 0 a 100. Zero é sem fundo de reserva no recibo. */
   readonly reserveFundPercent: number;
 }
+
+export type ReadingService = 'water' | 'gas';
+
+/** Uma leitura de medidor, em m³: a anterior, a atual e a diferença entre as duas. */
+export interface MeterReading {
+  readonly previous: number;
+  readonly current: number;
+  readonly consumption: number;
+}
+
+/** Uma unidade no mês de leituras: o que já foi lido e a leitura do mês passado, para sugerir como anterior. */
+export interface UnitReadings {
+  readonly unitId: string;
+  readonly block: string | null;
+  readonly number: string;
+  readonly water: MeterReading | null;
+  readonly gas: MeterReading | null;
+  readonly suggestedWaterPrevious: number | null;
+  readonly suggestedGasPrevious: number | null;
+}
+
+/** As leituras de um mês, uma linha por unidade, na ordem do rateio. */
+export interface MonthReadings {
+  readonly month: string;
+  readonly isClosed: boolean;
+  /** Há tarifa de consumo em vigor no mês; sem ela as leituras não entram na cobrança. */
+  readonly hasTariff: boolean;
+  /** A tarifa em vigor cobra gás, então toda unidade precisa de leitura de gás. */
+  readonly hasGas: boolean;
+  readonly units: readonly UnitReadings[];
+}
+
+/** Uma leitura a gravar. Sem `current` (nulo), a leitura da unidade e do serviço é retirada. */
+export interface ReadingInput {
+  readonly unitId: string;
+  readonly service: ReadingService;
+  readonly previous?: number;
+  readonly current: number | null;
+}

@@ -294,6 +294,14 @@ describe('MonthPage', () => {
     expect(testId(html, 'tariffs-link')?.getAttribute('href')).toBe('/financeiro/tarifas');
   });
 
+  it('aponta para as leituras de consumo do mesmo mes', async () => {
+    const { html } = await setup();
+
+    expect(testId(html, 'readings-link')?.getAttribute('href')).toBe(
+      '/financeiro/leituras?mes=2026-11',
+    );
+  });
+
   it('gera os lancamentos do mes sozinho, sem botoes para abrir o mes', async () => {
     const { html } = await setup();
 

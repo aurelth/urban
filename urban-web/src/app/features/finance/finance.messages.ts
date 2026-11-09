@@ -26,6 +26,8 @@ const FIELD_MESSAGES: MessagesByCode = {
     'O percentual do esgoto vai de 0 a 100, com até 2 casas decimais',
   'consumption.reserve_percent_invalid':
     'O percentual do fundo de reserva vai de 0 a 100, com até 2 casas decimais',
+  'consumption.reading_invalid':
+    'A leitura atual não pode ser menor que a anterior, e as duas vão de 0 a 9.999.999,999 m³ com até 3 casas',
   'month.invalid': 'Informe um mês válido',
   'month.too_far_ahead': 'Só é possível abrir meses até 5 anos à frente',
   'expense_entry.amount_required': 'Informe o valor do lançamento antes de marcá-lo como pago',
@@ -79,6 +81,7 @@ export const FINANCE_ACTION_MESSAGES: MessagesByCode = {
   'expense_group.not_found': 'Este grupo não existe mais. A tela já foi atualizada',
   'expense_entry.not_found': 'Este lançamento não existe mais. A tela já foi atualizada',
   'consumption.tariff_not_found': 'Esta tarifa não existe mais. A tela já foi atualizada',
+  'consumption.unit_not_found': 'Uma das unidades não existe mais. A tela já foi atualizada',
   'closing.already_closed': 'Este mês já está fechado. A tela já foi atualizada',
   'closing.not_closed': 'Este mês não está fechado. A tela já foi atualizada',
 };

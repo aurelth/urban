@@ -11,6 +11,8 @@ import {
   ExpenseStatusFilter,
   FinanceSettings,
   MonthEntries,
+  MonthReadings,
+  ReadingInput,
   SettableEntryStatus,
   UpdateExpensePayload,
 } from './finance.models';
@@ -127,5 +129,13 @@ export class FinanceApi {
 
   setReserveFundPercent(reserveFundPercent: number): Observable<FinanceSettings> {
     return this.http.put<FinanceSettings>(`${BASE}/settings`, { reserveFundPercent });
+  }
+
+  getReadings(month: string): Observable<MonthReadings> {
+    return this.http.get<MonthReadings>(`${BASE}/months/${month}/readings`);
+  }
+
+  saveReadings(month: string, readings: readonly ReadingInput[]): Observable<MonthReadings> {
+    return this.http.put<MonthReadings>(`${BASE}/months/${month}/readings`, { readings });
   }
 }
