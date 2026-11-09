@@ -49,8 +49,11 @@ export function reserveFundText(percent: number): string {
 
 /** O mês de início da tarifa que vale em `month`: a mais recente que já tinha começado. Nulo antes da primeira. */
 export function inForceMonth(tariffs: readonly ConsumptionTariff[], month: string): string | null {
-  const started = tariffs.filter((tariff) => tariff.validFrom <= month);
-  return started.length === 0
-    ? null
-    : started.reduce((a, b) => (a.validFrom >= b.validFrom ? a : b)).validFrom;
+  return tariffs.reduce<string | null>(
+    (newest, tariff) =>
+      tariff.validFrom <= month && (newest === null || tariff.validFrom > newest)
+        ? tariff.validFrom
+        : newest,
+    null,
+  );
 }
