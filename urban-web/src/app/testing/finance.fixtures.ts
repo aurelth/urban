@@ -5,10 +5,13 @@ import {
   ExpenseEntry,
   ExpenseGroup,
   GroupTotal,
+  MeterReading,
   MonthClosing,
   MonthEntries,
+  MonthReadings,
   TariffBand,
   UnitCharge,
+  UnitReadings,
 } from '../core/finance/finance.models';
 
 let sequence = 0;
@@ -167,6 +170,38 @@ export function consumptionTariff(overrides: Partial<ConsumptionTariff> = {}): C
     sewage: null,
     sewagePercent: 100,
     gas: null,
+    ...overrides,
+  };
+}
+
+export function meterReading(overrides: Partial<MeterReading> = {}): MeterReading {
+  const previous = overrides.previous ?? 100;
+  const current = overrides.current ?? 112.5;
+  return { previous, current, consumption: current - previous, ...overrides };
+}
+
+/** Unidade do mês de leituras, sem nenhuma leitura informada e sem sugestão. */
+export function unitReadings(overrides: Partial<UnitReadings> = {}): UnitReadings {
+  return {
+    unitId: nextId('0005'),
+    block: null,
+    number: '101',
+    water: null,
+    gas: null,
+    suggestedWaterPrevious: null,
+    suggestedGasPrevious: null,
+    ...overrides,
+  };
+}
+
+/** Mês aberto, com tarifa em vigor que não cobra gás. */
+export function monthReadings(overrides: Partial<MonthReadings> = {}): MonthReadings {
+  return {
+    month: '2026-11',
+    isClosed: false,
+    hasTariff: true,
+    hasGas: false,
+    units: [unitReadings({ number: '101' }), unitReadings({ number: '102' })],
     ...overrides,
   };
 }

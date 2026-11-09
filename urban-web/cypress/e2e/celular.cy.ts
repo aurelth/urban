@@ -1,6 +1,7 @@
 import { stubTerms } from '../support/cadastro';
 import { NEW_MANAGER } from '../support/condominio';
 import { MANAGER, stubAnonymous, stubSignedIn } from '../support/session';
+import { READINGS_PATH, stubReadings } from '../support/leituras';
 import { TARIFFS_PATH, stubTariffs } from '../support/tarifas';
 
 /** Com `should` o Cypress repete a conferência até a página assentar (a barra de rolagem aparece depois do título). */
@@ -76,6 +77,21 @@ describe('Tela de celular (375 x 667)', () => {
     cy.contains('h1', 'Tarifas de consumo').should('be.visible');
     cy.get('[data-testid="tariff-item"]').should('have.length', 2);
     cy.get('[data-testid="new-tariff"]').should('be.visible');
+    expectNoHorizontalScroll();
+  });
+
+  it('mostra as leituras do mês em coluna única, sem rolagem horizontal', () => {
+    stubSignedIn(MANAGER);
+    stubReadings();
+    cy.visit(READINGS_PATH);
+
+    cy.contains('h1', 'Leituras do mês').should('be.visible');
+    cy.get('[data-testid="unit-row"]').should('have.length', 3);
+    cy.get('[data-testid="unit-row"] mat-form-field').each(($field) => {
+      const { left, right } = $field[0].getBoundingClientRect();
+      expect(left).to.be.at.least(0);
+      expect(right).to.be.at.most(375);
+    });
     expectNoHorizontalScroll();
   });
 

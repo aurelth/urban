@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { FinanceApi } from './finance.api';
-import { ConsumptionTariffPayload, ExpensePayload } from './finance.models';
+import { ConsumptionTariffPayload, ExpensePayload, ReadingInput } from './finance.models';
 
 const PAYLOAD: ExpensePayload = {
   kind: 'installment',
@@ -183,5 +183,21 @@ describe('FinanceApi', () => {
   it('sets the reserve fund percent', () => {
     api.setReserveFundPercent(2.5).subscribe();
     expectCall('PUT', '/api/finance/settings', { reserveFundPercent: 2.5 });
+  });
+
+  it('reads the readings of a month', () => {
+    api.getReadings('2026-11').subscribe();
+    expectCall('GET', '/api/finance/months/2026-11/readings');
+  });
+
+  it('saves the readings of a month, with the removal as a null current', () => {
+    const readings: ReadingInput[] = [
+      { unitId: 'u1', service: 'water', previous: 100, current: 112.5 },
+      { unitId: 'u2', service: 'gas', current: null },
+    ];
+
+    api.saveReadings('2026-11', readings).subscribe();
+
+    expectCall('PUT', '/api/finance/months/2026-11/readings', { readings });
   });
 });
