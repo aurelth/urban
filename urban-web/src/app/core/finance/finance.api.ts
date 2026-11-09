@@ -2,11 +2,14 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import {
+  ConsumptionTariff,
+  ConsumptionTariffPayload,
   Expense,
   ExpenseEntry,
   ExpenseGroup,
   ExpensePayload,
   ExpenseStatusFilter,
+  FinanceSettings,
   MonthEntries,
   SettableEntryStatus,
   UpdateExpensePayload,
@@ -102,5 +105,27 @@ export class FinanceApi {
     status: SettableEntryStatus,
   ): Observable<ExpenseEntry> {
     return this.http.put<ExpenseEntry>(`${BASE}/entries/${id}/status`, { version, status });
+  }
+
+  /** Da tarifa que começou mais recentemente para a mais antiga. */
+  listTariffs(): Observable<ConsumptionTariff[]> {
+    return this.http.get<ConsumptionTariff[]>(`${BASE}/consumption-tariffs`);
+  }
+
+  /** Guarda a tarifa que vale a partir do mês; repetir o mês a substitui. */
+  saveTariff(month: string, payload: ConsumptionTariffPayload): Observable<ConsumptionTariff> {
+    return this.http.put<ConsumptionTariff>(`${BASE}/consumption-tariffs/${month}`, payload);
+  }
+
+  deleteTariff(month: string): Observable<void> {
+    return this.http.delete<void>(`${BASE}/consumption-tariffs/${month}`);
+  }
+
+  getSettings(): Observable<FinanceSettings> {
+    return this.http.get<FinanceSettings>(`${BASE}/settings`);
+  }
+
+  setReserveFundPercent(reserveFundPercent: number): Observable<FinanceSettings> {
+    return this.http.put<FinanceSettings>(`${BASE}/settings`, { reserveFundPercent });
   }
 }

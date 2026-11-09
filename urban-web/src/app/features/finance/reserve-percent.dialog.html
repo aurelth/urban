@@ -1,0 +1,41 @@
+<h2 mat-dialog-title>Percentual do fundo de reserva</h2>
+<form [formGroup]="form" (ngSubmit)="confirm()" novalidate>
+  <mat-dialog-content>
+    <p class="mt-0 text-on-surface-variant">
+      O fundo de reserva é esse percentual sobre as despesas dos grupos marcados como base. Vale
+      para os meses que ainda vão fechar
+    </p>
+    <urban-text-field
+      name="percent"
+      label="Percentual (%)"
+      hint="De 0 a 100, com até 2 casas. 0 tira o fundo de reserva do recibo"
+      inputmode="decimal"
+      [errors]="percentErrors"
+    />
+
+    @if (error(); as message) {
+      <p role="alert" class="flex items-start gap-2 text-error">
+        <mat-icon svgIcon="error" aria-hidden="true" />
+        <span>{{ message }}</span>
+      </p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button
+      mat-button
+      type="button"
+      data-testid="cancel"
+      [disabled]="busy()"
+      (click)="ref.close(false)"
+    >
+      Cancelar
+    </button>
+    <button mat-flat-button type="submit" [disabled]="busy() || !changed()">
+      @if (busy()) {
+        Salvando
+      } @else {
+        Salvar alterações
+      }
+    </button>
+  </mat-dialog-actions>
+</form>
