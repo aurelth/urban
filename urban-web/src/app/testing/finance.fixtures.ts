@@ -1,11 +1,13 @@
 import {
   ChargeLine,
+  ConsumptionTariff,
   Expense,
   ExpenseEntry,
   ExpenseGroup,
   GroupTotal,
   MonthClosing,
   MonthEntries,
+  TariffBand,
   UnitCharge,
 } from '../core/finance/finance.models';
 
@@ -145,6 +147,26 @@ export function monthClosing(overrides: Partial<MonthClosing> = {}): MonthClosin
     total: 4200,
     basis: 'idealFraction',
     charges: [unitCharge({ number: '101' }), unitCharge({ number: '102' })],
+    ...overrides,
+  };
+}
+
+export function tariffBand(overrides: Partial<TariffBand> = {}): TariffBand {
+  return { upToCubicMeters: null, fixedAmount: 0, pricePerCubicMeter: 5.1, ...overrides };
+}
+
+/** Tarifa de água em 3 faixas (a primeira com valor fixo), sem esgoto nem gás; os testes ligam o resto. */
+export function consumptionTariff(overrides: Partial<ConsumptionTariff> = {}): ConsumptionTariff {
+  return {
+    validFrom: '2026-11',
+    water: [
+      tariffBand({ upToCubicMeters: 10, fixedAmount: 28.41, pricePerCubicMeter: 0 }),
+      tariffBand({ upToCubicMeters: 20, pricePerCubicMeter: 3.5 }),
+      tariffBand({ pricePerCubicMeter: 5.1 }),
+    ],
+    sewage: null,
+    sewagePercent: 100,
+    gas: null,
     ...overrides,
   };
 }

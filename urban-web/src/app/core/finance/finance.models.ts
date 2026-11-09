@@ -150,3 +150,47 @@ export interface UpdateExpensePayload {
   readonly groupId: string;
   readonly dueDay: number;
 }
+
+/** Uma faixa da tarifa de água ou de esgoto. O limite é o de cima, em m³; a última faixa não tem. */
+export interface TariffBand {
+  readonly upToCubicMeters: number | null;
+  /** Cobrado uma vez quando o consumo chega à faixa (na primeira, sempre: é o mínimo). */
+  readonly fixedAmount: number;
+  /** Vale só para os m³ que caem dentro da faixa. */
+  readonly pricePerCubicMeter: number;
+}
+
+/** O gás é medido em m³ e vendido em kg: o preço do m³ é os kg que cabem nele vezes o preço do kg. */
+export interface GasTariffValues {
+  readonly kilosPerCubicMeter: number;
+  readonly pricePerKilo: number;
+}
+
+export interface GasTariff extends GasTariffValues {
+  readonly pricePerCubicMeter: number;
+}
+
+/** As tarifas de consumo que valem a partir de um mês, "AAAA-MM", até a próxima começar. */
+export interface ConsumptionTariff {
+  readonly validFrom: string;
+  readonly water: readonly TariffBand[];
+  /** Nulo quando o condomínio não cobra esgoto. */
+  readonly sewage: readonly TariffBand[] | null;
+  /** Quanto das faixas do esgoto se cobra: 100 normalmente, menos na tarifa parcial. */
+  readonly sewagePercent: number;
+  /** Nulo quando o condomínio não cobra gás. */
+  readonly gas: GasTariff | null;
+}
+
+/** Corpo de PUT /api/finance/consumption-tariffs/{mês}. */
+export interface ConsumptionTariffPayload {
+  readonly water: readonly TariffBand[];
+  readonly sewage: readonly TariffBand[] | null;
+  readonly sewagePercent: number;
+  readonly gas: GasTariffValues | null;
+}
+
+export interface FinanceSettings {
+  /** De 0 a 100. Zero é sem fundo de reserva no recibo. */
+  readonly reserveFundPercent: number;
+}

@@ -1,0 +1,149 @@
+<section class="mx-auto max-w-4xl p-6">
+  <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="mb-1 text-3xl font-semibold tracking-tight">Tarifas de consumo</h1>
+      <p class="m-0 text-on-surface-variant">
+        Defina quanto custa a água, o esgoto e o gás. Cada tarifa vale a partir de um mês, até a
+        próxima começar
+      </p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <a mat-stroked-button data-testid="expenses-link" routerLink="/financeiro/despesas">
+        <mat-icon svgIcon="receipt_long" />
+        Despesas
+      </a>
+      @if (store.status() === 'ready') {
+        <button
+          mat-flat-button
+          type="button"
+          data-testid="new-tariff"
+          [disabled]="store.busy()"
+          (click)="create()"
+        >
+          <mat-icon svgIcon="add" />
+          Nova tarifa
+        </button>
+      }
+    </div>
+  </div>
+
+  @switch (store.status()) {
+    @case ('loading') {
+      <p role="status" class="text-on-surface-variant" data-testid="loading">
+        Carregando as tarifas
+      </p>
+    }
+    @case ('error') {
+      <div class="flex flex-col items-start gap-4" data-testid="load-error">
+        <p class="flex items-start gap-2 text-error">
+          <mat-icon svgIcon="error" aria-hidden="true" />
+          <span>Não foi possível carregar as tarifas</span>
+        </p>
+        <button mat-stroked-button type="button" data-testid="retry" (click)="load()">
+          Tentar de novo
+        </button>
+      </div>
+    }
+    @case ('ready') {
+      @if (notice(); as message) {
+        <p role="status" class="mb-4 flex items-start gap-2" data-testid="notice">
+          <span class="inline-flex text-success"
+            ><mat-icon svgIcon="check_circle" aria-hidden="true"
+          /></span>
+          <span>{{ message }}</span>
+        </p>
+      }
+
+      <section
+        class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-outline-variant bg-surface-container p-4"
+        aria-labelledby="reserve-title"
+      >
+        <div class="flex items-start gap-3">
+          <mat-icon svgIcon="savings" class="mt-1 text-on-surface-variant" aria-hidden="true" />
+          <div>
+            <h2 id="reserve-title" class="m-0 text-lg font-medium">Fundo de reserva</h2>
+            <p class="m-0 text-on-surface-variant" data-testid="reserve-percent">
+              {{ reserveText(store.reserveFundPercent()) }}
+            </p>
+          </div>
+        </div>
+        <button
+          mat-stroked-button
+          type="button"
+          data-testid="edit-reserve-percent"
+          [disabled]="store.busy()"
+          (click)="editReservePercent()"
+        >
+          <mat-icon svgIcon="edit" />
+          Alterar percentual
+        </button>
+      </section>
+
+      @if (store.tariffs().length === 0) {
+        <div
+          class="rounded-xl border border-outline-variant bg-surface-container p-6 text-center"
+          data-testid="empty"
+        >
+          <p class="mb-1 text-lg font-medium">Nenhuma tarifa cadastrada</p>
+          <p class="m-0 text-on-surface-variant">
+            Cadastre a tarifa da companhia de água para cobrar o consumo no recibo de cada unidade
+          </p>
+        </div>
+      } @else {
+        <ul class="m-0 flex list-none flex-col gap-3 p-0">
+          @for (tariff of store.tariffs(); track tariff.validFrom) {
+            <li
+              class="rounded-xl border border-outline-variant bg-surface-container p-4"
+              data-testid="tariff-item"
+            >
+              <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                  <h2 class="m-0 text-lg font-medium" data-testid="tariff-title">
+                    A partir de {{ name(tariff.validFrom) }}
+                  </h2>
+                  @if (tariff.validFrom === inForce()) {
+                    <span
+                      class="inline-flex items-center gap-1 text-sm text-success"
+                      data-testid="in-force-badge"
+                    >
+                      <mat-icon svgIcon="check_circle" aria-hidden="true" />
+                      <span>Em vigor</span>
+                    </span>
+                  }
+                </div>
+                <div class="flex">
+                  <button
+                    mat-icon-button
+                    type="button"
+                    [attr.aria-label]="'Editar tarifa de ' + name(tariff.validFrom)"
+                    [attr.title]="'Editar tarifa de ' + name(tariff.validFrom)"
+                    [disabled]="store.busy()"
+                    (click)="edit(tariff)"
+                  >
+                    <mat-icon svgIcon="edit" />
+                  </button>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    [attr.aria-label]="'Apagar tarifa de ' + name(tariff.validFrom)"
+                    [attr.title]="'Apagar tarifa de ' + name(tariff.validFrom)"
+                    [disabled]="store.busy()"
+                    (click)="remove(tariff)"
+                  >
+                    <mat-icon svgIcon="delete" />
+                  </button>
+                </div>
+              </div>
+              @for (line of lines(tariff); track line.label) {
+                <p class="m-0 flex gap-3" data-testid="tariff-line">
+                  <span class="w-14 shrink-0 text-on-surface-variant">{{ line.label }}</span
+                  >{{ ' ' }}<span>{{ line.text }}</span>
+                </p>
+              }
+            </li>
+          }
+        </ul>
+      }
+    }
+  }
+</section>

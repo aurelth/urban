@@ -1,0 +1,100 @@
+<h2 mat-dialog-title>
+  {{ editing ? 'Editar tarifa de ' + editedMonth : 'Nova tarifa de consumo' }}
+</h2>
+<form [formGroup]="form" (ngSubmit)="confirm()" novalidate>
+  <mat-dialog-content>
+    @if (editing) {
+      <p class="mt-0 text-on-surface-variant">Vale a partir de {{ editedMonth }}</p>
+    } @else {
+      <urban-select-field
+        name="month"
+        label="Vale a partir de"
+        hint="Vale até a próxima tarifa começar"
+        [options]="months"
+        [errors]="monthErrors"
+      />
+    }
+
+    <urban-bands-editor name="water" title="Água" />
+
+    <mat-checkbox class="self-start" formControlName="sewageEnabled" data-testid="sewage-enabled">
+      Cobrar esgoto
+    </mat-checkbox>
+    @if (sewageOn()) {
+      <div class="mt-3">
+        <urban-bands-editor name="sewage" title="Esgoto" />
+        <button
+          mat-button
+          type="button"
+          class="mb-3"
+          data-testid="copy-water-bands"
+          (click)="copyWaterBands()"
+        >
+          <mat-icon svgIcon="content_copy" />
+          Copiar as faixas da água
+        </button>
+        <urban-text-field
+          name="sewagePercent"
+          label="Percentual cobrado do esgoto (%)"
+          hint="100 cobra as faixas inteiras; menos que isso é a tarifa parcial"
+          inputmode="decimal"
+          [errors]="sewagePercentErrors"
+        />
+      </div>
+    }
+
+    <mat-checkbox class="mt-2 self-start" formControlName="gasEnabled" data-testid="gas-enabled">
+      Cobrar gás
+    </mat-checkbox>
+    @if (gasOn()) {
+      <div class="mt-3">
+        <div class="grid gap-x-3 sm:grid-cols-2">
+          <urban-text-field
+            name="kilos"
+            label="Kg por m³"
+            inputmode="decimal"
+            [errors]="kilosErrors"
+          />
+          <urban-text-field
+            name="pricePerKilo"
+            label="Preço do kg (R$)"
+            inputmode="decimal"
+            [errors]="pricePerKiloErrors"
+          />
+        </div>
+        @if (gasPrice(); as price) {
+          <p class="m-0 text-on-surface-variant" data-testid="gas-price">
+            Preço do m³: {{ money(price) }}
+          </p>
+        }
+      </div>
+    }
+
+    @if (error(); as message) {
+      <p role="alert" class="flex items-start gap-2 text-error">
+        <mat-icon svgIcon="error" aria-hidden="true" />
+        <span>{{ message }}</span>
+      </p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button
+      mat-button
+      type="button"
+      data-testid="cancel"
+      [disabled]="busy()"
+      (click)="ref.close(false)"
+    >
+      Cancelar
+    </button>
+    <button mat-flat-button type="submit" [disabled]="busy()">
+      @if (busy()) {
+        Salvando
+      } @else if (editing) {
+        Salvar alterações
+      } @else {
+        Salvar tarifa
+      }
+    </button>
+  </mat-dialog-actions>
+</form>

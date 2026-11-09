@@ -249,6 +249,12 @@ describe('ExpensesPage', () => {
     expect(testId(html, 'entries-link')?.getAttribute('href')).toBe('/financeiro/lancamentos');
   });
 
+  it('aponta para as tarifas de consumo', async () => {
+    const { html } = await setup();
+
+    expect(testId(html, 'tariffs-link')?.getAttribute('href')).toBe('/financeiro/tarifas');
+  });
+
   it('mostra so as acoes que cabem em cada tipo', async () => {
     const { html } = await setup({ expenses: [FIXED, VARIABLE, PARCELS, ENDED] });
 

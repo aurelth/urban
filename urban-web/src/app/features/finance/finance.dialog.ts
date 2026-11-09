@@ -10,12 +10,13 @@ export function openFinanceDialog<TComponent, TData>(
   injector: Injector,
   component: ComponentType<TComponent>,
   data: TData,
+  width = '520px',
 ): Promise<boolean> {
   const ref = injector.get(MatDialog).open<TComponent, TData, boolean>(component, {
     data,
     disableClose: true,
     role: 'dialog',
-    width: '520px',
+    width,
     maxWidth: 'calc(100vw - 32px)',
   });
   return new Promise<boolean>((resolve) => {

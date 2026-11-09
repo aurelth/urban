@@ -1,0 +1,74 @@
+<fieldset
+  class="m-0 mb-4 min-w-0 border-0 p-0"
+  [formArrayName]="name()"
+  [attr.data-testid]="name() + '-bands'"
+>
+  <legend class="mb-3 p-0 text-lg font-medium">{{ title() }}</legend>
+
+  @for (row of rows(); track row; let index = $index) {
+    <div [formGroupName]="index" class="flex items-start gap-2" data-testid="band-row">
+      <div class="min-w-0 flex-1">
+        <p class="m-0 mb-1 text-sm text-on-surface-variant">Faixa {{ index + 1 }}</p>
+        <div class="grid gap-x-3 md:grid-cols-3">
+          <urban-text-field
+            name="upTo"
+            label="Até (m³)"
+            inputmode="decimal"
+            [errors]="limitErrors"
+          />
+          <urban-text-field
+            name="fixed"
+            label="Valor fixo (R$)"
+            inputmode="decimal"
+            [errors]="fixedErrors"
+          />
+          <urban-text-field
+            name="price"
+            label="Preço por m³ (R$)"
+            inputmode="decimal"
+            [errors]="priceErrors"
+          />
+        </div>
+      </div>
+      <button
+        mat-icon-button
+        type="button"
+        class="mt-8"
+        data-testid="remove-band"
+        [attr.aria-label]="'Remover faixa ' + (index + 1)"
+        [attr.title]="'Remover faixa ' + (index + 1)"
+        [disabled]="rows().length === 1"
+        (click)="remove(index)"
+      >
+        <mat-icon svgIcon="delete" />
+      </button>
+    </div>
+  }
+
+  @if (orderError()) {
+    <p
+      role="alert"
+      class="mt-0 mb-3 flex items-start gap-2 text-error"
+      [attr.data-testid]="name() + '-ascending-error'"
+    >
+      <mat-icon svgIcon="error" aria-hidden="true" />
+      <span>Cada limite deve ser maior que o da faixa anterior</span>
+    </p>
+  }
+
+  <div class="flex flex-wrap items-center gap-3">
+    <button
+      mat-button
+      type="button"
+      data-testid="add-band"
+      [disabled]="rows().length >= maxBands"
+      (click)="add()"
+    >
+      <mat-icon svgIcon="add" />
+      Adicionar faixa
+    </button>
+    @if (rows().length >= maxBands) {
+      <span class="text-sm text-on-surface-variant">No máximo {{ maxBands }} faixas</span>
+    }
+  </div>
+</fieldset>

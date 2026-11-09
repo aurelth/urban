@@ -19,6 +19,13 @@ const FIELD_MESSAGES: MessagesByCode = {
   'expense.not_fixed': 'Só despesas fixas mensais têm reajuste de valor',
   'expense.not_installment': 'Só despesas parceladas têm parcelas',
   'expense.end_not_allowed': 'Só despesas fixas e variáveis podem ser encerradas',
+  'consumption.bands_invalid':
+    'As faixas precisam ser de 1 a 6, com limites crescentes, a última sem limite',
+  'consumption.gas_invalid': 'Informe os kg por m³ e o preço do kg, ambos maiores que zero',
+  'consumption.sewage_percent_invalid':
+    'O percentual do esgoto vai de 0 a 100, com até 2 casas decimais',
+  'consumption.reserve_percent_invalid':
+    'O percentual do fundo de reserva vai de 0 a 100, com até 2 casas decimais',
   'month.invalid': 'Informe um mês válido',
   'month.too_far_ahead': 'Só é possível abrir meses até 5 anos à frente',
   'expense_entry.amount_required': 'Informe o valor do lançamento antes de marcá-lo como pago',
@@ -56,6 +63,8 @@ export const FINANCE_FORM_MESSAGES: MessagesByCode = {
     'Este grupo não existe mais. Feche esta janela e confira a tela, que já foi atualizada',
   'expense_entry.not_found':
     'Este lançamento não existe mais. Feche esta janela e confira a tela, que já foi atualizada',
+  'consumption.tariff_not_found':
+    'Esta tarifa não existe mais. Feche esta janela e confira a tela, que já foi atualizada',
   'closing.already_closed':
     'Este mês já está fechado. Feche esta janela e confira a tela, que já foi atualizada',
   'closing.not_closed':
@@ -69,6 +78,7 @@ export const FINANCE_ACTION_MESSAGES: MessagesByCode = {
   'expense.not_found': 'Esta despesa não existe mais. A tela já foi atualizada',
   'expense_group.not_found': 'Este grupo não existe mais. A tela já foi atualizada',
   'expense_entry.not_found': 'Este lançamento não existe mais. A tela já foi atualizada',
+  'consumption.tariff_not_found': 'Esta tarifa não existe mais. A tela já foi atualizada',
   'closing.already_closed': 'Este mês já está fechado. A tela já foi atualizada',
   'closing.not_closed': 'Este mês não está fechado. A tela já foi atualizada',
 };

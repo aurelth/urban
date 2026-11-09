@@ -1,6 +1,7 @@
 import { stubTerms } from '../support/cadastro';
 import { NEW_MANAGER } from '../support/condominio';
 import { MANAGER, stubAnonymous, stubSignedIn } from '../support/session';
+import { TARIFFS_PATH, stubTariffs } from '../support/tarifas';
 
 /** Com `should` o Cypress repete a conferência até a página assentar (a barra de rolagem aparece depois do título). */
 function expectNoHorizontalScroll(): void {
@@ -64,6 +65,17 @@ describe('Tela de celular (375 x 667)', () => {
       const lefts = [...$cards].map((card) => card.getBoundingClientRect().left);
       expect(new Set(lefts).size).to.eq(1);
     });
+    expectNoHorizontalScroll();
+  });
+
+  it('mostra as tarifas de consumo em coluna única, sem rolagem horizontal', () => {
+    stubSignedIn(MANAGER);
+    stubTariffs();
+    cy.visit(TARIFFS_PATH);
+
+    cy.contains('h1', 'Tarifas de consumo').should('be.visible');
+    cy.get('[data-testid="tariff-item"]').should('have.length', 2);
+    cy.get('[data-testid="new-tariff"]').should('be.visible');
     expectNoHorizontalScroll();
   });
 

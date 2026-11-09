@@ -66,6 +66,13 @@ export const routes: Routes = [
               import('./features/finance/expenses.page').then((m) => m.ExpensesPage),
           },
           {
+            path: 'financeiro/tarifas',
+            title: 'Tarifas de consumo',
+            canActivate: [managerGuard],
+            loadComponent: () =>
+              import('./features/finance/tariffs.page').then((m) => m.TariffsPage),
+          },
+          {
             path: 'financeiro/lancamentos',
             title: 'Lançamentos do mês',
             canActivate: [managerGuard],
