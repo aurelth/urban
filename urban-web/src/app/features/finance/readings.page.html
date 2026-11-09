@@ -1,0 +1,216 @@
+<section class="mx-auto max-w-4xl p-6">
+  <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="mb-1 text-3xl font-semibold tracking-tight">Leituras do mês</h1>
+      <p class="m-0 text-on-surface-variant">
+        Informe a leitura dos medidores de cada unidade, para cobrar o consumo no recibo
+      </p>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <a mat-stroked-button data-testid="tariffs-link" routerLink="/financeiro/tarifas">
+        <mat-icon svgIcon="water_drop" />
+        Tarifas de consumo
+      </a>
+      <a mat-stroked-button data-testid="entries-link" routerLink="/financeiro/lancamentos">
+        <mat-icon svgIcon="receipt_long" />
+        Lançamentos do mês
+      </a>
+    </div>
+  </div>
+
+  <nav class="mb-6 flex items-center justify-between gap-2" aria-label="Meses">
+    <button
+      mat-icon-button
+      type="button"
+      aria-label="Mês anterior"
+      title="Mês anterior"
+      [disabled]="!canGo(-1) || store.status() === 'loading' || store.busy() || dirty()"
+      (click)="go(-1)"
+    >
+      <mat-icon svgIcon="chevron_left" />
+    </button>
+    <h2 class="m-0 text-xl font-medium" aria-live="polite" data-testid="month-title">
+      {{ title(month()) }}
+    </h2>
+    <button
+      mat-icon-button
+      type="button"
+      aria-label="Próximo mês"
+      title="Próximo mês"
+      [disabled]="!canGo(1) || store.status() === 'loading' || store.busy() || dirty()"
+      (click)="go(1)"
+    >
+      <mat-icon svgIcon="chevron_right" />
+    </button>
+  </nav>
+
+  @switch (store.status()) {
+    @case ('loading') {
+      <p role="status" class="text-on-surface-variant" data-testid="loading">
+        Carregando as leituras
+      </p>
+    }
+    @case ('error') {
+      <div class="flex flex-col items-start gap-4" data-testid="load-error">
+        <p class="flex items-start gap-2 text-error">
+          <mat-icon svgIcon="error" aria-hidden="true" />
+          <span>Não foi possível carregar as leituras</span>
+        </p>
+        <button mat-stroked-button type="button" data-testid="retry" (click)="reload()">
+          Tentar de novo
+        </button>
+      </div>
+    }
+    @case ('ready') {
+      @if (notice(); as message) {
+        <p role="status" class="mb-4 flex items-start gap-2" data-testid="notice">
+          <span class="inline-flex text-success"
+            ><mat-icon svgIcon="check_circle" aria-hidden="true"
+          /></span>
+          <span>{{ message }}</span>
+        </p>
+      }
+      @if (actionError(); as message) {
+        <p role="alert" class="mb-4 flex items-start gap-2 text-error" data-testid="action-error">
+          <mat-icon svgIcon="error" aria-hidden="true" />
+          <span>{{ message }}</span>
+        </p>
+      }
+
+      @if (store.data(); as data) {
+        @if (data.isClosed) {
+          <p class="mb-4 flex items-start gap-2" data-testid="closed-notice">
+            <mat-icon svgIcon="lock" aria-hidden="true" />
+            <span>
+              Este mês está fechado e as leituras não mudam mais. Para corrigir, reabra o mês na
+              tela de lançamentos
+            </span>
+          </p>
+        }
+        @if (!data.hasTariff) {
+          <p class="mb-4 flex items-start gap-2 text-warning" data-testid="no-tariff">
+            <mat-icon svgIcon="error" aria-hidden="true" />
+            <span>
+              Não há tarifa de consumo em vigor neste mês. As leituras ficam guardadas, mas só
+              entram na cobrança depois que você cadastrar a tarifa
+            </span>
+          </p>
+        }
+
+        @if (data.units.length === 0) {
+          <div
+            class="rounded-xl border border-outline-variant bg-surface-container p-6 text-center"
+            data-testid="empty"
+          >
+            <p class="mb-1 text-lg font-medium">Nenhuma unidade cadastrada</p>
+            <p class="mb-4 text-on-surface-variant">
+              Cadastre as unidades do condomínio para informar as leituras
+            </p>
+            <a mat-stroked-button data-testid="units-link" routerLink="/unidades">Ver unidades</a>
+          </div>
+        } @else {
+          <ul class="mb-4 flex list-none flex-col gap-1 p-0" data-testid="coverage">
+            @for (line of coverage(); track line) {
+              <li class="text-on-surface-variant" data-testid="coverage-line">{{ line }}</li>
+            }
+          </ul>
+          @if (!data.isClosed) {
+            <p class="mb-4 text-sm text-on-surface-variant" data-testid="hint">
+              Use vírgula nas casas decimais, como 123,456. A leitura anterior vem da leitura atual
+              do mês passado e pode ser corrigida
+            </p>
+          }
+
+          <form [formGroup]="form" novalidate (ngSubmit)="save()">
+            <ul class="m-0 flex list-none flex-col gap-3 p-0" formArrayName="units">
+              @for (row of rows(); track row; let index = $index) {
+                <li
+                  [formGroupName]="index"
+                  class="rounded-xl border border-outline-variant bg-surface-container p-4"
+                  data-testid="unit-row"
+                >
+                  <h3 class="m-0 mb-3 text-lg font-medium" data-testid="unit-title">
+                    @if (unit(index); as current) {
+                      {{ unitLabel(current) }}
+                    }
+                  </h3>
+                  @for (section of sections(); track section.key) {
+                    <div
+                      role="group"
+                      class="mb-1"
+                      [attr.aria-label]="section.label + ' da unidade ' + unit(index)?.number"
+                    >
+                      <p class="m-0 mb-2 text-sm font-medium text-on-surface-variant">
+                        {{ section.label }}
+                      </p>
+                      <div class="grid grid-cols-2 gap-x-3">
+                        <urban-text-field
+                          [name]="section.key + 'Previous'"
+                          label="Anterior (m³)"
+                          inputmode="decimal"
+                          [errors]="previousErrors"
+                        />
+                        <urban-text-field
+                          [name]="section.key + 'Current'"
+                          label="Atual (m³)"
+                          inputmode="decimal"
+                          [optional]="true"
+                          [errors]="currentErrors"
+                        />
+                      </div>
+                      @if (hasOrderError(row, section.key)) {
+                        <p
+                          role="alert"
+                          class="mt-0 mb-3 flex items-start gap-2 text-error"
+                          [attr.data-testid]="section.key + '-order-error'"
+                        >
+                          <mat-icon svgIcon="error" aria-hidden="true" />
+                          <span>A leitura atual não pode ser menor que a anterior</span>
+                        </p>
+                      }
+                      @if (consumption(index, section.key); as text) {
+                        <p
+                          class="mt-0 mb-2 text-on-surface-variant"
+                          [attr.data-testid]="section.key + '-consumption'"
+                        >
+                          Consumo: {{ text }}
+                        </p>
+                      }
+                    </div>
+                  }
+                </li>
+              }
+            </ul>
+
+            @if (!data.isClosed) {
+              <div class="mt-6 flex flex-wrap items-center gap-3">
+                <button
+                  mat-flat-button
+                  type="submit"
+                  data-testid="save-readings"
+                  [disabled]="store.busy() || !dirty()"
+                >
+                  Salvar leituras
+                </button>
+                @if (dirty()) {
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    data-testid="discard-readings"
+                    [disabled]="store.busy()"
+                    (click)="discard()"
+                  >
+                    Descartar alterações
+                  </button>
+                  <span class="text-on-surface-variant" data-testid="dirty-notice"
+                    >Há alterações não salvas</span
+                  >
+                }
+              </div>
+            }
+          </form>
+        }
+      }
+    }
+  }
+</section>

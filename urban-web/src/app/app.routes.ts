@@ -73,6 +73,13 @@ export const routes: Routes = [
               import('./features/finance/tariffs.page').then((m) => m.TariffsPage),
           },
           {
+            path: 'financeiro/leituras',
+            title: 'Leituras do mês',
+            canActivate: [managerGuard],
+            loadComponent: () =>
+              import('./features/finance/readings.page').then((m) => m.ReadingsPage),
+          },
+          {
             path: 'financeiro/lancamentos',
             title: 'Lançamentos do mês',
             canActivate: [managerGuard],
