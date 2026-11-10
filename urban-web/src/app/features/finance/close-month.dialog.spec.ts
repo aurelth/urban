@@ -13,15 +13,17 @@ import {
   submitDialog,
   typeIn,
 } from '../../testing/dialog.harness';
-import { openCloseMonthDialog } from './close-month.dialog';
+import { CloseFailure, openCloseMonthDialog } from './close-month.dialog';
 
 const TAG = 'urban-close-month-dialog';
 
-type Save = jest.Mock<(dueDate: string) => Promise<string | null>>;
+type Save = jest.Mock<(dueDate: string) => Promise<CloseFailure | null>>;
 
 function setup(): { save: Save; result: Promise<boolean> } {
   configureDialogTest();
-  const save: Save = jest.fn<(dueDate: string) => Promise<string | null>>().mockResolvedValue(null);
+  const save: Save = jest
+    .fn<(dueDate: string) => Promise<CloseFailure | null>>()
+    .mockResolvedValue(null);
   const result = openCloseMonthDialog(TestBed.inject(Injector), {
     month: '2026-11',
     total: 4200,
@@ -29,6 +31,10 @@ function setup(): { save: Save; result: Promise<boolean> } {
   });
   TestBed.tick();
   return { save, result };
+}
+
+function readingsLinkOf(): HTMLAnchorElement | null {
+  return dialogOf(TAG).querySelector<HTMLAnchorElement>('[data-testid="readings-pending-link"]');
 }
 
 describe('CloseMonthDialog', () => {
@@ -81,7 +87,7 @@ describe('CloseMonthDialog', () => {
 
   it('continua aberto com o erro quando o fechamento e recusado', async () => {
     const { save } = setup();
-    save.mockResolvedValue('Complete os dados das unidades');
+    save.mockResolvedValue({ message: 'Complete os dados das unidades' });
 
     submitDialog(TAG);
     await flushPromises();
@@ -89,6 +95,60 @@ describe('CloseMonthDialog', () => {
 
     expect(alertOf(TAG)).toBe('Complete os dados das unidades');
     expect(fieldOf(TAG, 'dueDate').value).toBe('10/12/2026');
+    expect(readingsLinkOf()).toBeNull();
+  });
+
+  it('leva as leituras do mes quando falta leitura de alguma unidade', async () => {
+    const { save } = setup();
+    save.mockResolvedValue({
+      message: 'Informe as leituras do mês antes de fechar',
+      readingsPending: true,
+    });
+
+    submitDialog(TAG);
+    await flushPromises();
+    TestBed.tick();
+
+    expect(alertOf(TAG)).toBe('Informe as leituras do mês antes de fechar');
+    expect(readingsLinkOf()?.textContent?.trim()).toBe('Informar as leituras do mês');
+    expect(readingsLinkOf()?.getAttribute('href')).toBe('/financeiro/leituras?mes=2026-11');
+    expect(fieldOf(TAG, 'dueDate').value).toBe('10/12/2026');
+  });
+
+  it('fecha o dialogo ao seguir para as leituras, sem fechar o mes', async () => {
+    const { save, result } = setup();
+    save.mockResolvedValue({
+      message: 'Informe as leituras do mês antes de fechar',
+      readingsPending: true,
+    });
+
+    submitDialog(TAG);
+    await flushPromises();
+    TestBed.tick();
+    readingsLinkOf()!.click();
+    await flushPromises();
+    TestBed.tick();
+
+    await expect(result).resolves.toBe(false);
+    expect(save).toHaveBeenCalledTimes(1);
+  });
+
+  it('tira o link das leituras quando o proximo erro e outro', async () => {
+    const { save } = setup();
+    save.mockResolvedValueOnce({ message: 'Faltam leituras', readingsPending: true });
+    save.mockResolvedValueOnce({ message: 'Complete os dados das unidades' });
+
+    submitDialog(TAG);
+    await flushPromises();
+    TestBed.tick();
+    expect(readingsLinkOf()).not.toBeNull();
+
+    submitDialog(TAG);
+    await flushPromises();
+    TestBed.tick();
+
+    expect(alertOf(TAG)).toBe('Complete os dados das unidades');
+    expect(readingsLinkOf()).toBeNull();
   });
 
   it('cancelar fecha sem gravar', async () => {

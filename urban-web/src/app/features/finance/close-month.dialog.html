@@ -17,11 +17,23 @@
       [errors]="dueDateErrors"
     />
 
-    @if (error(); as message) {
+    @if (failure(); as problem) {
       <p role="alert" class="flex items-start gap-2 text-error">
         <mat-icon svgIcon="error" aria-hidden="true" />
-        <span>{{ message }}</span>
+        <span>{{ problem.message }}</span>
       </p>
+      @if (problem.readingsPending) {
+        <a
+          mat-stroked-button
+          data-testid="readings-pending-link"
+          routerLink="/financeiro/leituras"
+          [queryParams]="{ mes: config.month }"
+          (click)="ref.close(false)"
+        >
+          <mat-icon svgIcon="water_drop" />
+          Informar as leituras do mês
+        </a>
+      }
     }
   </mat-dialog-content>
   <mat-dialog-actions align="end">
