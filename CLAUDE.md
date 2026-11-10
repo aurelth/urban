@@ -8,14 +8,14 @@ Urban (https://urban-pro.io) é um sistema de gestão condominial que substitui 
 
 ## Escopo e roadmap (77 módulos em 3 fases)
 
-A síndica é a beta-tester. A Fase 1 (MVP) tem que permitir abandonar as planilhas no dia 1, e cada fase termina com release em produção. O plano original tinha 66 módulos (documento Urban-03). Em 22/10/2026 o Aurel decidiu mover 4 módulos da Fase 3 para a Fase 1 (modo escuro, backup, consentimento LGPD e log de auditoria) e acrescentar 9 novos: importação das planilhas na Fase 1, 4 na Fase 2 e 4 na Fase 3. Total naquela data: Fase 1 com 25, Fase 2 com 27 e Fase 3 com 23. Em 23/10/2026 ele pediu que os síndicos possam se cadastrar sozinhos (multi-condomínio desde o MVP), fatura em PDF com envio automático, chamados e reclamações dos moradores e um painel da plataforma para ele: multi-condomínio sai da Fase 3, registro de ocorrências sai da Fase 2, e fatura em PDF e painel da plataforma entram como módulos novos. Total atual: Fase 1 com 29, Fase 2 com 26 e Fase 3 com 22 (77 módulos).
+A síndica é a beta-tester. A Fase 1 (MVP) tem que permitir abandonar as planilhas no dia 1, e cada fase termina com release em produção. O plano original tinha 66 módulos (documento Urban-03). Em 22/10/2026 o Aurel decidiu mover 4 módulos da Fase 3 para a Fase 1 (modo escuro, backup, consentimento LGPD e log de auditoria) e acrescentar 9 novos: importação das planilhas na Fase 1, 4 na Fase 2 e 4 na Fase 3. Total naquela data: Fase 1 com 25, Fase 2 com 27 e Fase 3 com 23. Em 23/10/2026 ele pediu que os síndicos possam se cadastrar sozinhos (multi-condomínio desde o MVP), fatura em PDF com envio automático, chamados e reclamações dos moradores e um painel da plataforma para ele: multi-condomínio sai da Fase 3, registro de ocorrências sai da Fase 2, e fatura em PDF e painel da plataforma entram como módulos novos. Total em 23/10/2026: Fase 1 com 29, Fase 2 com 26 e Fase 3 com 22 (77 módulos). Em 10/11/2026 o Aurel mandou mover o fundo de reserva e o consumo individual (água e gás), já construídos, da Fase 3 para a Fase 1. Total atual: Fase 1 com 31, Fase 2 com 26 e Fase 3 com 20 (77 módulos).
 
 Papéis do MVP: `SuperAdmin` (o Aurel, dono da plataforma), `Manager` (síndico) e `Resident` (morador). Detalhes na seção "Papéis, condomínios e acesso". A inadimplência é visível só ao `Manager`.
 
-**Fase 1: MVP (29 módulos)**
+**Fase 1: MVP (31 módulos)**
 - Infraestrutura e autenticação: autenticação (Identity + JWT, access token de 15 min, refresh token de 7 dias com rotação, logout invalida no Redis); perfis e permissões (`SuperAdmin`, `Manager` e `Resident`); gestão de usuários (cadastro do síndico, convite de moradores, suspensão e exclusão, redefinição de senha com token de 1 h); API Gateway (YARP).
 - Condomínio: cadastro do condomínio; edição dos dados do síndico e do condomínio; preenchimento do endereço pelo CEP; cadastro de unidades; cadastro de moradores (com profissão e contato de emergência, e os documentos na 1b); histórico de ocupação; dependentes; veículos.
-- Financeiro: lançamento de despesas (com comprovante); categorias de despesa; competência mensal; geração de cobranças (rateio por fração ideal); fatura em PDF com envio automático por e-mail; registro manual de pagamentos; dashboard financeiro (navegação entre meses e versão do morador); controle de inadimplência; fornecedores (básico).
+- Financeiro: lançamento de despesas (com comprovante); categorias de despesa; competência mensal; geração de cobranças (rateio por fração ideal); fundo de reserva; consumo individual (água e gás); fatura em PDF com envio automático por e-mail; registro manual de pagamentos; dashboard financeiro (navegação entre meses e versão do morador); controle de inadimplência; fornecedores (básico).
 - Operações: agendamento de manutenção (alertas D-3 e D-1); comunicados internos (categorias manutenção, importante e geral; SignalR e e-mail); registro de ocorrências (chamados de conserto e reclamações de barulho; quem reclama não aparece para o reclamado).
 - Plataforma e compliance: importação das planilhas (CSV e Excel); backup automático diário; LGPD (consentimento com data e versão); log de auditoria imutável; modo escuro (tema claro e escuro à escolha do usuário); multi-condomínio (isolamento por tenant); painel da plataforma (SuperAdmin: condomínios e síndicos, suspender, reativar e excluir).
 
@@ -28,14 +28,14 @@ A Fase 1 sai em duas releases. A 1a leva o que a síndica precisa para largar as
 - Condomínio avançado: animais de estimação (por unidade: espécie, nome, raça, porte, foto e carteira de vacinação com validade e alerta); checklist de vistoria; painel do morador.
 - Inteligência artificial (Claude API): assistente para a síndica; previsão de inadimplência; comunicados gerados por IA; análise preditiva de manutenção; relatório mensal por IA.
 
-**Fase 3: Avançado, condomínio 100% digital (22 módulos)**
+**Fase 3: Avançado, condomínio 100% digital (20 módulos)**
 - Governança: votações e enquetes; assembleia digital; ata automática; painel do conselho; procuração digital.
-- Financeiro completo: fundo de reserva; previsão orçamentária anual; conciliação bancária (OFX e CSV); DRE simplificado; nota fiscal eletrônica; consumo individual (água e gás); contas a pagar com aprovação do conselho.
+- Financeiro completo: previsão orçamentária anual; conciliação bancária (OFX e CSV); DRE simplificado; nota fiscal eletrônica; contas a pagar com aprovação do conselho.
 - Operações completas: plano de manutenção preventiva (ABNT NBR 5674); contratos (completo); controle de acesso da portaria; assinatura digital de documentos (ICP-Brasil); infrações e multas; gestão de funcionários; mudanças e obras.
 - Segurança e compliance: LGPD (portabilidade e exclusão); 2FA (TOTP, obrigatório para o `SuperAdmin` e o `Manager`).
 - Plataforma: app mobile (PWA).
 
-Situação em 10/11/2026: do Financeiro da Fase 1 já existem despesas, grupos, competência mensal, fechamento do mês com rateio por unidade e reabertura (ver "Financeiro"). Também já existem, antes da fase em que o roadmap os colocou (Fase 3), o fundo de reserva e o consumo individual de água, esgoto e gás; o roadmap acima mantém a classificação original até o Aurel decidir movê-los. Ainda faltam, no Financeiro da Fase 1: comprovante da despesa, fatura em PDF, registro de pagamentos, dashboard e inadimplência.
+Situação em 10/11/2026: do Financeiro da Fase 1 já existem despesas, grupos, competência mensal, fechamento do mês com rateio por unidade e reabertura (ver "Financeiro"). O fundo de reserva e o consumo individual de água, esgoto e gás também já existem. Ainda faltam, no Financeiro da Fase 1: comprovante da despesa, fatura em PDF, registro de pagamentos, dashboard e inadimplência.
 
 Documentos de planejamento, fora do repositório (pasta `Urban` da Área de Trabalho do Aurel): Urban-01 a Urban-07 (arquitetura, mensageria, módulos, stack, estrutura, CI/CD e modelo de dados). Estão em português e parcialmente desatualizados (PrimeNG virou Angular Material; nomes de módulos, schemas e tabelas em português viram inglês). Em caso de conflito vale este arquivo.
 
