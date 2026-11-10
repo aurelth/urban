@@ -13,6 +13,7 @@ import {
   stubMonth,
 } from '../support/financeiro';
 import { READINGS_PATH, stubReadings } from '../support/leituras';
+import { UNITS_PATH, stubUnits } from '../support/unidades';
 import { PALETTE, themeErrorColor } from '../support/layout';
 import { stubSignedIn } from '../support/session';
 
@@ -407,7 +408,7 @@ describe('Lançamentos do mês', () => {
       cy.get('[data-testid="close-month"]').click();
       cy.get('urban-close-month-dialog').contains('button', 'Fechar mês').click();
       cy.wait('@closePending');
-      cy.get('[data-testid="readings-pending-link"]')
+      cy.get('[data-testid="failure-link"]')
         .should('contain.text', 'Informar as leituras do mês')
         .click();
 
@@ -442,7 +443,10 @@ describe('Lançamentos do mês', () => {
 
     it('explica no dialogo quando as unidades ainda nao bastam para o rateio', () => {
       stubMonth(FILLED_MONTH);
-      stubFinanceRejected('POST', CLOSE, 422, 'condominium.apportionment_not_ready', 'close');
+      stubFinanceRejected('POST', CLOSE, 422, 'condominium.apportionment_not_ready', 'close', {
+        reason: 'fractions_total',
+        fractionTotal: 0.05,
+      });
       cy.visit(ENTRIES_PATH);
 
       cy.get('[data-testid="close-month"]').click();
@@ -451,9 +455,33 @@ describe('Lançamentos do mês', () => {
       cy.wait('@close');
       cy.get('urban-close-month-dialog [role="alert"]').should(
         'contain.text',
-        'Complete os dados das unidades',
+        'A soma das frações ideais das unidades ativas é 5% e precisa chegar a 100%',
       );
+      cy.get('[data-testid="failure-link"]').should('contain.text', 'Abrir as unidades');
       cy.get('[data-testid="closing-card"]').should('not.exist');
+    });
+
+    it('leva as unidades quando elas ainda nao bastam para o rateio', () => {
+      stubMonth(FILLED_MONTH);
+      stubFinanceRejected('POST', CLOSE, 422, 'condominium.apportionment_not_ready', 'close', {
+        reason: 'fractions_missing',
+        units: [{ block: null, number: '301' }],
+        unitCount: 1,
+      });
+      stubUnits();
+      cy.visit(ENTRIES_PATH);
+
+      cy.get('[data-testid="close-month"]').click();
+      cy.get('urban-close-month-dialog').contains('button', 'Fechar mês').click();
+      cy.wait('@close');
+      cy.get('urban-close-month-dialog [role="alert"]').should(
+        'contain.text',
+        'Falta a fração ideal da unidade 301',
+      );
+      cy.get('[data-testid="failure-link"]').click();
+
+      cy.location('pathname').should('eq', UNITS_PATH);
+      cy.get('urban-close-month-dialog').should('not.exist');
     });
 
     it('no mes fechado trava a correcao e o cancelamento, e reabre pelo dialogo', () => {

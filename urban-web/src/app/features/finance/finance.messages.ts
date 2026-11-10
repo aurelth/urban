@@ -1,4 +1,5 @@
 import { MessagesByCode } from '../../core/http/problem-message';
+import { describeApportionmentShortfall } from './apportionment-shortfall';
 
 const FIELD_MESSAGES: MessagesByCode = {
   'expense_group.name.invalid': 'Informe o nome do grupo, com até 60 caracteres',
@@ -44,8 +45,7 @@ const FIELD_MESSAGES: MessagesByCode = {
   'closing.readings_pending':
     'Falta a leitura de água ou gás de alguma unidade. Informe as leituras do mês antes de fechar',
   'closing.month_is_closed': 'O mês está fechado. Reabra o mês para mudar os lançamentos',
-  'condominium.apportionment_not_ready':
-    'Complete os dados das unidades, na tela de unidades, para o método de rateio escolhido',
+  'condominium.apportionment_not_ready': describeApportionmentShortfall,
   'finance.version.required': 'Recarregue a lista antes de continuar',
   'finance.condominium_not_found': 'Cadastre o condomínio antes de usar o financeiro',
   'identity.user.not_manager': 'Só o síndico pode usar o financeiro',

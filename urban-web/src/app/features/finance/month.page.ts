@@ -27,6 +27,7 @@ import {
 import { describeProblem } from '../../core/http/problem-message';
 import { unitLabel } from '../units/unit-values';
 import { basisLabel, chargeShare, chargesTotal, lineDetail } from './closing';
+import { closeFailureOf } from './close-failure';
 import { openCloseMonthDialog } from './close-month.dialog';
 import { openEntryAmountDialog } from './entry-amount.dialog';
 import {
@@ -131,10 +132,7 @@ export class MonthPage implements OnInit {
       save: async (dueDate) => {
         const problem = await this.store.close(dueDate);
         if (problem !== null) {
-          return {
-            message: describeProblem(problem, FINANCE_FORM_MESSAGES),
-            readingsPending: problem.code === 'closing.readings_pending',
-          };
+          return closeFailureOf(problem, this.month());
         }
         this.notice.set('Mês fechado');
         return null;

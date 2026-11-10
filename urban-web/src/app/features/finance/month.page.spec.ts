@@ -809,7 +809,7 @@ describe('MonthPage', () => {
       ).toContain('Falta a leitura de água ou gás de alguma unidade');
       expect(
         document
-          .querySelector('urban-close-month-dialog [data-testid="readings-pending-link"]')
+          .querySelector('urban-close-month-dialog [data-testid="failure-link"]')
           ?.getAttribute('href'),
       ).toBe('/financeiro/leituras?mes=2026-11');
       expect(testId(html, 'closing-card')).toBeNull();
@@ -822,18 +822,23 @@ describe('MonthPage', () => {
       await settle(fixture);
       submitDialog('urban-close-month-dialog');
       await flushPromises();
-      http.expectOne(CLOSE_2026_11).flush(problem(422, 'condominium.apportionment_not_ready'), {
-        status: 422,
-        statusText: 'Inválido',
-      });
+      http.expectOne(CLOSE_2026_11).flush(
+        problem(422, 'condominium.apportionment_not_ready', 'detalhe da API', {
+          reason: 'fractions_total',
+          fractionTotal: 0.05,
+        }),
+        { status: 422, statusText: 'Inválido' },
+      );
       await settle(fixture);
 
       expect(
         document.querySelector('urban-close-month-dialog [role="alert"]')?.textContent,
-      ).toContain('Complete os dados das unidades');
+      ).toContain('A soma das frações ideais das unidades ativas é 5% e precisa chegar a 100%');
       expect(
-        document.querySelector('urban-close-month-dialog [data-testid="readings-pending-link"]'),
-      ).toBeNull();
+        document
+          .querySelector('urban-close-month-dialog [data-testid="failure-link"]')
+          ?.getAttribute('href'),
+      ).toBe('/unidades');
       expect(testId(html, 'closing-card')).toBeNull();
     });
 

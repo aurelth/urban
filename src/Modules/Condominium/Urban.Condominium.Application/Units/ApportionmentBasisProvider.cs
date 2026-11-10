@@ -30,9 +30,9 @@ public sealed class ApportionmentBasisProvider(IUnits units, IApportionments app
         ApportionmentMethod method = setting.Condominium.ApportionmentMethod;
         List<CondominiumUnit> active = [.. (await units.AllAsync(cancellationToken)).Where(unit => unit.IsActive)];
 
-        if (!ApportionmentReadiness.IsReady(method, active))
+        if (ApportionmentReadiness.Diagnose(method, active) is { } shortfall)
         {
-            return Result.Failure<ApportionmentBasis>(CondominiumErrors.ApportionmentNotReady);
+            return Result.Failure<ApportionmentBasis>(CondominiumErrors.ApportionmentNotReadyFor(shortfall));
         }
 
         return Result.Success(new ApportionmentBasis(

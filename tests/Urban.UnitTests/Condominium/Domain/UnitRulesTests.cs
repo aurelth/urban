@@ -199,4 +199,92 @@ public class UnitRulesTests
     {
         ApportionmentReadiness.IsReady(method, []).Should().BeFalse();
     }
+
+    // ---- O que falta para o método funcionar ----
+
+    [Fact]
+    public void Diagnose_WhenTheDataCoversTheMethod_FindsNothingMissing()
+    {
+        CondominiumUnit[] complete = [UnitBuilders.Unit(number: "1", idealFraction: 0.5m), UnitBuilders.Unit(number: "2", idealFraction: 0.5m)];
+
+        ApportionmentReadiness.Diagnose(ApportionmentMethod.IdealFraction, complete).Should().BeNull();
+    }
+
+    [Theory]
+    [InlineData(ApportionmentMethod.IdealFraction)]
+    [InlineData(ApportionmentMethod.EqualShare)]
+    [InlineData(ApportionmentMethod.Area)]
+    public void Diagnose_WithoutActiveUnits_SaysThereAreNone(ApportionmentMethod method)
+    {
+        ApportionmentShortfall? shortfall = ApportionmentReadiness.Diagnose(method, [UnitBuilders.Deactivated()]);
+
+        shortfall.Should().NotBeNull();
+        shortfall.Reason.Should().Be(ApportionmentShortfallReason.NoActiveUnits);
+        shortfall.Units.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Diagnose_IdealFraction_NamesTheActiveUnitsWithoutAFraction()
+    {
+        CondominiumUnit[] units =
+        [
+            UnitBuilders.Unit(number: "1", idealFraction: 0.5m),
+            UnitBuilders.Unit(block: "B", number: "2"),
+            UnitBuilders.Unit(number: "3"),
+            UnitBuilders.Deactivated(number: "4"),
+        ];
+
+        ApportionmentShortfall? shortfall = ApportionmentReadiness.Diagnose(ApportionmentMethod.IdealFraction, units);
+
+        shortfall.Should().NotBeNull();
+        shortfall.Reason.Should().Be(ApportionmentShortfallReason.FractionsMissing);
+        shortfall.Units.Should().Equal(new UnitReference("B", "2"), new UnitReference(null, "3"));
+    }
+
+    [Fact]
+    public void Diagnose_IdealFraction_GivesTheTotalWhenTheFractionsDoNotReachOneHundredPercent()
+    {
+        CondominiumUnit[] units = [UnitBuilders.Unit(number: "1", idealFraction: 0.02m), UnitBuilders.Unit(number: "2", idealFraction: 0.03m)];
+
+        ApportionmentShortfall? shortfall = ApportionmentReadiness.Diagnose(ApportionmentMethod.IdealFraction, units);
+
+        shortfall.Should().NotBeNull();
+        shortfall.Reason.Should().Be(ApportionmentShortfallReason.FractionsTotal);
+        shortfall.FractionTotal.Should().Be(0.05m);
+        shortfall.Units.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Diagnose_IdealFraction_AcceptsTheRoundingToleranceOnTheTotal()
+    {
+        CondominiumUnit[] units = [UnitBuilders.Unit(number: "1", idealFraction: 0.5m), UnitBuilders.Unit(number: "2", idealFraction: 0.49995m)];
+
+        ApportionmentReadiness.Diagnose(ApportionmentMethod.IdealFraction, units).Should().BeNull();
+    }
+
+    [Fact]
+    public void Diagnose_Area_NamesTheActiveUnitsWithoutAnArea()
+    {
+        CondominiumUnit[] units = [UnitBuilders.Unit(number: "1", area: 50m), UnitBuilders.Unit(number: "2"), UnitBuilders.Deactivated(number: "3")];
+
+        ApportionmentShortfall? shortfall = ApportionmentReadiness.Diagnose(ApportionmentMethod.Area, units);
+
+        shortfall.Should().NotBeNull();
+        shortfall.Reason.Should().Be(ApportionmentShortfallReason.AreasMissing);
+        shortfall.Units.Should().Equal(new UnitReference(null, "2"));
+    }
+
+    [Fact]
+    public void Diagnose_EqualShare_IsNeverShortWhileThereAreActiveUnits()
+    {
+        ApportionmentReadiness.Diagnose(ApportionmentMethod.EqualShare, [UnitBuilders.Unit()]).Should().BeNull();
+    }
+
+    [Fact]
+    public void Diagnose_WithAMethodThatDoesNotExist_Throws()
+    {
+        Action act = () => ApportionmentReadiness.Diagnose((ApportionmentMethod)99, [UnitBuilders.Unit()]);
+
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
 }

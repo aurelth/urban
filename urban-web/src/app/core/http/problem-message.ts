@@ -1,11 +1,15 @@
 import { ApiProblem } from './api-problem';
 
-/** Texto da tela para cada código da API. A interface é dona do texto; a API só garante o código. */
-export type MessagesByCode = Readonly<Record<string, string>>;
+/**
+ * Texto da tela para cada código da API. A interface é dona do texto; a API só garante o código (e, quando a frase depende de
+ * números ou nomes, os manda em `data`: aí o texto é uma função do problema).
+ */
+export type MessagesByCode = Readonly<Record<string, string | ((problem: ApiProblem) => string)>>;
 
 export function describeProblem(problem: ApiProblem, byCode: MessagesByCode): string {
   if (problem.code !== null && Object.hasOwn(byCode, problem.code)) {
-    return byCode[problem.code];
+    const message = byCode[problem.code];
+    return typeof message === 'function' ? message(problem) : message;
   }
   switch (problem.status) {
     case 0:

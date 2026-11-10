@@ -29,8 +29,9 @@ export function problem(
   status: number,
   code: string,
   detail = 'detalhe da API',
-): { status: number; code: string; detail: string } {
-  return { status, code, detail };
+  data?: Record<string, unknown>,
+): { status: number; code: string; detail: string; data?: Record<string, unknown> } {
+  return data === undefined ? { status, code, detail } : { status, code, detail, data };
 }
 
 /** Entra pela API simulada, como a tela de login faz, e deixa o store autenticado. */

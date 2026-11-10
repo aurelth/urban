@@ -9,6 +9,8 @@ export interface ApiProblem {
   readonly detail: string | null;
   /** Segundos pedidos pelo cabeçalho Retry-After (limite de requisições). */
   readonly retryAfterSeconds: number | null;
+  /** Os números e nomes que explicam a falha (campo `data` do problema), quando a API os manda. */
+  readonly data?: Readonly<Record<string, unknown>>;
 }
 
 const NO_RESPONSE: ApiProblem = { status: 0, code: null, detail: null, retryAfterSeconds: null };
@@ -23,6 +25,7 @@ export function toApiProblem(error: unknown): ApiProblem {
     code: textOrNull(body['code']),
     detail: textOrNull(body['detail']),
     retryAfterSeconds: parseSeconds(error.headers.get('Retry-After')),
+    data: isRecord(body['data']) ? body['data'] : undefined,
   };
 }
 

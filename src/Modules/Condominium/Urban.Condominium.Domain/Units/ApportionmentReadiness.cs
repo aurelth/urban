@@ -11,20 +11,45 @@ public static class ApportionmentReadiness
     /// </summary>
     public const decimal FractionTolerance = 0.0001m;
 
-    public static bool IsReady(ApportionmentMethod method, IReadOnlyCollection<CondominiumUnit> units)
+    public static bool IsReady(ApportionmentMethod method, IReadOnlyCollection<CondominiumUnit> units) =>
+        Diagnose(method, units) is null;
+
+    /// <summary>O que falta para o método funcionar com estas unidades, ou nada quando já basta. Só as unidades ativas contam.</summary>
+    public static ApportionmentShortfall? Diagnose(ApportionmentMethod method, IReadOnlyCollection<CondominiumUnit> units)
     {
         List<CondominiumUnit> active = [.. units.Where(u => u.IsActive)];
         if (active.Count == 0)
         {
-            return false;
+            return ApportionmentShortfall.NoActiveUnits();
         }
 
         return method switch
         {
-            ApportionmentMethod.IdealFraction => active.All(u => u.IdealFraction is not null) && IdealFractions.Whole - IdealFractions.TotalOf(active) <= FractionTolerance,
-            ApportionmentMethod.EqualShare => true,
-            ApportionmentMethod.Area => active.All(u => u.Area is not null),
-            _ => false,
+            ApportionmentMethod.IdealFraction => DiagnoseFractions(active),
+            ApportionmentMethod.EqualShare => null,
+            ApportionmentMethod.Area => DiagnoseAreas(active),
+            _ => throw new ArgumentOutOfRangeException(nameof(method), method, "Método de rateio desconhecido"),
         };
     }
+
+    private static ApportionmentShortfall? DiagnoseFractions(List<CondominiumUnit> active)
+    {
+        List<UnitReference> missing = ReferencesOf(active, u => u.IdealFraction is null);
+        if (missing.Count > 0)
+        {
+            return ApportionmentShortfall.FractionsMissing(missing);
+        }
+
+        decimal total = IdealFractions.TotalOf(active);
+        return IdealFractions.Whole - total <= FractionTolerance ? null : ApportionmentShortfall.FractionsTotal(total);
+    }
+
+    private static ApportionmentShortfall? DiagnoseAreas(List<CondominiumUnit> active)
+    {
+        List<UnitReference> missing = ReferencesOf(active, u => u.Area is null);
+        return missing.Count > 0 ? ApportionmentShortfall.AreasMissing(missing) : null;
+    }
+
+    private static List<UnitReference> ReferencesOf(List<CondominiumUnit> active, Func<CondominiumUnit, bool> lacksTheValue) =>
+        [.. active.Where(lacksTheValue).Select(u => new UnitReference(u.Block, u.Number))];
 }

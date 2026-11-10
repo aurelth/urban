@@ -16,6 +16,24 @@ describe('toApiProblem', () => {
     });
   });
 
+  it('guarda os dados que a API manda junto do erro', () => {
+    const error = new HttpErrorResponse({
+      status: 422,
+      error: {
+        code: 'condominium.apportionment_not_ready',
+        data: { reason: 'fractions_total', fractionTotal: 0.05 },
+      },
+    });
+
+    expect(toApiProblem(error).data).toEqual({ reason: 'fractions_total', fractionTotal: 0.05 });
+  });
+
+  it.each([['texto solto'], [42], [null]])('ignora dados que nao sao um objeto (%p)', (data) => {
+    const error = new HttpErrorResponse({ status: 422, error: { code: 'x.y', data } });
+
+    expect(toApiProblem(error).data).toBeUndefined();
+  });
+
   it('le o Retry-After de um 429', () => {
     const error = new HttpErrorResponse({
       status: 429,

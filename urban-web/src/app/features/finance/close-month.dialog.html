@@ -22,16 +22,16 @@
         <mat-icon svgIcon="error" aria-hidden="true" />
         <span>{{ problem.message }}</span>
       </p>
-      @if (problem.readingsPending) {
+      @if (problem.link; as link) {
         <a
           mat-stroked-button
-          data-testid="readings-pending-link"
-          routerLink="/financeiro/leituras"
-          [queryParams]="{ mes: config.month }"
+          data-testid="failure-link"
+          [routerLink]="link.path"
+          [queryParams]="link.query"
           (click)="ref.close(false)"
         >
-          <mat-icon svgIcon="water_drop" />
-          Informar as leituras do mês
+          <mat-icon [svgIcon]="link.icon" />
+          {{ link.label }}
         </a>
       }
     }
