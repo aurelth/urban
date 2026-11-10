@@ -1,11 +1,11 @@
 <h2 mat-dialog-title>Fechar {{ title }}</h2>
 <form [formGroup]="form" (ngSubmit)="confirm()" novalidate>
   <mat-dialog-content>
-    <p class="mt-0">
+    <p class="mt-0 mb-4">
       O total de {{ total }} será dividido entre as unidades, conforme o método de rateio do
       condomínio
     </p>
-    <p>
+    <p class="mb-6">
       Depois de fechado, os valores e os cancelamentos do mês ficam travados. Se precisar corrigir
       algo, você pode reabrir o mês
     </p>
@@ -25,6 +25,7 @@
       @if (problem.link; as link) {
         <a
           mat-stroked-button
+          class="mt-4"
           data-testid="failure-link"
           [routerLink]="link.path"
           [queryParams]="link.query"

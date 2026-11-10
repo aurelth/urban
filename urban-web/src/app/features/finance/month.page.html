@@ -258,7 +258,7 @@
 
         @for (section of store.sections(); track section.group.groupId) {
           <section class="mb-6" data-testid="group-section">
-            <div class="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+            <div class="mb-4 flex flex-wrap items-baseline justify-between gap-2">
               <h2 class="m-0 text-lg font-medium text-primary">{{ section.group.groupName }}</h2>
               <span class="text-on-surface-variant">{{ money(section.group.total) }}</span>
             </div>

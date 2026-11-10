@@ -20,7 +20,7 @@ const FALLBACK_ERROR = 'Confira este campo';
   imports: [ReactiveFormsModule, MatFormField, MatLabel, MatError, MatHint, MenuSelect],
   templateUrl: './select.field.html',
   viewProviders: [USE_PARENT_FORM],
-  host: { class: 'block', '[class.mb-5]': '!hint()' },
+  host: { class: 'block', '[class.mb-5]': '!hint()', '[class.mb-3]': 'hint()' },
 })
 export class SelectField extends FormFieldBase {
   readonly name = input.required<string>();
