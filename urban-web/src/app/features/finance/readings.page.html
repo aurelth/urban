@@ -110,7 +110,7 @@
           </div>
         } @else {
           <ul class="mb-4 flex list-none flex-col gap-1 p-0" data-testid="coverage">
-            @for (line of coverage(); track line) {
+            @for (line of coverage(); track $index) {
               <li class="text-on-surface-variant" data-testid="coverage-line">{{ line }}</li>
             }
           </ul>
