@@ -27,7 +27,7 @@ import { FormFieldBase, USE_PARENT_FORM } from '../form-field.base';
   templateUrl: './password.field.html',
   viewProviders: [USE_PARENT_FORM],
   // Com a regra da senha à mostra, ela ocupa o lugar do espaço de baixo.
-  host: { class: 'block', '[class.mb-5]': '!policy()' },
+  host: { class: 'block', '[class.mb-5]': '!policy()', '[class.mb-6]': 'policy()' },
 })
 export class PasswordField extends FormFieldBase {
   readonly name = input('password');

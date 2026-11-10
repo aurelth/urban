@@ -25,7 +25,7 @@
       <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col" novalidate>
         <urban-password-field autocomplete="new-password" [policy]="true" />
 
-        <mat-checkbox formControlName="accepted" class="-ml-2">
+        <mat-checkbox formControlName="accepted" class="-ml-2 mb-3">
           Li e aceito os
           <a routerLink="/termos" target="_blank" rel="noopener" class="text-primary underline"
             >Termos de uso</a

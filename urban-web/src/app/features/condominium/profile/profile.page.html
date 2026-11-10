@@ -42,7 +42,7 @@
     <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-6" novalidate>
       <mat-card appearance="outlined" data-testid="manager-section">
         <mat-card-content class="p-6">
-          <h2 class="mb-4 text-xl font-semibold">Seus dados</h2>
+          <h2 class="mb-6 text-xl font-semibold">Seus dados</h2>
           <div formGroupName="manager" class="flex flex-col">
             <div class="grid gap-x-4 sm:grid-cols-2">
               <urban-text-field
@@ -106,7 +106,7 @@
 
       <mat-card appearance="outlined" data-testid="condominium-section">
         <mat-card-content class="p-6">
-          <h2 class="mb-4 text-xl font-semibold">Dados do condomínio</h2>
+          <h2 class="mb-6 text-xl font-semibold">Dados do condomínio</h2>
           <div formGroupName="condominium" class="flex flex-col">
             <urban-text-field
               name="name"
@@ -118,7 +118,7 @@
               <span class="text-on-surface-variant">CNPJ</span>
               <span class="ml-2 font-medium" data-testid="cnpj">{{ data.condominium.cnpj }}</span>
             </p>
-            <p class="mb-5 text-sm text-on-surface-variant">
+            <p class="mb-6 text-sm text-on-surface-variant">
               O CNPJ não pode ser alterado. Se ele estiver errado, fale com o suporte
             </p>
             <urban-address-fields groupName="address" [personal]="false" />

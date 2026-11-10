@@ -8,7 +8,7 @@
   @for (row of rows(); track row; let index = $index) {
     <div [formGroupName]="index" class="flex items-start gap-2" data-testid="band-row">
       <div class="min-w-0 flex-1">
-        <p class="m-0 mb-1 text-sm text-on-surface-variant">Faixa {{ index + 1 }}</p>
+        <p class="m-0 mb-6 text-sm text-on-surface-variant">Faixa {{ index + 1 }}</p>
         <div class="grid gap-x-3 md:grid-cols-3">
           <urban-text-field
             name="upTo"
@@ -33,7 +33,7 @@
       <button
         mat-icon-button
         type="button"
-        class="mt-8"
+        class="mt-13"
         data-testid="remove-band"
         [attr.aria-label]="'Remover faixa ' + (index + 1)"
         [attr.title]="'Remover faixa ' + (index + 1)"
