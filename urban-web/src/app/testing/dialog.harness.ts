@@ -2,6 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
+import { provideRouter } from '@angular/router';
 import { provideUrbanIcons } from '../core/theme/icons';
 import { fieldValueOf, menuSelectOptions, setFieldValue } from './menu-select';
 
@@ -10,6 +11,7 @@ export function configureDialogTest(): void {
     providers: [
       provideHttpClient(),
       provideHttpClientTesting(),
+      provideRouter([{ path: '**', children: [] }]),
       provideUrbanIcons(),
       { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
     ],

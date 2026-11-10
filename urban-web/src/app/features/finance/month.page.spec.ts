@@ -807,6 +807,11 @@ describe('MonthPage', () => {
       expect(
         document.querySelector('urban-close-month-dialog [role="alert"]')?.textContent,
       ).toContain('Falta a leitura de água ou gás de alguma unidade');
+      expect(
+        document
+          .querySelector('urban-close-month-dialog [data-testid="readings-pending-link"]')
+          ?.getAttribute('href'),
+      ).toBe('/financeiro/leituras?mes=2026-11');
       expect(testId(html, 'closing-card')).toBeNull();
     });
 
@@ -826,6 +831,9 @@ describe('MonthPage', () => {
       expect(
         document.querySelector('urban-close-month-dialog [role="alert"]')?.textContent,
       ).toContain('Complete os dados das unidades');
+      expect(
+        document.querySelector('urban-close-month-dialog [data-testid="readings-pending-link"]'),
+      ).toBeNull();
       expect(testId(html, 'closing-card')).toBeNull();
     });
 

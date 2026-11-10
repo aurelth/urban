@@ -12,6 +12,7 @@ import {
   stubFinanceRejected,
   stubMonth,
 } from '../support/financeiro';
+import { READINGS_PATH, stubReadings } from '../support/leituras';
 import { PALETTE, themeErrorColor } from '../support/layout';
 import { stubSignedIn } from '../support/session';
 
@@ -395,6 +396,25 @@ describe('Lançamentos do mês', () => {
         'contain.text',
         'Falta a leitura de água ou gás de alguma unidade',
       );
+    });
+
+    it('leva as leituras do mes quando falta leitura de alguma unidade', () => {
+      stubMonth(FILLED_MONTH);
+      stubFinanceRejected('POST', CLOSE, 422, 'closing.readings_pending', 'closePending');
+      stubReadings();
+      cy.visit(ENTRIES_PATH);
+
+      cy.get('[data-testid="close-month"]').click();
+      cy.get('urban-close-month-dialog').contains('button', 'Fechar mês').click();
+      cy.wait('@closePending');
+      cy.get('[data-testid="readings-pending-link"]')
+        .should('contain.text', 'Informar as leituras do mês')
+        .click();
+
+      cy.location('pathname').should('eq', READINGS_PATH);
+      cy.location('search').should('eq', '?mes=2026-11');
+      cy.get('urban-close-month-dialog').should('not.exist');
+      cy.get('[data-testid="month-title"]').should('contain.text', 'Novembro de 2026');
     });
 
     it('destaca o card do mes fechado em branco sobre o fundo claro da pagina', () => {
