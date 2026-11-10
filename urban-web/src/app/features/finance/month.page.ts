@@ -131,7 +131,10 @@ export class MonthPage implements OnInit {
       save: async (dueDate) => {
         const problem = await this.store.close(dueDate);
         if (problem !== null) {
-          return describeProblem(problem, FINANCE_FORM_MESSAGES);
+          return {
+            message: describeProblem(problem, FINANCE_FORM_MESSAGES),
+            readingsPending: problem.code === 'closing.readings_pending',
+          };
         }
         this.notice.set('Mês fechado');
         return null;

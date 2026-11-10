@@ -9,18 +9,25 @@ import {
   MatDialogTitle,
 } from '@angular/material/dialog';
 import { MatIcon } from '@angular/material/icon';
+import { RouterLink } from '@angular/router';
 import { formatMoney } from '../../core/finance/money';
 import { formatDate, monthTitle, parseDueDate, suggestedDueDate } from '../../core/finance/month';
 import { TextField } from '../../shared/ui/text-field/text.field';
 import { openFinanceDialog } from './finance.dialog';
+
+/** Por que o fechamento foi recusado: o texto para a pessoa e se a saída é informar as leituras do mês. */
+export interface CloseFailure {
+  readonly message: string;
+  readonly readingsPending?: boolean;
+}
 
 export interface CloseMonthDialogConfig {
   /** O mês que vai fechar, "AAAA-MM". */
   readonly month: string;
   /** O total do mês, que será dividido entre as unidades. */
   readonly total: number;
-  /** Fecha o mês com o vencimento ("AAAA-MM-DD"). Devolve nulo quando deu certo ou o texto do erro (o diálogo continua aberto). */
-  readonly save: (dueDate: string) => Promise<string | null>;
+  /** Fecha o mês com o vencimento ("AAAA-MM-DD"). Devolve nulo quando deu certo ou o motivo da recusa (o diálogo continua aberto). */
+  readonly save: (dueDate: string) => Promise<CloseFailure | null>;
 }
 
 /**
@@ -36,6 +43,7 @@ export interface CloseMonthDialogConfig {
     MatDialogContent,
     MatDialogTitle,
     MatIcon,
+    RouterLink,
     TextField,
   ],
   templateUrl: './close-month.dialog.html',
@@ -56,7 +64,7 @@ export class CloseMonthDialog {
   });
 
   protected readonly busy = signal(false);
-  protected readonly error = signal<string | null>(null);
+  protected readonly failure = signal<CloseFailure | null>(null);
 
   protected readonly dueDateErrors = {
     dueDate: `Informe uma data válida, a partir de ${formatDate(`${this.config.month}-01`)}`,
@@ -73,15 +81,15 @@ export class CloseMonthDialog {
     }
 
     this.busy.set(true);
-    this.error.set(null);
-    const message = await this.config.save(dueDate);
+    this.failure.set(null);
+    const failure = await this.config.save(dueDate);
     this.busy.set(false);
 
-    if (message === null) {
+    if (failure === null) {
       this.ref.close(true);
       return;
     }
-    this.error.set(message);
+    this.failure.set(failure);
   }
 }
 
