@@ -33,8 +33,8 @@ function setup(): { save: Save; result: Promise<boolean> } {
   return { save, result };
 }
 
-function readingsLinkOf(): HTMLAnchorElement | null {
-  return dialogOf(TAG).querySelector<HTMLAnchorElement>('[data-testid="readings-pending-link"]');
+function failureLinkOf(): HTMLAnchorElement | null {
+  return dialogOf(TAG).querySelector<HTMLAnchorElement>('[data-testid="failure-link"]');
 }
 
 describe('CloseMonthDialog', () => {
@@ -95,14 +95,19 @@ describe('CloseMonthDialog', () => {
 
     expect(alertOf(TAG)).toBe('Complete os dados das unidades');
     expect(fieldOf(TAG, 'dueDate').value).toBe('10/12/2026');
-    expect(readingsLinkOf()).toBeNull();
+    expect(failureLinkOf()).toBeNull();
   });
 
   it('leva as leituras do mes quando falta leitura de alguma unidade', async () => {
     const { save } = setup();
     save.mockResolvedValue({
       message: 'Informe as leituras do mês antes de fechar',
-      readingsPending: true,
+      link: {
+        label: 'Informar as leituras do mês',
+        icon: 'water_drop',
+        path: '/financeiro/leituras',
+        query: { mes: '2026-11' },
+      },
     });
 
     submitDialog(TAG);
@@ -110,22 +115,42 @@ describe('CloseMonthDialog', () => {
     TestBed.tick();
 
     expect(alertOf(TAG)).toBe('Informe as leituras do mês antes de fechar');
-    expect(readingsLinkOf()?.textContent?.trim()).toBe('Informar as leituras do mês');
-    expect(readingsLinkOf()?.getAttribute('href')).toBe('/financeiro/leituras?mes=2026-11');
+    expect(failureLinkOf()?.textContent?.trim()).toBe('Informar as leituras do mês');
+    expect(failureLinkOf()?.getAttribute('href')).toBe('/financeiro/leituras?mes=2026-11');
     expect(fieldOf(TAG, 'dueDate').value).toBe('10/12/2026');
+  });
+
+  it('mostra o link que a falha pede, com o texto e o caminho dados', async () => {
+    const { save } = setup();
+    save.mockResolvedValue({
+      message: 'Falta a fração ideal da unidade 301',
+      link: { label: 'Abrir as unidades', icon: 'apartment', path: '/unidades' },
+    });
+
+    submitDialog(TAG);
+    await flushPromises();
+    TestBed.tick();
+
+    expect(failureLinkOf()?.textContent?.trim()).toBe('Abrir as unidades');
+    expect(failureLinkOf()?.getAttribute('href')).toBe('/unidades');
   });
 
   it('fecha o dialogo ao seguir para as leituras, sem fechar o mes', async () => {
     const { save, result } = setup();
     save.mockResolvedValue({
       message: 'Informe as leituras do mês antes de fechar',
-      readingsPending: true,
+      link: {
+        label: 'Informar as leituras do mês',
+        icon: 'water_drop',
+        path: '/financeiro/leituras',
+        query: { mes: '2026-11' },
+      },
     });
 
     submitDialog(TAG);
     await flushPromises();
     TestBed.tick();
-    readingsLinkOf()!.click();
+    failureLinkOf()!.click();
     await flushPromises();
     TestBed.tick();
 
@@ -135,20 +160,27 @@ describe('CloseMonthDialog', () => {
 
   it('tira o link das leituras quando o proximo erro e outro', async () => {
     const { save } = setup();
-    save.mockResolvedValueOnce({ message: 'Faltam leituras', readingsPending: true });
+    save.mockResolvedValueOnce({
+      message: 'Faltam leituras',
+      link: {
+        label: 'Informar as leituras do mês',
+        icon: 'water_drop',
+        path: '/financeiro/leituras',
+      },
+    });
     save.mockResolvedValueOnce({ message: 'Complete os dados das unidades' });
 
     submitDialog(TAG);
     await flushPromises();
     TestBed.tick();
-    expect(readingsLinkOf()).not.toBeNull();
+    expect(failureLinkOf()).not.toBeNull();
 
     submitDialog(TAG);
     await flushPromises();
     TestBed.tick();
 
     expect(alertOf(TAG)).toBe('Complete os dados das unidades');
-    expect(readingsLinkOf()).toBeNull();
+    expect(failureLinkOf()).toBeNull();
   });
 
   it('cancelar fecha sem gravar', async () => {

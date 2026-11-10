@@ -17,6 +17,16 @@ describe('describeProblem', () => {
     expect(message).toBe('E-mail ou senha incorretos');
   });
 
+  it('deixa o texto do codigo ser montado a partir do problema', () => {
+    const byCode = {
+      'x.dinamico': (p: ApiProblem) => `Faltam ${String(p.data?.['count'])} itens`,
+    };
+
+    expect(describeProblem(problem({ code: 'x.dinamico', data: { count: 3 } }), byCode)).toBe(
+      'Faltam 3 itens',
+    );
+  });
+
   it('prefere o texto do codigo ao do status', () => {
     const message = describeProblem(
       problem({ status: 429, code: 'identity.login.invalid_credentials' }),

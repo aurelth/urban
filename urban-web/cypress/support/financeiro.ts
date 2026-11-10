@@ -115,10 +115,11 @@ export function stubFinanceRejected(
   statusCode: number,
   code: string,
   alias: string,
+  data?: Record<string, unknown>,
 ): void {
   cy.intercept(method, url, {
     statusCode,
-    body: { status: statusCode, code, detail: 'Detalhe da API' },
+    body: { status: statusCode, code, detail: 'Detalhe da API', ...(data ? { data } : {}) },
   }).as(alias);
 }
 

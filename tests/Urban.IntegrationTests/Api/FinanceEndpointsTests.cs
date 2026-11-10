@@ -945,7 +945,25 @@ public sealed class FinanceEndpointsTests(ApiFixture fixture) : IDisposable
         HttpResponseMessage response = await CloseAsync(manager, Month(0), "2099-12-10");
 
         response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
-        (await response.CodeAsync()).Should().Be("condominium.apportionment_not_ready");
+        JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("code").GetString().Should().Be("condominium.apportionment_not_ready");
+        body.GetProperty("data").GetProperty("reason").GetString().Should().Be("no_active_units");
+    }
+
+    [Fact]
+    public async Task Closing_with_fractions_that_do_not_reach_one_hundred_percent_says_the_current_total()
+    {
+        ManagerSession manager = await RegisterAsync();
+        await CreateUnitAsync(manager, "301", 0.02m);
+        await CreateUnitAsync(manager, "701", 0.03m);
+        await OpenMonthWithAFixedExpenseAsync(manager, 1000m);
+
+        HttpResponseMessage response = await CloseAsync(manager, Month(0), "2099-12-10");
+
+        response.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
+        JsonElement data = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("data");
+        data.GetProperty("reason").GetString().Should().Be("fractions_total");
+        data.GetProperty("fractionTotal").GetDecimal().Should().Be(0.05m);
     }
 
     [Fact]

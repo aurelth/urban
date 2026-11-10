@@ -194,6 +194,27 @@ public sealed class ErrorHttpMappingTests
     }
 
     [Fact]
+    public void Problem_carries_the_error_data_under_the_data_field()
+    {
+        Dictionary<string, object?> data = new() { ["reason"] = "fractions_total", ["fractionTotal"] = 0.05m };
+        Error error = CondominiumErrors.ApportionmentNotReady with { Data = data };
+
+        ProblemHttpResult result = (ProblemHttpResult)ErrorHttp.ToProblem(error);
+
+        result.StatusCode.Should().Be(422);
+        result.ProblemDetails.Extensions["data"].Should().BeSameAs(data);
+        result.ProblemDetails.Extensions["code"].Should().Be("condominium.apportionment_not_ready");
+    }
+
+    [Fact]
+    public void Problem_without_error_data_has_no_data_field()
+    {
+        ProblemHttpResult result = (ProblemHttpResult)ErrorHttp.ToProblem(LoginErrors.LockedOut);
+
+        result.ProblemDetails.Extensions.Should().NotContainKey("data");
+    }
+
+    [Fact]
     public void Unmapped_error_becomes_500_without_leaking_details()
     {
         ProblemHttpResult result = (ProblemHttpResult)ErrorHttp.ToProblem(new Error("x.never_mapped", "detalhe interno"));

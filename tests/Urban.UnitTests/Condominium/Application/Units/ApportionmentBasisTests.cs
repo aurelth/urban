@@ -26,6 +26,14 @@ public class ApportionmentBasisTests
 
     private ApportionmentBasisProvider Provider(UnitsTestKit? kit = null) => new((kit ?? _kit).Units.Object, _apportionments.Object, (kit ?? _kit).Tenant);
 
+    private static void AssertNotReady(Result<ApportionmentBasis> result, string reason)
+    {
+        result.IsFailure.Should().BeTrue();
+        result.Error.Code.Should().Be(CondominiumErrors.ApportionmentNotReady.Code);
+        result.Error.Data.Should().NotBeNull();
+        result.Error.Data!["reason"].Should().Be(reason);
+    }
+
     private void Units(params CondominiumUnit[] units) =>
         _kit.Units.Setup(u => u.AllAsync(It.IsAny<CancellationToken>())).ReturnsAsync(units);
 
@@ -93,7 +101,9 @@ public class ApportionmentBasisTests
 
         Result<ApportionmentBasis> result = await Provider().GetAsync(default);
 
-        result.Error.Should().Be(CondominiumErrors.ApportionmentNotReady);
+        AssertNotReady(result, "fractions_missing");
+        result.Error.Data!["unitCount"].Should().Be(1);
+        result.Error.Data["units"].Should().BeEquivalentTo(new[] { new { block = (string?)null, number = "102" } });
     }
 
     [Fact]
@@ -102,7 +112,11 @@ public class ApportionmentBasisTests
         _condominium.ChangeApportionmentMethod(ApportionmentMethod.IdealFraction);
         Units(_kit.NewUnit("101", idealFraction: 0.5m), _kit.NewUnit("102", idealFraction: 0.3m));
 
-        (await Provider().GetAsync(default)).Error.Should().Be(CondominiumErrors.ApportionmentNotReady);
+        Result<ApportionmentBasis> result = await Provider().GetAsync(default);
+
+        AssertNotReady(result, "fractions_total");
+        result.Error.Data!["fractionTotal"].Should().Be(0.8m);
+        result.Error.Data.Should().NotContainKey("units");
     }
 
     [Fact]
@@ -111,7 +125,32 @@ public class ApportionmentBasisTests
         _condominium.ChangeApportionmentMethod(ApportionmentMethod.EqualShare);
         Units(UnitBuilders.Deactivated(_kit.CondominiumId, "101"));
 
-        (await Provider().GetAsync(default)).Error.Should().Be(CondominiumErrors.ApportionmentNotReady);
+        AssertNotReady(await Provider().GetAsync(default), "no_active_units");
+    }
+
+    [Fact]
+    public async Task Get_ByArea_NamesTheActiveUnitsWithoutAnArea()
+    {
+        _condominium.ChangeApportionmentMethod(ApportionmentMethod.Area);
+        Units(_kit.NewUnit("101", area: 50m), _kit.NewUnit("102", "B"));
+
+        Result<ApportionmentBasis> result = await Provider().GetAsync(default);
+
+        AssertNotReady(result, "areas_missing");
+        result.Error.Data!["units"].Should().BeEquivalentTo(new[] { new { block = "B", number = "102" } });
+    }
+
+    [Fact]
+    public async Task Get_WithManyUnitsMissingData_NamesOnlyTheFirstFiveAndCountsAll()
+    {
+        _condominium.ChangeApportionmentMethod(ApportionmentMethod.Area);
+        Units([.. Enumerable.Range(101, 7).Select(number => _kit.NewUnit(number.ToString()))]);
+
+        Result<ApportionmentBasis> result = await Provider().GetAsync(default);
+
+        AssertNotReady(result, "areas_missing");
+        result.Error.Data!["unitCount"].Should().Be(7);
+        ((IEnumerable<object>)result.Error.Data["units"]!).Should().HaveCount(5);
     }
 
     [Fact]
