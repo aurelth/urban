@@ -15,10 +15,19 @@ import { formatDate, monthTitle, parseDueDate, suggestedDueDate } from '../../co
 import { TextField } from '../../shared/ui/text-field/text.field';
 import { openFinanceDialog } from './finance.dialog';
 
-/** Por que o fechamento foi recusado: o texto para a pessoa e se a saída é informar as leituras do mês. */
+/** Para onde a pessoa vai resolver o que impediu o fechamento (a tela de leituras, a de unidades). */
+export interface CloseFailureLink {
+  readonly label: string;
+  /** Nome do ícone local. */
+  readonly icon: string;
+  readonly path: string;
+  readonly query?: Readonly<Record<string, string>>;
+}
+
+/** Por que o fechamento foi recusado: o texto para a pessoa e, quando há saída, o link para resolver. */
 export interface CloseFailure {
   readonly message: string;
-  readonly readingsPending?: boolean;
+  readonly link?: CloseFailureLink;
 }
 
 export interface CloseMonthDialogConfig {

@@ -175,10 +175,16 @@ public static class ErrorHttp
                 title: ReasonPhrases.GetReasonPhrase(StatusCodes.Status500InternalServerError));
         }
 
+        Dictionary<string, object?> problemExtensions = new(extensions ?? new Dictionary<string, object?>()) { ["code"] = error.Code };
+        if (error.Data is not null)
+        {
+            problemExtensions["data"] = error.Data;
+        }
+
         return Results.Problem(
             detail: error.Description,
             statusCode: status,
             title: ReasonPhrases.GetReasonPhrase(status),
-            extensions: new Dictionary<string, object?>(extensions ?? new Dictionary<string, object?>()) { ["code"] = error.Code });
+            extensions: problemExtensions);
     }
 }
