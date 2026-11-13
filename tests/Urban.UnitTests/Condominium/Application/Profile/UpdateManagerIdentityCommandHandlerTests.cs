@@ -31,11 +31,11 @@ public class UpdateManagerIdentityCommandHandlerTests
     {
         _clock.SetupGet(c => c.UtcNow).Returns(Now);
         _confirmation
-            .Setup(c => c.ConfirmAsync(_registration.Manager.UserId, Password, It.IsAny<CancellationToken>()))
+            .Setup(c => c.ConfirmAsync(_registration.Manager.UserId!.Value, Password, It.IsAny<CancellationToken>()))
             .Callback(() => _calls.Add("confirm"))
             .ReturnsAsync(Result.Success());
         _profiles
-            .Setup(p => p.FindOfManagerAsync(_registration.Manager.UserId, It.IsAny<CancellationToken>()))
+            .Setup(p => p.FindOfManagerAsync(_registration.Manager.UserId!.Value, It.IsAny<CancellationToken>()))
             .Callback(() => _calls.Add("find"))
             .ReturnsAsync(_registration);
         _profiles
@@ -88,7 +88,7 @@ public class UpdateManagerIdentityCommandHandlerTests
     {
         Error refused = code == "identity.password.incorrect" ? PasswordIncorrect : new Error(code, "recusado");
         _confirmation
-            .Setup(c => c.ConfirmAsync(_registration.Manager.UserId, "errada", It.IsAny<CancellationToken>()))
+            .Setup(c => c.ConfirmAsync(_registration.Manager.UserId!.Value, "errada", It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Failure(refused));
 
         Result<MyCondominium> result = await Handler().Handle(Same() with { Password = "errada", FullName = "Ana Paula Souza" }, default);
@@ -163,7 +163,7 @@ public class UpdateManagerIdentityCommandHandlerTests
 
         _logged!.Kind.Should().Be(ChangeKind.Identity);
         _logged.Fields.Should().Equal("fullName", "birthDate", "cpf");
-        _logged.ActorUserId.Should().Be(_registration.Manager.UserId);
+        _logged.ActorUserId.Should().Be(_registration.Manager.UserId!.Value);
         _logged.CondominiumId.Should().Be(_registration.Condominium.Id);
         _logged.At.Should().Be(Now);
         string.Join('|', _logged.Fields).Should().NotContain(newCpf).And.NotContain("Souza").And.NotContain("1990");
@@ -230,7 +230,7 @@ public class UpdateManagerIdentityCommandHandlerTests
 
     private UpdateManagerIdentityCommand Same() =>
         new(
-            _registration.Manager.UserId,
+            _registration.Manager.UserId!.Value,
             _registration.Version,
             Password,
             _registration.Manager.FullName.Value,

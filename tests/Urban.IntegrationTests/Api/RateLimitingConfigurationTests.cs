@@ -32,6 +32,7 @@ public class RateLimitingConfigurationTests
     [InlineData("SensitiveChange", -1)]
     [InlineData("Units", 0)]
     [InlineData("UnitBatch", -1)]
+    [InlineData("Residents", 0)]
     [InlineData("Finance", 0)]
     [InlineData("Admin", 0)]
     [InlineData("Contact", -1)]
@@ -61,6 +62,7 @@ public class RateLimitingConfigurationTests
     [InlineData("SensitiveChange")]
     [InlineData("Units")]
     [InlineData("UnitBatch")]
+    [InlineData("Residents")]
     [InlineData("Finance")]
     [InlineData("Admin")]
     [InlineData("Contact")]
@@ -163,6 +165,7 @@ public class RateLimitingConfigurationTests
         SensitiveChange = route == "SensitiveChange" ? rule : ValidRule,
         Units = route == "Units" ? rule : ValidRule,
         UnitBatch = route == "UnitBatch" ? rule : ValidRule,
+        Residents = route == "Residents" ? rule : ValidRule,
         Finance = route == "Finance" ? rule : ValidRule,
         Admin = route == "Admin" ? rule : ValidRule,
         Contact = route == "Contact" ? rule : ValidRule,

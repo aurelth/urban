@@ -28,6 +28,24 @@ public class BirthDateTests
     }
 
     [Fact]
+    public void Create_UnderAge_WithACustomError_ReturnsThatError()
+    {
+        Error custom = new("condominium.resident.under_age", "Morador menor de idade");
+
+        Result<BirthDate> result = BirthDate.Create(new DateOnly(2008, 10, 30), Today, custom);
+
+        result.Error.Should().Be(custom);
+    }
+
+    [Fact]
+    public void Create_WithACustomUnderAgeError_StillReportsAnInvalidDateAsInvalid()
+    {
+        Error custom = new("condominium.resident.under_age", "Morador menor de idade");
+
+        BirthDate.Create(Today.AddDays(1), Today, custom).Error.Should().Be(BirthDate.Invalid);
+    }
+
+    [Fact]
     public void Create_BornToday_FailsAsUnderAgeAndNotAsInvalid()
     {
         BirthDate.Create(Today, Today).Error.Should().Be(BirthDate.UnderAge);

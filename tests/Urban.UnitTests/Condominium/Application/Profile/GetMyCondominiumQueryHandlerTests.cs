@@ -25,7 +25,7 @@ public class GetMyCondominiumQueryHandlerTests
     public async Task Handle_LooksTheRegistrationUpByTheUserOfTheToken()
     {
         ManagerCondominium registration = CondominiumBuilders.Registration();
-        Guid userId = registration.Manager.UserId;
+        Guid userId = registration.Manager.UserId!.Value;
         _profiles.Setup(p => p.FindOfManagerAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync(registration);
 
         Result<MyCondominium> result = await _handler.Handle(new GetMyCondominiumQuery(userId), default);
@@ -41,7 +41,7 @@ public class GetMyCondominiumQueryHandlerTests
         ManagerCondominium registration = CondominiumBuilders.Registration(version: "7.9");
         Given(registration, displayName: "Aninha");
 
-        MyCondominium mine = (await _handler.Handle(new GetMyCondominiumQuery(registration.Manager.UserId), default)).Value;
+        MyCondominium mine = (await _handler.Handle(new GetMyCondominiumQuery(registration.Manager.UserId!.Value), default)).Value;
 
         mine.CondominiumId.Should().Be(registration.Condominium.Id);
         mine.Version.Should().Be("7.9");
@@ -61,7 +61,7 @@ public class GetMyCondominiumQueryHandlerTests
         ManagerCondominium registration = CondominiumBuilders.Registration();
         Given(registration, displayName: "Ana");
 
-        MyCondominium mine = (await _handler.Handle(new GetMyCondominiumQuery(registration.Manager.UserId), default)).Value;
+        MyCondominium mine = (await _handler.Handle(new GetMyCondominiumQuery(registration.Manager.UserId!.Value), default)).Value;
 
         mine.Manager.MaskedCpf.Should().Be(registration.Manager.Cpf.Masked);
         mine.Manager.MaskedCpf.Should().StartWith("***.").And.EndWith("-**");
@@ -83,7 +83,7 @@ public class GetMyCondominiumQueryHandlerTests
 
     private void Given(ManagerCondominium registration, string? displayName)
     {
-        _profiles.Setup(p => p.FindOfManagerAsync(registration.Manager.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(registration);
-        _profile.Setup(p => p.GetDisplayNameAsync(registration.Manager.UserId, It.IsAny<CancellationToken>())).ReturnsAsync(displayName);
+        _profiles.Setup(p => p.FindOfManagerAsync(registration.Manager.UserId!.Value, It.IsAny<CancellationToken>())).ReturnsAsync(registration);
+        _profile.Setup(p => p.GetDisplayNameAsync(registration.Manager.UserId!.Value, It.IsAny<CancellationToken>())).ReturnsAsync(displayName);
     }
 }

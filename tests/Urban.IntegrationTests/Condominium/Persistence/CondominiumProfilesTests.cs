@@ -24,7 +24,7 @@ public sealed class CondominiumProfilesTests(CondominiumPostgresFixture postgres
     {
         (CondominiumEntity condominium, Person manager) = await SeedAsync();
 
-        ManagerCondominium? found = await FindAsync(condominium.Id, manager.UserId);
+        ManagerCondominium? found = await FindAsync(condominium.Id, manager.UserId!.Value);
 
         found.Should().NotBeNull();
         found!.Condominium.Id.Should().Be(condominium.Id);
@@ -39,8 +39,8 @@ public sealed class CondominiumProfilesTests(CondominiumPostgresFixture postgres
     {
         (CondominiumEntity condominium, Person manager) = await SeedAsync();
 
-        string first = (await FindAsync(condominium.Id, manager.UserId))!.Version;
-        string second = (await FindAsync(condominium.Id, manager.UserId))!.Version;
+        string first = (await FindAsync(condominium.Id, manager.UserId!.Value))!.Version;
+        string second = (await FindAsync(condominium.Id, manager.UserId!.Value))!.Version;
 
         second.Should().Be(first);
     }
@@ -51,7 +51,7 @@ public sealed class CondominiumProfilesTests(CondominiumPostgresFixture postgres
         (_, Person manager) = await SeedAsync();
         (CondominiumEntity other, _) = await SeedAsync();
 
-        (await FindAsync(other.Id, manager.UserId)).Should().BeNull();
+        (await FindAsync(other.Id, manager.UserId!.Value)).Should().BeNull();
     }
 
     [Fact]
@@ -59,7 +59,7 @@ public sealed class CondominiumProfilesTests(CondominiumPostgresFixture postgres
     {
         (_, Person manager) = await SeedAsync();
 
-        (await FindAsync(tenant: null, manager.UserId)).Should().BeNull();
+        (await FindAsync(tenant: null, manager.UserId!.Value)).Should().BeNull();
     }
 
     [Fact]
@@ -76,15 +76,15 @@ public sealed class CondominiumProfilesTests(CondominiumPostgresFixture postgres
         (CondominiumEntity condominium, Person manager) = await SeedAsync();
         await using CondominiumDbContext db = postgres.CreateContext(condominium.Id);
         CondominiumProfiles profiles = new(db);
-        ManagerCondominium current = (await profiles.FindOfManagerAsync(manager.UserId, Ct))!;
+        ManagerCondominium current = (await profiles.FindOfManagerAsync(manager.UserId!.Value, Ct))!;
         current.Condominium.Update("Residencial Bela Vista", current.Condominium.Address);
-        current.Manager.UpdateContact(PhoneNumber.Create("(47) 98888-7777").Value, current.Manager.Address);
+        current.Manager.UpdateContact(PhoneNumber.Create("(47) 98888-7777").Value, current.Manager.RequireAddress());
 
         Result<string> saved = await profiles.SaveAsync(current, Entry(condominium, manager, ChangeKind.Profile, "condominiumName", "phone"), Ct);
 
         saved.IsSuccess.Should().BeTrue();
         saved.Value.Should().NotBe(current.Version);
-        ManagerCondominium reread = (await FindAsync(condominium.Id, manager.UserId))!;
+        ManagerCondominium reread = (await FindAsync(condominium.Id, manager.UserId!.Value))!;
         reread.Version.Should().Be(saved.Value);
         reread.Condominium.Name.Should().Be("Residencial Bela Vista");
         reread.Manager.Phone.Value.Should().Be("47988887777");
@@ -98,17 +98,17 @@ public sealed class CondominiumProfilesTests(CondominiumPostgresFixture postgres
         await using CondominiumDbContext second = postgres.CreateContext(condominium.Id);
         CondominiumProfiles firstProfiles = new(first);
         CondominiumProfiles secondProfiles = new(second);
-        ManagerCondominium a = (await firstProfiles.FindOfManagerAsync(manager.UserId, Ct))!;
-        ManagerCondominium b = (await secondProfiles.FindOfManagerAsync(manager.UserId, Ct))!;
-        a.Manager.UpdateContact(PhoneNumber.Create("(47) 98888-7777").Value, a.Manager.Address);
-        b.Manager.UpdateContact(PhoneNumber.Create("(47) 97777-6666").Value, b.Manager.Address);
+        ManagerCondominium a = (await firstProfiles.FindOfManagerAsync(manager.UserId!.Value, Ct))!;
+        ManagerCondominium b = (await secondProfiles.FindOfManagerAsync(manager.UserId!.Value, Ct))!;
+        a.Manager.UpdateContact(PhoneNumber.Create("(47) 98888-7777").Value, a.Manager.RequireAddress());
+        b.Manager.UpdateContact(PhoneNumber.Create("(47) 97777-6666").Value, b.Manager.RequireAddress());
 
         Result<string> winner = await firstProfiles.SaveAsync(a, Entry(condominium, manager, ChangeKind.Profile, "phone"), Ct);
         Result<string> loser = await secondProfiles.SaveAsync(b, Entry(condominium, manager, ChangeKind.Profile, "phone"), Ct);
 
         winner.IsSuccess.Should().BeTrue();
         loser.Error.Should().Be(CondominiumErrors.ConcurrencyConflict);
-        (await FindAsync(condominium.Id, manager.UserId))!.Manager.Phone.Value.Should().Be("47988887777");
+        (await FindAsync(condominium.Id, manager.UserId!.Value))!.Manager.Phone.Value.Should().Be("47988887777");
     }
 
     [Fact]
@@ -119,10 +119,10 @@ public sealed class CondominiumProfilesTests(CondominiumPostgresFixture postgres
         await using CondominiumDbContext second = postgres.CreateContext(condominium.Id);
         CondominiumProfiles firstProfiles = new(first);
         CondominiumProfiles secondProfiles = new(second);
-        ManagerCondominium a = (await firstProfiles.FindOfManagerAsync(manager.UserId, Ct))!;
-        ManagerCondominium b = (await secondProfiles.FindOfManagerAsync(manager.UserId, Ct))!;
-        a.Manager.UpdateContact(PhoneNumber.Create("(47) 98888-7777").Value, a.Manager.Address);
-        b.Manager.UpdateContact(PhoneNumber.Create("(47) 97777-6666").Value, b.Manager.Address);
+        ManagerCondominium a = (await firstProfiles.FindOfManagerAsync(manager.UserId!.Value, Ct))!;
+        ManagerCondominium b = (await secondProfiles.FindOfManagerAsync(manager.UserId!.Value, Ct))!;
+        a.Manager.UpdateContact(PhoneNumber.Create("(47) 98888-7777").Value, a.Manager.RequireAddress());
+        b.Manager.UpdateContact(PhoneNumber.Create("(47) 97777-6666").Value, b.Manager.RequireAddress());
         await firstProfiles.SaveAsync(a, Entry(condominium, manager, ChangeKind.Profile, "phone"), Ct);
 
         await secondProfiles.SaveAsync(b, Entry(condominium, manager, ChangeKind.Profile, "phone"), Ct);
@@ -139,7 +139,7 @@ public sealed class CondominiumProfilesTests(CondominiumPostgresFixture postgres
         Cpf newCpf = CondominiumBuilders.UniqueCpf();
         await using CondominiumDbContext db = postgres.CreateContext(condominium.Id);
         CondominiumProfiles profiles = new(db);
-        ManagerCondominium current = (await profiles.FindOfManagerAsync(manager.UserId, Ct))!;
+        ManagerCondominium current = (await profiles.FindOfManagerAsync(manager.UserId!.Value, Ct))!;
         current.Manager.UpdateIdentity(current.Manager.FullName, newCpf, current.Manager.BirthDate);
 
         Result<string> saved = await profiles.SaveAsync(current, Entry(condominium, manager, ChangeKind.Identity, "cpf"), Ct);
@@ -148,7 +148,7 @@ public sealed class CondominiumProfilesTests(CondominiumPostgresFixture postgres
         (await ReadPersonColumnAsync(manager.Id, "cpf_hash")).Should().Be(postgres.Protector.Hash(newCpf.Value)).And.NotBe(hashBefore);
         string encrypted = await ReadPersonColumnAsync(manager.Id, "cpf_encrypted");
         encrypted.Should().StartWith("v1:").And.NotContain(newCpf.Value);
-        (await FindAsync(condominium.Id, manager.UserId))!.Manager.Cpf.Should().Be(newCpf);
+        (await FindAsync(condominium.Id, manager.UserId!.Value))!.Manager.Cpf.Should().Be(newCpf);
     }
 
     [Fact]
@@ -159,13 +159,13 @@ public sealed class CondominiumProfilesTests(CondominiumPostgresFixture postgres
         await SeedAnotherPersonAsync(condominium, taken);
         await using CondominiumDbContext db = postgres.CreateContext(condominium.Id);
         CondominiumProfiles profiles = new(db);
-        ManagerCondominium current = (await profiles.FindOfManagerAsync(manager.UserId, Ct))!;
+        ManagerCondominium current = (await profiles.FindOfManagerAsync(manager.UserId!.Value, Ct))!;
         current.Manager.UpdateIdentity(current.Manager.FullName, taken, current.Manager.BirthDate);
 
         Result<string> saved = await profiles.SaveAsync(current, Entry(condominium, manager, ChangeKind.Identity, "cpf"), Ct);
 
         saved.Error.Should().Be(PersonErrors.CpfAlreadyRegistered);
-        (await FindAsync(condominium.Id, manager.UserId))!.Manager.Cpf.Should().Be(manager.Cpf);
+        (await FindAsync(condominium.Id, manager.UserId!.Value))!.Manager.Cpf.Should().Be(manager.Cpf);
         (await CountChangeLogAsync(condominium.Id)).Should().Be(0);
         db.ChangeTracker.Entries().Should().BeEmpty();
     }
@@ -176,8 +176,8 @@ public sealed class CondominiumProfilesTests(CondominiumPostgresFixture postgres
         (CondominiumEntity condominium, Person manager) = await SeedAsync();
         await using CondominiumDbContext db = postgres.CreateContext(condominium.Id);
         CondominiumProfiles profiles = new(db);
-        ManagerCondominium current = (await profiles.FindOfManagerAsync(manager.UserId, Ct))!;
-        current.Manager.UpdateContact(PhoneNumber.Create("(47) 98888-7777").Value, current.Manager.Address);
+        ManagerCondominium current = (await profiles.FindOfManagerAsync(manager.UserId!.Value, Ct))!;
+        current.Manager.UpdateContact(PhoneNumber.Create("(47) 98888-7777").Value, current.Manager.RequireAddress());
 
         await profiles.SaveAsync(current, Entry(condominium, manager, ChangeKind.Profile, "phone", "managerAddress"), Ct);
 
@@ -187,7 +187,7 @@ public sealed class CondominiumProfilesTests(CondominiumPostgresFixture postgres
         (await reader.Database.SqlQuery<string>($"""select array_to_string(fields, ',') as "Value" from condominium.change_log where condominium_id = {condominium.Id}""").SingleAsync(Ct))
             .Should().Be("phone,managerAddress");
         (await reader.Database.SqlQuery<Guid>($"""select actor_user_id as "Value" from condominium.change_log where condominium_id = {condominium.Id}""").SingleAsync(Ct))
-            .Should().Be(manager.UserId);
+            .Should().Be(manager.UserId!.Value);
         (await reader.Database.SqlQuery<DateTimeOffset>($"""select changed_at as "Value" from condominium.change_log where condominium_id = {condominium.Id}""").SingleAsync(Ct))
             .Should().Be(At);
     }
@@ -205,7 +205,7 @@ public sealed class CondominiumProfilesTests(CondominiumPostgresFixture postgres
     }
 
     private static ChangeLogEntry Entry(CondominiumEntity condominium, Person manager, ChangeKind kind, params string[] fields) =>
-        new(condominium.Id, manager.UserId, kind, fields, At);
+        new(condominium.Id, manager.UserId!.Value, kind, fields, At);
 
     private async Task<(CondominiumEntity Condominium, Person Manager)> SeedAsync()
     {

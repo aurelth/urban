@@ -102,7 +102,7 @@ public sealed class CondominiumRegistrationsTests(CondominiumPostgresFixture pos
         await SaveAsync(first, firstManager);
         CondominiumEntity second = CondominiumBuilders.Condominium();
 
-        Result result = await SaveAsync(second, CondominiumBuilders.Manager(second.Id, firstManager.UserId));
+        Result result = await SaveAsync(second, CondominiumBuilders.Manager(second.Id, firstManager.UserId!.Value));
 
         result.Error.Should().Be(CondominiumErrors.ManagerAlreadyRegistered);
     }
