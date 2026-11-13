@@ -12,6 +12,8 @@ public class AccessPolicyTests
     private static readonly HashSet<(UserRole Actor, ManagementAction Action, UserRole Target)> Allowed =
     [
         (UserRole.SuperAdmin, ManagementAction.Create, UserRole.Manager),
+        (UserRole.SuperAdmin, ManagementAction.Approve, UserRole.Manager),
+        (UserRole.SuperAdmin, ManagementAction.Reject, UserRole.Manager),
         (UserRole.SuperAdmin, ManagementAction.Suspend, UserRole.Manager),
         (UserRole.SuperAdmin, ManagementAction.Suspend, UserRole.Resident),
         (UserRole.SuperAdmin, ManagementAction.Reactivate, UserRole.Manager),

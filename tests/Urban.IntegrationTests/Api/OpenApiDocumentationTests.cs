@@ -88,6 +88,9 @@ public sealed class OpenApiDocumentationTests
     [InlineData("/api/auth/change-email", "post")]
     [InlineData("/api/auth/confirm-email-change", "post")]
     [InlineData("/api/postal-codes/{postalCode}", "get")]
+    [InlineData("/api/admin/registration-requests", "get")]
+    [InlineData("/api/admin/registration-requests/{id}/approve", "post")]
+    [InlineData("/api/admin/registration-requests/{id}/reject", "post")]
     public async Task Development_documents_the_429_of_every_rate_limited_route(string path, string method)
     {
         await using ApiFactory factory = new() { EnvironmentName = "Development" };

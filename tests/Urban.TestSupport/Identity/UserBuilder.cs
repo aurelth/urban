@@ -12,10 +12,36 @@ public static class UserBuilder
 
     public static User InStatus(AccountStatus status, UserRole role = UserRole.Resident, string address = "ana@example.com")
     {
+        if (status is AccountStatus.PendingApproval or AccountStatus.Rejected)
+        {
+            return Requested(status, address);
+        }
+
         Guid? condominiumId = role == UserRole.SuperAdmin ? null : Guid.CreateVersion7();
         User user = User.Register(Email.Create(address).Value, role, condominiumId, Now).Value;
 
         return MoveTo(user, status);
+    }
+
+    /// <summary>Síndico que pediu cadastro (com nome e nome do condomínio) e espera a decisão do SuperAdmin, ou já foi recusado.</summary>
+    public static User Requested(
+        AccountStatus status = AccountStatus.PendingApproval,
+        string address = "sindica@example.com",
+        string name = "Ana Paula",
+        string condominiumName = "Residencial Vila Verde")
+    {
+        User user = User.RequestManagerAccess(
+            Email.Create(address).Value,
+            DisplayName.Create(name).Value,
+            RequestedCondominiumName.Create(condominiumName).Value,
+            Now);
+
+        if (status == AccountStatus.Rejected)
+        {
+            user.Reject(ActorId, Now);
+        }
+
+        return user;
     }
 
     /// <summary>Síndico que já entrou no sistema, mas ainda não cadastrou o condomínio (e por isso ainda não tem nome de exibição).</summary>

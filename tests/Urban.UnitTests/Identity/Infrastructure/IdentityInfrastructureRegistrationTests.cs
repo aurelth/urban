@@ -117,6 +117,45 @@ public class IdentityInfrastructureRegistrationTests
     }
 
     [Fact]
+    public void TheRegistrationRequestNotifierAndTheJobAreScoped_ForTheSameReasonAsTheOtherEmailJobs()
+    {
+        Register().Single(d => d.ServiceType == typeof(IRegistrationRequestNotifier)).Lifetime.Should().Be(ServiceLifetime.Scoped);
+        Register().Single(d => d.ServiceType == typeof(NotifyRegistrationRequestJob)).Lifetime.Should().Be(ServiceLifetime.Scoped);
+    }
+
+    [Fact]
+    public void TheRegistrationRequestDispatcherQueuesJobsThroughHangfire()
+    {
+        ServiceDescriptor descriptor = Register().Single(d => d.ServiceType == typeof(IRegistrationRequestDispatcher));
+
+        descriptor.ImplementationType.Should().Be<HangfireRegistrationRequestDispatcher>();
+        descriptor.Lifetime.Should().Be(ServiceLifetime.Scoped);
+    }
+
+    [Fact]
+    public void TheRegistrationRequestStoreIsScoped_BecauseItSharesTheRequestDbContext()
+    {
+        Register().Single(d => d.ServiceType == typeof(IRegistrationRequests)).Lifetime.Should().Be(ServiceLifetime.Scoped);
+    }
+
+    [Fact]
+    public void TheOwnerAddressComesFromTheSuperAdminSection()
+    {
+        ServiceDescriptor descriptor = Register(("SuperAdmin:Email", "dono@example.com")).Single(d => d.ServiceType == typeof(SuperAdminOptions));
+
+        descriptor.Lifetime.Should().Be(ServiceLifetime.Singleton);
+        ((SuperAdminOptions)descriptor.ImplementationInstance!).Email.Should().Be("dono@example.com");
+    }
+
+    [Fact]
+    public void WithoutTheSuperAdminSection_TheOwnerAddressIsEmptyAndTheRegistrationStillSucceeds()
+    {
+        ServiceDescriptor descriptor = Register().Single(d => d.ServiceType == typeof(SuperAdminOptions));
+
+        ((SuperAdminOptions)descriptor.ImplementationInstance!).Email.Should().BeEmpty();
+    }
+
+    [Fact]
     public void TheManagerProfileContractIsScoped_BecauseItSharesTheRequestDbContext()
     {
         ServiceDescriptor descriptor = Register().Single(d => d.ServiceType == typeof(IManagerProfile));
@@ -134,18 +173,23 @@ public class IdentityInfrastructureRegistrationTests
         descriptor.Lifetime.Should().Be(ServiceLifetime.Scoped);
     }
 
-    private static ServiceCollection Register()
+    private static ServiceCollection Register(params (string Key, string Value)[] extra)
     {
-        IConfiguration configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["ConnectionStrings:Postgres"] = "Host=localhost;Database=unused;Username=unused;Password=unused",
-                ["ConnectionStrings:Redis"] = "localhost:6379",
-                ["Jwt:SigningKey"] = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
-                ["Links:WebBaseUrl"] = "https://urban-pro.io",
-                ["Consent:CurrentVersion"] = "2026-10-26",
-            })
-            .Build();
+        Dictionary<string, string?> settings = new()
+        {
+            ["ConnectionStrings:Postgres"] = "Host=localhost;Database=unused;Username=unused;Password=unused",
+            ["ConnectionStrings:Redis"] = "localhost:6379",
+            ["Jwt:SigningKey"] = Convert.ToBase64String(RandomNumberGenerator.GetBytes(64)),
+            ["Links:WebBaseUrl"] = "https://urban-pro.io",
+            ["Consent:CurrentVersion"] = "2026-10-26",
+        };
+
+        foreach ((string key, string value) in extra)
+        {
+            settings[key] = value;
+        }
+
+        IConfiguration configuration = new ConfigurationBuilder().AddInMemoryCollection(settings).Build();
 
         ServiceCollection services = new();
         services.AddIdentityInfrastructure(configuration);

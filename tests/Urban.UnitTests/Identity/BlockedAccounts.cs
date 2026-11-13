@@ -7,6 +7,8 @@ public static class BlockedAccounts
 {
     public static TheoryData<AccountStatus, string> States => new()
     {
+        { AccountStatus.PendingApproval, UserErrors.RegistrationPending.Code },
+        { AccountStatus.Rejected, UserErrors.RegistrationRejected.Code },
         { AccountStatus.PendingVerification, UserErrors.EmailNotVerified.Code },
         { AccountStatus.Deactivated, UserErrors.AccountDeactivated.Code },
         { AccountStatus.Suspended, UserErrors.AccountSuspended.Code },
