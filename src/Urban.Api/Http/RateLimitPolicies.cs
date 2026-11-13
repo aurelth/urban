@@ -41,6 +41,9 @@ public static class RateLimitPolicies
     /// <summary>Envio de mensagem do síndico ao dono: grava e dispara e-mail, então o limite é menor para não virar canal de spam.</summary>
     public const string Contact = "contact";
 
+    /// <summary>Resposta do dono a uma mensagem: envia e-mail com anexos de até 10 MB, então o limite é menor.</summary>
+    public const string ContactReply = "contact-reply";
+
     /// <summary>Troca de senha, de e-mail e edição dos dados sensíveis: ações que exigem a senha, com limite menor.</summary>
     public const string SensitiveChange = "sensitive-change";
 

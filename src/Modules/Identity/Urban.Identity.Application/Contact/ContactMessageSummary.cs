@@ -16,7 +16,10 @@ public sealed record ContactMessageSummary(
     DateTimeOffset SentAt,
     DateTimeOffset? ReadAt)
 {
-    public static ContactMessageSummary From(ContactMessage message, User sender, string? condominiumName) => new(
+    /// <summary>Da mais antiga para a mais nova. Fica fora do construtor para quem só quer a mensagem não precisar informá-la.</summary>
+    public IReadOnlyList<ContactReplySummary> Replies { get; init; } = [];
+
+    public static ContactMessageSummary From(ContactMessage message, User sender, string? condominiumName, IReadOnlyList<ContactReply>? replies = null) => new(
         message.Id,
         sender.Id,
         sender.Email.Value,
@@ -25,5 +28,8 @@ public sealed record ContactMessageSummary(
         message.Subject,
         message.Body,
         message.CreatedAt,
-        message.ReadAt);
+        message.ReadAt)
+    {
+        Replies = replies is { Count: > 0 } ? [.. replies.Select(ContactReplySummary.From)] : [],
+    };
 }

@@ -41,6 +41,8 @@ public sealed class RateLimitingOptions
 
     public RateLimitRule Contact { get; init; } = new();
 
+    public RateLimitRule ContactReply { get; init; } = new();
+
     /// <exception cref="InvalidOperationException">A configuração é inválida.</exception>
     public void Validate()
     {
@@ -62,6 +64,7 @@ public sealed class RateLimitingOptions
         Validate(nameof(Finance), Finance);
         Validate(nameof(Admin), Admin);
         Validate(nameof(Contact), Contact);
+        Validate(nameof(ContactReply), ContactReply);
     }
 
     private static void Validate(string route, RateLimitRule rule)

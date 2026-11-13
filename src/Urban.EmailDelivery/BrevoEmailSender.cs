@@ -24,7 +24,9 @@ public sealed class BrevoEmailSender(HttpClient http, EmailOptions options) : IE
             new BrevoContact(options.SenderName, options.SenderAddress),
             [new BrevoContact(null, message.To)],
             message.Subject,
-            message.TextBody);
+            message.TextBody,
+            message.ReplyTo is null ? null : new BrevoContact(null, message.ReplyTo),
+            message.Attachments is { Count: > 0 } files ? [.. files.Select(file => new BrevoAttachment(file.FileName, file.Content))] : null);
 
         using HttpRequestMessage request = new(HttpMethod.Post, SendPath) { Content = JsonContent.Create(body, options: JsonOptions) };
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));

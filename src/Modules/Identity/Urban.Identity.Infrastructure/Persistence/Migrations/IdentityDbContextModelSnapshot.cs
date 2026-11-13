@@ -98,6 +98,47 @@ namespace Urban.Identity.Infrastructure.Persistence.Migrations
                     b.ToTable("contact_message", "identity");
                 });
 
+            modelBuilder.Entity("Urban.Identity.Domain.Contact.ContactReply", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Attachments")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("attachments");
+
+                    b.Property<Guid>("AuthorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("author_id");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(5000)
+                        .HasColumnType("character varying(5000)")
+                        .HasColumnName("body");
+
+                    b.Property<Guid>("MessageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("message_id");
+
+                    b.Property<DateTimeOffset>("SentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sent_at");
+
+                    b.HasKey("Id")
+                        .HasName("pk_contact_reply");
+
+                    b.HasIndex("AuthorId")
+                        .HasDatabaseName("ix_contact_reply_author_id");
+
+                    b.HasIndex("MessageId")
+                        .HasDatabaseName("ix_contact_reply_message_id");
+
+                    b.ToTable("contact_reply", "identity");
+                });
+
             modelBuilder.Entity("Urban.Identity.Domain.Tokens.EmailChangeToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -416,6 +457,23 @@ namespace Urban.Identity.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_contact_message_user_sender_id");
+                });
+
+            modelBuilder.Entity("Urban.Identity.Domain.Contact.ContactReply", b =>
+                {
+                    b.HasOne("Urban.Identity.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("AuthorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_contact_reply_user_author_id");
+
+                    b.HasOne("Urban.Identity.Domain.Contact.ContactMessage", null)
+                        .WithMany()
+                        .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_contact_reply_contact_message_message_id");
                 });
 
             modelBuilder.Entity("Urban.Identity.Domain.Tokens.EmailChangeToken", b =>

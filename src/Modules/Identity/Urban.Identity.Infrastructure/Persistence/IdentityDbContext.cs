@@ -27,6 +27,8 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
 
     public DbSet<ContactMessage> ContactMessages => Set<ContactMessage>();
 
+    public DbSet<ContactReply> ContactReplies => Set<ContactReply>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(Schema);

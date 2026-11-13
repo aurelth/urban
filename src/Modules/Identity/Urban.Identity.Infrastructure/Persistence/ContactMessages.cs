@@ -37,7 +37,27 @@ public sealed class ContactMessages(IdentityDbContext db) : IContactMessages
             .Take(pageSize)
             .ToListAsync(cancellationToken);
 
-        return new ContactMessagePage(items, total);
+        return new ContactMessagePage(await WithRepliesAsync(items, cancellationToken), total);
+    }
+
+    /// <summary>Uma única consulta traz as respostas da página inteira, da mais antiga para a mais nova.</summary>
+    private async Task<List<ContactMessageEntry>> WithRepliesAsync(List<ContactMessageEntry> items, CancellationToken cancellationToken)
+    {
+        if (items.Count == 0)
+        {
+            return items;
+        }
+
+        Guid[] ids = [.. items.Select(e => e.Message.Id)];
+        List<ContactReply> replies = await db.ContactReplies
+            .AsNoTracking()
+            .Where(r => ids.Contains(r.MessageId))
+            .OrderBy(r => r.SentAt)
+            .ThenBy(r => r.Id)
+            .ToListAsync(cancellationToken);
+        ILookup<Guid, ContactReply> byMessage = replies.ToLookup(r => r.MessageId);
+
+        return [.. items.Select(e => byMessage.Contains(e.Message.Id) ? e with { Replies = [.. byMessage[e.Message.Id]] } : e)];
     }
 
     public async Task MarkReadAsync(ContactMessage message, CancellationToken cancellationToken)
