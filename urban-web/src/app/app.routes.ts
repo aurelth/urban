@@ -6,14 +6,15 @@ import {
   managerGuard,
 } from './core/auth/condominium.guards';
 import { AuthLayout } from './core/layout/auth.layout';
-import { ShellLayout } from './core/layout/shell.layout';
 
 export const routes: Routes = [
   // A área logada vem primeiro: "/" precisa cair nela (e no redirecionamento para o painel),
   // senão o layout da entrada, que também tem caminho vazio, "casaria" com a raiz e ficaria em branco.
   {
     path: '',
-    component: ShellLayout,
+    // A moldura (menu lateral, cabeçalho, menu do avatar) só é baixada por quem já passou pela guarda: a tela de
+    // entrada não carrega o Material Sidenav nem o Material Menu.
+    loadComponent: () => import('./core/layout/shell.layout').then((m) => m.ShellLayout),
     canActivate: [authGuard],
     children: [
       {

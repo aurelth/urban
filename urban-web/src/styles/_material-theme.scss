@@ -95,6 +95,27 @@ html {
     )
   );
 
+  // Moldura da area logada: cabecalho e menu lateral brancos (no escuro, pretos como a pagina), sem cantos
+  // arredondados na lateral e com a linha fina das bordas separando-a do conteudo. A linha de baixo do cabecalho
+  // nao tem token no Material: ela vem de `border-b border-outline-variant` no proprio <mat-toolbar>.
+  @include mat.toolbar-overrides(
+    (
+      container-background-color: var(--mat-sys-surface-container-lowest),
+    )
+  );
+
+  @include mat.sidenav-overrides(
+    (
+      container-width: 256px,
+      container-shape: 0,
+      container-background-color: var(--mat-sys-surface-container-lowest),
+      container-text-color: var(--mat-sys-on-surface),
+      container-divider-color: var(--mat-sys-outline-variant),
+      content-background-color: var(--mat-sys-surface),
+      content-text-color: var(--mat-sys-on-surface),
+    )
+  );
+
   // Aviso de inatividade: mesma superficie e mesmos cantos dos cards (por padrao o dialogo usa
   // o fundo da pagina, que no modo escuro e preto puro e some contra o fundo escurecido).
   @include mat.dialog-overrides(

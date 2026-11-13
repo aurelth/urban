@@ -1,77 +1,108 @@
-<mat-toolbar>
-  <span class="text-xl font-bold tracking-tight"><urban-brand-link /></span>
-  <span class="flex-1"></span>
-  @if (session.user(); as user) {
-    <span data-testid="current-user" class="mr-2 hidden text-sm text-on-surface-variant sm:inline">
-      {{ accountLabel(user) }} · {{ roleLabel(user.role) }}
-    </span>
+<mat-sidenav-container autosize class="min-h-dvh">
+  @if (hasSidebar()) {
+    <mat-sidenav
+      fixedInViewport
+      [mode]="mode()"
+      [opened]="opened()"
+      [disableClose]="isDesktop()"
+      (closedStart)="opened.set(false)"
+    >
+      <div class="flex h-16 items-center px-6 text-xl font-bold tracking-tight">
+        <urban-brand-link />
+      </div>
+      <nav aria-label="Menu principal" class="flex flex-col gap-1 px-3 pb-6">
+        @for (group of groups(); track group.id) {
+          <div role="group" [attr.aria-label]="group.label" class="flex flex-col gap-1">
+            @if (group.label) {
+              <p
+                data-testid="nav-group"
+                aria-hidden="true"
+                class="mt-4 mb-1 px-4 text-xs font-medium tracking-wide text-on-surface-variant"
+              >
+                {{ group.label }}
+              </p>
+            }
+            @for (item of group.items; track item.id) {
+              <a
+                class="flex h-12 items-center gap-3 rounded-full px-4 text-sm text-on-surface no-underline hover:bg-accent-fill/5 focus-visible:outline-2 focus-visible:outline-primary"
+                routerLinkActive="bg-accent-fill/10 font-medium"
+                ariaCurrentWhenActive="page"
+                [attr.data-testid]="'nav-' + item.id"
+                [routerLink]="item.path"
+                (click)="closeDrawer()"
+              >
+                <mat-icon [svgIcon]="item.icon" />
+                <span>{{ item.label }}</span>
+              </a>
+            }
+          </div>
+        }
+      </nav>
+    </mat-sidenav>
   }
-  @if (showProfile()) {
-    <a
-      mat-button
-      class="max-sm:min-w-0!"
-      data-testid="nav-units"
-      routerLink="/unidades"
-      routerLinkActive="font-semibold"
-      ariaCurrentWhenActive="page"
-    >
-      <mat-icon svgIcon="home_work" />
-      <span class="hidden sm:inline">Unidades</span>
-    </a>
-    <a
-      mat-button
-      class="max-sm:min-w-0!"
-      data-testid="nav-finance"
-      routerLink="/financeiro"
-      routerLinkActive="font-semibold"
-      ariaCurrentWhenActive="page"
-    >
-      <mat-icon svgIcon="receipt_long" />
-      <span class="hidden sm:inline">Financeiro</span>
-    </a>
-    <a
-      mat-button
-      class="max-sm:min-w-0!"
-      data-testid="nav-profile"
-      routerLink="/condominio/meus-dados"
-      routerLinkActive="font-semibold"
-      ariaCurrentWhenActive="page"
-    >
-      <mat-icon svgIcon="apartment" />
-      <span class="hidden sm:inline">Meus dados</span>
-    </a>
-  }
-  <a
-    mat-button
-    class="max-sm:min-w-0!"
-    data-testid="nav-account"
-    routerLink="/conta"
-    routerLinkActive="font-semibold"
-    ariaCurrentWhenActive="page"
-  >
-    <mat-icon svgIcon="account_circle" />
-    <span class="hidden sm:inline">Minha conta</span>
-  </a>
-  <button
-    mat-icon-button
-    type="button"
-    [attr.aria-label]="theme.isDark() ? 'Usar tema claro' : 'Usar tema escuro'"
-    (click)="theme.toggle()"
-  >
-    <mat-icon [svgIcon]="theme.isDark() ? 'light_mode' : 'dark_mode'" />
-  </button>
-  <button
-    mat-button
-    type="button"
-    class="max-sm:min-w-0!"
-    data-testid="sign-out"
-    aria-label="Sair"
-    (click)="signOut()"
-  >
-    <mat-icon svgIcon="logout" />
-    <span class="hidden sm:inline">Sair</span>
-  </button>
-</mat-toolbar>
-<main>
-  <router-outlet />
-</main>
+  <mat-sidenav-content>
+    <mat-toolbar class="border-b border-outline-variant">
+      @if (hasSidebar() && !isDesktop()) {
+        <button
+          mat-icon-button
+          type="button"
+          data-testid="menu-toggle"
+          [attr.aria-label]="opened() ? 'Fechar menu' : 'Abrir menu'"
+          [attr.aria-expanded]="opened()"
+          (click)="toggleMenu()"
+        >
+          <mat-icon svgIcon="menu" />
+        </button>
+      }
+      @if (!hasSidebar() || !isDesktop()) {
+        <span class="text-xl font-bold tracking-tight"><urban-brand-link /></span>
+      }
+      <span class="flex-1"></span>
+      <button
+        mat-icon-button
+        type="button"
+        [attr.aria-label]="theme.isDark() ? 'Usar tema claro' : 'Usar tema escuro'"
+        (click)="theme.toggle()"
+      >
+        <mat-icon [svgIcon]="theme.isDark() ? 'light_mode' : 'dark_mode'" />
+      </button>
+      @if (session.user(); as user) {
+        <span
+          data-testid="current-user"
+          class="mr-3 hidden text-sm text-on-surface-variant sm:inline"
+          >{{ accountLabel(user) }} - {{ roleLabel(user.role) }}</span
+        >
+        <button
+          type="button"
+          data-testid="user-menu"
+          aria-label="Menu do usuário"
+          class="flex size-10 cursor-pointer items-center justify-center rounded-full bg-accent-fill text-sm font-medium text-on-accent-fill focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          [matMenuTriggerFor]="userMenu"
+        >
+          {{ initialsOf(user) }}
+        </button>
+        <mat-menu #userMenu="matMenu" xPosition="before">
+          <div
+            data-testid="menu-user"
+            class="border-b border-outline-variant px-4 py-3 text-sm text-on-surface-variant"
+          >
+            {{ accountLabel(user) }} - {{ roleLabel(user.role) }}
+          </div>
+          @for (item of userMenuItems(); track item.id) {
+            <a mat-menu-item [attr.data-testid]="'menu-' + item.id" [routerLink]="item.path">
+              <mat-icon [svgIcon]="item.icon" />
+              <span>{{ item.label }}</span>
+            </a>
+          }
+          <button mat-menu-item type="button" data-testid="sign-out" (click)="signOut()">
+            <mat-icon svgIcon="logout" />
+            <span>Sair</span>
+          </button>
+        </mat-menu>
+      }
+    </mat-toolbar>
+    <main>
+      <router-outlet />
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>
