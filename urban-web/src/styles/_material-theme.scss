@@ -96,8 +96,8 @@ html {
   );
 
   // Moldura da area logada: cabecalho e menu lateral brancos (no escuro, pretos como a pagina), sem cantos
-  // arredondados na lateral e com a linha fina das bordas separando-a do conteudo. A linha de baixo do cabecalho
-  // nao tem token no Material: ela vem de `border-b border-outline-variant` no proprio <mat-toolbar>.
+  // arredondados na lateral. O cabecalho nao tem linha embaixo; so o menu lateral tem a linha fina das bordas, do
+  // lado do conteudo. A largura do menu (256px) muda para 72px quando ele e recolhido, pelo ShellLayout.
   @include mat.toolbar-overrides(
     (
       container-background-color: var(--mat-sys-surface-container-lowest),

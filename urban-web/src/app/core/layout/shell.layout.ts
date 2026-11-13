@@ -5,6 +5,7 @@ import { MatIconButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { MatMenu, MatMenuItem, MatMenuTrigger } from '@angular/material/menu';
 import { MatSidenav, MatSidenavContainer, MatSidenavContent } from '@angular/material/sidenav';
+import { MatTooltip } from '@angular/material/tooltip';
 import { MatToolbar } from '@angular/material/toolbar';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { map } from 'rxjs';
@@ -15,9 +16,14 @@ import { SessionStore } from '../auth/session.store';
 import { BrandLink } from '../../shared/ui/brand-link/brand.link';
 import { ThemeStore } from '../services/theme.store';
 import { navGroupsFor, userMenuFor } from './nav-items';
+import { SidebarStore } from './sidebar.store';
 
 /** Largura (breakpoint `lg` do Tailwind) a partir da qual o menu lateral fica fixo; abaixo dela vira uma gaveta. */
 const DESKTOP_QUERY = '(min-width: 1024px)';
+
+/** Largura do menu lateral fixado (com os nomes) e recolhido (só ícones: 48 px do item + 12 px de cada lado). */
+const PINNED_WIDTH = '256px';
+const RAIL_WIDTH = '72px';
 
 /**
  * Moldura da área logada: menu lateral com as telas de gestão (fixo no computador, gaveta no celular), cabeçalho
@@ -39,6 +45,7 @@ const DESKTOP_QUERY = '(min-width: 1024px)';
     MatMenu,
     MatMenuItem,
     MatMenuTrigger,
+    MatTooltip,
     BrandLink,
   ],
   templateUrl: './shell.layout.html',
@@ -66,6 +73,23 @@ export class ShellLayout {
   /** No computador o menu nasce aberto; no celular, fechado. A pessoa pode alternar, e trocar o tamanho da tela refaz o padrão. */
   protected readonly opened = linkedSignal(() => this.isDesktop());
 
+  private readonly sidebar = inject(SidebarStore);
+
+  /** Recolhido só vale no computador; a gaveta do celular sempre mostra os nomes. */
+  protected readonly rail = computed(() => this.isDesktop() && this.sidebar.collapsed());
+  protected readonly sidebarWidth = computed(() => (this.rail() ? RAIL_WIDTH : PINNED_WIDTH));
+
+  /** O mesmo botão do cabeçalho: no computador recolhe/fixa o menu, no celular abre/fecha a gaveta. */
+  protected readonly menuToggleLabel = computed(() => {
+    if (this.isDesktop()) {
+      return this.rail() ? 'Fixar menu' : 'Recolher menu';
+    }
+    return this.opened() ? 'Fechar menu' : 'Abrir menu';
+  });
+  protected readonly menuExpanded = computed(() =>
+    this.isDesktop() ? !this.rail() : this.opened(),
+  );
+
   private readonly router = inject(Router);
 
   constructor() {
@@ -78,7 +102,11 @@ export class ShellLayout {
   }
 
   protected toggleMenu(): void {
-    this.opened.update((opened) => !opened);
+    if (this.isDesktop()) {
+      this.sidebar.toggle();
+    } else {
+      this.opened.update((opened) => !opened);
+    }
   }
 
   /** Na gaveta, escolher uma tela a fecha (ela cobre o conteúdo); no menu fixo, ele continua onde está. */
