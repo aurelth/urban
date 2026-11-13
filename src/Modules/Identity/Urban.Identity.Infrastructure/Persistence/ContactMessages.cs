@@ -1,0 +1,49 @@
+using Microsoft.EntityFrameworkCore;
+using Urban.Identity.Application.Contact;
+using Urban.Identity.Domain.Contact;
+using Urban.Identity.Domain.Users;
+
+namespace Urban.Identity.Infrastructure.Persistence;
+
+/// <summary>Caixa de entrada do dono. A marcação como lida é um único UPDATE condicionado a ainda não ter leitura, que o banco aplica de forma atômica.</summary>
+public sealed class ContactMessages(IdentityDbContext db) : IContactMessages
+{
+    public async Task AddAsync(ContactMessage message, CancellationToken cancellationToken)
+    {
+        db.ContactMessages.Add(message);
+        await db.SaveChangesAsync(cancellationToken);
+    }
+
+    public Task<ContactMessage?> FindAsync(Guid id, CancellationToken cancellationToken) =>
+        db.ContactMessages.AsNoTracking().SingleOrDefaultAsync(m => m.Id == id, cancellationToken);
+
+    public async Task<ContactMessagePage> ListAsync(bool unreadOnly, int page, int pageSize, CancellationToken cancellationToken)
+    {
+        IQueryable<ContactMessage> filtered = db.ContactMessages.AsNoTracking();
+        if (unreadOnly)
+        {
+            filtered = filtered.Where(m => m.ReadAt == null);
+        }
+
+        int total = await filtered.CountAsync(cancellationToken);
+
+        // O e-mail e os nomes do usuário têm conversores de valor, por isso a entidade inteira é lida e os resumos são montados depois.
+        List<ContactMessageEntry> items = await (
+            from message in filtered
+            join sender in db.Users.AsNoTracking() on message.SenderId equals sender.Id
+            orderby message.CreatedAt descending, message.Id descending
+            select new ContactMessageEntry(message, sender))
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return new ContactMessagePage(items, total);
+    }
+
+    public async Task MarkReadAsync(ContactMessage message, CancellationToken cancellationToken)
+    {
+        await db.ContactMessages
+            .Where(m => m.Id == message.Id && m.ReadAt == null)
+            .ExecuteUpdateAsync(set => set.SetProperty(m => m.ReadAt, message.ReadAt), cancellationToken);
+    }
+}

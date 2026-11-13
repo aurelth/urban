@@ -52,6 +52,52 @@ namespace Urban.Identity.Infrastructure.Persistence.Migrations
                     b.ToTable("user_consent", "identity");
                 });
 
+            modelBuilder.Entity("Urban.Identity.Domain.Contact.ContactMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("body");
+
+                    b.Property<Guid?>("CondominiumId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("condominium_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("ReadAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("read_at");
+
+                    b.Property<Guid>("SenderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("sender_id");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("subject");
+
+                    b.HasKey("Id")
+                        .HasName("pk_contact_message");
+
+                    b.HasIndex("CreatedAt")
+                        .HasDatabaseName("ix_contact_message_created_at");
+
+                    b.HasIndex("SenderId")
+                        .HasDatabaseName("ix_contact_message_sender_id");
+
+                    b.ToTable("contact_message", "identity");
+                });
+
             modelBuilder.Entity("Urban.Identity.Domain.Tokens.EmailChangeToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -360,6 +406,16 @@ namespace Urban.Identity.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_user_consent_user_user_id");
+                });
+
+            modelBuilder.Entity("Urban.Identity.Domain.Contact.ContactMessage", b =>
+                {
+                    b.HasOne("Urban.Identity.Domain.Users.User", null)
+                        .WithMany()
+                        .HasForeignKey("SenderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_contact_message_user_sender_id");
                 });
 
             modelBuilder.Entity("Urban.Identity.Domain.Tokens.EmailChangeToken", b =>

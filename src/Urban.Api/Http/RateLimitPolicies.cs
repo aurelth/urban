@@ -38,6 +38,9 @@ public static class RateLimitPolicies
     /// <summary>Rotas de administração do SuperAdmin: pedidos de cadastro.</summary>
     public const string Admin = "admin";
 
+    /// <summary>Envio de mensagem do síndico ao dono: grava e dispara e-mail, então o limite é menor para não virar canal de spam.</summary>
+    public const string Contact = "contact";
+
     /// <summary>Troca de senha, de e-mail e edição dos dados sensíveis: ações que exigem a senha, com limite menor.</summary>
     public const string SensitiveChange = "sensitive-change";
 
