@@ -35,6 +35,12 @@ public static class UserErrors
     public static readonly Error AccountDeleted =
         new("identity.user.account_deleted", "Conta excluída");
 
+    public static readonly Error RegistrationPending =
+        new("identity.user.registration_pending", "Seu cadastro ainda não foi aprovado");
+
+    public static readonly Error RegistrationRejected =
+        new("identity.user.registration_rejected", "Seu cadastro não foi aprovado");
+
     public static readonly Error PasswordIncorrect =
         new("identity.password.incorrect", "Senha incorreta");
 
