@@ -1,7 +1,11 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { ContactMessagesPage, ContactMessagesQuery } from './contact-messages.models';
+import {
+  ContactMessagesPage,
+  ContactMessagesQuery,
+  ContactReplyReceipt,
+} from './contact-messages.models';
 
 const BASE = '/api/admin/contact-messages';
 
@@ -16,6 +20,19 @@ export class ContactMessagesApi {
 
   markRead(id: string): Observable<void> {
     return this.http.post<void>(`${BASE}/${id}/read`, null);
+  }
+
+  /**
+   * Responde por e-mail ao síndico. Vai como multipart: o navegador define o Content-Type com o limite das partes, então
+   * o cabeçalho nunca é escrito aqui.
+   */
+  reply(id: string, body: string, files: readonly File[]): Observable<ContactReplyReceipt> {
+    const form = new FormData();
+    form.append('body', body.trim());
+    for (const file of files) {
+      form.append('attachments', file, file.name);
+    }
+    return this.http.post<ContactReplyReceipt>(`${BASE}/${id}/replies`, form);
   }
 }
 

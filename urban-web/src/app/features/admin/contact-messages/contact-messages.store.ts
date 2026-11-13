@@ -1,6 +1,6 @@
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
-import { firstValueFrom } from 'rxjs';
+import { Observable, firstValueFrom } from 'rxjs';
 import { ContactMessagesApi } from '../../../core/admin/contact-messages.api';
 import {
   ContactMessage,
@@ -74,6 +74,22 @@ export const ContactMessagesStore = signalStore(
       patchState(store, { busy: false });
     };
 
+    /** Faz a alteração e busca a lista de novo quando deu certo ou a tela estava desatualizada (404). */
+    const change = async (call: Observable<unknown>): Promise<ApiProblem | null> => {
+      patchState(store, { busy: true });
+      let problem: ApiProblem | null = null;
+      try {
+        await firstValueFrom(call);
+      } catch (error) {
+        problem = toApiProblem(error);
+      }
+      if (problem === null || problem.status === STALE_STATUS) {
+        await refresh();
+      }
+      patchState(store, { busy: false });
+      return problem;
+    };
+
     return {
       /** Primeira busca. Serve também para tentar de novo depois de um erro. */
       load: async (): Promise<void> => {
@@ -94,20 +110,17 @@ export const ContactMessagesStore = signalStore(
         }
       },
       /** Marca como lida e busca a lista de novo (também quando a mensagem sumiu). Devolve o problema, ou nulo. */
-      markRead: async (message: ContactMessage): Promise<ApiProblem | null> => {
-        patchState(store, { busy: true });
-        let problem: ApiProblem | null = null;
-        try {
-          await firstValueFrom(api.markRead(message.id));
-        } catch (error) {
-          problem = toApiProblem(error);
-        }
-        if (problem === null || problem.status === STALE_STATUS) {
-          await refresh();
-        }
-        patchState(store, { busy: false });
-        return problem;
-      },
+      markRead: (message: ContactMessage): Promise<ApiProblem | null> =>
+        change(api.markRead(message.id)),
+      /**
+       * Responde por e-mail e busca a lista de novo, que agora traz a resposta e a mensagem como lida. Se a API recusa, nada
+       * foi enviado nem registrado: a lista fica como estava (só o 404, mensagem que sumiu, a atualiza). Devolve o problema, ou nulo.
+       */
+      reply: (
+        message: ContactMessage,
+        body: string,
+        files: readonly File[],
+      ): Promise<ApiProblem | null> => change(api.reply(message.id, body, files)),
     };
   }),
 );
