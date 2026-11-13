@@ -386,15 +386,16 @@ describe('Navegação', () => {
     it('mantém tema, avatar e botão do menu na mesma linha do cabeçalho, sem rolagem horizontal', () => {
       cy.visit('/dashboard');
 
-      cy.get('mat-toolbar').then(($toolbar) => {
+      // A medição se repete até a página assentar: o cabeçalho ainda se move durante a animação de entrada.
+      cy.get('mat-toolbar').should(($toolbar) => {
         const toolbar = $toolbar[0].getBoundingClientRect();
         for (const testId of ['menu-toggle', 'user-menu']) {
-          cy.get(`[data-testid="${testId}"]`).then(($item) => {
-            const box = $item[0].getBoundingClientRect();
-            expect(box.top, `${testId} dentro do cabeçalho`).to.be.at.least(toolbar.top);
-            expect(box.bottom, `${testId} dentro do cabeçalho`).to.be.at.most(toolbar.bottom);
-            expect(box.right, `${testId} dentro da tela`).to.be.at.most(PHONE.width);
-          });
+          const $item = Cypress.$(`[data-testid="${testId}"]`);
+          expect($item, `${testId} na tela`).to.have.length(1);
+          const box = $item[0].getBoundingClientRect();
+          expect(box.top, `${testId} dentro do cabeçalho`).to.be.at.least(toolbar.top);
+          expect(box.bottom, `${testId} dentro do cabeçalho`).to.be.at.most(toolbar.bottom);
+          expect(box.right, `${testId} dentro da tela`).to.be.at.most(PHONE.width);
         }
       });
       expectNoHorizontalScroll();
