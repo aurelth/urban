@@ -20,6 +20,10 @@ const LINKS = [
   ['nav-entries', 'Lançamentos', '/financeiro/lancamentos'],
 ] as const;
 
+function widthOf($element: JQuery<HTMLElement>): number {
+  return Math.round($element[0].getBoundingClientRect().width);
+}
+
 function expectNoHorizontalScroll(): void {
   cy.document().should((doc) => {
     expect(doc.documentElement.scrollWidth).to.be.at.most(doc.documentElement.clientWidth);
@@ -38,7 +42,7 @@ describe('Navegação', () => {
       cy.viewport(DESKTOP.width, DESKTOP.height);
     });
 
-    it('mostra o menu lateral fixo, com as telas agrupadas, e sem o botão da gaveta', () => {
+    it('mostra o menu lateral fixo, com as telas agrupadas, e o botão de recolher', () => {
       cy.visit('/dashboard');
 
       cy.get('nav[aria-label="Menu principal"]').should('be.visible');
@@ -56,7 +60,11 @@ describe('Navegação', () => {
           'Financeiro',
         ]);
       });
-      cy.get('[data-testid="menu-toggle"]').should('not.exist');
+      cy.get('[data-testid="menu-toggle"]')
+        .should('be.visible')
+        .and('have.attr', 'aria-label', 'Recolher menu')
+        .and('have.attr', 'aria-expanded', 'true');
+      cy.get('mat-sidenav').should(($menu) => expect(widthOf($menu)).to.eq(256));
     });
 
     it('leva cada item à sua tela e mantém o menu lateral na tela', () => {
@@ -79,21 +87,131 @@ describe('Navegação', () => {
       cy.get('[data-testid="nav-dashboard"]').should('not.have.attr', 'aria-current');
     });
 
-    it('deixa a logo no topo do menu lateral, e não duplica no cabeçalho', () => {
+    it('deixa a logo, com o U colorido do favicon, no topo do menu lateral, e não duplica no cabeçalho', () => {
       cy.visit('/dashboard');
 
-      cy.get('mat-sidenav a[aria-label="Urban, ir para a página inicial"]').should('be.visible');
+      cy.get('mat-sidenav a[aria-label="Urban, ir para a página inicial"]')
+        .should('be.visible')
+        .and('contain.text', 'Urban');
+      cy.get('mat-sidenav [data-testid="brand-mark"]').should('be.visible');
+      cy.get('mat-sidenav [data-testid="brand-mark"] rect').should(
+        'have.css',
+        'fill',
+        'rgb(88, 86, 214)',
+      );
+      cy.get('mat-sidenav [data-testid="brand-mark"] path').should(
+        'have.css',
+        'stroke',
+        'rgb(255, 255, 255)',
+      );
       cy.get('mat-toolbar a[aria-label="Urban, ir para a página inicial"]').should('not.exist');
     });
 
-    it('separa o cabeçalho do corpo com uma linha fina na cor das bordas', () => {
-      cy.visit('/dashboard', {
-        onBeforeLoad: (win) => win.localStorage.setItem('urban.theme', 'light'),
+    it('não separa o cabeçalho do corpo com uma linha', () => {
+      cy.visit('/dashboard');
+
+      cy.get('mat-toolbar').should('have.css', 'border-bottom-width', '0px');
+    });
+
+    describe('recolher e fixar o menu', () => {
+      const MENU = 'mat-sidenav';
+      const TOGGLE = '[data-testid="menu-toggle"]';
+
+      function collapse(): void {
+        cy.get(TOGGLE).click();
+        cy.get(MENU).should(($menu) => expect(widthOf($menu)).to.eq(72));
+      }
+
+      it('recolhe numa coluna só de ícones e a página ocupa o espaço que sobrou', () => {
+        cy.visit('/dashboard');
+
+        collapse();
+
+        cy.get(TOGGLE)
+          .should('have.attr', 'aria-label', 'Fixar menu')
+          .and('have.attr', 'aria-expanded', 'false');
+        cy.get('mat-sidenav-content').should('have.css', 'margin-left', '72px');
+        cy.get('[data-testid="nav-label"]').each(($label) => {
+          expect(
+            $label[0].getBoundingClientRect().width,
+            'nome só para leitor de tela',
+          ).to.be.at.most(1);
+        });
+        cy.get('[data-testid="nav-group"]').should('not.exist');
+        cy.get('nav[aria-label="Menu principal"] a mat-icon').should('have.length', 6);
+        cy.get('nav[aria-label="Menu principal"] a mat-icon').each(($icon) => {
+          cy.wrap($icon).should('be.visible');
+        });
+        cy.get('[data-testid="user-menu"]').should('be.visible');
+        expectNoHorizontalScroll();
       });
 
-      cy.get('mat-toolbar')
-        .should('have.css', 'border-bottom-width', '1px')
-        .and('have.css', 'border-bottom-color', 'rgb(230, 230, 239)');
+      it('mostra só o U da logo quando recolhido, e a logo continua levando ao painel', () => {
+        cy.visit('/conta');
+
+        collapse();
+
+        cy.get('mat-sidenav [data-testid="brand-mark"]').should('be.visible');
+        cy.get('mat-sidenav a[aria-label="Urban, ir para a página inicial"]')
+          .should(($logo) => expect($logo.text().trim()).to.eq(''))
+          .click();
+        cy.location('pathname').should('eq', '/dashboard');
+      });
+
+      it('mostra o nome do item numa dica ao passar o mouse', () => {
+        cy.visit('/dashboard');
+        collapse();
+
+        cy.get('[data-testid="nav-units"]').trigger('mouseenter');
+
+        cy.get('.mat-mdc-tooltip').should('be.visible').and('contain.text', 'Unidades');
+      });
+
+      it('continua levando às telas, e fica recolhido ao navegar', () => {
+        cy.visit('/dashboard');
+        collapse();
+
+        cy.get('[data-testid="nav-units"]').click();
+
+        cy.location('pathname').should('eq', '/unidades');
+        cy.get(MENU).should(($menu) => expect(widthOf($menu)).to.eq(72));
+        cy.get('[data-testid="nav-units"]').should('have.attr', 'aria-current', 'page');
+      });
+
+      it('fixa de novo, voltando os nomes e os grupos', () => {
+        cy.visit('/dashboard');
+        collapse();
+
+        cy.get(TOGGLE).click();
+
+        cy.get(MENU).should(($menu) => expect(widthOf($menu)).to.eq(256));
+        cy.get(TOGGLE).should('have.attr', 'aria-label', 'Recolher menu');
+        cy.get('[data-testid="nav-label"]').first().should('be.visible').and('have.text', 'Painel');
+        cy.get('[data-testid="nav-group"]').should('have.length', 2);
+      });
+
+      it('lembra a escolha depois de recarregar a página', () => {
+        cy.visit('/dashboard');
+        collapse();
+
+        cy.reload();
+
+        cy.get(MENU).should(($menu) => expect(widthOf($menu)).to.eq(72));
+        cy.get(TOGGLE).should('have.attr', 'aria-label', 'Fixar menu');
+      });
+
+      it('não atrapalha o celular: a gaveta sempre abre com os nomes', () => {
+        cy.viewport(PHONE.width, PHONE.height);
+        cy.visit('/dashboard', {
+          onBeforeLoad: (win) => win.localStorage.setItem('urban.sidebar', 'collapsed'),
+        });
+
+        openDrawer();
+
+        cy.get(MENU).should(($menu) => expect(widthOf($menu)).to.eq(256));
+        cy.get('[data-testid="nav-label"]').first().should('be.visible').and('have.text', 'Painel');
+        cy.get('[data-testid="nav-group"]').should('have.length', 2);
+      });
     });
 
     it('mostra a saudação ao lado do avatar, nessa ordem: tema, saudação, avatar', () => {

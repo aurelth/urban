@@ -10,7 +10,10 @@ import { BrandLink } from './brand.link';
 @Component({ template: '' })
 class Blank {}
 
-async function setup(signedIn: boolean): Promise<{
+async function setup(
+  signedIn: boolean,
+  compact = false,
+): Promise<{
   fixture: ComponentFixture<BrandLink>;
   link: HTMLAnchorElement;
   router: Router;
@@ -31,6 +34,7 @@ async function setup(signedIn: boolean): Promise<{
     await signInAs(TestBed.inject(SessionStore), TestBed.inject(HttpTestingController));
   }
   const fixture = TestBed.createComponent(BrandLink);
+  fixture.componentRef.setInput('compact', compact);
   await fixture.whenStable();
   return {
     fixture,
@@ -51,6 +55,27 @@ describe('BrandLink', () => {
   it('diz no nome acessível para onde o link leva, sem perder a palavra visível', async () => {
     const { link } = await setup(true);
 
+    expect(link.getAttribute('aria-label')).toBe('Urban, ir para a página inicial');
+  });
+
+  it('põe o U colorido do favicon antes do nome, só como enfeite para leitores de tela', async () => {
+    const { link } = await setup(true);
+
+    const mark = link.querySelector('svg');
+
+    expect(mark?.getAttribute('data-testid')).toBe('brand-mark');
+    expect(mark?.getAttribute('aria-hidden')).toBe('true');
+    expect(mark?.getAttribute('viewBox')).toBe('0 0 64 64');
+    expect(mark?.querySelector('rect')?.getAttribute('class')).toContain('fill-accent-fill');
+    expect(mark?.querySelector('path')?.getAttribute('class')).toContain('stroke-on-accent-fill');
+    expect(link.firstElementChild).toBe(mark);
+  });
+
+  it('no modo compacto mostra só o U, e o nome continua no nome acessível', async () => {
+    const { link } = await setup(true, true);
+
+    expect(link.querySelector('svg')).not.toBeNull();
+    expect(link.textContent?.trim()).toBe('');
     expect(link.getAttribute('aria-label')).toBe('Urban, ir para a página inicial');
   });
 

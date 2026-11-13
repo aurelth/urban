@@ -4,16 +4,23 @@
       fixedInViewport
       [mode]="mode()"
       [opened]="opened()"
+      [style.--mat-sidenav-container-width]="sidebarWidth()"
       [disableClose]="isDesktop()"
       (closedStart)="opened.set(false)"
     >
-      <div class="flex h-16 items-center px-6 text-xl font-bold tracking-tight">
-        <urban-brand-link />
+      <div
+        class="flex h-16 items-center text-xl font-bold tracking-tight"
+        [class]="rail() ? 'justify-center' : 'px-7'"
+      >
+        <urban-brand-link [compact]="rail()" />
       </div>
       <nav aria-label="Menu principal" class="flex flex-col gap-1 px-3 pb-6">
         @for (group of groups(); track group.id) {
           <div role="group" [attr.aria-label]="group.label" class="flex flex-col gap-1">
-            @if (group.label) {
+            @if (rail() && !$first) {
+              <hr aria-hidden="true" class="mx-3 my-2 border-outline-variant" />
+            }
+            @if (group.label && !rail()) {
               <p
                 data-testid="nav-group"
                 aria-hidden="true"
@@ -24,7 +31,10 @@
             }
             @for (item of group.items; track item.id) {
               <a
-                class="flex h-12 items-center gap-3 rounded-full px-4 text-sm text-on-surface no-underline hover:bg-accent-fill/5 focus-visible:outline-2 focus-visible:outline-primary"
+                class="flex h-12 items-center rounded-full text-sm text-on-surface no-underline hover:bg-accent-fill/5 focus-visible:outline-2 focus-visible:outline-primary"
+                matTooltipPosition="right"
+                [class]="rail() ? 'size-12 justify-center' : 'gap-3 px-4'"
+                [matTooltip]="rail() ? item.label : ''"
                 routerLinkActive="bg-accent-fill/10 font-medium"
                 ariaCurrentWhenActive="page"
                 [attr.data-testid]="'nav-' + item.id"
@@ -32,7 +42,9 @@
                 (click)="closeDrawer()"
               >
                 <mat-icon [svgIcon]="item.icon" />
-                <span>{{ item.label }}</span>
+                <span data-testid="nav-label" [class]="rail() ? 'sr-only' : ''">{{
+                  item.label
+                }}</span>
               </a>
             }
           </div>
@@ -41,14 +53,14 @@
     </mat-sidenav>
   }
   <mat-sidenav-content>
-    <mat-toolbar class="border-b border-outline-variant">
-      @if (hasSidebar() && !isDesktop()) {
+    <mat-toolbar>
+      @if (hasSidebar()) {
         <button
           mat-icon-button
           type="button"
           data-testid="menu-toggle"
-          [attr.aria-label]="opened() ? 'Fechar menu' : 'Abrir menu'"
-          [attr.aria-expanded]="opened()"
+          [attr.aria-label]="menuToggleLabel()"
+          [attr.aria-expanded]="menuExpanded()"
           (click)="toggleMenu()"
         >
           <mat-icon svgIcon="menu" />

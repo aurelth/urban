@@ -1,3 +1,27 @@
-<a [routerLink]="home()" data-testid="brand-link" aria-label="Urban, ir para a página inicial"
-  >Urban</a
+<a
+  class="inline-flex items-center gap-2"
+  data-testid="brand-link"
+  aria-label="Urban, ir para a página inicial"
+  [routerLink]="home()"
 >
+  <!-- O U do favicon (public/favicon.svg), nas cores do tema; só enfeite, o nome vem do aria-label. -->
+  <svg
+    data-testid="brand-mark"
+    class="size-[1.4em] shrink-0"
+    viewBox="0 0 64 64"
+    aria-hidden="true"
+  >
+    <rect class="fill-accent-fill" width="64" height="64" rx="15" />
+    <path
+      class="stroke-on-accent-fill"
+      d="M21 17v19a11 11 0 0 0 22 0V17"
+      fill="none"
+      stroke-width="8"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  </svg>
+  @if (!compact()) {
+    <span>Urban</span>
+  }
+</a>

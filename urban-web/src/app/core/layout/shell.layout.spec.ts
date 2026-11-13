@@ -55,6 +55,16 @@ function byTestId(html: ParentNode, name: string): HTMLElement | null {
   return html.querySelector<HTMLElement>(`[data-testid="${name}"]`);
 }
 
+/** Faz o jsdom (que não tem `matchMedia`) responder que a tela tem 1024 px ou mais. */
+function useDesktopScreen(): void {
+  window.matchMedia = ((query: string) => ({
+    matches: true,
+    media: query,
+    addListener: () => undefined,
+    removeListener: () => undefined,
+  })) as unknown as typeof window.matchMedia;
+}
+
 async function openUserMenu(
   fixture: ComponentFixture<ShellLayout>,
   html: HTMLElement,
@@ -67,6 +77,8 @@ async function openUserMenu(
 
 describe('ShellLayout', () => {
   afterEach(() => {
+    Reflect.deleteProperty(window, 'matchMedia');
+    localStorage.clear();
     jest.restoreAllMocks();
     TestBed.inject(HttpTestingController).match(() => true);
   });
@@ -278,6 +290,143 @@ describe('ShellLayout', () => {
 
       expect(byTestId(html, 'nav-units')?.getAttribute('aria-current')).toBe('page');
       expect(byTestId(html, 'nav-expenses')?.getAttribute('aria-current')).toBeNull();
+    });
+
+    describe('no computador, onde ele é fixo e pode ser recolhido', () => {
+      beforeEach(useDesktopScreen);
+
+      function sidenav(html: HTMLElement): HTMLElement {
+        return html.querySelector<HTMLElement>('mat-sidenav')!;
+      }
+
+      function width(html: HTMLElement): string {
+        return sidenav(html).style.getPropertyValue('--mat-sidenav-container-width');
+      }
+
+      function labels(html: HTMLElement): HTMLElement[] {
+        return [...html.querySelectorAll<HTMLElement>('[data-testid="nav-label"]')];
+      }
+
+      async function toggle(
+        fixture: ComponentFixture<ShellLayout>,
+        html: HTMLElement,
+      ): Promise<void> {
+        byTestId(html, 'menu-toggle')!.click();
+        await fixture.whenStable();
+        TestBed.tick();
+      }
+
+      it('nasce aberto, com os nomes, e o botão do cabeçalho oferece recolher', async () => {
+        const { html } = await setup(REGISTERED_MANAGER);
+        const button = byTestId(html, 'menu-toggle')!;
+
+        expect(sidenav(html).classList.contains('mat-drawer-opened')).toBe(true);
+        expect(sidenav(html).classList.contains('mat-drawer-side')).toBe(true);
+        expect(width(html)).toBe('256px');
+        expect(button.getAttribute('aria-label')).toBe('Recolher menu');
+        expect(button.getAttribute('aria-expanded')).toBe('true');
+        expect(labels(html).every((label) => !label.classList.contains('sr-only'))).toBe(true);
+      });
+
+      it('deixa a logo só no topo do menu, e não repete no cabeçalho', async () => {
+        const { html } = await setup(REGISTERED_MANAGER);
+
+        expect(html.querySelector('mat-toolbar urban-brand-link')).toBeNull();
+        expect(text(html.querySelector('mat-sidenav urban-brand-link a'))).toBe('Urban');
+      });
+
+      it('recolhe numa coluna só de ícones, sem tirar os nomes dos leitores de tela', async () => {
+        const { fixture, html } = await setup(REGISTERED_MANAGER);
+
+        await toggle(fixture, html);
+
+        const button = byTestId(html, 'menu-toggle')!;
+        expect(sidenav(html).classList.contains('mat-drawer-opened')).toBe(true);
+        expect(width(html)).toBe('72px');
+        expect(button.getAttribute('aria-label')).toBe('Fixar menu');
+        expect(button.getAttribute('aria-expanded')).toBe('false');
+        expect(labels(html).map(text)).toEqual([
+          'Painel',
+          'Unidades',
+          'Despesas',
+          'Tarifas',
+          'Leituras',
+          'Lançamentos',
+        ]);
+        expect(labels(html).every((label) => label.classList.contains('sr-only'))).toBe(true);
+        expect(html.querySelectorAll('[data-testid="nav-group"]')).toHaveLength(0);
+        expect(text(html.querySelector('mat-sidenav urban-brand-link a'))).toBe('');
+        expect(
+          html.querySelector('mat-sidenav urban-brand-link a')?.getAttribute('aria-label'),
+        ).toBe('Urban, ir para a página inicial');
+      });
+
+      it('fixa de novo, voltando os nomes e os títulos dos grupos', async () => {
+        const { fixture, html } = await setup(REGISTERED_MANAGER);
+        await toggle(fixture, html);
+
+        await toggle(fixture, html);
+
+        expect(width(html)).toBe('256px');
+        expect(byTestId(html, 'menu-toggle')!.getAttribute('aria-label')).toBe('Recolher menu');
+        expect(labels(html).every((label) => !label.classList.contains('sr-only'))).toBe(true);
+        expect([...html.querySelectorAll('[data-testid="nav-group"]')].map(text)).toEqual([
+          'Condomínio',
+          'Financeiro',
+        ]);
+      });
+
+      it('mostra o nome de cada item numa dica quando está recolhido', async () => {
+        const { fixture, html } = await setup(REGISTERED_MANAGER);
+        await toggle(fixture, html);
+
+        expect(byTestId(html, 'nav-units')!.getAttribute('aria-describedby')).not.toBeNull();
+      });
+
+      it('lembra a escolha na próxima visita', async () => {
+        const first = await setup(REGISTERED_MANAGER);
+        await toggle(first.fixture, first.html);
+        expect(localStorage.getItem('urban.sidebar')).toBe('collapsed');
+        TestBed.resetTestingModule();
+
+        const { html } = await setup(REGISTERED_MANAGER);
+
+        expect(width(html)).toBe('72px');
+        expect(byTestId(html, 'menu-toggle')!.getAttribute('aria-label')).toBe('Fixar menu');
+      });
+
+      it('não fecha ao escolher uma tela', async () => {
+        const { fixture, html } = await setup(REGISTERED_MANAGER);
+
+        byTestId(html, 'nav-units')!.click();
+        await fixture.whenStable();
+        TestBed.tick();
+
+        expect(sidenav(html).classList.contains('mat-drawer-opened')).toBe(true);
+      });
+    });
+
+    it('no celular ignora a escolha de recolher: a gaveta sempre mostra os nomes', async () => {
+      localStorage.setItem('urban.sidebar', 'collapsed');
+      const { fixture, html } = await setup(REGISTERED_MANAGER);
+      const toggle = byTestId(html, 'menu-toggle')!;
+
+      toggle.click();
+      await fixture.whenStable();
+      TestBed.tick();
+
+      expect(toggle.getAttribute('aria-label')).toBe('Fechar menu');
+      expect(
+        html
+          .querySelector<HTMLElement>('mat-sidenav')!
+          .style.getPropertyValue('--mat-sidenav-container-width'),
+      ).toBe('256px');
+      expect(
+        [...html.querySelectorAll('[data-testid="nav-label"]')].some((label) =>
+          label.classList.contains('sr-only'),
+        ),
+      ).toBe(false);
+      expect(html.querySelectorAll('[data-testid="nav-group"]')).toHaveLength(2);
     });
 
     describe('no celular, onde ele é uma gaveta', () => {
