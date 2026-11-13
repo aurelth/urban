@@ -15,6 +15,7 @@ using Urban.Identity.Application.Authentication;
 using Urban.Identity.Application.Authentication.Login;
 using Urban.Identity.Application.Authentication.Refresh;
 using Urban.Identity.Application.Bootstrap;
+using Urban.Identity.Application.RegistrationRequests;
 using Urban.Identity.Domain.Consent;
 using Urban.Identity.Domain.Tokens;
 using Urban.Identity.Domain.Users;
@@ -44,6 +45,11 @@ public static class ErrorHttp
         [UserErrors.AccountDeactivated.Code] = StatusCodes.Status403Forbidden,
         [UserErrors.AccountSuspended.Code] = StatusCodes.Status403Forbidden,
         [UserErrors.AccountDeleted.Code] = StatusCodes.Status403Forbidden,
+        [UserErrors.RegistrationPending.Code] = StatusCodes.Status403Forbidden,
+        [UserErrors.RegistrationRejected.Code] = StatusCodes.Status403Forbidden,
+        [RegistrationRequestErrors.Forbidden.Code] = StatusCodes.Status403Forbidden,
+        [RegistrationRequestErrors.NotFound.Code] = StatusCodes.Status404NotFound,
+        [RequestedCondominiumName.Invalid.Code] = StatusCodes.Status400BadRequest,
 
         [UserErrors.InvalidTransition.Code] = StatusCodes.Status409Conflict,
         [BootstrapErrors.EmailTakenByAnotherRole.Code] = StatusCodes.Status409Conflict,

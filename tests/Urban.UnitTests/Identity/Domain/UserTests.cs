@@ -10,6 +10,8 @@ public class UserTests
 {
     public enum Transition
     {
+        Approve,
+        Reject,
         ConfirmEmail,
         Deactivate,
         Activate,
@@ -21,6 +23,8 @@ public class UserTests
     // Especificação da máquina de estados: (transição, estado de origem) -> estado de destino.
     private static readonly Dictionary<(Transition, AccountStatus), AccountStatus> Allowed = new()
     {
+        [(Transition.Approve, AccountStatus.PendingApproval)] = AccountStatus.PendingVerification,
+        [(Transition.Reject, AccountStatus.PendingApproval)] = AccountStatus.Rejected,
         [(Transition.ConfirmEmail, AccountStatus.PendingVerification)] = AccountStatus.Active,
         [(Transition.Deactivate, AccountStatus.Active)] = AccountStatus.Deactivated,
         [(Transition.Activate, AccountStatus.Deactivated)] = AccountStatus.Active,
@@ -65,6 +69,57 @@ public class UserTests
 
             return data;
         }
+    }
+
+    [Fact]
+    public void RequestManagerAccess_CreatesAManagerWaitingForApprovalWithTheRequestData()
+    {
+        DisplayName name = DisplayName.Create("Ana Paula").Value;
+        RequestedCondominiumName condominium = RequestedCondominiumName.Create("Residencial Vila Verde").Value;
+
+        User user = User.RequestManagerAccess(Email.Create("ana@example.com").Value, name, condominium, UserBuilder.Now);
+
+        user.Status.Should().Be(AccountStatus.PendingApproval);
+        user.Role.Should().Be(UserRole.Manager);
+        user.CondominiumId.Should().BeNull();
+        user.DisplayName.Should().Be(name);
+        user.RequestedCondominiumName.Should().Be(condominium);
+        user.CreatedAt.Should().Be(UserBuilder.Now);
+        user.StatusChangedAt.Should().Be(UserBuilder.Now);
+        user.Id.Should().NotBeEmpty();
+    }
+
+    [Fact]
+    public void Register_DoesNotCarryARequestedCondominiumName()
+    {
+        User.Register(Email.Create("ana@example.com").Value, UserRole.Manager, null, UserBuilder.Now).Value
+            .RequestedCondominiumName.Should().BeNull();
+    }
+
+    [Fact]
+    public void Approve_RecordsWhoAndWhenAndClearsNothingElse()
+    {
+        User user = UserBuilder.Requested();
+        DateTimeOffset later = UserBuilder.Now.AddHours(3);
+
+        user.Approve(UserBuilder.ActorId, later);
+
+        user.StatusChangedBy.Should().Be(UserBuilder.ActorId);
+        user.StatusChangedAt.Should().Be(later);
+        user.DisplayName!.Value.Should().Be("Ana Paula");
+        user.RequestedCondominiumName!.Value.Should().Be("Residencial Vila Verde");
+    }
+
+    [Fact]
+    public void Reject_RecordsWhoAndWhen()
+    {
+        User user = UserBuilder.Requested();
+        DateTimeOffset later = UserBuilder.Now.AddHours(3);
+
+        user.Reject(UserBuilder.ActorId, later);
+
+        user.StatusChangedBy.Should().Be(UserBuilder.ActorId);
+        user.StatusChangedAt.Should().Be(later);
     }
 
     [Fact]
@@ -259,6 +314,8 @@ public class UserTests
 
     [Theory]
     [InlineData(AccountStatus.Active, "")]
+    [InlineData(AccountStatus.PendingApproval, "identity.user.registration_pending")]
+    [InlineData(AccountStatus.Rejected, "identity.user.registration_rejected")]
     [InlineData(AccountStatus.PendingVerification, "identity.user.email_not_verified")]
     [InlineData(AccountStatus.Deactivated, "identity.user.account_deactivated")]
     [InlineData(AccountStatus.Suspended, "identity.user.account_suspended")]
@@ -274,6 +331,8 @@ public class UserTests
 
     private static Result Apply(User user, Transition transition) => transition switch
     {
+        Transition.Approve => user.Approve(UserBuilder.ActorId, UserBuilder.Now),
+        Transition.Reject => user.Reject(UserBuilder.ActorId, UserBuilder.Now),
         Transition.ConfirmEmail => user.ConfirmEmail(UserBuilder.Now),
         Transition.Deactivate => user.Deactivate(UserBuilder.ActorId, UserBuilder.Now),
         Transition.Activate => user.Activate(UserBuilder.ActorId, UserBuilder.Now),

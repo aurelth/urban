@@ -9,13 +9,13 @@ namespace Urban.Identity.Domain.Users;
 /// </summary>
 public sealed class User
 {
-    private User(Guid id, Email email, UserRole role, Guid? condominiumId, DateTimeOffset createdAt)
+    private User(Guid id, Email email, UserRole role, Guid? condominiumId, AccountStatus status, DateTimeOffset createdAt)
     {
         Id = id;
         Email = email;
         Role = role;
         CondominiumId = condominiumId;
-        Status = AccountStatus.PendingVerification;
+        Status = status;
         CreatedAt = createdAt;
         StatusChangedAt = createdAt;
     }
@@ -28,8 +28,11 @@ public sealed class User
 
     public Guid? CondominiumId { get; private set; }
 
-    /// <summary>Como a pessoa prefere ser chamada; vem do cadastro do condomínio, então é nulo até lá.</summary>
+    /// <summary>Como a pessoa prefere ser chamada. Vem do pedido de cadastro; quem não passou por ele só o tem depois de cadastrar o condomínio.</summary>
     public DisplayName? DisplayName { get; private set; }
+
+    /// <summary>Nome do condomínio informado no pedido de cadastro, para pré-preencher o formulário depois. Nulo em contas que não nasceram de um pedido.</summary>
+    public RequestedCondominiumName? RequestedCondominiumName { get; private set; }
 
     public AccountStatus Status { get; private set; }
 
@@ -51,8 +54,15 @@ public sealed class User
 
         return mismatch
             ? Result.Failure<User>(UserErrors.CondominiumMismatch)
-            : Result.Success(new User(Guid.CreateVersion7(), email, role, condominiumId, now));
+            : Result.Success(new User(Guid.CreateVersion7(), email, role, condominiumId, AccountStatus.PendingVerification, now));
     }
+
+    public static User RequestManagerAccess(Email email, DisplayName name, RequestedCondominiumName condominiumName, DateTimeOffset now) =>
+        new(Guid.CreateVersion7(), email, UserRole.Manager, null, AccountStatus.PendingApproval, now)
+        {
+            DisplayName = name,
+            RequestedCondominiumName = condominiumName,
+        };
 
     /// <summary>Vincula o síndico ao condomínio que ele cadastrou. Só o síndico, e só uma vez: depois disso o vínculo não muda por aqui.</summary>
     public Result AssignCondominium(Guid condominiumId, DisplayName displayName)
@@ -101,6 +111,12 @@ public sealed class User
         return Result.Success();
     }
 
+    public Result Approve(Guid actorId, DateTimeOffset now) =>
+        MoveTo(AccountStatus.PendingVerification, [AccountStatus.PendingApproval], actorId, null, now);
+
+    public Result Reject(Guid actorId, DateTimeOffset now) =>
+        MoveTo(AccountStatus.Rejected, [AccountStatus.PendingApproval], actorId, null, now);
+
     public Result ConfirmEmail(DateTimeOffset now) =>
         MoveTo(AccountStatus.Active, [AccountStatus.PendingVerification], Id, null, now);
 
@@ -145,6 +161,8 @@ public sealed class User
     public Result CheckCanSignIn() => Status switch
     {
         AccountStatus.Active => Result.Success(),
+        AccountStatus.PendingApproval => Result.Failure(UserErrors.RegistrationPending),
+        AccountStatus.Rejected => Result.Failure(UserErrors.RegistrationRejected),
         AccountStatus.PendingVerification => Result.Failure(UserErrors.EmailNotVerified),
         AccountStatus.Deactivated => Result.Failure(UserErrors.AccountDeactivated),
         AccountStatus.Suspended => Result.Failure(UserErrors.AccountSuspended),

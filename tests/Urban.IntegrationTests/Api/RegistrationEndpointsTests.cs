@@ -28,7 +28,7 @@ public sealed class RegistrationEndpointsTests(ApiFixture fixture) : IDisposable
     public void Dispose() => _client.Dispose();
 
     [Fact]
-    public async Task Register_with_a_new_email_returns_202_and_creates_a_pending_manager()
+    public async Task Register_with_a_new_email_returns_202_and_creates_a_manager_waiting_for_approval()
     {
         string address = NewAddress();
 
@@ -37,41 +37,27 @@ public sealed class RegistrationEndpointsTests(ApiFixture fixture) : IDisposable
         response.StatusCode.Should().Be(HttpStatusCode.Accepted);
         await using IdentityDbContext db = fixture.Postgres.CreateContext();
         User user = await db.Users.AsNoTracking().SingleAsync(u => u.Email == Email.Create(address).Value);
-        user.Status.Should().Be(AccountStatus.PendingVerification);
+        user.Status.Should().Be(AccountStatus.PendingApproval);
         user.Role.Should().Be(UserRole.Manager);
+        user.DisplayName!.Value.Should().Be("Ana Paula");
+        user.RequestedCondominiumName!.Value.Should().Be("Residencial Vila Verde");
         (await db.UserCredentials.AnyAsync(c => c.UserId == user.Id)).Should().BeFalse();
     }
 
     [Fact]
-    public async Task Register_sends_one_email_with_a_link_to_the_confirmation_screen()
+    public async Task Register_sends_nothing_to_the_person_before_the_owner_approves()
     {
         string address = NewAddress();
 
         await RegisterAsync(address);
 
-        EmailMessage message = Emails.SentTo(address).Should().ContainSingle().Subject;
-        message.TextBody.Should().Contain("https://app.test/confirmar-email?token=");
-        RecordingEmailSender.TokenIn(message).Should().NotBeNullOrWhiteSpace();
-    }
-
-    [Fact]
-    public async Task Register_stores_only_the_hash_of_the_link_secret()
-    {
-        string address = NewAddress();
-        await RegisterAsync(address);
-        string secret = RecordingEmailSender.TokenIn(Emails.SentTo(address).Single());
-
+        Emails.SentTo(address).Should().BeEmpty();
         await using IdentityDbContext db = fixture.Postgres.CreateContext();
-        string[] stored = await db.EmailVerificationTokens.AsNoTracking()
-            .Where(t => db.Users.Any(u => u.Id == t.UserId && u.Email == Email.Create(address).Value))
-            .Select(t => t.TokenHash)
-            .ToArrayAsync();
-
-        stored.Should().ContainSingle().Which.Should().Be(_secrets.Hash(secret)).And.NotBe(secret);
+        (await db.EmailVerificationTokens.AnyAsync(t => db.Users.Any(u => u.Id == t.UserId && u.Email == Email.Create(address).Value))).Should().BeFalse();
     }
 
     [Fact]
-    public async Task Register_twice_in_a_row_sends_only_one_email()
+    public async Task Register_twice_in_a_row_keeps_a_single_request_and_answers_the_same()
     {
         string address = NewAddress();
 
@@ -79,7 +65,9 @@ public sealed class RegistrationEndpointsTests(ApiFixture fixture) : IDisposable
         HttpResponseMessage second = await RegisterAsync(address.ToUpperInvariant());
 
         second.StatusCode.Should().Be(first.StatusCode);
-        Emails.SentTo(address).Should().ContainSingle();
+        await using IdentityDbContext db = fixture.Postgres.CreateContext();
+        (await db.Users.CountAsync(u => u.Email == Email.Create(address).Value)).Should().Be(1);
+        Emails.SentTo(address).Should().BeEmpty();
     }
 
     [Fact]
@@ -99,7 +87,9 @@ public sealed class RegistrationEndpointsTests(ApiFixture fixture) : IDisposable
     [Theory]
     [InlineData(AccountStatus.Active)]
     [InlineData(AccountStatus.Suspended)]
-    public async Task Register_with_an_email_that_already_has_a_usable_account_answers_the_same_and_sends_nothing(AccountStatus status)
+    [InlineData(AccountStatus.PendingApproval)]
+    [InlineData(AccountStatus.Rejected)]
+    public async Task Register_with_an_email_that_already_has_an_account_that_cannot_get_a_link_answers_the_same_and_sends_nothing(AccountStatus status)
     {
         User user = await fixture.Postgres.SeedUserAsync(status, UserRole.Manager);
 
@@ -122,12 +112,33 @@ public sealed class RegistrationEndpointsTests(ApiFixture fixture) : IDisposable
         (await response.CodeAsync()).Should().Be(Email.Invalid.Code);
     }
 
+    [Theory]
+    [InlineData("""{"email":"ana@example.com"}""")]
+    [InlineData("""{"email":"ana@example.com","name":"A","condominiumName":"Vila Verde"}""")]
+    [InlineData("""{"email":"ana@example.com","name":"Ana 123","condominiumName":"Vila Verde"}""")]
+    public async Task Register_with_an_invalid_name_returns_400_with_a_stable_code(string json)
+    {
+        HttpResponseMessage response = await _client.PostAsync("/api/auth/register", new StringContent(json, System.Text.Encoding.UTF8, "application/json"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.CodeAsync()).Should().Be(DisplayName.Invalid.Code);
+    }
+
+    [Theory]
+    [InlineData("""{"email":"ana@example.com","name":"Ana"}""")]
+    [InlineData("""{"email":"ana@example.com","name":"Ana","condominiumName":"X"}""")]
+    public async Task Register_with_an_invalid_condominium_name_returns_400_with_a_stable_code(string json)
+    {
+        HttpResponseMessage response = await _client.PostAsync("/api/auth/register", new StringContent(json, System.Text.Encoding.UTF8, "application/json"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.CodeAsync()).Should().Be(RequestedCondominiumName.Invalid.Code);
+    }
+
     [Fact]
     public async Task Confirm_activates_the_account_and_the_chosen_password_works_to_log_in()
     {
-        string address = NewAddress();
-        await RegisterAsync(address);
-        string token = RecordingEmailSender.TokenIn(Emails.SentTo(address).Single());
+        (string address, string token) = await SeedApprovedAsync();
 
         HttpResponseMessage confirmed = await ConfirmAsync(token, Password);
         HttpResponseMessage login = await _client.LoginAsync(address, Password);
@@ -162,9 +173,7 @@ public sealed class RegistrationEndpointsTests(ApiFixture fixture) : IDisposable
     [Fact]
     public async Task Confirm_with_a_weak_password_is_refused_without_spending_the_link()
     {
-        string address = NewAddress();
-        await RegisterAsync(address);
-        string token = RecordingEmailSender.TokenIn(Emails.SentTo(address).Single());
+        (_, string token) = await SeedApprovedAsync();
 
         HttpResponseMessage weak = await ConfirmAsync(token, "curta1");
         HttpResponseMessage retry = await ConfirmAsync(token, Password);
@@ -177,9 +186,7 @@ public sealed class RegistrationEndpointsTests(ApiFixture fixture) : IDisposable
     [Fact]
     public async Task Confirm_records_the_accepted_terms_version_for_the_new_user()
     {
-        string address = NewAddress();
-        await RegisterAsync(address);
-        string token = RecordingEmailSender.TokenIn(Emails.SentTo(address).Single());
+        (string address, string token) = await SeedApprovedAsync();
         DateTimeOffset before = DateTimeOffset.UtcNow;
 
         await ConfirmAsync(token, Password);
@@ -209,9 +216,7 @@ public sealed class RegistrationEndpointsTests(ApiFixture fixture) : IDisposable
     [Fact]
     public async Task Confirm_with_an_outdated_terms_version_is_refused_and_leaves_the_account_pending()
     {
-        string address = NewAddress();
-        await RegisterAsync(address);
-        string token = RecordingEmailSender.TokenIn(Emails.SentTo(address).Single());
+        (string address, string token) = await SeedApprovedAsync();
 
         HttpResponseMessage refused = await ConfirmWithTermsAsync(token, Password, "2020-01-01");
         HttpResponseMessage retry = await ConfirmAsync(token, Password);
@@ -286,7 +291,8 @@ public sealed class RegistrationEndpointsTests(ApiFixture fixture) : IDisposable
 
     private static string NewAddress() => $"{Guid.NewGuid():N}@example.com";
 
-    private Task<HttpResponseMessage> RegisterAsync(string email) => _client.PostAsJsonAsync("/api/auth/register", new { email });
+    private Task<HttpResponseMessage> RegisterAsync(string email) =>
+        _client.PostAsJsonAsync("/api/auth/register", new { email, name = "Ana Paula", condominiumName = "Residencial Vila Verde" });
 
     private Task<HttpResponseMessage> ConfirmAsync(string token, string password) =>
         ConfirmWithTermsAsync(token, password, fixture.Factory.TermsVersion);
@@ -294,12 +300,15 @@ public sealed class RegistrationEndpointsTests(ApiFixture fixture) : IDisposable
     private Task<HttpResponseMessage> ConfirmWithTermsAsync(string token, string password, string? termsVersion) =>
         _client.PostAsJsonAsync("/api/auth/confirm-email", new { token, password, termsVersion });
 
-    private async Task<string> RegisterAndGetTokenAsync()
+    /// <summary>Uma pessoa que o dono já aprovou: conta pendente de confirmação, com um link válido e o segredo dele.</summary>
+    private async Task<(string Address, string Token)> SeedApprovedAsync()
     {
-        string address = NewAddress();
-        await RegisterAsync(address);
-        return RecordingEmailSender.TokenIn(Emails.SentTo(address).Single());
+        User user = await fixture.Postgres.SeedUserAsync(AccountStatus.PendingVerification, UserRole.Manager);
+        string secret = await SeedLinkAsync(user.Id, issuedAt: DateTimeOffset.UtcNow.AddMinutes(-5));
+        return (user.Email.Value, secret);
     }
+
+    private async Task<string> RegisterAndGetTokenAsync() => (await SeedApprovedAsync()).Token;
 
     private async Task<string> SeedLinkAsync(Guid userId, DateTimeOffset issuedAt)
     {

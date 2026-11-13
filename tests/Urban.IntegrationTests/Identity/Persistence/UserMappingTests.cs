@@ -69,6 +69,39 @@ public sealed class UserMappingTests(PostgresFixture postgres)
     }
 
     [Fact]
+    public async Task A_registration_request_keeps_the_name_and_the_condominium_it_asked_for()
+    {
+        User saved = UserBuilder.Requested(address: $"{Guid.NewGuid():N}@example.com", name: "Ana Paula", condominiumName: "Residencial Vila Verde");
+        await using (IdentityDbContext db = postgres.CreateContext())
+        {
+            db.Users.Add(saved);
+            await db.SaveChangesAsync(Ct);
+        }
+
+        User? read = await FindByIdAsync(saved.Id);
+
+        read.Should().BeEquivalentTo(saved);
+        read!.Status.Should().Be(AccountStatus.PendingApproval);
+        read.DisplayName!.Value.Should().Be("Ana Paula");
+        read.RequestedCondominiumName!.Value.Should().Be("Residencial Vila Verde");
+    }
+
+    [Fact]
+    public async Task The_requested_condominium_name_is_optional_and_has_the_length_of_the_domain_rule()
+    {
+        User withoutRequest = await postgres.SeedUserAsync(AccountStatus.Active, UserRole.Manager);
+
+        (await FindByIdAsync(withoutRequest.Id))!.RequestedCondominiumName.Should().BeNull();
+
+        await using IdentityDbContext db = postgres.CreateContext();
+        int length = await db.Database.SqlQuery<int>($"""
+            select character_maximum_length as "Value" from information_schema.columns
+            where table_schema = 'identity' and table_name = 'user' and column_name = 'requested_condominium_name'
+            """).SingleAsync(Ct);
+        length.Should().Be(RequestedCondominiumName.MaxLength);
+    }
+
+    [Fact]
     public async Task A_user_can_be_found_by_email_in_a_query_translated_to_sql()
     {
         User saved = await postgres.SeedUserAsync();

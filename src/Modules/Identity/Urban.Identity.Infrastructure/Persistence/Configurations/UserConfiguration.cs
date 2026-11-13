@@ -29,6 +29,9 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.DisplayName)
             .HasConversion(name => name!.Value, value => DisplayName.Create(value).Value)
             .HasMaxLength(DisplayName.MaxLength);
+        builder.Property(u => u.RequestedCondominiumName)
+            .HasConversion(name => name!.Value, value => RequestedCondominiumName.Create(value).Value)
+            .HasMaxLength(RequestedCondominiumName.MaxLength);
         builder.HasIndex(u => u.CondominiumId);
 
         builder.Property(u => u.CreatedAt);

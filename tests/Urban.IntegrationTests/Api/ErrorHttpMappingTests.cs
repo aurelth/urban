@@ -17,6 +17,7 @@ using Urban.Identity.Application.Authentication;
 using Urban.Identity.Application.Authentication.Login;
 using Urban.Identity.Application.Authentication.Refresh;
 using Urban.Identity.Application.Bootstrap;
+using Urban.Identity.Application.RegistrationRequests;
 using Urban.Identity.Domain.Consent;
 using Urban.Identity.Domain.Tokens;
 using Urban.Identity.Domain.Users;
@@ -37,6 +38,11 @@ public sealed class ErrorHttpMappingTests
         { UserErrors.AccountDeactivated.Code, 403 },
         { UserErrors.AccountSuspended.Code, 403 },
         { UserErrors.AccountDeleted.Code, 403 },
+        { UserErrors.RegistrationPending.Code, 403 },
+        { UserErrors.RegistrationRejected.Code, 403 },
+        { RegistrationRequestErrors.Forbidden.Code, 403 },
+        { RegistrationRequestErrors.NotFound.Code, 404 },
+        { RequestedCondominiumName.Invalid.Code, 400 },
         { UserErrors.InvalidTransition.Code, 409 },
         { BootstrapErrors.EmailTakenByAnotherRole.Code, 409 },
         { EmailVerificationTokenErrors.Invalid.Code, 400 },

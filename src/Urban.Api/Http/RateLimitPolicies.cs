@@ -35,6 +35,9 @@ public static class RateLimitPolicies
     /// <summary>Todas as rotas do financeiro: despesas, grupos e lançamentos do mês.</summary>
     public const string Finance = "finance";
 
+    /// <summary>Rotas de administração do SuperAdmin: pedidos de cadastro.</summary>
+    public const string Admin = "admin";
+
     /// <summary>Troca de senha, de e-mail e edição dos dados sensíveis: ações que exigem a senha, com limite menor.</summary>
     public const string SensitiveChange = "sensitive-change";
 

@@ -9,4 +9,6 @@ public enum ManagementAction
     Suspend,
     Reactivate,
     Delete,
+    Approve,
+    Reject,
 }

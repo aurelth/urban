@@ -14,11 +14,12 @@ public static class RegistrationEndpoints
 
         registration.MapPost("/register", RegisterAsync)
             .WithName("Register")
-            .WithSummary("Cadastra a síndica com o e-mail")
+            .WithSummary("Pede o cadastro da síndica")
             .WithDescription(
-                "Recebe só o e-mail e envia o link de confirmação (válido por 24 horas). A senha é escolhida na confirmação. "
-                + "Responde 202 para qualquer e-mail válido, esteja ele livre ou já cadastrado, para não revelar quem tem conta. "
-                + "Pedir de novo em menos de 1 minuto não envia outro e-mail. "
+                "Recebe e-mail, nome e nome do condomínio e registra um pedido que aguarda a aprovação do administrador. "
+                + "Nada é enviado à pessoa até a aprovação; só então ela recebe o link de confirmação (válido por 24 horas) e escolhe a senha. "
+                + "Responde 202 para qualquer e-mail válido, esteja ele livre, em análise, recusado ou já cadastrado, para não revelar quem tem conta nem o resultado de um pedido. "
+                + "E-mail, nome ou nome do condomínio inválidos respondem 400. "
                 + "O mesmo IP tem um limite de pedidos por minuto; ao exceder, recebe 429 com Retry-After.")
             .RequireRateLimiting(RateLimitPolicies.Register)
             .Produces(StatusCodes.Status202Accepted)
@@ -47,7 +48,9 @@ public static class RegistrationEndpoints
         ISender sender,
         CancellationToken cancellationToken)
     {
-        Result result = await sender.Send(new RegisterManagerCommand(request.Email ?? string.Empty), cancellationToken);
+        Result result = await sender.Send(
+            new RegisterManagerCommand(request.Email ?? string.Empty, request.Name ?? string.Empty, request.CondominiumName ?? string.Empty),
+            cancellationToken);
 
         return result.IsSuccess ? Results.Accepted() : ErrorHttp.ToProblem(result.Error);
     }

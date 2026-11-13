@@ -34,6 +34,7 @@ public static class IdentityInfrastructureExtensions
 
         WebLinksOptions links = configuration.GetSection(WebLinksOptions.SectionName).Get<WebLinksOptions>() ?? new WebLinksOptions();
         _ = links.GetWebBaseUri();
+        SuperAdminOptions superAdmin = configuration.GetSection(SuperAdminOptions.SectionName).Get<SuperAdminOptions>() ?? new SuperAdminOptions();
         ConsentOptions consent = configuration.GetSection(ConsentOptions.SectionName).Get<ConsentOptions>() ?? new ConsentOptions();
         string termsVersion = consent.GetCurrentVersion();
 
@@ -41,6 +42,7 @@ public static class IdentityInfrastructureExtensions
         services.AddSingleton(jwt);
         services.AddSingleton(hashing);
         services.AddSingleton(links);
+        services.AddSingleton(superAdmin);
         services.AddSingleton<ICurrentTerms>(new ConfiguredTerms(termsVersion));
         services.AddDbContext<IdentityDbContext>(options => IdentityPersistence.Configure(options, postgres));
         services.AddSingleton<IConnectionMultiplexer>(_ => ConnectToRedis(redis));
@@ -57,6 +59,10 @@ public static class IdentityInfrastructureExtensions
         services.AddScoped<IEmailVerificationNotifier, EmailVerificationNotifier>();
         services.AddScoped<IEmailVerificationDispatcher, HangfireEmailVerificationDispatcher>();
         services.AddScoped<SendEmailVerificationJob>();
+        services.AddScoped<IRegistrationRequests, RegistrationRequests>();
+        services.AddScoped<IRegistrationRequestNotifier, RegistrationRequestNotifier>();
+        services.AddScoped<IRegistrationRequestDispatcher, HangfireRegistrationRequestDispatcher>();
+        services.AddScoped<NotifyRegistrationRequestJob>();
         services.AddScoped<IPasswordResets, PasswordResets>();
         services.AddScoped<IPasswordResetNotifier, PasswordResetNotifier>();
         services.AddScoped<IPasswordResetDispatcher, HangfirePasswordResetDispatcher>();

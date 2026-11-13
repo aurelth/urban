@@ -30,7 +30,7 @@ public static class AccessPolicy
 
     private static bool SuperAdminCan(ManagementAction action, UserRole targetRole) => action switch
     {
-        ManagementAction.Create => targetRole == UserRole.Manager,
+        ManagementAction.Create or ManagementAction.Approve or ManagementAction.Reject => targetRole == UserRole.Manager,
         ManagementAction.Suspend or ManagementAction.Reactivate or ManagementAction.Delete => true,
         _ => false,
     };
