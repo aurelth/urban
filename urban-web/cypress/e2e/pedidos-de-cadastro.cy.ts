@@ -1,3 +1,4 @@
+import { stubSummary } from '../support/administracao';
 import { PALETTE } from '../support/layout';
 import { DESKTOP } from '../support/navegacao';
 import {
@@ -17,6 +18,7 @@ function requests(): Cypress.Chainable<JQuery<HTMLElement>> {
 describe('Pedidos de cadastro', () => {
   beforeEach(() => {
     stubSignedIn(ADMIN);
+    stubSummary();
     stubRequests();
   });
 

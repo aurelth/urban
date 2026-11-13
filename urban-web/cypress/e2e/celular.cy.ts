@@ -1,3 +1,4 @@
+import { MANAGERS_PATH, OVERVIEW_PATH, stubManagers } from '../support/administracao';
 import { stubTerms } from '../support/cadastro';
 import { NEW_MANAGER } from '../support/condominio';
 import { MANAGER, stubAnonymous, stubSignedIn } from '../support/session';
@@ -83,6 +84,37 @@ describe('Tela de celular (375 x 667)', () => {
       expect(right).to.be.at.most(375);
     });
     cy.get('[data-testid="approve"]').first().should('be.visible');
+    expectNoHorizontalScroll();
+  });
+
+  it('mostra a visão geral do administrador em coluna única, sem rolagem horizontal', () => {
+    stubSignedIn(ADMIN);
+    stubManagers();
+    cy.visit(OVERVIEW_PATH);
+
+    cy.contains('h1', 'Visão geral').should('be.visible');
+    cy.get('[data-testid="stat-active"]').should('be.visible');
+    cy.get('[data-testid^="stat-"]').each(($stat) => {
+      const { left, right } = $stat[0].getBoundingClientRect();
+      expect(left).to.be.at.least(0);
+      expect(right).to.be.at.most(375);
+    });
+    expectNoHorizontalScroll();
+  });
+
+  it('mostra os síndicos em coluna única, com as ações à mão e sem rolagem horizontal', () => {
+    stubSignedIn(ADMIN);
+    stubManagers();
+    cy.visit(MANAGERS_PATH);
+
+    cy.contains('h1', 'Síndicos').should('be.visible');
+    cy.get('[data-testid="manager-row"]').should('have.length', 2);
+    cy.get('[data-testid="manager-row"]').each(($row) => {
+      const { left, right } = $row[0].getBoundingClientRect();
+      expect(left).to.be.at.least(0);
+      expect(right).to.be.at.most(375);
+    });
+    cy.get('button[aria-label="Suspender Ana"]').should('be.visible');
     expectNoHorizontalScroll();
   });
 

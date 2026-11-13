@@ -1,0 +1,226 @@
+<section class="mx-auto max-w-6xl p-6">
+  <h1 class="mb-1 text-3xl font-semibold tracking-tight">Síndicos</h1>
+  <p class="mb-6 text-on-surface-variant">
+    Veja quem usa o Urban e suspenda ou reative o acesso de cada síndico
+  </p>
+
+  @switch (store.status()) {
+    @case ('loading') {
+      <p role="status" class="text-on-surface-variant" data-testid="loading">
+        Carregando os síndicos
+      </p>
+    }
+    @case ('error') {
+      <div class="flex flex-col items-start gap-4" data-testid="load-error">
+        <p class="flex items-start gap-2 text-error">
+          <mat-icon svgIcon="error" aria-hidden="true" />
+          <span>Não foi possível carregar os síndicos</span>
+        </p>
+        <button mat-stroked-button type="button" data-testid="retry" (click)="load()">
+          Tentar de novo
+        </button>
+      </div>
+    }
+    @case ('ready') {
+      @if (notice(); as message) {
+        <p role="status" class="mb-4 flex items-start gap-2" data-testid="notice">
+          <span class="inline-flex text-success"
+            ><mat-icon svgIcon="check_circle" aria-hidden="true"
+          /></span>
+          <span>{{ message }}</span>
+        </p>
+      }
+      @if (actionError(); as message) {
+        <p role="alert" class="mb-4 flex items-start gap-2 text-error" data-testid="action-error">
+          <mat-icon svgIcon="error" aria-hidden="true" />
+          <span>{{ message }}</span>
+        </p>
+      }
+
+      <form
+        class="grid gap-x-4 sm:grid-cols-2"
+        data-testid="filters"
+        (submit)="$event.preventDefault()"
+      >
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="mb-4 w-full">
+          <mat-label>Situação</mat-label>
+          <urban-menu-select
+            data-testid="filter-status"
+            [options]="statusOptions"
+            [value]="store.query().status"
+            (valueChange)="onStatus($event)"
+          />
+        </mat-form-field>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="mb-4 w-full">
+          <mat-label>Buscar por nome ou e-mail</mat-label>
+          <input
+            matInput
+            data-testid="filter-search"
+            autocomplete="off"
+            [value]="store.query().search"
+            (change)="onSearch($event)"
+          />
+        </mat-form-field>
+      </form>
+      @if (store.hasFilters()) {
+        <button
+          mat-button
+          type="button"
+          class="mb-4"
+          data-testid="clear-filters"
+          [disabled]="store.busy()"
+          (click)="clearFilters()"
+        >
+          Limpar filtros
+        </button>
+      }
+
+      @if (store.total() === 0 && !store.hasFilters()) {
+        <div
+          class="rounded-xl border border-outline-variant bg-surface-container p-6 text-center"
+          data-testid="empty"
+        >
+          <p class="mb-1 text-lg font-medium">Nenhum síndico cadastrado ainda</p>
+          <p class="m-0 text-on-surface-variant">
+            Os síndicos aparecem aqui depois que você aprova os pedidos de cadastro
+          </p>
+        </div>
+      } @else if (store.items().length === 0) {
+        <p
+          class="rounded-xl border border-outline-variant bg-surface-container p-6 text-center text-on-surface-variant"
+          data-testid="no-results"
+        >
+          Nenhum síndico encontrado com estes filtros
+        </p>
+      } @else {
+        <p class="mb-4 text-sm text-on-surface-variant" data-testid="total">
+          {{ store.total() }} {{ store.total() === 1 ? 'síndico' : 'síndicos' }}
+        </p>
+        <div class="overflow-x-auto rounded-xl border border-outline-variant bg-surface-container">
+          <table class="w-full border-collapse text-left" data-testid="managers-table">
+            <caption class="sr-only">
+              Lista de síndicos
+            </caption>
+            <thead>
+              <tr class="border-b border-outline-variant text-sm text-on-surface-variant">
+                <th scope="col" class="p-2 font-medium sm:p-3">Síndico</th>
+                <th scope="col" class="hidden p-3 font-medium sm:table-cell">Condomínio</th>
+                <th scope="col" class="p-2 font-medium sm:p-3">Situação</th>
+                <th scope="col" class="hidden p-3 font-medium md:table-cell">Cadastro</th>
+                <th scope="col" class="p-1 font-medium sm:p-3">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of store.items(); track item.id) {
+                <tr
+                  class="border-b border-outline-variant last:border-b-0"
+                  data-testid="manager-row"
+                >
+                  <td class="p-2 sm:p-3">
+                    <div class="font-medium" data-testid="manager-name">{{ item.name ?? '—' }}</div>
+                    <div
+                      class="text-sm break-all text-on-surface-variant"
+                      data-testid="manager-email"
+                    >
+                      {{ item.email }}
+                    </div>
+                    @if (item.condominiumName; as condominium) {
+                      <div class="text-sm text-on-surface-variant sm:hidden">{{ condominium }}</div>
+                    }
+                  </td>
+                  <td class="hidden p-3 sm:table-cell" data-testid="manager-condominium">
+                    {{ item.condominiumName ?? '—' }}
+                  </td>
+                  <td class="p-2 sm:p-3">
+                    @let state = view(item.status);
+                    <span
+                      class="inline-flex items-center gap-1"
+                      [class.text-success]="state.tone === 'success'"
+                      [class.text-error]="state.tone === 'error'"
+                      [class.text-on-surface-variant]="state.tone === 'neutral'"
+                      data-testid="manager-status"
+                    >
+                      <mat-icon [svgIcon]="state.icon" aria-hidden="true" />
+                      <span class="text-on-surface">{{ state.label }}</span>
+                    </span>
+                    @if (item.status === 'Suspended' && item.statusReason) {
+                      <p
+                        class="mt-1 mb-0 text-sm text-on-surface-variant"
+                        data-testid="manager-reason"
+                      >
+                        Motivo: {{ item.statusReason }}
+                      </p>
+                    }
+                  </td>
+                  <td
+                    class="hidden p-3 whitespace-nowrap md:table-cell"
+                    data-testid="manager-created"
+                  >
+                    {{ formatDay(item.createdAt) }}
+                  </td>
+                  <td class="p-1 whitespace-nowrap sm:p-1">
+                    @if (canSuspend(item)) {
+                      <button
+                        mat-icon-button
+                        type="button"
+                        [attr.aria-label]="'Suspender ' + label(item)"
+                        [attr.title]="'Suspender ' + label(item)"
+                        [disabled]="store.busy()"
+                        (click)="suspend(item)"
+                      >
+                        <mat-icon svgIcon="block" />
+                      </button>
+                    } @else if (item.status === 'Suspended') {
+                      <button
+                        mat-icon-button
+                        type="button"
+                        [attr.aria-label]="'Reativar ' + label(item)"
+                        [attr.title]="'Reativar ' + label(item)"
+                        [disabled]="store.busy()"
+                        (click)="reactivate(item)"
+                      >
+                        <mat-icon svgIcon="restart_alt" />
+                      </button>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+
+      @if (store.pageCount() > 1) {
+        <nav
+          class="mt-4 flex items-center justify-between gap-4"
+          aria-label="Paginação"
+          data-testid="pagination"
+        >
+          <button
+            mat-stroked-button
+            type="button"
+            data-testid="previous"
+            [disabled]="store.busy() || store.query().page <= 1"
+            (click)="goTo(store.query().page - 1)"
+          >
+            <mat-icon svgIcon="chevron_left" />
+            Anterior
+          </button>
+          <span aria-live="polite" data-testid="page-status"
+            >Página {{ store.query().page }} de {{ store.pageCount() }}</span
+          >
+          <button
+            mat-stroked-button
+            type="button"
+            data-testid="next"
+            [disabled]="store.busy() || store.query().page >= store.pageCount()"
+            (click)="goTo(store.query().page + 1)"
+          >
+            Próxima
+            <mat-icon svgIcon="chevron_right" />
+          </button>
+        </nav>
+      }
+    }
+  }
+</section>

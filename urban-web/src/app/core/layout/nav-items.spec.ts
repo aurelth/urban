@@ -43,7 +43,7 @@ describe('navGroupsFor', () => {
     expect(navGroupsFor(who)).toEqual([]);
   });
 
-  it('leva o administrador ao painel e aos pedidos de cadastro, sem as telas de condomínio', () => {
+  it('leva o administrador à visão geral, aos síndicos e aos pedidos de cadastro, sem as telas de condomínio', () => {
     const groups = navGroupsFor(ADMIN);
 
     expect(groups.map((group) => [group.id, group.label])).toEqual([
@@ -55,7 +55,8 @@ describe('navGroupsFor', () => {
         .flatMap((group) => group.items)
         .map((item) => [item.id, item.label, item.path, item.icon]),
     ).toEqual([
-      ['dashboard', 'Painel', '/dashboard', 'dashboard'],
+      ['overview', 'Visão geral', '/admin/visao-geral', 'dashboard'],
+      ['managers', 'Síndicos', '/admin/sindicos', 'groups'],
       ['registration-requests', 'Pedidos de cadastro', '/admin/pedidos-de-cadastro', 'how_to_reg'],
     ]);
   });

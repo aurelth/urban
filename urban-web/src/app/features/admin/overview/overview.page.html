@@ -1,0 +1,75 @@
+<section class="mx-auto max-w-6xl p-6">
+  <h1 class="mb-1 text-3xl font-semibold tracking-tight">Visão geral</h1>
+  <p class="mb-6 text-on-surface-variant">Acompanhe os síndicos e os condomínios da plataforma</p>
+
+  @switch (store.status()) {
+    @case ('loading') {
+      <p role="status" class="text-on-surface-variant" data-testid="loading">
+        Carregando a visão geral
+      </p>
+    }
+    @case ('error') {
+      <div class="flex flex-col items-start gap-4" data-testid="load-error">
+        <p class="flex items-start gap-2 text-error">
+          <mat-icon svgIcon="error" aria-hidden="true" />
+          <span>Não foi possível carregar a visão geral</span>
+        </p>
+        <button mat-stroked-button type="button" data-testid="retry" (click)="load()">
+          Tentar de novo
+        </button>
+      </div>
+    }
+    @case ('ready') {
+      @if (store.summary(); as summary) {
+        <dl class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <div
+            class="rounded-xl border border-outline-variant bg-surface-container p-4"
+            data-testid="stat-active"
+          >
+            <dt class="text-sm text-on-surface-variant">Síndicos ativos</dt>
+            <dd class="m-0 text-2xl font-semibold">{{ summary.activeManagers }}</dd>
+          </div>
+          <div
+            class="rounded-xl border border-outline-variant bg-surface-container p-4"
+            data-testid="stat-suspended"
+          >
+            <dt class="text-sm text-on-surface-variant">Síndicos suspensos</dt>
+            <dd class="m-0 text-2xl font-semibold">{{ summary.suspendedManagers }}</dd>
+          </div>
+          <div
+            class="rounded-xl border border-outline-variant bg-surface-container p-4"
+            data-testid="stat-awaiting"
+          >
+            <dt class="text-sm text-on-surface-variant">Aguardando confirmação do e-mail</dt>
+            <dd class="m-0 text-2xl font-semibold">{{ summary.awaitingConfirmationManagers }}</dd>
+          </div>
+          <div
+            class="rounded-xl border border-outline-variant bg-surface-container p-4"
+            data-testid="stat-requests"
+          >
+            <dt class="text-sm text-on-surface-variant">Pedidos de cadastro</dt>
+            <dd class="m-0 text-2xl font-semibold">{{ summary.pendingRequests }}</dd>
+          </div>
+          <div
+            class="rounded-xl border border-outline-variant bg-surface-container p-4"
+            data-testid="stat-condominiums"
+          >
+            <dt class="text-sm text-on-surface-variant">Condomínios</dt>
+            <dd class="m-0 text-2xl font-semibold">{{ summary.condominiums }}</dd>
+          </div>
+        </dl>
+
+        <div class="flex flex-wrap gap-3">
+          <a mat-flat-button data-testid="go-requests" routerLink="/admin/pedidos-de-cadastro">
+            {{ pendingLabel(summary.pendingRequests) }}
+            <mat-icon svgIcon="arrow_forward" />
+          </a>
+          <a mat-stroked-button data-testid="go-managers" routerLink="/admin/sindicos">
+            Ver síndicos
+            <mat-icon svgIcon="arrow_forward" />
+          </a>
+        </div>
+      }
+    }
+  }
+</section>

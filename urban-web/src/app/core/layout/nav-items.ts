@@ -50,12 +50,20 @@ const MANAGER_GROUPS: readonly NavGroup[] = [
   },
 ];
 
+const OVERVIEW: NavItem = {
+  id: 'overview',
+  label: 'Visão geral',
+  icon: 'dashboard',
+  path: '/admin/visao-geral',
+};
+
 const ADMIN_GROUPS: readonly NavGroup[] = [
-  { id: 'main', label: null, items: [DASHBOARD] },
+  { id: 'main', label: null, items: [OVERVIEW] },
   {
     id: 'admin',
     label: 'Administração',
     items: [
+      { id: 'managers', label: 'Síndicos', icon: 'groups', path: '/admin/sindicos' },
       {
         id: 'registration-requests',
         label: 'Pedidos de cadastro',

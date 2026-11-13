@@ -1,3 +1,4 @@
+import { MANAGERS_PATH, OVERVIEW_PATH, stubManagers } from '../support/administracao';
 import { stubTerms } from '../support/cadastro';
 import { NEW_MANAGER } from '../support/condominio';
 import { expectBreathingRoom, expectDialogBreathingRoom } from '../support/espacamento';
@@ -84,6 +85,19 @@ SCREENS.forEach(([where, width, height]) => {
       cy.get('[data-testid="reject"]').first().click();
       cy.get('[data-testid="reject-confirmation"]').should('be.visible');
       expectBreathingRoom();
+    });
+
+    it('não cola texto em container na visão geral, nos síndicos e no diálogo de suspensão', () => {
+      stubSignedIn(ADMIN);
+      stubManagers();
+      cy.visit(OVERVIEW_PATH);
+      cy.get('[data-testid="stat-active"]').should('be.visible');
+      expectBreathingRoom();
+      cy.visit(MANAGERS_PATH);
+      cy.get('[data-testid="managers-table"]').should('be.visible');
+      expectBreathingRoom();
+      cy.get('button[aria-label="Suspender Ana"]').click();
+      expectDialogBreathingRoom();
     });
 
     it('não cola texto em container nas unidades, no lote e no diálogo de unidade', () => {
