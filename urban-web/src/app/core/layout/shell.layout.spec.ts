@@ -1,13 +1,28 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
+import { Component } from '@angular/core';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Router, provideRouter } from '@angular/router';
+import { Router, Routes, provideRouter } from '@angular/router';
 import { jest } from '@jest/globals';
 import { MANAGER, REGISTERED_MANAGER, signInAs } from '../../testing/auth.fixtures';
 import { CurrentUser } from '../auth/auth.models';
 import { SessionStore } from '../auth/session.store';
 import { provideUrbanIcons } from '../theme/icons';
 import { ShellLayout } from './shell.layout';
+
+@Component({ template: '' })
+class Page {}
+
+const ROUTES: Routes = [
+  'dashboard',
+  'unidades',
+  'financeiro/despesas',
+  'financeiro/tarifas',
+  'financeiro/leituras',
+  'financeiro/lancamentos',
+  'condominio/meus-dados',
+  'conta',
+].map((path) => ({ path, component: Page }));
 
 async function setup(user: CurrentUser = MANAGER): Promise<{
   fixture: ComponentFixture<ShellLayout>;
@@ -18,7 +33,7 @@ async function setup(user: CurrentUser = MANAGER): Promise<{
 }> {
   TestBed.configureTestingModule({
     providers: [
-      provideRouter([]),
+      provideRouter(ROUTES),
       provideHttpClient(),
       provideHttpClientTesting(),
       provideUrbanIcons(),
@@ -32,130 +47,279 @@ async function setup(user: CurrentUser = MANAGER): Promise<{
   return { fixture, store, http, router: TestBed.inject(Router), html: fixture.nativeElement };
 }
 
+function text(element: Element | null | undefined): string {
+  return (element?.textContent ?? '').replace(/\s+/g, ' ').trim();
+}
+
+function byTestId(html: ParentNode, name: string): HTMLElement | null {
+  return html.querySelector<HTMLElement>(`[data-testid="${name}"]`);
+}
+
+async function openUserMenu(
+  fixture: ComponentFixture<ShellLayout>,
+  html: HTMLElement,
+): Promise<HTMLElement> {
+  byTestId(html, 'user-menu')!.click();
+  await fixture.whenStable();
+  TestBed.tick();
+  return document.querySelector<HTMLElement>('.mat-mdc-menu-panel')!;
+}
+
 describe('ShellLayout', () => {
   afterEach(() => {
     jest.restoreAllMocks();
     TestBed.inject(HttpTestingController).match(() => true);
   });
 
-  it('mostra o e-mail e o papel enquanto a pessoa nao escolheu um nome', async () => {
-    const { html } = await setup();
-    const account = html.querySelector('[data-testid="current-user"]')?.textContent;
+  describe('cabeçalho', () => {
+    it('mostra o e-mail e o papel, separados por hífen, enquanto a pessoa não escolheu um nome', async () => {
+      const { html } = await setup();
 
-    expect(account).toContain('sindica@example.com');
-    expect(account).toContain('Síndico');
-    expect(account).not.toContain('Olá');
-  });
+      expect(text(byTestId(html, 'current-user'))).toBe('sindica@example.com - Síndico');
+    });
 
-  it('cumprimenta pelo nome escolhido e mostra o papel, sem o e-mail', async () => {
-    const { html } = await setup(REGISTERED_MANAGER);
-    const account = html.querySelector('[data-testid="current-user"]')?.textContent;
-
-    expect(account).toContain('Olá Marina!');
-    expect(account).toContain('Síndico');
-    expect(account).not.toContain('sindica@example.com');
-  });
-
-  it('mantem o botao de tema', async () => {
-    const { html } = await setup();
-
-    expect(html.querySelector('button[aria-label="Usar tema escuro"]')).not.toBeNull();
-  });
-
-  it('sai pela API e volta para a entrada', async () => {
-    const { fixture, http, router, html } = await setup();
-    const navigate = jest.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
-
-    html.querySelector<HTMLButtonElement>('button[data-testid="sign-out"]')!.click();
-    http.expectOne('/api/auth/logout').flush(null, { status: 204, statusText: 'No Content' });
-    await fixture.whenStable();
-
-    expect(navigate).toHaveBeenCalledWith('/entrar');
-  });
-
-  it('leva para a entrada, guardando o destino, quando a sessao expira', async () => {
-    const { fixture, store, router } = await setup();
-    const navigate = jest.spyOn(router, 'navigate').mockResolvedValue(true);
-
-    store.expire();
-    TestBed.tick();
-    await fixture.whenStable();
-
-    expect(navigate).toHaveBeenCalledWith(['/entrar'], { queryParams: { returnUrl: router.url } });
-  });
-
-  it('nao guarda destino quando a pessoa saiu de proposito', async () => {
-    const { fixture, http, router, html } = await setup();
-    const navigate = jest.spyOn(router, 'navigate').mockResolvedValue(true);
-    jest.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
-
-    html.querySelector<HTMLButtonElement>('button[data-testid="sign-out"]')!.click();
-    http.expectOne('/api/auth/logout').flush(null, { status: 204, statusText: 'No Content' });
-    await fixture.whenStable();
-    TestBed.tick();
-
-    expect(navigate).not.toHaveBeenCalled();
-  });
-
-  describe('links do cabecalho', () => {
-    function link(html: HTMLElement, name: string): HTMLAnchorElement | null {
-      return html.querySelector<HTMLAnchorElement>(`a[data-testid="${name}"]`);
-    }
-
-    it('leva o sindico com condominio aos dados do condominio e a conta', async () => {
+    it('cumprimenta pelo nome escolhido e mostra o papel, sem o e-mail', async () => {
       const { html } = await setup(REGISTERED_MANAGER);
 
-      expect(link(html, 'nav-profile')?.textContent?.trim()).toBe('Meus dados');
-      expect(link(html, 'nav-profile')?.getAttribute('href')).toBe('/condominio/meus-dados');
-      expect(link(html, 'nav-account')?.textContent?.trim()).toBe('Minha conta');
-      expect(link(html, 'nav-account')?.getAttribute('href')).toBe('/conta');
+      expect(text(byTestId(html, 'current-user'))).toBe('Olá Marina - Síndico');
     });
 
-    it('nao mostra os dados do condominio ao sindico que ainda nao o cadastrou', async () => {
-      const { html } = await setup(MANAGER);
+    it('mostra as iniciais no avatar', async () => {
+      const marina = await setup(REGISTERED_MANAGER);
+      expect(text(byTestId(marina.html, 'user-menu'))).toBe('M');
+      TestBed.resetTestingModule();
 
-      expect(link(html, 'nav-profile')).toBeNull();
-      expect(link(html, 'nav-account')).not.toBeNull();
+      const semNome = await setup();
+      expect(text(byTestId(semNome.html, 'user-menu'))).toBe('S');
     });
 
-    it('leva o sindico com condominio as unidades e ao financeiro, antes dos dados do condominio', async () => {
+    it('deixa o nome do avatar claro para leitores de tela', async () => {
       const { html } = await setup(REGISTERED_MANAGER);
 
-      expect(link(html, 'nav-units')?.textContent?.trim()).toBe('Unidades');
-      expect(link(html, 'nav-units')?.getAttribute('href')).toBe('/unidades');
-      expect(link(html, 'nav-finance')?.textContent?.trim()).toBe('Financeiro');
-      expect(link(html, 'nav-finance')?.getAttribute('href')).toBe('/financeiro');
-      const order = [...html.querySelectorAll('a[data-testid^="nav-"]')].map((a) =>
-        a.getAttribute('data-testid'),
-      );
-      expect(order).toEqual(['nav-units', 'nav-finance', 'nav-profile', 'nav-account']);
+      expect(byTestId(html, 'user-menu')?.getAttribute('aria-label')).toBe('Menu do usuário');
     });
 
-    it('nao mostra as unidades nem o financeiro ao sindico sem condominio', async () => {
-      const { html } = await setup(MANAGER);
+    it('mantém o botão de tema', async () => {
+      const { html } = await setup();
 
-      expect(link(html, 'nav-units')).toBeNull();
-      expect(link(html, 'nav-finance')).toBeNull();
+      expect(html.querySelector('button[aria-label="Usar tema escuro"]')).not.toBeNull();
+    });
+
+    it('leva a logo para a página inicial', async () => {
+      const { html } = await setup();
+
+      const logos = [...html.querySelectorAll('urban-brand-link a')];
+
+      expect(logos.length).toBeGreaterThan(0);
+      for (const logo of logos) {
+        expect(logo.getAttribute('href')).toBe('/');
+        expect(text(logo)).toBe('Urban');
+      }
+    });
+  });
+
+  describe('menu do avatar', () => {
+    it('fica fechado até a pessoa abrir', async () => {
+      const { html } = await setup(REGISTERED_MANAGER);
+
+      expect(document.querySelector('.mat-mdc-menu-panel')).toBeNull();
+      expect(byTestId(html, 'user-menu')?.getAttribute('aria-expanded')).toBe('false');
+    });
+
+    it('repete a saudação completa, que some do cabeçalho no celular', async () => {
+      const { fixture, html } = await setup(REGISTERED_MANAGER);
+
+      const panel = await openUserMenu(fixture, html);
+
+      expect(text(byTestId(panel, 'menu-user'))).toBe('Olá Marina - Síndico');
+    });
+
+    it('leva o síndico com condomínio aos dados, à conta e à saída, nessa ordem', async () => {
+      const { fixture, html } = await setup(REGISTERED_MANAGER);
+
+      const panel = await openUserMenu(fixture, html);
+      const items = [...panel.querySelectorAll<HTMLElement>('[role="menuitem"]')];
+
+      expect(items.map((item) => item.dataset['testid'])).toEqual([
+        'menu-profile',
+        'menu-account',
+        'sign-out',
+      ]);
+      expect(items.map(text)).toEqual(['Meus dados', 'Minha conta', 'Sair']);
+      expect(byTestId(panel, 'menu-profile')?.getAttribute('href')).toBe('/condominio/meus-dados');
+      expect(byTestId(panel, 'menu-account')?.getAttribute('href')).toBe('/conta');
+    });
+
+    it('não mostra os dados do condomínio ao síndico que ainda não o cadastrou', async () => {
+      const { fixture, html } = await setup(MANAGER);
+
+      const panel = await openUserMenu(fixture, html);
+
+      expect(byTestId(panel, 'menu-profile')).toBeNull();
+      expect(byTestId(panel, 'menu-account')).not.toBeNull();
+      expect(byTestId(panel, 'sign-out')).not.toBeNull();
     });
 
     it.each([
       ['morador', 'Resident' as const],
       ['administrador', 'SuperAdmin' as const],
-    ])('mostra so a conta para %s', async (_name, role) => {
-      const { html } = await setup({ ...REGISTERED_MANAGER, role });
+    ])('mostra só a conta e a saída para %s', async (_name, role) => {
+      const { fixture, html } = await setup({ ...REGISTERED_MANAGER, role });
 
-      expect(link(html, 'nav-profile')).toBeNull();
-      expect(link(html, 'nav-units')).toBeNull();
-      expect(link(html, 'nav-account')).not.toBeNull();
+      const panel = await openUserMenu(fixture, html);
+
+      expect(byTestId(panel, 'menu-profile')).toBeNull();
+      expect(byTestId(panel, 'menu-account')).not.toBeNull();
+      expect(byTestId(panel, 'sign-out')).not.toBeNull();
+    });
+
+    it('sai pela API e volta para a entrada', async () => {
+      const { fixture, http, router, html } = await setup();
+      const navigate = jest.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+      const panel = await openUserMenu(fixture, html);
+
+      byTestId(panel, 'sign-out')!.click();
+      http.expectOne('/api/auth/logout').flush(null, { status: 204, statusText: 'No Content' });
+      await fixture.whenStable();
+
+      expect(navigate).toHaveBeenCalledWith('/entrar');
     });
   });
 
-  it('leva a logo da barra para a página inicial', async () => {
-    const { html } = await setup();
+  describe('sessão', () => {
+    it('leva para a entrada, guardando o destino, quando a sessão expira', async () => {
+      const { fixture, store, router } = await setup();
+      const navigate = jest.spyOn(router, 'navigate').mockResolvedValue(true);
 
-    const logo = html.querySelector('mat-toolbar urban-brand-link a');
+      store.expire();
+      TestBed.tick();
+      await fixture.whenStable();
 
-    expect(logo?.getAttribute('href')).toBe('/');
-    expect(logo?.textContent?.trim()).toBe('Urban');
+      expect(navigate).toHaveBeenCalledWith(['/entrar'], {
+        queryParams: { returnUrl: router.url },
+      });
+    });
+
+    it('não guarda destino quando a pessoa saiu de propósito', async () => {
+      const { fixture, http, router, html } = await setup();
+      const navigate = jest.spyOn(router, 'navigate').mockResolvedValue(true);
+      jest.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+      const panel = await openUserMenu(fixture, html);
+
+      byTestId(panel, 'sign-out')!.click();
+      http.expectOne('/api/auth/logout').flush(null, { status: 204, statusText: 'No Content' });
+      await fixture.whenStable();
+      TestBed.tick();
+
+      expect(navigate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('menu lateral', () => {
+    function sideMenu(html: HTMLElement): HTMLElement | null {
+      return html.querySelector<HTMLElement>('nav[aria-label="Menu principal"]');
+    }
+
+    function links(html: HTMLElement): HTMLAnchorElement[] {
+      return [...html.querySelectorAll<HTMLAnchorElement>('nav a[data-testid^="nav-"]')];
+    }
+
+    it('leva o síndico com condomínio às telas, agrupadas e na ordem do trabalho do mês', async () => {
+      const { html } = await setup(REGISTERED_MANAGER);
+
+      expect(links(html).map((link) => link.dataset['testid'])).toEqual([
+        'nav-dashboard',
+        'nav-units',
+        'nav-expenses',
+        'nav-tariffs',
+        'nav-readings',
+        'nav-entries',
+      ]);
+      expect(links(html).map(text)).toEqual([
+        'Painel',
+        'Unidades',
+        'Despesas',
+        'Tarifas',
+        'Leituras',
+        'Lançamentos',
+      ]);
+      expect(links(html).map((link) => link.getAttribute('href'))).toEqual([
+        '/dashboard',
+        '/unidades',
+        '/financeiro/despesas',
+        '/financeiro/tarifas',
+        '/financeiro/leituras',
+        '/financeiro/lancamentos',
+      ]);
+      expect([...sideMenu(html)!.querySelectorAll('[data-testid="nav-group"]')].map(text)).toEqual([
+        'Condomínio',
+        'Financeiro',
+      ]);
+    });
+
+    it.each([
+      ['síndico sem condomínio', MANAGER],
+      ['morador', { ...REGISTERED_MANAGER, role: 'Resident' as const }],
+      ['administrador', { ...REGISTERED_MANAGER, role: 'SuperAdmin' as const }],
+    ])('não tem menu lateral nem botão para abri-lo para %s', async (_name, user) => {
+      const { html } = await setup(user);
+
+      expect(sideMenu(html)).toBeNull();
+      expect(byTestId(html, 'menu-toggle')).toBeNull();
+      expect(byTestId(html, 'user-menu')).not.toBeNull();
+    });
+
+    it('marca a tela aberta como a página atual', async () => {
+      const { fixture, router, html } = await setup(REGISTERED_MANAGER);
+
+      await router.navigateByUrl('/unidades');
+      await fixture.whenStable();
+      TestBed.tick();
+
+      expect(byTestId(html, 'nav-units')?.getAttribute('aria-current')).toBe('page');
+      expect(byTestId(html, 'nav-expenses')?.getAttribute('aria-current')).toBeNull();
+    });
+
+    describe('no celular, onde ele é uma gaveta', () => {
+      function drawer(html: HTMLElement): HTMLElement {
+        return html.querySelector<HTMLElement>('mat-sidenav')!;
+      }
+
+      it('começa fechada e o botão do cabeçalho a abre e a fecha', async () => {
+        const { fixture, html } = await setup(REGISTERED_MANAGER);
+        const toggle = byTestId(html, 'menu-toggle')!;
+
+        expect(drawer(html).classList.contains('mat-drawer-opened')).toBe(false);
+        expect(toggle.getAttribute('aria-label')).toBe('Abrir menu');
+        expect(toggle.getAttribute('aria-expanded')).toBe('false');
+
+        toggle.click();
+        await fixture.whenStable();
+        TestBed.tick();
+
+        expect(drawer(html).classList.contains('mat-drawer-opened')).toBe(true);
+        expect(toggle.getAttribute('aria-label')).toBe('Fechar menu');
+        expect(toggle.getAttribute('aria-expanded')).toBe('true');
+
+        toggle.click();
+        await fixture.whenStable();
+        TestBed.tick();
+
+        expect(drawer(html).classList.contains('mat-drawer-opened')).toBe(false);
+      });
+
+      it('fecha ao escolher uma tela', async () => {
+        const { fixture, html } = await setup(REGISTERED_MANAGER);
+        byTestId(html, 'menu-toggle')!.click();
+        await fixture.whenStable();
+        TestBed.tick();
+
+        byTestId(html, 'nav-units')!.click();
+        await fixture.whenStable();
+        TestBed.tick();
+
+        expect(drawer(html).classList.contains('mat-drawer-opened')).toBe(false);
+      });
+    });
   });
 });
