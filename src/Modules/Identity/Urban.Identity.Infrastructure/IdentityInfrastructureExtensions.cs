@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using StackExchange.Redis;
 using Urban.Identity.Application.Abstractions;
+using Urban.Identity.Application.Contact;
 using Urban.Identity.Application.Enrollment;
 using Urban.Identity.Infrastructure.Consent;
 using Urban.Identity.Infrastructure.Messaging;
@@ -64,6 +65,10 @@ public static class IdentityInfrastructureExtensions
         services.AddScoped<IRegistrationRequestNotifier, RegistrationRequestNotifier>();
         services.AddScoped<IRegistrationRequestDispatcher, HangfireRegistrationRequestDispatcher>();
         services.AddScoped<NotifyRegistrationRequestJob>();
+        services.AddScoped<IContactMessages, ContactMessages>();
+        services.AddScoped<IContactMessageNotifier, ContactMessageNotifier>();
+        services.AddScoped<IContactMessageDispatcher, HangfireContactMessageDispatcher>();
+        services.AddScoped<NotifyContactMessageJob>();
         services.AddScoped<IPasswordResets, PasswordResets>();
         services.AddScoped<IPasswordResetNotifier, PasswordResetNotifier>();
         services.AddScoped<IPasswordResetDispatcher, HangfirePasswordResetDispatcher>();

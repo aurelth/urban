@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Urban.Identity.Domain.Consent;
+using Urban.Identity.Domain.Contact;
 using Urban.Identity.Domain.Tokens;
 using Urban.Identity.Domain.Users;
 
@@ -23,6 +24,8 @@ public sealed class IdentityDbContext(DbContextOptions<IdentityDbContext> option
     public DbSet<EmailChangeToken> EmailChangeTokens => Set<EmailChangeToken>();
 
     public DbSet<UserConsent> UserConsents => Set<UserConsent>();
+
+    public DbSet<ContactMessage> ContactMessages => Set<ContactMessage>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

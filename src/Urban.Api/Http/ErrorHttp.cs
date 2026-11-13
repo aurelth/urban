@@ -16,8 +16,10 @@ using Urban.Identity.Application.Authentication;
 using Urban.Identity.Application.Authentication.Login;
 using Urban.Identity.Application.Authentication.Refresh;
 using Urban.Identity.Application.Bootstrap;
+using Urban.Identity.Application.Contact;
 using Urban.Identity.Application.RegistrationRequests;
 using Urban.Identity.Domain.Consent;
+using Urban.Identity.Domain.Contact;
 using Urban.Identity.Domain.Tokens;
 using Urban.Identity.Domain.Users;
 using Urban.SharedKernel;
@@ -60,6 +62,12 @@ public static class ErrorHttp
         [AdministrationErrors.ManagerNotFound.Code] = StatusCodes.Status404NotFound,
         [AdministrationErrors.PageInvalid.Code] = StatusCodes.Status400BadRequest,
         [AdministrationErrors.StatusFilterInvalid.Code] = StatusCodes.Status400BadRequest,
+        [ContactErrors.SendForbidden.Code] = StatusCodes.Status403Forbidden,
+        [ContactErrors.ReadForbidden.Code] = StatusCodes.Status403Forbidden,
+        [ContactErrors.PageInvalid.Code] = StatusCodes.Status400BadRequest,
+        [ContactErrors.MessageNotFound.Code] = StatusCodes.Status404NotFound,
+        [ContactMessageErrors.SubjectInvalid.Code] = StatusCodes.Status400BadRequest,
+        [ContactMessageErrors.BodyInvalid.Code] = StatusCodes.Status400BadRequest,
         [UserErrors.CondominiumMismatch.Code] = StatusCodes.Status422UnprocessableEntity,
         [UserErrors.CondominiumRequired.Code] = StatusCodes.Status422UnprocessableEntity,
         [UserErrors.NotManager.Code] = StatusCodes.Status403Forbidden,
