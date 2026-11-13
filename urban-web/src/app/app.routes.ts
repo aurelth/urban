@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { adminGuard } from './core/auth/admin.guards';
 import { authGuard, guestGuard } from './core/auth/auth.guards';
 import {
   condominiumGuard,
@@ -38,6 +39,15 @@ export const routes: Routes = [
         canActivateChild: [condominiumGuard],
         children: [
           { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
+          {
+            path: 'admin/pedidos-de-cadastro',
+            title: 'Pedidos de cadastro',
+            canActivate: [adminGuard],
+            loadComponent: () =>
+              import('./features/admin/registration-requests/registration-requests.page').then(
+                (m) => m.RegistrationRequestsPage,
+              ),
+          },
           {
             path: 'condominio/meus-dados',
             title: 'Meus dados',

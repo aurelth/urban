@@ -3,13 +3,13 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { CurrentTerms } from './auth.models';
 
-/** Chamadas HTTP do cadastro do síndico: pedir o link, confirmar o e-mail e ler a versão dos termos. */
+/** Chamadas HTTP do cadastro do síndico: pedir o cadastro, confirmar o e-mail e ler a versão dos termos. */
 @Injectable({ providedIn: 'root' })
 export class RegistrationApi {
   private readonly http = inject(HttpClient);
 
-  register(email: string): Observable<void> {
-    return this.http.post<void>('/api/auth/register', { email });
+  register(email: string, name: string, condominiumName: string): Observable<void> {
+    return this.http.post<void>('/api/auth/register', { email, name, condominiumName });
   }
 
   confirmEmail(token: string, password: string, termsVersion: string): Observable<void> {

@@ -50,6 +50,22 @@ const MANAGER_GROUPS: readonly NavGroup[] = [
   },
 ];
 
+const ADMIN_GROUPS: readonly NavGroup[] = [
+  { id: 'main', label: null, items: [DASHBOARD] },
+  {
+    id: 'admin',
+    label: 'Administração',
+    items: [
+      {
+        id: 'registration-requests',
+        label: 'Pedidos de cadastro',
+        icon: 'how_to_reg',
+        path: '/admin/pedidos-de-cadastro',
+      },
+    ],
+  },
+];
+
 const PROFILE: NavItem = {
   id: 'profile',
   label: 'Meus dados',
@@ -64,13 +80,16 @@ const ACCOUNT: NavItem = {
   path: '/conta',
 };
 
-/** Só o síndico que já cadastrou o condomínio tem as telas de gestão; os demais perfis ganham as suas depois. */
+/** O síndico que já cadastrou o condomínio tem as telas de gestão; o administrador tem as de administração; o morador ganha as suas depois. */
 function managesCondominium(who: Who): boolean {
   return who?.role === 'Manager' && who.condominiumId !== null;
 }
 
 /** Itens do menu lateral, agrupados. Vazio quando a pessoa não tem telas de gestão (o menu nem aparece). */
 export function navGroupsFor(who: Who): readonly NavGroup[] {
+  if (who?.role === 'SuperAdmin') {
+    return ADMIN_GROUPS;
+  }
   return managesCondominium(who) ? MANAGER_GROUPS : [];
 }
 
