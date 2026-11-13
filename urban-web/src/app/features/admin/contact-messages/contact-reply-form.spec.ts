@@ -147,6 +147,13 @@ describe('ContactReplyForm', () => {
       expect(input.accept).toBe('.pdf,.png,.jpg,.jpeg,.docx,.xlsx,.csv,.txt');
     });
 
+    it('o seletor escondido tem nome acessível, para leitores de tela e para o Sonar', () => {
+      const { html } = setup();
+
+      const input = testId(html, 'file-input') as HTMLInputElement;
+      expect(input.getAttribute('aria-label')).toBe('Anexar arquivos');
+    });
+
     it('"Anexar arquivos" abre o seletor do navegador', () => {
       const { html } = setup();
       const input = testId(html, 'file-input') as HTMLInputElement;
