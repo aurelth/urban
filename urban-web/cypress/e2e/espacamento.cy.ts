@@ -13,6 +13,7 @@ import {
 } from '../support/financeiro';
 import { READINGS_PATH, stubReadings } from '../support/leituras';
 import { PROFILE_PATH, stubProfile } from '../support/perfil';
+import { ADMIN, REQUESTS_PATH, stubRequests } from '../support/pedidos';
 import { MANAGER, stubAnonymous, stubSignedIn } from '../support/session';
 import { TARIFFS_PATH, stubTariffs } from '../support/tarifas';
 import { BATCH_PATH, UNITS_PATH, stubUnits } from '../support/unidades';
@@ -71,6 +72,17 @@ SCREENS.forEach(([where, width, height]) => {
       cy.visit('/condominio/cadastrar');
 
       cy.get('[data-testid="condominium-section"]').should('be.visible');
+      expectBreathingRoom();
+    });
+
+    it('não cola texto em container nos pedidos de cadastro, com e sem a confirmação de recusa', () => {
+      stubSignedIn(ADMIN);
+      stubRequests();
+      cy.visit(REQUESTS_PATH);
+      cy.get('[data-testid="request"]').should('have.length', 2);
+      expectBreathingRoom();
+      cy.get('[data-testid="reject"]').first().click();
+      cy.get('[data-testid="reject-confirmation"]').should('be.visible');
       expectBreathingRoom();
     });
 

@@ -2,6 +2,7 @@ import { stubTerms } from '../support/cadastro';
 import { NEW_MANAGER } from '../support/condominio';
 import { MANAGER, stubAnonymous, stubSignedIn } from '../support/session';
 import { READINGS_PATH, stubReadings } from '../support/leituras';
+import { ADMIN, REQUESTS_PATH, stubRequests } from '../support/pedidos';
 import { TARIFFS_PATH, stubTariffs } from '../support/tarifas';
 
 /** Com `should` o Cypress repete a conferência até a página assentar (a barra de rolagem aparece depois do título). */
@@ -66,6 +67,22 @@ describe('Tela de celular (375 x 667)', () => {
       const lefts = [...$cards].map((card) => card.getBoundingClientRect().left);
       expect(new Set(lefts).size).to.eq(1);
     });
+    expectNoHorizontalScroll();
+  });
+
+  it('mostra os pedidos de cadastro em coluna única, sem rolagem horizontal', () => {
+    stubSignedIn(ADMIN);
+    stubRequests();
+    cy.visit(REQUESTS_PATH);
+
+    cy.contains('h1', 'Pedidos de cadastro').should('be.visible');
+    cy.get('[data-testid="request"]').should('have.length', 2);
+    cy.get('[data-testid="request"]').each(($request) => {
+      const { left, right } = $request[0].getBoundingClientRect();
+      expect(left).to.be.at.least(0);
+      expect(right).to.be.at.most(375);
+    });
+    cy.get('[data-testid="approve"]').first().should('be.visible');
     expectNoHorizontalScroll();
   });
 

@@ -21,6 +21,9 @@ const LOGIN_MESSAGES: MessagesByCode = {
   'identity.user.account_deactivated': 'Conta desativada. Fale com o síndico',
   'identity.user.account_suspended': 'Acesso suspenso. Fale com o suporte',
   'identity.user.account_deleted': 'Conta excluída',
+  'identity.user.registration_pending':
+    'Seu pedido de cadastro ainda está em análise. Enviaremos o link por e-mail quando for aprovado',
+  'identity.user.registration_rejected': 'Seu pedido de cadastro não foi aprovado',
 };
 
 @Component({

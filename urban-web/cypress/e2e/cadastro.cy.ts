@@ -5,6 +5,13 @@ import { stubAnonymous, stubSignedIn } from '../support/session';
 const EMAIL = 'sindica@example.com';
 const PASSWORD = 'Senha-segura-123';
 
+/** O rótulo do Material cobre o meio do campo vazio, então o clique vai para a direita antes de digitar. */
+function fillRequest(): void {
+  cy.get('input[type="email"]').type(EMAIL);
+  cy.get('input[formControlName="name"]').click('right').type('Marina');
+  cy.get('input[formControlName="condominiumName"]').click('right').type('Residencial Aurora');
+}
+
 describe('Cadastro', () => {
   beforeEach(() => {
     stubAnonymous();
@@ -26,28 +33,61 @@ describe('Cadastro', () => {
     cy.location('pathname').should('eq', '/dashboard');
   });
 
-  it('pede o link com o e-mail e avisa para verificar a caixa de entrada', () => {
+  it('pede o cadastro com e-mail, nome e condomínio e avisa que o pedido foi recebido', () => {
     stubRegister();
     cy.visit('/cadastrar');
 
-    cy.get('input[type="email"]').type(EMAIL);
-    cy.contains('button', 'Enviar link').click();
+    fillRequest();
+    cy.contains('button', 'Pedir cadastro').click();
 
-    cy.wait('@register').its('request.body').should('deep.equal', { email: EMAIL });
-    cy.contains('h1', 'Verifique seu e-mail').should('be.visible');
-    cy.contains('h1', 'Verifique seu e-mail').should('have.css', 'color', PALETTE.light.success);
+    cy.wait('@register').its('request.body').should('deep.equal', {
+      email: EMAIL,
+      name: 'Marina',
+      condominiumName: 'Residencial Aurora',
+    });
+    cy.contains('h1', 'Pedido recebido').should('be.visible');
+    cy.contains('h1', 'Pedido recebido').should('have.css', 'color', PALETTE.light.success);
     cy.get('[role="status"] mat-icon').should('have.css', 'color', PALETTE.light.success);
-    cy.get('[role="status"]').should('contain.text', EMAIL);
+    cy.get('[role="status"]')
+      .should('contain.text', EMAIL)
+      .and('contain.text', 'Se o pedido for aprovado');
+  });
+
+  it('volta ao formulário com os dados preenchidos para corrigir o pedido', () => {
+    stubRegister();
+    cy.visit('/cadastrar');
+    fillRequest();
+    cy.contains('button', 'Pedir cadastro').click();
+    cy.contains('h1', 'Pedido recebido').should('be.visible');
+
+    cy.get('[data-testid="edit-request"]').click();
+
+    cy.get('input[type="email"]').should('have.value', EMAIL);
+    cy.get('input[formControlName="name"]').should('have.value', 'Marina');
+    cy.get('input[formControlName="condominiumName"]').should('have.value', 'Residencial Aurora');
   });
 
   it('não envia com um e-mail inválido', () => {
     stubRegister();
     cy.visit('/cadastrar');
 
-    cy.get('input[type="email"]').type('isto-nao-e-email');
-    cy.contains('button', 'Enviar link').click();
+    fillRequest();
+    cy.get('input[type="email"]').clear().type('isto-nao-e-email');
+    cy.contains('button', 'Pedir cadastro').click();
 
     cy.contains('Informe um e-mail válido').should('be.visible');
+    cy.get('@register.all').should('have.length', 0);
+  });
+
+  it('não envia sem o nome ou sem o condomínio', () => {
+    stubRegister();
+    cy.visit('/cadastrar');
+
+    cy.get('input[type="email"]').type(EMAIL);
+    cy.contains('button', 'Pedir cadastro').click();
+
+    cy.contains('Informe como prefere ser chamado').should('be.visible');
+    cy.contains('Informe o nome do condomínio').should('be.visible');
     cy.get('@register.all').should('have.length', 0);
   });
 
@@ -55,8 +95,8 @@ describe('Cadastro', () => {
     stubRegister(429, undefined, '30');
     cy.visit('/cadastrar');
 
-    cy.get('input[type="email"]').type(EMAIL);
-    cy.contains('button', 'Enviar link').click();
+    fillRequest();
+    cy.contains('button', 'Pedir cadastro').click();
 
     cy.get('[role="alert"]').should('contain.text', 'Aguarde 30 segundos');
   });

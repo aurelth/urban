@@ -13,14 +13,18 @@ describe('RegistrationApi', () => {
     TestBed.inject(HttpTestingController).verify();
   });
 
-  it('cadastra só com o e-mail', () => {
+  it('pede o cadastro com o e-mail, o nome e o nome do condomínio', () => {
     const { api, http } = setup();
 
-    api.register('sindica@example.com').subscribe();
+    api.register('sindica@example.com', 'Marina', 'Residencial Aurora').subscribe();
 
     const request = http.expectOne('/api/auth/register');
     expect(request.request.method).toBe('POST');
-    expect(request.request.body).toEqual({ email: 'sindica@example.com' });
+    expect(request.request.body).toEqual({
+      email: 'sindica@example.com',
+      name: 'Marina',
+      condominiumName: 'Residencial Aurora',
+    });
     request.flush(null, { status: 202, statusText: 'Accepted' });
   });
 

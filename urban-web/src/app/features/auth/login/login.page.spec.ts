@@ -215,6 +215,12 @@ describe('LoginPage', () => {
     [403, 'identity.user.account_deactivated', 'Conta desativada. Fale com o síndico'],
     [403, 'identity.user.account_suspended', 'Acesso suspenso. Fale com o suporte'],
     [403, 'identity.user.account_deleted', 'Conta excluída'],
+    [
+      403,
+      'identity.user.registration_pending',
+      'Seu pedido de cadastro ainda está em análise. Enviaremos o link por e-mail quando for aprovado',
+    ],
+    [403, 'identity.user.registration_rejected', 'Seu pedido de cadastro não foi aprovado'],
   ])('mostra o motivo quando a API responde %i %s', async (status, code, message) => {
     const { fixture, http, navigate, html } = setup();
     await fixture.whenStable();

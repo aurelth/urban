@@ -32,6 +32,13 @@ export function typeEmail(html: HTMLElement, value: string): void {
   input.dispatchEvent(new Event('input'));
 }
 
+/** Digita num campo de texto do formulário, achado pelo nome do controle (`formControlName`). */
+export function typeField(html: HTMLElement, name: string, value: string): void {
+  const input = html.querySelector<HTMLInputElement>(`input[formControlName="${name}"]`)!;
+  input.value = value;
+  input.dispatchEvent(new Event('input'));
+}
+
 export function typePassword(html: HTMLElement, value: string): void {
   const input = html.querySelector<HTMLInputElement>('input[autocomplete="new-password"]')!;
   input.value = value;
