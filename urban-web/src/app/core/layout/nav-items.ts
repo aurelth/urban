@@ -70,9 +70,17 @@ const ADMIN_GROUPS: readonly NavGroup[] = [
         icon: 'how_to_reg',
         path: '/admin/pedidos-de-cadastro',
       },
+      { id: 'messages', label: 'Mensagens', icon: 'mail', path: '/admin/mensagens' },
     ],
   },
 ];
+
+const CONTACT: NavItem = {
+  id: 'contact',
+  label: 'Contato',
+  icon: 'support_agent',
+  path: '/contato',
+};
 
 const PROFILE: NavItem = {
   id: 'profile',
@@ -99,6 +107,11 @@ export function navGroupsFor(who: Who): readonly NavGroup[] {
     return ADMIN_GROUPS;
   }
   return managesCondominium(who) ? MANAGER_GROUPS : [];
+}
+
+/** Itens do canto inferior do menu lateral, separados dos grupos: hoje só o "Contato" do síndico com condomínio. */
+export function navFooterFor(who: Who): readonly NavItem[] {
+  return managesCondominium(who) ? [CONTACT] : [];
 }
 
 /** Itens do menu do avatar, acima de "Sair": "Meus dados" é do síndico com condomínio, "Minha conta" é de todos. */
