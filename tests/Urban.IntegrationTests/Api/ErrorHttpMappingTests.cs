@@ -18,8 +18,10 @@ using Urban.Identity.Application.Authentication;
 using Urban.Identity.Application.Authentication.Login;
 using Urban.Identity.Application.Authentication.Refresh;
 using Urban.Identity.Application.Bootstrap;
+using Urban.Identity.Application.Contact;
 using Urban.Identity.Application.RegistrationRequests;
 using Urban.Identity.Domain.Consent;
+using Urban.Identity.Domain.Contact;
 using Urban.Identity.Domain.Tokens;
 using Urban.Identity.Domain.Users;
 using Urban.SharedKernel;
@@ -48,6 +50,12 @@ public sealed class ErrorHttpMappingTests
         { AdministrationErrors.ManagerNotFound.Code, 404 },
         { AdministrationErrors.PageInvalid.Code, 400 },
         { AdministrationErrors.StatusFilterInvalid.Code, 400 },
+        { ContactErrors.SendForbidden.Code, 403 },
+        { ContactErrors.ReadForbidden.Code, 403 },
+        { ContactErrors.PageInvalid.Code, 400 },
+        { ContactErrors.MessageNotFound.Code, 404 },
+        { ContactMessageErrors.SubjectInvalid.Code, 400 },
+        { ContactMessageErrors.BodyInvalid.Code, 400 },
         { UserErrors.ReasonRequired.Code, 400 },
         { UserErrors.ReasonTooLong.Code, 400 },
         { UserErrors.InvalidTransition.Code, 409 },

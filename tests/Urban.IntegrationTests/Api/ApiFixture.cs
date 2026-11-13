@@ -11,6 +11,8 @@ public sealed class ApiFixture : IAsyncLifetime
 
     public ApiFactory Factory { get; private set; } = null!;
 
+    public string RedisConnectionString => _redis.ConnectionString;
+
     public async Task InitializeAsync()
     {
         await Task.WhenAll(Postgres.InitializeAsync(), _redis.InitializeAsync());

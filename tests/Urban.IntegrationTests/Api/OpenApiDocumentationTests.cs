@@ -95,6 +95,9 @@ public sealed class OpenApiDocumentationTests
     [InlineData("/api/admin/managers", "get")]
     [InlineData("/api/admin/managers/{id}/suspend", "post")]
     [InlineData("/api/admin/managers/{id}/reactivate", "post")]
+    [InlineData("/api/contact/messages", "post")]
+    [InlineData("/api/admin/contact-messages", "get")]
+    [InlineData("/api/admin/contact-messages/{id}/read", "post")]
     public async Task Development_documents_the_429_of_every_rate_limited_route(string path, string method)
     {
         await using ApiFactory factory = new() { EnvironmentName = "Development" };

@@ -3,6 +3,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Urban.Identity.Application.Abstractions;
+using Urban.Identity.Application.Contact;
 using Urban.Identity.Application.Enrollment;
 using Urban.Identity.Infrastructure;
 using Urban.Identity.Infrastructure.Messaging;
@@ -130,6 +131,28 @@ public class IdentityInfrastructureRegistrationTests
 
         descriptor.ImplementationType.Should().Be<HangfireRegistrationRequestDispatcher>();
         descriptor.Lifetime.Should().Be(ServiceLifetime.Scoped);
+    }
+
+    [Fact]
+    public void TheContactNotifierAndTheJobAreScoped_ForTheSameReasonAsTheOtherEmailJobs()
+    {
+        Register().Single(d => d.ServiceType == typeof(IContactMessageNotifier)).Lifetime.Should().Be(ServiceLifetime.Scoped);
+        Register().Single(d => d.ServiceType == typeof(NotifyContactMessageJob)).Lifetime.Should().Be(ServiceLifetime.Scoped);
+    }
+
+    [Fact]
+    public void TheContactDispatcherQueuesJobsThroughHangfire()
+    {
+        ServiceDescriptor descriptor = Register().Single(d => d.ServiceType == typeof(IContactMessageDispatcher));
+
+        descriptor.ImplementationType.Should().Be<HangfireContactMessageDispatcher>();
+        descriptor.Lifetime.Should().Be(ServiceLifetime.Scoped);
+    }
+
+    [Fact]
+    public void TheContactMessageStoreIsScoped_BecauseItSharesTheRequestDbContext()
+    {
+        Register().Single(d => d.ServiceType == typeof(IContactMessages)).Lifetime.Should().Be(ServiceLifetime.Scoped);
     }
 
     [Fact]
