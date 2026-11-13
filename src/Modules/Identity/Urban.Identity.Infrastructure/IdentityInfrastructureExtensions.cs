@@ -67,6 +67,8 @@ public static class IdentityInfrastructureExtensions
         services.AddScoped<NotifyRegistrationRequestJob>();
         services.AddScoped<IContactMessages, ContactMessages>();
         services.AddScoped<IContactMessageNotifier, ContactMessageNotifier>();
+        services.AddScoped<IContactReplies, ContactReplies>();
+        services.AddScoped<IContactReplyMailer, ContactReplyMailer>();
         services.AddScoped<IContactMessageDispatcher, HangfireContactMessageDispatcher>();
         services.AddScoped<NotifyContactMessageJob>();
         services.AddScoped<IPasswordResets, PasswordResets>();

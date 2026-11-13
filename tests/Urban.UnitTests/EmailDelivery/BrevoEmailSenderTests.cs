@@ -39,6 +39,72 @@ public class BrevoEmailSenderTests
     }
 
     [Fact]
+    public async Task SendAsync_WithoutReplyToOrAttachments_SendsNeitherField()
+    {
+        StubHandler handler = new(_ => Respond(HttpStatusCode.Created, """{"messageId":"<1@brevo>"}"""));
+
+        await Create(handler).SendAsync(Message, default);
+
+        using JsonDocument body = JsonDocument.Parse(handler.Body!);
+        body.RootElement.TryGetProperty("replyTo", out _).Should().BeFalse();
+        body.RootElement.TryGetProperty("attachment", out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SendAsync_WithAnEmptyListOfAttachments_SendsNoAttachmentField()
+    {
+        StubHandler handler = new(_ => Respond(HttpStatusCode.Created, """{"messageId":"<1@brevo>"}"""));
+
+        await Create(handler).SendAsync(Message with { Attachments = [] }, default);
+
+        using JsonDocument body = JsonDocument.Parse(handler.Body!);
+        body.RootElement.TryGetProperty("attachment", out _).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task SendAsync_WithReplyTo_TellsBrevoWhereAnswersShouldGo()
+    {
+        StubHandler handler = new(_ => Respond(HttpStatusCode.Created, """{"messageId":"<1@brevo>"}"""));
+
+        await Create(handler).SendAsync(Message with { ReplyTo = "dono@example.com" }, default);
+
+        using JsonDocument body = JsonDocument.Parse(handler.Body!);
+        JsonElement replyTo = body.RootElement.GetProperty("replyTo");
+        replyTo.GetProperty("email").GetString().Should().Be("dono@example.com");
+        replyTo.TryGetProperty("name", out _).Should().BeFalse();
+        body.RootElement.GetProperty("sender").GetProperty("email").GetString().Should().Be("nao-responda@urban-pro.io");
+    }
+
+    [Fact]
+    public async Task SendAsync_WithAttachments_SendsEachOneWithItsNameAndTheContentInBase64()
+    {
+        byte[] pdf = "%PDF-1.4 conteúdo"u8.ToArray();
+        byte[] text = [0x01, 0x02, 0xFF];
+        StubHandler handler = new(_ => Respond(HttpStatusCode.Created, """{"messageId":"<1@brevo>"}"""));
+
+        await Create(handler).SendAsync(Message with { Attachments = [new("ata.pdf", pdf), new("dados.bin", text)] }, default);
+
+        using JsonDocument body = JsonDocument.Parse(handler.Body!);
+        JsonElement attachments = body.RootElement.GetProperty("attachment");
+        attachments.GetArrayLength().Should().Be(2);
+        attachments[0].GetProperty("name").GetString().Should().Be("ata.pdf");
+        Convert.FromBase64String(attachments[0].GetProperty("content").GetString()!).Should().Equal(pdf);
+        attachments[1].GetProperty("name").GetString().Should().Be("dados.bin");
+        Convert.FromBase64String(attachments[1].GetProperty("content").GetString()!).Should().Equal(text);
+    }
+
+    [Fact]
+    public async Task SendAsync_RefusalNeverRepeatsTheNamesOrTheContentOfTheAttachments()
+    {
+        StubHandler handler = new(_ => Respond(HttpStatusCode.BadRequest, """{"code":"invalid_parameter","message":"attachment ata-secreta.pdf"}"""));
+        EmailMessage message = Message with { Attachments = [new("ata-secreta.pdf", [1, 2, 3])] };
+
+        Func<Task> send = () => Create(handler).SendAsync(message, default);
+
+        (await send.Should().ThrowAsync<EmailDeliveryException>()).Which.Message.Should().NotContain("ata-secreta");
+    }
+
+    [Fact]
     public async Task SendAsync_RefusalCarriesTheStatusAndTheBrevoCode_NeverTheKeyTheAddressOrTheBody()
     {
         StubHandler handler = new(_ => Respond(HttpStatusCode.Unauthorized, """{"code":"unauthorized","message":"Key not found"}"""));

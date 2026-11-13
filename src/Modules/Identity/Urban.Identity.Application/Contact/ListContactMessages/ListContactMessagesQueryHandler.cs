@@ -34,7 +34,7 @@ public sealed class ListContactMessagesQueryHandler(
 
         ContactMessageSummary[] items =
         [
-            .. page.Items.Select(e => ContactMessageSummary.From(e.Message, e.Sender, ContactCondominiumNames.NameOf(names, e.Message.CondominiumId))),
+            .. page.Items.Select(e => ContactMessageSummary.From(e.Message, e.Sender, ContactCondominiumNames.NameOf(names, e.Message.CondominiumId), e.Replies)),
         ];
 
         return Result.Success(new ContactMessageListing(items, page.Total, request.Page, request.PageSize));

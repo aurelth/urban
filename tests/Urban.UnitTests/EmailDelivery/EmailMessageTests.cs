@@ -12,4 +12,13 @@ public class EmailMessageTests
     {
         new EmailMessage(address, "assunto", "corpo").RecipientDomain.Should().Be(expected);
     }
+
+    [Fact]
+    public void ReplyToAndAttachments_AreOptional()
+    {
+        EmailMessage message = new("sindica@example.com", "assunto", "corpo");
+
+        message.ReplyTo.Should().BeNull();
+        message.Attachments.Should().BeNull();
+    }
 }

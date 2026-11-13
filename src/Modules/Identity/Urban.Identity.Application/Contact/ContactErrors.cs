@@ -15,4 +15,13 @@ public static class ContactErrors
 
     public static readonly Error MessageNotFound =
         new("identity.contact.message_not_found", "Mensagem não encontrada");
+
+    public static readonly Error ReplyForbidden =
+        new("identity.contact.reply_forbidden", "Só o administrador pode responder às mensagens de contato");
+
+    public static readonly Error ReplyRecipientUnavailable =
+        new("identity.contact.reply_recipient_unavailable", "Quem escreveu a mensagem não tem mais uma conta, então não há para quem responder");
+
+    public static readonly Error ReplyNotDelivered =
+        new("identity.contact.reply_not_delivered", "O e-mail não foi entregue ao provedor de envio. Tente de novo em instantes");
 }

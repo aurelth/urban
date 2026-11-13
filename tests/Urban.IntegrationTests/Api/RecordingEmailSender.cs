@@ -10,8 +10,16 @@ public sealed class RecordingEmailSender : IEmailSender
 
     private readonly ConcurrentQueue<EmailMessage> _messages = new();
 
+    /// <summary>Ligado, faz o envio falhar como se o provedor o tivesse recusado; nada é guardado.</summary>
+    public bool RefuseDeliveries { get; set; }
+
     public Task SendAsync(EmailMessage message, CancellationToken cancellationToken)
     {
+        if (RefuseDeliveries)
+        {
+            throw new EmailDeliveryException("O provedor recusou o envio (simulado no teste).");
+        }
+
         _messages.Enqueue(message);
         return Task.CompletedTask;
     }

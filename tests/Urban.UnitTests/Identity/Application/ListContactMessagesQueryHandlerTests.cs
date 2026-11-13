@@ -57,6 +57,34 @@ public class ListContactMessagesQueryHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ShowsTheRepliesOfEachMessageWithTheirFiles()
+    {
+        User ana = UserBuilder.EnrolledManager("Ana", "ana@example.com");
+        ContactMessage answered = ContactMessageBuilder.Read(ana.Id, UserBuilder.Now.AddHours(2), ana.CondominiumId, "Corrigir o CNPJ", "O CNPJ está errado.");
+        ContactMessage waiting = ContactMessageBuilder.Unread(ana.Id, ana.CondominiumId, "Dúvida", "Como funciona o rateio?");
+        ContactReply first = ContactReplyBuilder.Text(answered.Id, _admin.Id, "Já corrigimos.", UserBuilder.Now.AddHours(2));
+        ContactReply second = ContactReplyBuilder.WithFiles(
+            answered.Id,
+            _admin.Id,
+            [new("ata.pdf", SampleFiles.Pdf())],
+            "Segue o comprovante.",
+            UserBuilder.Now.AddHours(3));
+        _messages
+            .Setup(m => m.ListAsync(false, 1, 20, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ContactMessagePage([new(answered, ana, [first, second]), new(waiting, ana)], 2));
+
+        Result<ContactMessageListing> result = await _handler.Handle(new ListContactMessagesQuery(_admin.Id), Ct);
+
+        ContactMessageSummary[] items = [.. result.Value.Items];
+        items[0].Replies.Should().HaveCount(2);
+        items[0].Replies[0].Should().BeEquivalentTo(new ContactReplySummary(first.Id, first.SentAt, "Já corrigimos.", []));
+        items[0].Replies[1].Id.Should().Be(second.Id);
+        items[0].Replies[1].Body.Should().Be("Segue o comprovante.");
+        items[0].Replies[1].Attachments.Should().Equal(new ContactReplyAttachment("ata.pdf", "application/pdf", SampleFiles.Pdf().Length));
+        items[1].Replies.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task Handle_AsksTheDirectoryOnceForTheWholePageWithoutRepeatedIds()
     {
         User ana = UserBuilder.EnrolledManager("Ana", "ana@example.com");

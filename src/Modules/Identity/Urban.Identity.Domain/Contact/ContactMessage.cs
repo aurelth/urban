@@ -70,5 +70,5 @@ public sealed class ContactMessage
         return true;
     }
 
-    private static bool IsForbiddenInBody(char c) => char.IsControl(c) && c is not ('\n' or '\r' or '\t');
+    internal static bool IsForbiddenInBody(char c) => char.IsControl(c) && c is not ('\n' or '\r' or '\t');
 }
