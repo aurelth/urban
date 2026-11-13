@@ -17,7 +17,7 @@ import {
   signInAs,
   tokenResponse,
 } from '../../testing/auth.fixtures';
-import { adminGuard } from './admin.guards';
+import { adminGuard, adminHomeGuard } from './admin.guards';
 import { CurrentUser } from './auth.models';
 import { SessionStore } from './session.store';
 
@@ -100,5 +100,60 @@ describe('adminGuard', () => {
     await restoring;
 
     await expect(run(adminGuard)).resolves.toBe(true);
+  });
+});
+
+describe('adminHomeGuard', () => {
+  afterEach(() => TestBed.inject(HttpTestingController).verify());
+
+  it('leva o administrador do painel de condominio para a visao geral', async () => {
+    const { store, http, router, run } = setup();
+    await signInAs(store, http, ADMIN);
+
+    const result = await run(adminHomeGuard);
+
+    expect(router.serializeUrl(result as UrlTree)).toBe('/admin/visao-geral');
+  });
+
+  it.each([
+    ['sindico com condominio', REGISTERED_MANAGER],
+    ['sindico sem condominio', MANAGER],
+    ['morador', RESIDENT],
+  ])('deixa %s no painel', async (_name, user) => {
+    const { store, http, run } = setup();
+    await signInAs(store, http, user);
+
+    await expect(run(adminHomeGuard)).resolves.toBe(true);
+  });
+
+  it('espera a restauracao da sessao antes de decidir', async () => {
+    const { store, http, router, run } = setup();
+    const restoring = store.restore();
+    const decision = run(adminHomeGuard);
+    let decided = false;
+    void decision.then(() => (decided = true));
+
+    await flushPromises();
+    expect(decided).toBe(false);
+
+    http.expectOne('/api/auth/refresh').flush(tokenResponse());
+    await flushPromises();
+    http.expectOne('/api/auth/me').flush(ADMIN);
+    await restoring;
+
+    expect(router.serializeUrl((await decision) as UrlTree)).toBe('/admin/visao-geral');
+  });
+
+  it('deixa a decisao sobre quem nao esta logado para a guarda de login', async () => {
+    const { store, http, run } = setup();
+    const restoring = store.restore();
+    await flushPromises();
+    http.expectOne('/api/auth/refresh').flush(problem(401, 'identity.session.unauthenticated'), {
+      status: 401,
+      statusText: 'Unauthorized',
+    });
+    await restoring;
+
+    await expect(run(adminHomeGuard)).resolves.toBe(true);
   });
 });

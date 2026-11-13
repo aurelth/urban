@@ -281,16 +281,18 @@ describe('ShellLayout', () => {
       expect(byTestId(html, 'user-menu')).not.toBeNull();
     });
 
-    it('leva o administrador ao painel e aos pedidos de cadastro, e só', async () => {
+    it('leva o administrador à visão geral, aos síndicos e aos pedidos de cadastro, e só', async () => {
       const { html } = await setup({ ...MANAGER, role: 'SuperAdmin' });
 
       expect(links(html).map((link) => link.dataset['testid'])).toEqual([
-        'nav-dashboard',
+        'nav-overview',
+        'nav-managers',
         'nav-registration-requests',
       ]);
-      expect(links(html).map(text)).toEqual(['Painel', 'Pedidos de cadastro']);
+      expect(links(html).map(text)).toEqual(['Visão geral', 'Síndicos', 'Pedidos de cadastro']);
       expect(links(html).map((link) => link.getAttribute('href'))).toEqual([
-        '/dashboard',
+        '/admin/visao-geral',
+        '/admin/sindicos',
         '/admin/pedidos-de-cadastro',
       ]);
       expect([...sideMenu(html)!.querySelectorAll('[data-testid="nav-group"]')].map(text)).toEqual([
