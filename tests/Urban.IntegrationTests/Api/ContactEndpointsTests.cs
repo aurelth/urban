@@ -9,6 +9,7 @@ using Urban.Identity.Domain.Contact;
 using Urban.Identity.Domain.Users;
 using Urban.Identity.Infrastructure.Persistence;
 using Urban.SharedKernel.Abstractions;
+using Urban.TestSupport.Identity;
 
 namespace Urban.IntegrationTests.Api;
 
@@ -269,6 +270,265 @@ public sealed class ContactEndpointsTests(ApiFixture fixture) : IAsyncLifetime, 
         (await response.CodeAsync()).Should().Be("request.invalid");
     }
 
+    [Fact]
+    public async Task Replying_without_a_session_returns_401()
+    {
+        HttpResponseMessage response = await _client.SendFormAsync(ReplyRoute(Guid.NewGuid()), accessToken: null, "Já corrigimos o CNPJ.");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Replying_as_a_manager_returns_403_with_a_stable_code_and_sends_nothing()
+    {
+        User ana = await fixture.Postgres.SeedEnrolledManagerWithPasswordAsync(Password, "Ana");
+        string anaToken = await _client.SignInAsync(ana);
+        Guid id = await SendAsync(anaToken, "Assunto", "Texto da mensagem.");
+
+        HttpResponseMessage response = await _client.SendFormAsync(ReplyRoute(id), anaToken, "Já corrigimos o CNPJ.");
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await response.CodeAsync()).Should().Be("identity.contact.reply_forbidden");
+        fixture.Factory.Emails.SentTo(ana.Email.Value).Should().BeEmpty();
+        (await RepliesOfAsync(id)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Replying_to_an_unknown_message_returns_404()
+    {
+        (_, string adminToken) = await SuperAdminAsync();
+
+        HttpResponseMessage response = await _client.SendFormAsync(ReplyRoute(Guid.NewGuid()), adminToken, "Já corrigimos o CNPJ.");
+
+        response.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await response.CodeAsync()).Should().Be("identity.contact.message_not_found");
+    }
+
+    [Fact]
+    public async Task Replying_without_a_form_returns_400()
+    {
+        (_, string adminToken) = await SuperAdminAsync();
+
+        HttpResponseMessage response = await _client.SendJsonAsync(HttpMethod.Post, ReplyRoute(Guid.NewGuid()), adminToken, new { body = "Já corrigimos o CNPJ." });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.CodeAsync()).Should().Be("request.invalid");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("abcd")]
+    public async Task Replying_with_an_invalid_text_returns_400_and_sends_nothing(string text)
+    {
+        (User ana, Guid id) = await ManagerWithMessageAsync();
+        (_, string adminToken) = await SuperAdminAsync();
+
+        HttpResponseMessage response = await _client.SendFormAsync(ReplyRoute(id), adminToken, text);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.CodeAsync()).Should().Be("identity.contact.reply_body_invalid");
+        fixture.Factory.Emails.SentTo(ana.Email.Value).Should().BeEmpty();
+        (await RepliesOfAsync(id)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Replying_with_files_but_without_the_text_field_returns_400()
+    {
+        (User ana, Guid id) = await ManagerWithMessageAsync();
+        (_, string adminToken) = await SuperAdminAsync();
+
+        HttpResponseMessage response = await _client.SendFormAsync(ReplyRoute(id), adminToken, body: null, ("ata.pdf", SampleFiles.Pdf()));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.CodeAsync()).Should().Be("identity.contact.reply_body_invalid");
+        fixture.Factory.Emails.SentTo(ana.Email.Value).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Replying_with_a_type_that_is_not_allowed_returns_400_and_sends_nothing()
+    {
+        (User ana, Guid id) = await ManagerWithMessageAsync();
+        (_, string adminToken) = await SuperAdminAsync();
+
+        HttpResponseMessage response = await _client.SendFormAsync(ReplyRoute(id), adminToken, "Segue o programa.", ("programa.exe", SampleFiles.Pdf()));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.CodeAsync()).Should().Be("identity.contact.attachment_type_not_allowed");
+        fixture.Factory.Emails.SentTo(ana.Email.Value).Should().BeEmpty();
+        (await RepliesOfAsync(id)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Replying_with_a_file_whose_content_is_not_what_the_extension_says_returns_400()
+    {
+        (_, Guid id) = await ManagerWithMessageAsync();
+        (_, string adminToken) = await SuperAdminAsync();
+
+        HttpResponseMessage response = await _client.SendFormAsync(ReplyRoute(id), adminToken, "Segue o documento.", ("ata.pdf", SampleFiles.Png()));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.CodeAsync()).Should().Be("identity.contact.attachment_content_invalid");
+    }
+
+    [Fact]
+    public async Task Replying_with_more_than_three_files_returns_400()
+    {
+        (_, Guid id) = await ManagerWithMessageAsync();
+        (_, string adminToken) = await SuperAdminAsync();
+        (string, byte[])[] four = [.. Enumerable.Range(1, 4).Select(n => ($"ata-{n}.pdf", SampleFiles.Pdf()))];
+
+        HttpResponseMessage response = await _client.SendFormAsync(ReplyRoute(id), adminToken, "Quatro anexos.", four);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.CodeAsync()).Should().Be("identity.contact.attachments_too_many");
+    }
+
+    [Fact]
+    public async Task Replying_with_a_file_over_five_megabytes_returns_413()
+    {
+        (_, Guid id) = await ManagerWithMessageAsync();
+        (_, string adminToken) = await SuperAdminAsync();
+        byte[] big = SampleFiles.PaddedTo(SampleFiles.Pdf(), ContactReplyAttachment.MaxFileBytes + 1);
+
+        HttpResponseMessage response = await _client.SendFormAsync(ReplyRoute(id), adminToken, "Um arquivo grande demais.", ("grande.pdf", big));
+
+        response.StatusCode.Should().Be(HttpStatusCode.RequestEntityTooLarge);
+        (await response.CodeAsync()).Should().Be("identity.contact.attachment_too_large");
+    }
+
+    [Fact]
+    public async Task Replying_with_files_that_together_pass_ten_megabytes_returns_413()
+    {
+        (_, Guid id) = await ManagerWithMessageAsync();
+        (_, string adminToken) = await SuperAdminAsync();
+        byte[] four = SampleFiles.PaddedTo(SampleFiles.Pdf(), 4 * 1024 * 1024);
+
+        HttpResponseMessage response = await _client.SendFormAsync(ReplyRoute(id), adminToken, "Três arquivos grandes.", ("a.pdf", four), ("b.pdf", four), ("c.pdf", four));
+
+        response.StatusCode.Should().Be(HttpStatusCode.RequestEntityTooLarge);
+        (await response.CodeAsync()).Should().Be("identity.contact.attachments_total_too_large");
+    }
+
+    [Fact]
+    public async Task A_reply_goes_by_email_to_the_sender_with_the_admin_as_reply_to_and_the_files_attached()
+    {
+        (User ana, Guid id) = await ManagerWithMessageAsync("Corrigir o CNPJ", "O CNPJ do condomínio está errado.");
+        (User admin, string adminToken) = await SuperAdminAsync();
+        byte[] pdf = SampleFiles.Pdf();
+        byte[] png = SampleFiles.Png();
+
+        HttpResponseMessage response = await _client.SendFormAsync(
+            ReplyRoute(id),
+            adminToken,
+            "  Já corrigimos o CNPJ.\nConfira o comprovante.  ",
+            ("comprovante.pdf", pdf),
+            ("foto.png", png));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        EmailMessage sent = fixture.Factory.Emails.SentTo(ana.Email.Value).Single(m => m.Subject == "Re: Corrigir o CNPJ");
+        sent.ReplyTo.Should().Be(admin.Email.Value);
+        sent.TextBody.Should().Contain("Já corrigimos o CNPJ.\nConfira o comprovante.");
+        sent.TextBody.Should().Contain("Em resposta à sua mensagem \"Corrigir o CNPJ\"");
+        sent.Attachments!.Select(a => a.FileName).Should().Equal("comprovante.pdf", "foto.png");
+        sent.Attachments![0].Content.Should().Equal(pdf);
+        sent.Attachments[1].Content.Should().Equal(png);
+    }
+
+    [Fact]
+    public async Task A_reply_returns_the_receipt_is_recorded_and_marks_the_message_as_read()
+    {
+        (User ana, Guid id) = await ManagerWithMessageAsync();
+        (User admin, string adminToken) = await SuperAdminAsync();
+        byte[] pdf = SampleFiles.Pdf();
+
+        HttpResponseMessage response = await _client.SendFormAsync(ReplyRoute(id), adminToken, "Já corrigimos o CNPJ.", ("comprovante.pdf", pdf));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created);
+        response.Headers.CacheControl!.NoStore.Should().BeTrue();
+        ContactReply stored = (await RepliesOfAsync(id)).Single();
+        JsonElement body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("id").GetGuid().Should().Be(stored.Id);
+        body.GetProperty("sentAt").GetDateTimeOffset().Should().BeCloseTo(stored.SentAt, TimeSpan.FromMilliseconds(1));
+        JsonElement file = body.GetProperty("attachments").EnumerateArray().Single();
+        file.GetProperty("fileName").GetString().Should().Be("comprovante.pdf");
+        file.GetProperty("contentType").GetString().Should().Be("application/pdf");
+        file.GetProperty("size").GetInt64().Should().Be(pdf.Length);
+        file.TryGetProperty("content", out _).Should().BeFalse();
+        stored.AuthorId.Should().Be(admin.Id);
+        stored.Body.Should().Be("Já corrigimos o CNPJ.");
+        stored.Attachments.Should().Equal(new ContactReplyAttachment("comprovante.pdf", "application/pdf", pdf.Length));
+        (await MessagesOfAsync(ana.Id)).Single().ReadAt.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task Answering_twice_keeps_both_replies_and_the_first_reading()
+    {
+        (User ana, Guid id) = await ManagerWithMessageAsync();
+        (_, string adminToken) = await SuperAdminAsync();
+        await _client.SendFormAsync(ReplyRoute(id), adminToken, "Primeira resposta.");
+        DateTimeOffset firstReading = (await MessagesOfAsync(ana.Id)).Single().ReadAt!.Value;
+
+        HttpResponseMessage second = await _client.SendFormAsync(ReplyRoute(id), adminToken, "Segunda resposta.");
+
+        second.StatusCode.Should().Be(HttpStatusCode.Created);
+        (await RepliesOfAsync(id)).Select(r => r.Body).Should().Equal("Primeira resposta.", "Segunda resposta.");
+        (await MessagesOfAsync(ana.Id)).Single().ReadAt.Should().Be(firstReading);
+    }
+
+    [Fact]
+    public async Task The_inbox_shows_each_reply_with_its_files_but_never_their_content()
+    {
+        (User ana, Guid id) = await ManagerWithMessageAsync();
+        (_, string adminToken) = await SuperAdminAsync();
+        await _client.SendFormAsync(ReplyRoute(id), adminToken, "Primeira resposta.");
+        await _client.SendFormAsync(ReplyRoute(id), adminToken, "Segunda resposta.", ("ata.pdf", SampleFiles.Pdf()));
+
+        JsonElement list = await (await _client.SendJsonAsync(HttpMethod.Get, $"{InboxRoute}?pageSize=100", adminToken)).Content.ReadFromJsonAsync<JsonElement>();
+
+        JsonElement item = list.GetProperty("items").EnumerateArray().Single(i => i.GetProperty("id").GetGuid() == id);
+        JsonElement[] replies = [.. item.GetProperty("replies").EnumerateArray()];
+        replies.Select(r => r.GetProperty("body").GetString()).Should().Equal("Primeira resposta.", "Segunda resposta.");
+        replies[0].GetProperty("attachments").GetArrayLength().Should().Be(0);
+        replies[1].GetProperty("attachments")[0].GetProperty("fileName").GetString().Should().Be("ata.pdf");
+        replies[1].TryGetProperty("sentAt", out _).Should().BeTrue();
+        ana.Id.Should().Be(item.GetProperty("senderId").GetGuid());
+    }
+
+    [Fact]
+    public async Task A_message_nobody_answered_shows_an_empty_list_of_replies()
+    {
+        (_, Guid id) = await ManagerWithMessageAsync();
+        (_, string adminToken) = await SuperAdminAsync();
+
+        JsonElement list = await (await _client.SendJsonAsync(HttpMethod.Get, $"{InboxRoute}?pageSize=100", adminToken)).Content.ReadFromJsonAsync<JsonElement>();
+
+        list.GetProperty("items").EnumerateArray().Single(i => i.GetProperty("id").GetGuid() == id).GetProperty("replies").GetArrayLength().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task When_the_provider_refuses_the_email_the_reply_returns_502_and_nothing_is_recorded()
+    {
+        await using ApiFactory factory = new()
+        {
+            PostgresConnectionString = fixture.Postgres.ConnectionString,
+            RedisConnectionString = fixture.RedisConnectionString,
+        };
+        await factory.Services.MigrateCondominiumAsync();
+        using HttpClient client = factory.CreateClient(new() { HandleCookies = false });
+        User ana = await fixture.Postgres.SeedEnrolledManagerWithPasswordAsync(Password, "Ana");
+        Guid id = (await (await client.SendJsonAsync(HttpMethod.Post, SendRoute, await client.SignInAsync(ana), Body("Assunto", "Texto da mensagem."))).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+        User admin = await fixture.Postgres.SeedUserWithPasswordAsync(Password, AccountStatus.Active, UserRole.SuperAdmin);
+        string adminToken = await client.SignInAsync(admin);
+        factory.Emails.RefuseDeliveries = true;
+
+        HttpResponseMessage response = await client.SendFormAsync(ReplyRoute(id), adminToken, "Já corrigimos o CNPJ.");
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadGateway);
+        (await response.CodeAsync()).Should().Be("identity.contact.reply_not_delivered");
+        (await RepliesOfAsync(id)).Should().BeEmpty();
+        (await MessagesOfAsync(ana.Id)).Single().ReadAt.Should().BeNull();
+    }
+
     private static object Body(string subject, string body) => new { subject, body };
 
     private static string NewAddress() => $"{Guid.NewGuid():N}@example.com";
@@ -285,6 +545,28 @@ public sealed class ContactEndpointsTests(ApiFixture fixture) : IAsyncLifetime, 
     {
         User admin = await fixture.Postgres.SeedUserWithPasswordAsync(Password, AccountStatus.Active, UserRole.SuperAdmin);
         return await _client.SignInAsync(admin);
+    }
+
+    private static string ReplyRoute(Guid id) => $"{InboxRoute}/{id}/replies";
+
+    private async Task<(User Manager, Guid MessageId)> ManagerWithMessageAsync(string subject = "Assunto", string body = "Texto da mensagem.")
+    {
+        User manager = await fixture.Postgres.SeedEnrolledManagerWithPasswordAsync(Password, "Ana");
+
+        return (manager, await SendAsync(await _client.SignInAsync(manager), subject, body));
+    }
+
+    private async Task<(User Admin, string Token)> SuperAdminAsync()
+    {
+        User admin = await fixture.Postgres.SeedUserWithPasswordAsync(Password, AccountStatus.Active, UserRole.SuperAdmin);
+
+        return (admin, await _client.SignInAsync(admin));
+    }
+
+    private async Task<ContactReply[]> RepliesOfAsync(Guid messageId)
+    {
+        await using IdentityDbContext db = fixture.Postgres.CreateContext();
+        return await db.ContactReplies.AsNoTracking().Where(r => r.MessageId == messageId).OrderBy(r => r.SentAt).ToArrayAsync();
     }
 
     private async Task<ContactMessage[]> MessagesOfAsync(Guid senderId)
