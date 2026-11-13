@@ -50,6 +50,7 @@ app.MapAdministrationEndpoints();
 app.MapContactEndpoints();
 app.MapCondominiumEndpoints();
 app.MapUnitEndpoints();
+app.MapResidentEndpoints();
 app.MapFinanceEndpoints();
 app.MapPostalCodeEndpoints();
 app.MapPasswordResetEndpoints();

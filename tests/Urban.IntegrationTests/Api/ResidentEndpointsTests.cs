@@ -377,16 +377,16 @@ public sealed class ResidentEndpointsTests(ApiFixture fixture) : IDisposable
         Guid a = await CreateUnitAsync(manager, "101");
         Guid b = await CreateUnitAsync(manager, "102");
         await RegisterAsync(manager, a, "Maria Souza");
-        await RegisterAsync(manager, b, "Mariana Costa");
+        await RegisterAsync(manager, b, "Maria Teresa");
         await RegisterAsync(manager, b, "João Pereira");
 
         JsonElement byName = await ListAsync(manager, "?search=MARIA");
         JsonElement byUnit = await ListAsync(manager, $"?unitId={b}");
         JsonElement both = await ListAsync(manager, $"?search=maria&unitId={b}");
 
-        Names(byName).Should().Equal("Maria Souza", "Mariana Costa");
-        Names(byUnit).Should().Equal("João Pereira", "Mariana Costa");
-        Names(both).Should().Equal("Mariana Costa");
+        Names(byName).Should().Equal("Maria Souza", "Maria Teresa");
+        Names(byUnit).Should().Equal("João Pereira", "Maria Teresa");
+        Names(both).Should().Equal("Maria Teresa");
     }
 
     [Theory]

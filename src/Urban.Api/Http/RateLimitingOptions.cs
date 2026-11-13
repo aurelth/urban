@@ -35,6 +35,8 @@ public sealed class RateLimitingOptions
 
     public RateLimitRule UnitBatch { get; init; } = new();
 
+    public RateLimitRule Residents { get; init; } = new();
+
     public RateLimitRule Finance { get; init; } = new();
 
     public RateLimitRule Admin { get; init; } = new();
@@ -61,6 +63,7 @@ public sealed class RateLimitingOptions
         Validate(nameof(SensitiveChange), SensitiveChange);
         Validate(nameof(Units), Units);
         Validate(nameof(UnitBatch), UnitBatch);
+        Validate(nameof(Residents), Residents);
         Validate(nameof(Finance), Finance);
         Validate(nameof(Admin), Admin);
         Validate(nameof(Contact), Contact);

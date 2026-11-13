@@ -20,9 +20,6 @@ public sealed class UpdateManagerIdentityCommandHandler(
     IAtomicWork atomicWork,
     IClock clock) : IRequestHandler<UpdateManagerIdentityCommand, Result<MyCondominium>>
 {
-    // O Brasil não tem horário de verão desde 2019, então a data local é o horário UTC menos três horas.
-    private static readonly TimeSpan BrazilOffset = TimeSpan.FromHours(-3);
-
     public async Task<Result<MyCondominium>> Handle(UpdateManagerIdentityCommand request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.Version))
@@ -74,7 +71,7 @@ public sealed class UpdateManagerIdentityCommandHandler(
 
     private static Result<Edit> Build(UpdateManagerIdentityCommand request, DateTimeOffset now)
     {
-        DateOnly today = DateOnly.FromDateTime(now.ToOffset(BrazilOffset).DateTime);
+        DateOnly today = BrazilCalendar.Today(now);
 
         Result<PersonName> fullName = PersonName.Create(request.FullName);
         Result<BirthDate> birthDate = BirthDate.Create(request.BirthDate, today);

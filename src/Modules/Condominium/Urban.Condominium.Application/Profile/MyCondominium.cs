@@ -19,7 +19,7 @@ public sealed record MyCondominium(Guid CondominiumId, string Version, string? D
                 registration.Manager.Cpf.Masked,
                 registration.Manager.BirthDate.Value,
                 registration.Manager.Phone.Value,
-                AddressView.From(registration.Manager.Address)),
+                AddressView.From(registration.Manager.RequireAddress())),
             new CondominiumView(
                 registration.Condominium.Name,
                 registration.Condominium.Cnpj.Formatted,

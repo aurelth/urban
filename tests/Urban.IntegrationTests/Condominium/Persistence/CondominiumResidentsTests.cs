@@ -288,14 +288,14 @@ public sealed class CondominiumResidentsTests(CondominiumPostgresFixture postgre
         CondominiumEntity condominium = await SeedCondominiumAsync();
         CondominiumUnit unit = await SeedUnitAsync(condominium);
         await AddResidentAsync(condominium, unit, "Maria Souza");
-        await AddResidentAsync(condominium, unit, "Mariana Costa");
+        await AddResidentAsync(condominium, unit, "Maria Teresa");
         await AddResidentAsync(condominium, unit, "João Pereira");
 
         PagedResidents byPart = await ListAsync(condominium, new ResidentFilter("MARIA", null), 1, 50);
         PagedResidents byMiddle = await ListAsync(condominium, new ResidentFilter("pereira", null), 1, 50);
         PagedResidents none = await ListAsync(condominium, new ResidentFilter("zzz", null), 1, 50);
 
-        byPart.Items.Select(i => i.Person.FullName.Value).Should().Equal("Maria Souza", "Mariana Costa");
+        byPart.Items.Select(i => i.Person.FullName.Value).Should().Equal("Maria Souza", "Maria Teresa");
         byPart.Total.Should().Be(2);
         byMiddle.Items.Should().ContainSingle().Which.Person.FullName.Value.Should().Be("João Pereira");
         none.Total.Should().Be(0);

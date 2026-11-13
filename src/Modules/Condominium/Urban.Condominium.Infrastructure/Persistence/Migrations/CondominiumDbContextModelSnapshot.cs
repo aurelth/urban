@@ -20,7 +20,7 @@ namespace Urban.Condominium.Infrastructure.Persistence.Migrations
             modelBuilder
                 .HasDefaultSchema("condominium")
                 .HasAnnotation("Npgsql:CollationDefinition:public.natural_order", "und-u-kn-true,und-u-kn-true,icu,False")
-                .HasAnnotation("ProductVersion", "10.0.13")
+                .HasAnnotation("ProductVersion", "10.0.14")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -125,6 +125,62 @@ namespace Urban.Condominium.Infrastructure.Persistence.Migrations
                     b.ToTable("condominium", "condominium");
                 });
 
+            modelBuilder.Entity("Urban.Condominium.Domain.Occupancies.Occupancy", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CondominiumId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("condominium_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateOnly?>("EndDate")
+                        .HasColumnType("date")
+                        .HasColumnName("end_date");
+
+                    b.Property<string>("Kind")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("kind");
+
+                    b.Property<Guid>("PersonId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("person_id");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("start_date");
+
+                    b.Property<Guid>("UnitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("unit_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_occupancy");
+
+                    b.HasIndex("PersonId")
+                        .HasDatabaseName("ix_occupancy_person_id");
+
+                    b.HasIndex("UnitId")
+                        .HasDatabaseName("ix_occupancy_unit_id");
+
+                    b.HasIndex("CondominiumId", "UnitId")
+                        .HasDatabaseName("ix_occupancy_condominium_id_unit_id");
+
+                    b.HasIndex("PersonId", "UnitId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_occupancy_person_unit_active")
+                        .HasFilter("end_date is null");
+
+                    b.ToTable("occupancy", "condominium");
+                });
+
             modelBuilder.Entity("Urban.Condominium.Domain.People.Person", b =>
                 {
                     b.Property<Guid>("Id")
@@ -154,6 +210,11 @@ namespace Urban.Condominium.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
 
+                    b.Property<string>("Email")
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("email");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasMaxLength(120)
@@ -166,7 +227,12 @@ namespace Urban.Condominium.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(11)")
                         .HasColumnName("phone");
 
-                    b.Property<Guid>("UserId")
+                    b.Property<string>("Profession")
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("profession");
+
+                    b.Property<Guid?>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
@@ -178,8 +244,6 @@ namespace Urban.Condominium.Infrastructure.Persistence.Migrations
 
                     b.ComplexProperty(typeof(Dictionary<string, object>), "Address", "Urban.Condominium.Domain.People.Person.Address#Address", b1 =>
                         {
-                            b1.IsRequired();
-
                             b1.Property<string>("City")
                                 .IsRequired()
                                 .HasMaxLength(80)
@@ -220,6 +284,27 @@ namespace Urban.Condominium.Infrastructure.Persistence.Migrations
                                 .HasMaxLength(120)
                                 .HasColumnType("character varying(120)")
                                 .HasColumnName("address_street");
+                        });
+
+                    b.ComplexProperty(typeof(Dictionary<string, object>), "EmergencyContact", "Urban.Condominium.Domain.People.Person.EmergencyContact#EmergencyContact", b1 =>
+                        {
+                            b1.Property<string>("Name")
+                                .IsRequired()
+                                .HasMaxLength(120)
+                                .HasColumnType("character varying(120)")
+                                .HasColumnName("emergency_contact_name");
+
+                            b1.Property<string>("Phone")
+                                .IsRequired()
+                                .HasMaxLength(11)
+                                .HasColumnType("character varying(11)")
+                                .HasColumnName("emergency_contact_phone");
+
+                            b1.Property<string>("Relationship")
+                                .IsRequired()
+                                .HasMaxLength(40)
+                                .HasColumnType("character varying(40)")
+                                .HasColumnName("emergency_contact_relationship");
                         });
 
                     b.HasKey("Id")
@@ -336,6 +421,30 @@ namespace Urban.Condominium.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ix_change_log_condominium_id_changed_at");
 
                     b.ToTable("change_log", "condominium");
+                });
+
+            modelBuilder.Entity("Urban.Condominium.Domain.Occupancies.Occupancy", b =>
+                {
+                    b.HasOne("Urban.Condominium.Domain.Condominiums.Condominium", null)
+                        .WithMany()
+                        .HasForeignKey("CondominiumId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_occupancy_condominium_condominium_id");
+
+                    b.HasOne("Urban.Condominium.Domain.People.Person", null)
+                        .WithMany()
+                        .HasForeignKey("PersonId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_occupancy_person_person_id");
+
+                    b.HasOne("Urban.Condominium.Domain.Units.CondominiumUnit", null)
+                        .WithMany()
+                        .HasForeignKey("UnitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_occupancy_unit_unit_id");
                 });
 
             modelBuilder.Entity("Urban.Condominium.Domain.People.Person", b =>

@@ -17,4 +17,7 @@ public enum ChangeKind
 
     /// <summary>Troca do método de rateio das despesas.</summary>
     Apportionment,
+
+    /// <summary>Cadastro ou edição de um morador e dos vínculos dele com as unidades.</summary>
+    Resident,
 }
