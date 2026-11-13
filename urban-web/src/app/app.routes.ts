@@ -63,6 +63,22 @@ export const routes: Routes = [
               ),
           },
           {
+            path: 'admin/mensagens',
+            title: 'Mensagens',
+            canActivate: [adminGuard],
+            loadComponent: () =>
+              import('./features/admin/contact-messages/contact-messages.page').then(
+                (m) => m.ContactMessagesPage,
+              ),
+          },
+          {
+            path: 'contato',
+            title: 'Contato',
+            canActivate: [managerGuard],
+            loadComponent: () =>
+              import('./features/contact/contact.page').then((m) => m.ContactPage),
+          },
+          {
             path: 'condominio/meus-dados',
             title: 'Meus dados',
             canActivate: [managerGuard],

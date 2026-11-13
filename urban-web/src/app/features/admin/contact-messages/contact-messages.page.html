@@ -1,0 +1,177 @@
+<section class="mx-auto max-w-3xl p-6">
+  <h1 class="mb-1 text-3xl font-semibold tracking-tight">Mensagens</h1>
+  <p class="mb-6 text-on-surface-variant">
+    Leia o que os síndicos escreveram e responda por e-mail
+  </p>
+
+  @switch (store.status()) {
+    @case ('loading') {
+      <p role="status" class="text-on-surface-variant" data-testid="loading">
+        Carregando as mensagens
+      </p>
+    }
+    @case ('error') {
+      <div class="flex flex-col items-start gap-4" data-testid="load-error">
+        <p class="flex items-start gap-2 text-error">
+          <mat-icon svgIcon="error" aria-hidden="true" />
+          <span>Não foi possível carregar as mensagens</span>
+        </p>
+        <button mat-stroked-button type="button" data-testid="retry" (click)="load()">
+          Tentar de novo
+        </button>
+      </div>
+    }
+    @case ('ready') {
+      @if (notice(); as message) {
+        <p role="status" class="mb-4 flex items-start gap-2" data-testid="notice">
+          <span class="inline-flex text-success"
+            ><mat-icon svgIcon="check_circle" aria-hidden="true"
+          /></span>
+          <span>{{ message }}</span>
+        </p>
+      }
+      @if (actionError(); as message) {
+        <p role="alert" class="mb-4 flex items-start gap-2 text-error" data-testid="action-error">
+          <mat-icon svgIcon="error" aria-hidden="true" />
+          <span>{{ message }}</span>
+        </p>
+      }
+
+      <form class="sm:max-w-xs" data-testid="filters" (submit)="$event.preventDefault()">
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="mb-4 w-full">
+          <mat-label>Situação</mat-label>
+          <urban-menu-select
+            data-testid="filter-status"
+            [options]="statusOptions"
+            [value]="store.query().status"
+            (valueChange)="onStatus($event)"
+          />
+        </mat-form-field>
+      </form>
+      @if (store.hasFilters()) {
+        <button
+          mat-button
+          type="button"
+          class="mb-4"
+          data-testid="clear-filters"
+          [disabled]="store.busy()"
+          (click)="clearFilters()"
+        >
+          Limpar filtros
+        </button>
+      }
+
+      @if (store.total() === 0 && !store.hasFilters()) {
+        <div
+          class="rounded-xl border border-outline-variant bg-surface-container p-6 text-center"
+          data-testid="empty"
+        >
+          <p class="mb-1 text-lg font-medium">Nenhuma mensagem recebida ainda</p>
+          <p class="m-0 text-on-surface-variant">
+            As mensagens dos síndicos aparecem aqui, e você também recebe um e-mail a cada uma
+          </p>
+        </div>
+      } @else if (store.items().length === 0) {
+        <p
+          class="rounded-xl border border-outline-variant bg-surface-container p-6 text-center text-on-surface-variant"
+          data-testid="no-results"
+        >
+          Nenhuma mensagem não lida
+        </p>
+      } @else {
+        <p class="mb-4 text-sm text-on-surface-variant" data-testid="total">
+          {{ store.total() }} {{ store.total() === 1 ? 'mensagem' : 'mensagens' }}
+        </p>
+        <ul class="m-0 flex list-none flex-col gap-4 p-0">
+          @for (message of store.items(); track message.id) {
+            <li
+              data-testid="message"
+              class="rounded-xl border border-outline-variant bg-surface-container p-4"
+            >
+              <p class="mb-1 text-lg font-medium break-words" data-testid="message-subject">
+                {{ message.subject }}
+              </p>
+              <p class="mb-1 break-words" data-testid="message-sender">
+                {{ message.senderName ?? message.senderEmail }}
+              </p>
+              @if (message.senderName) {
+                <p
+                  class="mb-1 text-sm break-all text-on-surface-variant"
+                  data-testid="message-email"
+                >
+                  {{ message.senderEmail }}
+                </p>
+              }
+              <p class="mb-1 text-sm text-on-surface-variant" data-testid="message-condominium">
+                {{ message.condominiumName ?? 'Ainda sem condomínio cadastrado' }}
+              </p>
+              <p class="mb-4 text-sm text-on-surface-variant" data-testid="message-date">
+                Enviada em {{ formatDate(message.sentAt) }}
+              </p>
+              <p class="mb-4 break-words whitespace-pre-line" data-testid="message-body">
+                {{ message.body }}
+              </p>
+              <p class="mb-4 flex items-center gap-1 text-sm" data-testid="message-status">
+                @if (message.readAt; as readAt) {
+                  <mat-icon svgIcon="mark_email_read" aria-hidden="true" />
+                  <span class="text-on-surface-variant">Lida em {{ formatDate(readAt) }}</span>
+                } @else {
+                  <mat-icon svgIcon="mark_email_unread" aria-hidden="true" />
+                  <span class="font-medium">Não lida</span>
+                }
+              </p>
+              <div class="flex flex-wrap gap-2">
+                <a mat-stroked-button data-testid="reply" [href]="replyLink(message)">
+                  Responder por e-mail
+                </a>
+                @if (!message.readAt) {
+                  <button
+                    mat-flat-button
+                    type="button"
+                    data-testid="mark-read"
+                    [disabled]="store.busy()"
+                    (click)="markRead(message)"
+                  >
+                    Marcar como lida
+                  </button>
+                }
+              </div>
+            </li>
+          }
+        </ul>
+      }
+
+      @if (store.pageCount() > 1) {
+        <nav
+          class="mt-4 flex items-center justify-between gap-4"
+          aria-label="Paginação"
+          data-testid="pagination"
+        >
+          <button
+            mat-stroked-button
+            type="button"
+            data-testid="previous"
+            [disabled]="store.busy() || store.query().page <= 1"
+            (click)="goTo(store.query().page - 1)"
+          >
+            <mat-icon svgIcon="chevron_left" />
+            Anterior
+          </button>
+          <span aria-live="polite" data-testid="page-status"
+            >Página {{ store.query().page }} de {{ store.pageCount() }}</span
+          >
+          <button
+            mat-stroked-button
+            type="button"
+            data-testid="next"
+            [disabled]="store.busy() || store.query().page >= store.pageCount()"
+            (click)="goTo(store.query().page + 1)"
+          >
+            Próxima
+            <mat-icon svgIcon="chevron_right" />
+          </button>
+        </nav>
+      }
+    }
+  }
+</section>

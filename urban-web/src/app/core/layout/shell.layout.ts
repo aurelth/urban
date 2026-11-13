@@ -1,4 +1,5 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, effect, inject, linkedSignal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatIconButton } from '@angular/material/button';
@@ -15,7 +16,7 @@ import { roleLabel } from '../auth/role-label';
 import { SessionStore } from '../auth/session.store';
 import { BrandLink } from '../../shared/ui/brand-link/brand.link';
 import { ThemeStore } from '../services/theme.store';
-import { navGroupsFor, userMenuFor } from './nav-items';
+import { navFooterFor, navGroupsFor, userMenuFor } from './nav-items';
 import { SidebarStore } from './sidebar.store';
 
 /** Largura (breakpoint `lg` do Tailwind) a partir da qual o menu lateral fica fixo; abaixo dela vira uma gaveta. */
@@ -33,6 +34,7 @@ const RAIL_WIDTH = '72px';
 @Component({
   selector: 'urban-shell',
   imports: [
+    NgTemplateOutlet,
     RouterOutlet,
     RouterLink,
     RouterLinkActive,
@@ -58,6 +60,7 @@ export class ShellLayout {
   protected readonly roleLabel = roleLabel;
 
   protected readonly groups = computed(() => navGroupsFor(this.session.user()));
+  protected readonly footerItems = computed(() => navFooterFor(this.session.user()));
   protected readonly userMenuItems = computed(() => userMenuFor(this.session.user()));
   protected readonly hasSidebar = computed(() => this.groups().length > 0);
 

@@ -30,7 +30,7 @@
                 "input": "public"
               },
               {
-                "glob": "{menu,dashboard,price_change,how_to_reg,dark_mode,light_mode,visibility,visibility_off,error,info,logout,check_circle,mark_email_read,progress_activity,apartment,account_circle,home_work,add,edit,block,restart_alt,playlist_add,delete,arrow_back,chevron_left,chevron_right,frame_person,receipt_long,calendar_month,schedule,trending_up,event_busy,payments,arrow_drop_down,format_list_bulleted,lock,lock_open,water_drop,savings,content_copy,groups,pause_circle,mark_email_unread,arrow_forward}.svg",
+                "glob": "{menu,dashboard,price_change,how_to_reg,dark_mode,light_mode,visibility,visibility_off,error,info,logout,check_circle,mark_email_read,progress_activity,apartment,account_circle,home_work,add,edit,block,restart_alt,playlist_add,delete,arrow_back,chevron_left,chevron_right,frame_person,receipt_long,calendar_month,schedule,trending_up,event_busy,payments,arrow_drop_down,format_list_bulleted,lock,lock_open,water_drop,savings,content_copy,groups,pause_circle,mark_email_unread,arrow_forward,mail,support_agent}.svg",
                 "input": "node_modules/@material-symbols/svg-400/outlined",
                 "output": "icons"
               }

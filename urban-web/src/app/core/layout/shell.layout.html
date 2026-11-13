@@ -1,3 +1,19 @@
+<ng-template #navLink let-item>
+  <a
+    class="flex h-12 items-center rounded-full text-sm text-on-surface no-underline hover:bg-accent-fill/5 focus-visible:outline-2 focus-visible:outline-primary"
+    matTooltipPosition="right"
+    [class]="rail() ? 'size-12 justify-center' : 'gap-3 px-4'"
+    [matTooltip]="rail() ? item.label : ''"
+    routerLinkActive="bg-accent-fill/10 font-medium"
+    ariaCurrentWhenActive="page"
+    [attr.data-testid]="'nav-' + item.id"
+    [routerLink]="item.path"
+    (click)="closeDrawer()"
+  >
+    <mat-icon [svgIcon]="item.icon" />
+    <span data-testid="nav-label" [class]="rail() ? 'sr-only' : ''">{{ item.label }}</span>
+  </a>
+</ng-template>
 <mat-sidenav-container autosize class="min-h-dvh">
   @if (hasSidebar()) {
     <mat-sidenav
@@ -8,48 +24,52 @@
       [disableClose]="isDesktop()"
       (closedStart)="opened.set(false)"
     >
-      <div
-        class="flex h-16 items-center text-xl font-bold tracking-tight"
-        [class]="rail() ? 'justify-center' : 'px-7'"
-      >
-        <urban-brand-link [compact]="rail()" />
-      </div>
-      <nav aria-label="Menu principal" class="flex flex-col gap-1 px-3 pb-6">
-        @for (group of groups(); track group.id) {
-          <div role="group" [attr.aria-label]="group.label" class="flex flex-col gap-1">
-            @if (rail() && !$first) {
-              <hr aria-hidden="true" class="mx-3 my-2 border-outline-variant" />
+      <div class="flex min-h-full flex-col">
+        <div
+          class="flex h-16 items-center text-xl font-bold tracking-tight"
+          [class]="rail() ? 'justify-center' : 'px-7'"
+        >
+          <urban-brand-link [compact]="rail()" />
+        </div>
+        <nav aria-label="Menu principal" class="flex flex-col gap-1 px-3 pb-6">
+          @for (group of groups(); track group.id) {
+            <div role="group" [attr.aria-label]="group.label" class="flex flex-col gap-1">
+              @if (rail() && !$first) {
+                <hr aria-hidden="true" class="mx-3 my-2 border-outline-variant" />
+              }
+              @if (group.label && !rail()) {
+                <p
+                  data-testid="nav-group"
+                  aria-hidden="true"
+                  class="mt-4 mb-1 px-4 text-xs font-medium tracking-wide text-on-surface-variant"
+                >
+                  {{ group.label }}
+                </p>
+              }
+              @for (item of group.items; track item.id) {
+                <ng-container
+                  [ngTemplateOutlet]="navLink"
+                  [ngTemplateOutletContext]="{ $implicit: item }"
+                />
+              }
+            </div>
+          }
+        </nav>
+        @if (footerItems().length > 0) {
+          <nav
+            aria-label="Suporte"
+            data-testid="nav-footer"
+            class="mt-auto flex flex-col gap-1 px-3 pb-6"
+          >
+            @for (item of footerItems(); track item.id) {
+              <ng-container
+                [ngTemplateOutlet]="navLink"
+                [ngTemplateOutletContext]="{ $implicit: item }"
+              />
             }
-            @if (group.label && !rail()) {
-              <p
-                data-testid="nav-group"
-                aria-hidden="true"
-                class="mt-4 mb-1 px-4 text-xs font-medium tracking-wide text-on-surface-variant"
-              >
-                {{ group.label }}
-              </p>
-            }
-            @for (item of group.items; track item.id) {
-              <a
-                class="flex h-12 items-center rounded-full text-sm text-on-surface no-underline hover:bg-accent-fill/5 focus-visible:outline-2 focus-visible:outline-primary"
-                matTooltipPosition="right"
-                [class]="rail() ? 'size-12 justify-center' : 'gap-3 px-4'"
-                [matTooltip]="rail() ? item.label : ''"
-                routerLinkActive="bg-accent-fill/10 font-medium"
-                ariaCurrentWhenActive="page"
-                [attr.data-testid]="'nav-' + item.id"
-                [routerLink]="item.path"
-                (click)="closeDrawer()"
-              >
-                <mat-icon [svgIcon]="item.icon" />
-                <span data-testid="nav-label" [class]="rail() ? 'sr-only' : ''">{{
-                  item.label
-                }}</span>
-              </a>
-            }
-          </div>
+          </nav>
         }
-      </nav>
+      </div>
     </mat-sidenav>
   }
   <mat-sidenav-content>

@@ -1,4 +1,10 @@
 import { MANAGERS_PATH, OVERVIEW_PATH, stubManagers } from '../support/administracao';
+import {
+  CONTACT_PATH,
+  MESSAGES_PATH,
+  stubContactMessages,
+  stubContactSend,
+} from '../support/contato';
 import { stubTerms } from '../support/cadastro';
 import { NEW_MANAGER } from '../support/condominio';
 import { MANAGER, stubAnonymous, stubSignedIn } from '../support/session';
@@ -84,6 +90,38 @@ describe('Tela de celular (375 x 667)', () => {
       expect(right).to.be.at.most(375);
     });
     cy.get('[data-testid="approve"]').first().should('be.visible');
+    expectNoHorizontalScroll();
+  });
+
+  it('mostra o contato do síndico em coluna única, sem rolagem horizontal', () => {
+    stubSignedIn(MANAGER);
+    stubContactSend();
+    cy.visit(CONTACT_PATH);
+
+    cy.contains('h1', 'Contato').should('be.visible');
+    cy.get('input[formControlName="subject"]').should('be.visible');
+    cy.get('textarea[formControlName="body"]').then(($field) => {
+      const { left, right } = $field[0].getBoundingClientRect();
+      expect(left).to.be.at.least(0);
+      expect(right).to.be.at.most(375);
+    });
+    cy.contains('button', 'Enviar mensagem').should('be.visible');
+    expectNoHorizontalScroll();
+  });
+
+  it('mostra as mensagens do administrador em coluna única, sem rolagem horizontal', () => {
+    stubSignedIn(ADMIN);
+    stubContactMessages();
+    cy.visit(MESSAGES_PATH);
+
+    cy.contains('h1', 'Mensagens').should('be.visible');
+    cy.get('[data-testid="message"]').should('have.length', 2);
+    cy.get('[data-testid="message"]').each(($message) => {
+      const { left, right } = $message[0].getBoundingClientRect();
+      expect(left).to.be.at.least(0);
+      expect(right).to.be.at.most(375);
+    });
+    cy.get('[data-testid="mark-read"]').first().should('be.visible');
     expectNoHorizontalScroll();
   });
 
