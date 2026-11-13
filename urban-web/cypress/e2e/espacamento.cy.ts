@@ -1,4 +1,10 @@
 import { MANAGERS_PATH, OVERVIEW_PATH, stubManagers } from '../support/administracao';
+import {
+  CONTACT_PATH,
+  MESSAGES_PATH,
+  stubContactMessages,
+  stubContactSend,
+} from '../support/contato';
 import { stubTerms } from '../support/cadastro';
 import { NEW_MANAGER } from '../support/condominio';
 import { expectBreathingRoom, expectDialogBreathingRoom } from '../support/espacamento';
@@ -84,6 +90,27 @@ SCREENS.forEach(([where, width, height]) => {
       expectBreathingRoom();
       cy.get('[data-testid="reject"]').first().click();
       cy.get('[data-testid="reject-confirmation"]').should('be.visible');
+      expectBreathingRoom();
+    });
+
+    it('não cola texto em container no contato, antes e depois do envio', () => {
+      stubSignedIn(MANAGER);
+      stubContactSend();
+      cy.visit(CONTACT_PATH);
+      cy.get('textarea[formControlName="body"]').should('be.visible');
+      expectBreathingRoom();
+      cy.get('input[formControlName="subject"]').click('right').type('Corrigir o CNPJ');
+      cy.get('textarea[formControlName="body"]').click('right').type('Digitei o CNPJ errado.');
+      cy.contains('button', 'Enviar mensagem').click();
+      cy.get('[data-testid="sent"]').should('be.visible');
+      expectBreathingRoom();
+    });
+
+    it('não cola texto em container nas mensagens do administrador', () => {
+      stubSignedIn(ADMIN);
+      stubContactMessages();
+      cy.visit(MESSAGES_PATH);
+      cy.get('[data-testid="message"]').should('have.length', 2);
       expectBreathingRoom();
     });
 

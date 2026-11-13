@@ -22,6 +22,8 @@ const ROUTES: Routes = [
   'financeiro/lancamentos',
   'condominio/meus-dados',
   'admin/pedidos-de-cadastro',
+  'admin/mensagens',
+  'contato',
   'conta',
 ].map((path) => ({ path, component: Page }));
 
@@ -247,6 +249,7 @@ describe('ShellLayout', () => {
         'nav-tariffs',
         'nav-readings',
         'nav-entries',
+        'nav-contact',
       ]);
       expect(links(html).map(text)).toEqual([
         'Painel',
@@ -255,6 +258,7 @@ describe('ShellLayout', () => {
         'Tarifas',
         'Leituras',
         'Lançamentos',
+        'Contato',
       ]);
       expect(links(html).map((link) => link.getAttribute('href'))).toEqual([
         '/dashboard',
@@ -263,11 +267,37 @@ describe('ShellLayout', () => {
         '/financeiro/tarifas',
         '/financeiro/leituras',
         '/financeiro/lancamentos',
+        '/contato',
       ]);
       expect([...sideMenu(html)!.querySelectorAll('[data-testid="nav-group"]')].map(text)).toEqual([
         'Condomínio',
         'Financeiro',
       ]);
+    });
+
+    it('põe o Contato no canto inferior do menu, depois dos grupos, fora deles', async () => {
+      const { html } = await setup(REGISTERED_MANAGER);
+
+      const footer = byTestId(html, 'nav-footer')!;
+      const contact = byTestId(html, 'nav-contact')!;
+      const lastGroupLink = byTestId(html, 'nav-entries')!;
+      expect(footer.contains(contact)).toBe(true);
+      expect(footer.getAttribute('aria-label')).toBe('Suporte');
+      expect(sideMenu(html)!.contains(contact)).toBe(false);
+      expect(
+        lastGroupLink.compareDocumentPosition(contact) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(contact.querySelector('mat-icon')).not.toBeNull();
+    });
+
+    it('marca o Contato como a página atual quando ele está aberto', async () => {
+      const { fixture, router, html } = await setup(REGISTERED_MANAGER);
+
+      await router.navigateByUrl('/contato');
+      await fixture.whenStable();
+      TestBed.tick();
+
+      expect(byTestId(html, 'nav-contact')?.getAttribute('aria-current')).toBe('page');
     });
 
     it.each([
@@ -281,20 +311,28 @@ describe('ShellLayout', () => {
       expect(byTestId(html, 'user-menu')).not.toBeNull();
     });
 
-    it('leva o administrador à visão geral, aos síndicos e aos pedidos de cadastro, e só', async () => {
+    it('leva o administrador à visão geral, aos síndicos, aos pedidos de cadastro e às mensagens, e só', async () => {
       const { html } = await setup({ ...MANAGER, role: 'SuperAdmin' });
 
       expect(links(html).map((link) => link.dataset['testid'])).toEqual([
         'nav-overview',
         'nav-managers',
         'nav-registration-requests',
+        'nav-messages',
       ]);
-      expect(links(html).map(text)).toEqual(['Visão geral', 'Síndicos', 'Pedidos de cadastro']);
+      expect(links(html).map(text)).toEqual([
+        'Visão geral',
+        'Síndicos',
+        'Pedidos de cadastro',
+        'Mensagens',
+      ]);
       expect(links(html).map((link) => link.getAttribute('href'))).toEqual([
         '/admin/visao-geral',
         '/admin/sindicos',
         '/admin/pedidos-de-cadastro',
+        '/admin/mensagens',
       ]);
+      expect(byTestId(html, 'nav-footer')).toBeNull();
       expect([...sideMenu(html)!.querySelectorAll('[data-testid="nav-group"]')].map(text)).toEqual([
         'Administração',
       ]);
@@ -372,6 +410,7 @@ describe('ShellLayout', () => {
           'Tarifas',
           'Leituras',
           'Lançamentos',
+          'Contato',
         ]);
         expect(labels(html).every((label) => label.classList.contains('sr-only'))).toBe(true);
         expect(html.querySelectorAll('[data-testid="nav-group"]')).toHaveLength(0);
@@ -401,6 +440,7 @@ describe('ShellLayout', () => {
         await toggle(fixture, html);
 
         expect(byTestId(html, 'nav-units')!.getAttribute('aria-describedby')).not.toBeNull();
+        expect(byTestId(html, 'nav-contact')!.getAttribute('aria-describedby')).not.toBeNull();
       });
 
       it('lembra a escolha na próxima visita', async () => {

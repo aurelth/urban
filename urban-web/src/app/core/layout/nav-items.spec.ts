@@ -1,5 +1,5 @@
 import { CurrentUser } from '../auth/auth.models';
-import { navGroupsFor, userMenuFor } from './nav-items';
+import { navFooterFor, navGroupsFor, userMenuFor } from './nav-items';
 
 type Who = Pick<CurrentUser, 'role' | 'condominiumId'>;
 
@@ -58,7 +58,30 @@ describe('navGroupsFor', () => {
       ['overview', 'Visão geral', '/admin/visao-geral', 'dashboard'],
       ['managers', 'Síndicos', '/admin/sindicos', 'groups'],
       ['registration-requests', 'Pedidos de cadastro', '/admin/pedidos-de-cadastro', 'how_to_reg'],
+      ['messages', 'Mensagens', '/admin/mensagens', 'mail'],
     ]);
+  });
+});
+
+describe('navFooterFor', () => {
+  it('leva o síndico com condomínio ao Contato, no canto inferior do menu', () => {
+    expect(
+      navFooterFor(MANAGER_WITH_CONDOMINIUM).map((item) => [
+        item.id,
+        item.label,
+        item.path,
+        item.icon,
+      ]),
+    ).toEqual([['contact', 'Contato', '/contato', 'support_agent']]);
+  });
+
+  it.each([
+    ['ninguém logado', null],
+    ['síndico sem condomínio', { role: 'Manager', condominiumId: null } as Who],
+    ['morador', { role: 'Resident', condominiumId: 'c-1' } as Who],
+    ['administrador', ADMIN],
+  ])('não tem item no canto inferior para %s', (_name, who) => {
+    expect(navFooterFor(who)).toEqual([]);
   });
 });
 

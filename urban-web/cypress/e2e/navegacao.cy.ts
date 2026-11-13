@@ -290,15 +290,16 @@ describe('Navegação', () => {
       expectText('[data-testid="current-user"]', 'sindica@example.com - Síndico');
     });
 
-    it('dá ao administrador só a visão geral, os síndicos e os pedidos de cadastro no menu lateral', () => {
+    it('dá ao administrador só a visão geral, os síndicos, os pedidos de cadastro e as mensagens no menu lateral', () => {
       stubSignedIn({ ...MANAGER, role: 'SuperAdmin', condominiumId: null });
       cy.visit('/conta');
 
-      cy.get('nav[aria-label="Menu principal"] a[data-testid^="nav-"]').should('have.length', 3);
+      cy.get('nav[aria-label="Menu principal"] a[data-testid^="nav-"]').should('have.length', 4);
       cy.get('[data-testid="nav-overview"]').should('be.visible');
       cy.get('[data-testid="nav-managers"]').should('be.visible');
       cy.get('[data-testid="nav-dashboard"]').should('not.exist');
       cy.get('[data-testid="nav-registration-requests"]').should('be.visible');
+      cy.get('[data-testid="nav-messages"]').should('be.visible');
       cy.get('[data-testid="nav-units"]').should('not.exist');
       expectText('[data-testid="current-user"]', 'Olá Marina - Administrador');
       openUserMenu();
