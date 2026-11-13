@@ -1,4 +1,5 @@
 import { PALETTE } from '../support/layout';
+import { chooseUserMenu, openUserMenu } from '../support/navegacao';
 import {
   PROFILE_PATH,
   stubProfile,
@@ -27,9 +28,9 @@ describe('Meus dados', () => {
     stubProfile();
   });
 
-  it('abre pelo link do cabecalho com os dados preenchidos e o CPF mascarado', () => {
+  it('abre pelo menu do avatar com os dados preenchidos e o CPF mascarado', () => {
     cy.visit('/dashboard');
-    cy.get('[data-testid="nav-profile"]').click();
+    chooseUserMenu('menu-profile');
 
     cy.location('pathname').should('eq', PROFILE_PATH);
     cy.contains('h1', 'Meus dados').should('be.visible');
@@ -57,7 +58,7 @@ describe('Meus dados', () => {
       .should('contain.text', 'Dados salvos')
       .find('.text-success mat-icon')
       .should('have.css', 'color', PALETTE.light.success);
-    cy.get('[data-testid="current-user"]').should('contain.text', 'Olá Mari!');
+    cy.get('[data-testid="current-user"]').should('contain.text', 'Olá Mari - Síndico');
     cy.get('urban-password-confirm-dialog').should('not.exist');
   });
 
@@ -105,7 +106,7 @@ describe('Meus dados', () => {
     );
     cy.get('urban-password-confirm-dialog input').should('have.value', '');
     cy.location('pathname').should('eq', PROFILE_PATH);
-    cy.get('[data-testid="current-user"]').should('contain.text', 'Olá Marina!');
+    cy.get('[data-testid="current-user"]').should('contain.text', 'Olá Marina');
   });
 
   it('avisa do conflito de versao e recarrega os dados quando a pessoa pede', () => {
@@ -145,11 +146,12 @@ describe('Meus dados', () => {
       });
     });
 
-    it('mantem os links do cabecalho ao alcance', () => {
+    it('mantem o menu do avatar ao alcance', () => {
       cy.visit(PROFILE_PATH);
 
-      cy.get('[data-testid="nav-profile"]').should('be.visible');
-      cy.get('[data-testid="nav-account"]').should('be.visible');
+      openUserMenu();
+      cy.get('[data-testid="menu-profile"]').should('be.visible');
+      cy.get('[data-testid="menu-account"]').should('be.visible');
       cy.get('[data-testid="sign-out"]').should('be.visible');
     });
   });

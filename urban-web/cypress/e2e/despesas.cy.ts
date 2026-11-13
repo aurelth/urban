@@ -11,6 +11,7 @@ import {
 } from '../support/financeiro';
 import { PALETTE, expectErrorsToStayInTheirOwnSpace } from '../support/layout';
 import { chooseMenu } from '../support/menu';
+import { DESKTOP } from '../support/navegacao';
 import { stubSignedIn } from '../support/session';
 
 function rows(): Cypress.Chainable<JQuery<HTMLElement>> {
@@ -29,9 +30,10 @@ describe('Despesas', () => {
     stubExpenses();
   });
 
-  it('abre pelo link Financeiro do cabecalho com os grupos e a lista', () => {
+  it('abre pelo menu lateral com os grupos e a lista', () => {
+    cy.viewport(DESKTOP.width, DESKTOP.height);
     cy.visit('/dashboard');
-    cy.get('[data-testid="nav-finance"]').click();
+    cy.get('[data-testid="nav-expenses"]').click();
 
     cy.location('pathname').should('eq', EXPENSES_PATH);
     cy.contains('h1', 'Despesas').should('be.visible');

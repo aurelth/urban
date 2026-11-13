@@ -1,4 +1,5 @@
 import { chooseMenu } from '../support/menu';
+import { DESKTOP } from '../support/navegacao';
 import { PALETTE, expectErrorsToStayInTheirOwnSpace } from '../support/layout';
 import { MANAGER, stubSignedIn } from '../support/session';
 import {
@@ -28,7 +29,8 @@ describe('Unidades', () => {
     stubUnits();
   });
 
-  it('abre pelo link do cabecalho com a lista, o resumo e o metodo de rateio', () => {
+  it('abre pelo menu lateral com a lista, o resumo e o metodo de rateio', () => {
+    cy.viewport(DESKTOP.width, DESKTOP.height);
     cy.visit('/dashboard');
     cy.get('[data-testid="nav-units"]').click();
 
@@ -204,7 +206,7 @@ describe('Unidades', () => {
     cy.visit(UNITS_PATH);
 
     rows().should('have.length', 2);
-    cy.get('[data-testid="sign-out"]').should('be.visible');
+    cy.get('[data-testid="user-menu"]').should('be.visible');
     cy.document().should((doc) => {
       expect(doc.documentElement.scrollWidth).to.be.at.most(doc.documentElement.clientWidth);
     });

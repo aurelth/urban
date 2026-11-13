@@ -7,7 +7,7 @@ function openDashboardWithFakeClock(): void {
   cy.clock(Date.now(), ['Date', 'setInterval', 'clearInterval']);
   stubSignedIn();
   cy.visit('/dashboard');
-  cy.get('[data-testid="sign-out"]').should('be.visible');
+  cy.get('[data-testid="user-menu"]').should('be.visible');
 }
 
 describe('Saída por inatividade', () => {

@@ -60,7 +60,7 @@ describe('Tela de celular (375 x 667)', () => {
     stubSignedIn(MANAGER);
     cy.visit('/dashboard');
 
-    cy.get('[data-testid="sign-out"]').should('be.visible');
+    cy.get('[data-testid="user-menu"]').should('be.visible');
     cy.get('mat-card.module').should('have.length', 3).and('be.visible');
     cy.get('mat-card.module').then(($cards) => {
       const lefts = [...$cards].map((card) => card.getBoundingClientRect().left);

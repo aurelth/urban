@@ -386,7 +386,7 @@ describe('Cadastro do condomínio', () => {
         });
       cy.location('pathname').should('eq', '/dashboard');
       cy.get('[data-testid="current-user"]')
-        .should('contain.text', 'Olá Marina!')
+        .should('contain.text', 'Olá Marina')
         .and('contain.text', 'Síndico');
     });
 

@@ -1,4 +1,5 @@
 import { NEW_MANAGER, stubPostalCodeFailure } from '../support/condominio';
+import { signOut } from '../support/navegacao';
 import { stubLogin, stubSignedIn } from '../support/session';
 
 const FORM_PATH = '/condominio/cadastrar';
@@ -76,7 +77,7 @@ describe('Rascunho do cadastro do condomínio', () => {
       );
     });
 
-    cy.get('[data-testid="sign-out"]').click();
+    signOut();
     cy.location('pathname').should('eq', '/entrar');
     cy.window().should((win) => {
       expect(Object.keys(win.localStorage).some((key) => key.includes('registration-draft'))).to.eq(

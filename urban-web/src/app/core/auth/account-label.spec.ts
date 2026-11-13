@@ -2,9 +2,7 @@ import { accountLabel } from './account-label';
 
 describe('accountLabel', () => {
   it('cumprimenta pelo nome que a pessoa prefere', () => {
-    expect(accountLabel({ displayName: 'Marina', email: 'marina@example.com' })).toBe(
-      'Olá Marina!',
-    );
+    expect(accountLabel({ displayName: 'Marina', email: 'marina@example.com' })).toBe('Olá Marina');
   });
 
   it('mostra o e-mail enquanto a pessoa ainda não escolheu um nome', () => {

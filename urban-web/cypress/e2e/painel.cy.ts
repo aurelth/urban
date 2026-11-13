@@ -1,3 +1,4 @@
+import { PALETTE } from '../support/layout';
 import { stubSignedIn } from '../support/session';
 
 describe('Painel', () => {
@@ -16,16 +17,35 @@ describe('Painel', () => {
     cy.visit('/dashboard');
 
     cy.get('[data-testid="current-user"]')
-      .should('contain.text', 'Olá Marina!')
-      .and('contain.text', 'Síndico')
+      .should('have.text', 'Olá Marina - Síndico')
+      .and('not.contain.text', '!')
       .and('not.contain.text', 'sindica@example.com');
   });
 
-  it('não separa o cabeçalho do corpo com uma linha', () => {
+  it('separa o cabeçalho do corpo com uma linha fina, só para ele ficar levemente visível', () => {
     stubSignedIn();
-    cy.visit('/dashboard');
+    cy.visit('/dashboard', {
+      onBeforeLoad: (win) => win.localStorage.setItem('urban.theme', 'light'),
+    });
 
-    cy.get('mat-toolbar').should('have.css', 'border-bottom-width', '0px');
+    cy.get('mat-toolbar')
+      .should('have.css', 'border-bottom-width', '1px')
+      .and('have.css', 'border-bottom-style', 'solid')
+      .and('have.css', 'border-bottom-color', 'rgb(230, 230, 239)')
+      .and('have.css', 'border-top-width', '0px');
+    cy.get('mat-toolbar').should('have.css', 'background-color', PALETTE.light.card);
+  });
+
+  it('mantém a linha do cabeçalho no tema escuro, na cor das bordas', () => {
+    stubSignedIn();
+    cy.visit('/dashboard', {
+      onBeforeLoad: (win) => win.localStorage.setItem('urban.theme', 'dark'),
+    });
+
+    cy.get('html').should('have.class', 'app-dark');
+    cy.get('mat-toolbar')
+      .should('have.css', 'border-bottom-width', '1px')
+      .and('have.css', 'border-bottom-color', 'rgb(44, 44, 46)');
   });
 
   it('alterna entre tema claro e escuro', () => {

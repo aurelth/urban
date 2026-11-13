@@ -1,4 +1,5 @@
 import { PALETTE, expectErrorsToStayInTheirOwnSpace } from '../support/layout';
+import { chooseUserMenu } from '../support/navegacao';
 import { stubChangeEmail, stubChangePassword, stubConfirmEmailChange } from '../support/perfil';
 import { MANAGER, stubAnonymous, stubLogin, stubSignedIn } from '../support/session';
 
@@ -34,9 +35,9 @@ describe('Minha conta', () => {
       .and('have.css', 'color', PALETTE.light.onPrimary);
   });
 
-  it('abre pelo link do cabecalho e mostra o e-mail atual', () => {
+  it('abre pelo menu do avatar e mostra o e-mail atual', () => {
     cy.visit('/dashboard');
-    cy.get('[data-testid="nav-account"]').click();
+    chooseUserMenu('menu-account');
 
     cy.location('pathname').should('eq', ACCOUNT_PATH);
     cy.contains('h1', 'Minha conta').should('be.visible');
