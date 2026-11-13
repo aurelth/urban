@@ -4,6 +4,7 @@ import { navGroupsFor, userMenuFor } from './nav-items';
 type Who = Pick<CurrentUser, 'role' | 'condominiumId'>;
 
 const MANAGER_WITH_CONDOMINIUM: Who = { role: 'Manager', condominiumId: 'c-1' };
+const ADMIN: Who = { role: 'SuperAdmin', condominiumId: null };
 
 describe('navGroupsFor', () => {
   it('agrupa os itens do síndico com condomínio: painel, condomínio e financeiro', () => {
@@ -38,9 +39,25 @@ describe('navGroupsFor', () => {
     ['ninguém logado', null],
     ['síndico sem condomínio', { role: 'Manager', condominiumId: null } as Who],
     ['morador', { role: 'Resident', condominiumId: 'c-1' } as Who],
-    ['administrador', { role: 'SuperAdmin', condominiumId: null } as Who],
   ])('não tem menu lateral para %s', (_name, who) => {
     expect(navGroupsFor(who)).toEqual([]);
+  });
+
+  it('leva o administrador ao painel e aos pedidos de cadastro, sem as telas de condomínio', () => {
+    const groups = navGroupsFor(ADMIN);
+
+    expect(groups.map((group) => [group.id, group.label])).toEqual([
+      ['main', null],
+      ['admin', 'Administração'],
+    ]);
+    expect(
+      groups
+        .flatMap((group) => group.items)
+        .map((item) => [item.id, item.label, item.path, item.icon]),
+    ).toEqual([
+      ['dashboard', 'Painel', '/dashboard', 'dashboard'],
+      ['registration-requests', 'Pedidos de cadastro', '/admin/pedidos-de-cadastro', 'how_to_reg'],
+    ]);
   });
 });
 

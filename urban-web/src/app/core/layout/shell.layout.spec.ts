@@ -21,6 +21,7 @@ const ROUTES: Routes = [
   'financeiro/leituras',
   'financeiro/lancamentos',
   'condominio/meus-dados',
+  'admin/pedidos-de-cadastro',
   'conta',
 ].map((path) => ({ path, component: Page }));
 
@@ -272,13 +273,30 @@ describe('ShellLayout', () => {
     it.each([
       ['síndico sem condomínio', MANAGER],
       ['morador', { ...REGISTERED_MANAGER, role: 'Resident' as const }],
-      ['administrador', { ...REGISTERED_MANAGER, role: 'SuperAdmin' as const }],
     ])('não tem menu lateral nem botão para abri-lo para %s', async (_name, user) => {
       const { html } = await setup(user);
 
       expect(sideMenu(html)).toBeNull();
       expect(byTestId(html, 'menu-toggle')).toBeNull();
       expect(byTestId(html, 'user-menu')).not.toBeNull();
+    });
+
+    it('leva o administrador ao painel e aos pedidos de cadastro, e só', async () => {
+      const { html } = await setup({ ...MANAGER, role: 'SuperAdmin' });
+
+      expect(links(html).map((link) => link.dataset['testid'])).toEqual([
+        'nav-dashboard',
+        'nav-registration-requests',
+      ]);
+      expect(links(html).map(text)).toEqual(['Painel', 'Pedidos de cadastro']);
+      expect(links(html).map((link) => link.getAttribute('href'))).toEqual([
+        '/dashboard',
+        '/admin/pedidos-de-cadastro',
+      ]);
+      expect([...sideMenu(html)!.querySelectorAll('[data-testid="nav-group"]')].map(text)).toEqual([
+        'Administração',
+      ]);
+      expect(byTestId(html, 'menu-toggle')).not.toBeNull();
     });
 
     it('marca a tela aberta como a página atual', async () => {
