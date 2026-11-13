@@ -8,8 +8,12 @@ import { configureDialogTest } from '../../../testing/dialog.harness';
 import {
   CONTACT_MESSAGES_URL,
   READ_MESSAGE,
+  REPLY_RECEIPT,
   contactMessage,
   contactMessagesPage,
+  contactReply,
+  fileOfSize,
+  replyUrl,
 } from '../../../testing/contact.fixtures';
 import { chooseMenuOption, menuSelectOptions, menuSelectValue } from '../../../testing/menu-select';
 import { ContactMessagesPage } from './contact-messages.page';
@@ -156,14 +160,196 @@ describe('ContactMessagesPage', () => {
       expect(text(one.html, 'total')).toBe('1 mensagem');
     });
 
-    it('oferece responder por e-mail ao remetente, com o assunto', async () => {
+    it('não mostra respostas quando a mensagem ainda não foi respondida', async () => {
       const { html } = await open();
 
-      const link = testId(cards(html)[0], 'reply') as HTMLAnchorElement;
-      expect(link.textContent?.trim()).toBe('Responder por e-mail');
-      expect(link.getAttribute('href')).toBe(
-        'mailto:ana@example.com?subject=Re%3A%20Corrigir%20o%20CNPJ%20do%20condom%C3%ADnio',
+      expect(testId(cards(html)[0], 'replies')).toBeNull();
+    });
+
+    it('mostra cada resposta enviada, com o dia, o texto e os anexos', async () => {
+      const replied = contactMessage({
+        readAt: '2026-11-13T17:30:00+00:00',
+        replies: [
+          contactReply({
+            attachments: [
+              { fileName: 'comprovante.pdf', contentType: 'application/pdf', size: 1536 },
+              { fileName: 'foto.png', contentType: 'image/png', size: 2621440 },
+            ],
+          }),
+          contactReply({
+            id: '0198f3c1-6a4e-7c20-9d52-3f7a1b2c7002',
+            sentAt: '2026-11-14T12:00:00+00:00',
+            body: 'Qualquer dúvida, é só escrever.',
+          }),
+        ],
+      });
+      const { html } = await open([replied]);
+
+      const [first, second] = [...html.querySelectorAll<HTMLElement>('[data-testid="reply-item"]')];
+      expect(text(first, 'reply-date')).toBe('Respondida em 13/11/2026 às 14:30');
+      expect(testId(first, 'reply-body')!.textContent).toContain(
+        'Corrigi o CNPJ no cadastro.\nConfira em Meus dados.',
       );
+      expect(
+        [...first.querySelectorAll('[data-testid="reply-attachment"]')].map((a) =>
+          a.textContent!.replace(/\s+/g, ' ').trim(),
+        ),
+      ).toEqual(['comprovante.pdf 1,5 KB', 'foto.png 2,5 MB']);
+      expect(text(second, 'reply-date')).toBe('Respondida em 14/11/2026 às 09:00');
+      expect(testId(second, 'reply-attachments')).toBeNull();
+    });
+  });
+
+  describe('responder', () => {
+    it('cada mensagem oferece "Responder", que não é mais um link de e-mail', async () => {
+      const { html } = await open();
+
+      for (const card of cards(html)) {
+        const button = testId(card, 'reply') as HTMLButtonElement;
+        expect(button.tagName).toBe('BUTTON');
+        expect(button.textContent?.trim()).toBe('Responder');
+        expect(button.hasAttribute('href')).toBe(false);
+      }
+      expect(html.querySelector('a[href^="mailto:"]')).toBeNull();
+    });
+
+    it('abre o formulário dentro do cartão da mensagem e esconde o botão', async () => {
+      const { fixture, html } = await open();
+
+      testId(cards(html)[0], 'reply')!.click();
+      fixture.detectChanges();
+
+      expect(testId(cards(html)[0], 'reply-form')).not.toBeNull();
+      expect(testId(cards(html)[0], 'reply')).toBeNull();
+      expect(testId(cards(html)[1], 'reply-form')).toBeNull();
+      expect(testId(cards(html)[1], 'reply')).not.toBeNull();
+    });
+
+    it('deixa abrir mais de um, e cada um guarda o seu texto', async () => {
+      const { fixture, html } = await open();
+
+      testId(cards(html)[0], 'reply')!.click();
+      testId(cards(html)[1], 'reply')!.click();
+      fixture.detectChanges();
+
+      expect(html.querySelectorAll('[data-testid="reply-form"]')).toHaveLength(2);
+    });
+
+    it('"Cancelar" fecha o formulário e volta o botão', async () => {
+      const { fixture, html } = await open();
+      testId(cards(html)[0], 'reply')!.click();
+      fixture.detectChanges();
+
+      testId(cards(html)[0], 'cancel-reply')!.click();
+      fixture.detectChanges();
+
+      expect(testId(cards(html)[0], 'reply-form')).toBeNull();
+      expect(testId(cards(html)[0], 'reply')).not.toBeNull();
+    });
+
+    it('envia, fecha o formulário, mostra a resposta no cartão e avisa', async () => {
+      const { fixture, http, html } = await open();
+      testId(cards(html)[0], 'reply')!.click();
+      fixture.detectChanges();
+      const field = html.querySelector<HTMLTextAreaElement>('textarea[formControlName="body"]')!;
+      field.value = 'Corrigi o CNPJ no cadastro.';
+      field.dispatchEvent(new Event('input'));
+      const input = testId(html, 'file-input') as HTMLInputElement;
+      Object.defineProperty(input, 'files', {
+        value: [fileOfSize('comprovante.pdf', 1536)],
+        configurable: true,
+      });
+      input.dispatchEvent(new Event('change'));
+      fixture.detectChanges();
+
+      html.querySelector('form[data-testid="reply-form"]')!.dispatchEvent(new Event('submit'));
+      await settle(fixture);
+      http.expectOne(replyUrl(UNREAD.id)).flush(REPLY_RECEIPT);
+      await flushPromises();
+      listRequest(http).flush(
+        contactMessagesPage([
+          {
+            ...UNREAD,
+            readAt: '2026-11-13T17:30:00+00:00',
+            replies: [
+              contactReply({
+                body: 'Corrigi o CNPJ no cadastro.',
+                attachments: [
+                  { fileName: 'comprovante.pdf', contentType: 'application/pdf', size: 1536 },
+                ],
+              }),
+            ],
+          },
+          READ_MESSAGE,
+        ]),
+      );
+      await settle(fixture);
+
+      expect(testId(cards(html)[0], 'reply-form')).toBeNull();
+      expect(testId(cards(html)[0], 'reply')).not.toBeNull();
+      expect(text(cards(html)[0], 'reply-body')).toBe('Corrigi o CNPJ no cadastro.');
+      expect(text(cards(html)[0], 'message-status')).toBe('Lida em 13/11/2026 às 14:30');
+      expect(testId(html, 'notice')?.getAttribute('role')).toBe('status');
+      expect(text(html, 'notice')).toBe('Resposta enviada a Ana');
+    });
+
+    it('sem nome, o aviso usa o e-mail de quem recebeu', async () => {
+      const { fixture, http, html } = await open([READ_MESSAGE]);
+      testId(cards(html)[0], 'reply')!.click();
+      fixture.detectChanges();
+      const field = html.querySelector<HTMLTextAreaElement>('textarea[formControlName="body"]')!;
+      field.value = 'O rateio usa a fração ideal de cada unidade.';
+      field.dispatchEvent(new Event('input'));
+
+      html.querySelector('form[data-testid="reply-form"]')!.dispatchEvent(new Event('submit'));
+      await settle(fixture);
+      http.expectOne(replyUrl(READ_MESSAGE.id)).flush(REPLY_RECEIPT);
+      await flushPromises();
+      listRequest(http).flush(contactMessagesPage([READ_MESSAGE]));
+      await settle(fixture);
+
+      expect(text(html, 'notice')).toBe('Resposta enviada a carlos@example.com');
+    });
+
+    it('a mensagem que sumiu (404) atualiza a lista e fecha o formulário daquele cartão', async () => {
+      const { fixture, http, html } = await open();
+      testId(cards(html)[0], 'reply')!.click();
+      fixture.detectChanges();
+      const field = html.querySelector<HTMLTextAreaElement>('textarea[formControlName="body"]')!;
+      field.value = 'Corrigi o CNPJ no cadastro.';
+      field.dispatchEvent(new Event('input'));
+
+      html.querySelector('form[data-testid="reply-form"]')!.dispatchEvent(new Event('submit'));
+      await settle(fixture);
+      http
+        .expectOne(replyUrl(UNREAD.id))
+        .flush(...failure(404, 'identity.contact.message_not_found'));
+      await flushPromises();
+      listRequest(http).flush(contactMessagesPage([READ_MESSAGE]));
+      await settle(fixture);
+
+      expect(cards(html)).toHaveLength(1);
+      expect(html.querySelector('[data-testid="reply-form"]')).toBeNull();
+    });
+
+    it('a recusa fica dentro do formulário e não vira aviso da página', async () => {
+      const { fixture, http, html } = await open();
+      testId(cards(html)[0], 'reply')!.click();
+      fixture.detectChanges();
+      const field = html.querySelector<HTMLTextAreaElement>('textarea[formControlName="body"]')!;
+      field.value = 'Corrigi o CNPJ no cadastro.';
+      field.dispatchEvent(new Event('input'));
+
+      html.querySelector('form[data-testid="reply-form"]')!.dispatchEvent(new Event('submit'));
+      await settle(fixture);
+      http
+        .expectOne(replyUrl(UNREAD.id))
+        .flush(...failure(502, 'identity.contact.reply_not_delivered'));
+      await settle(fixture);
+
+      expect(testId(cards(html)[0], 'reply-form')).not.toBeNull();
+      expect(testId(html, 'notice')).toBeNull();
+      expect(testId(html, 'action-error')).toBeNull();
     });
   });
 

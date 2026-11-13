@@ -114,6 +114,23 @@ SCREENS.forEach(([where, width, height]) => {
       expectBreathingRoom();
     });
 
+    it('não cola texto em container no formulário de resposta e na resposta enviada', () => {
+      stubSignedIn(ADMIN);
+      stubContactMessages();
+      cy.visit(MESSAGES_PATH);
+      cy.get('[data-testid="reply"]').first().click();
+      cy.get('textarea[formControlName="body"]').click('right').type('Corrigi o CNPJ no cadastro.');
+      cy.get('[data-testid="file-input"]').selectFile(
+        { contents: Cypress.Buffer.from('texto'), fileName: 'ata.txt' },
+        { force: true },
+      );
+      cy.get('[data-testid="attachment-name"]').should('be.visible');
+      expectBreathingRoom();
+      cy.contains('button', 'Enviar resposta').click();
+      cy.get('[data-testid="reply-item"]').should('be.visible');
+      expectBreathingRoom();
+    });
+
     it('não cola texto em container na visão geral, nos síndicos e no diálogo de suspensão', () => {
       stubSignedIn(ADMIN);
       stubManagers();

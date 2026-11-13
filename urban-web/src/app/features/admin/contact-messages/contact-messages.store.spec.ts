@@ -10,8 +10,12 @@ import { problem } from '../../../testing/auth.fixtures';
 import {
   CONTACT_MESSAGES_URL,
   READ_MESSAGE,
+  REPLY_RECEIPT,
   contactMessage,
   contactMessagesPage,
+  contactReply,
+  fileOfSize,
+  replyUrl,
 } from '../../../testing/contact.fixtures';
 import { ContactMessagesStore } from './contact-messages.store';
 
@@ -240,6 +244,120 @@ describe('ContactMessagesStore', () => {
       await flushPromises();
       listRequest(http).flush(null, { status: 500, statusText: 'Erro' });
       await marking;
+
+      expect(store.status()).toBe('error');
+    });
+  });
+
+  describe('responder', () => {
+    const PDF = fileOfSize('orcamento.pdf', 100);
+
+    it('envia a resposta, busca a lista de novo e devolve nulo', async () => {
+      const { store, http } = setup();
+      await loaded(store, http);
+
+      const replying = store.reply(FIRST, 'Corrigi o cadastro.', [PDF]);
+      expect(store.busy()).toBe(true);
+      const request = http.expectOne(replyUrl(FIRST.id));
+      expect((request.request.body as FormData).get('body')).toBe('Corrigi o cadastro.');
+      request.flush(REPLY_RECEIPT);
+      await flushPromises();
+      listRequest(http).flush(
+        contactMessagesPage([
+          { ...FIRST, readAt: '2026-11-13T17:30:00+00:00', replies: [contactReply()] },
+          READ_MESSAGE,
+        ]),
+      );
+
+      expect(await replying).toBeNull();
+      expect(store.items()[0].replies).toEqual([contactReply()]);
+      expect(store.items()[0].readAt).toBe('2026-11-13T17:30:00+00:00');
+      expect(store.busy()).toBe(false);
+    });
+
+    it('com o filtro das não lidas, a mensagem respondida sai da lista e volta uma página se esvaziou', async () => {
+      const { store, http } = setup();
+      await loaded(store, http, [FIRST], 21);
+      const filtering = store.filter({ status: 'unread' });
+      listRequest(http).flush(contactMessagesPage([FIRST], 21));
+      await filtering;
+      const going = store.goToPage(2);
+      listRequest(http).flush(contactMessagesPage([FIRST], 21, 2));
+      await going;
+
+      const replying = store.reply(FIRST, 'Corrigi o cadastro.', []);
+      http.expectOne(replyUrl(FIRST.id)).flush(REPLY_RECEIPT);
+      await flushPromises();
+      listRequest(http).flush(contactMessagesPage([], 20, 2));
+      await flushPromises();
+      const back = listRequest(http);
+      expect(params(back)).toBe('status=unread&page=1&pageSize=20');
+      back.flush(contactMessagesPage([READ_MESSAGE], 20));
+
+      expect(await replying).toBeNull();
+      expect(store.query().page).toBe(1);
+    });
+
+    it('busca a lista de novo e devolve o problema quando a mensagem sumiu (404)', async () => {
+      const { store, http } = setup();
+      await loaded(store, http);
+
+      const replying = store.reply(FIRST, 'Corrigi o cadastro.', []);
+      http.expectOne(replyUrl(FIRST.id)).flush(...fail(404, 'identity.contact.message_not_found'));
+      await flushPromises();
+      listRequest(http).flush(contactMessagesPage([READ_MESSAGE]));
+
+      expect((await replying)?.code).toBe('identity.contact.message_not_found');
+      expect(store.items()).toEqual([READ_MESSAGE]);
+      expect(store.busy()).toBe(false);
+    });
+
+    it.each([
+      [400, 'identity.contact.reply_body_invalid'],
+      [400, 'identity.contact.attachment_content_invalid'],
+      [403, 'identity.contact.reply_forbidden'],
+      [409, 'identity.contact.reply_recipient_unavailable'],
+      [413, 'identity.contact.attachments_total_too_large'],
+      [429, 'rate_limit.exceeded'],
+      [502, 'identity.contact.reply_not_delivered'],
+    ])(
+      'devolve o problema %s %s sem buscar a lista de novo: nada foi registrado',
+      async (status, code) => {
+        const { store, http } = setup();
+        await loaded(store, http);
+
+        const replying = store.reply(FIRST, 'Corrigi o cadastro.', [PDF]);
+        http.expectOne(replyUrl(FIRST.id)).flush(...fail(status, code));
+
+        const result = await replying;
+        expect(result?.status).toBe(status);
+        expect(result?.code).toBe(code);
+        http.expectNone(CONTACT_MESSAGES_URL);
+        expect(store.items()).toEqual([FIRST, READ_MESSAGE]);
+        expect(store.busy()).toBe(false);
+      },
+    );
+
+    it('devolve um problema sem código quando a rede cai', async () => {
+      const { store, http } = setup();
+      await loaded(store, http);
+
+      const replying = store.reply(FIRST, 'Corrigi o cadastro.', []);
+      http.expectOne(replyUrl(FIRST.id)).error(new ProgressEvent('error'));
+
+      expect((await replying)?.status).toBe(0);
+      expect(store.busy()).toBe(false);
+    });
+
+    it('fica em erro quando a busca depois de responder falha', async () => {
+      const { store, http } = setup();
+      await loaded(store, http);
+
+      const replying = store.reply(FIRST, 'Corrigi o cadastro.', []);
+      http.expectOne(replyUrl(FIRST.id)).flush(REPLY_RECEIPT);
+      await flushPromises();
+      listRequest(http).flush(null, { status: 500, statusText: 'Erro' });
+      await replying;
 
       expect(store.status()).toBe('error');
     });

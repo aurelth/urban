@@ -11,7 +11,7 @@ public class DockerfileTests
 {
     private const string ApiProject = "src/Urban.Api/Urban.Api.csproj";
 
-    private static readonly string Root = FindRoot();
+    private static readonly string Root = RepositoryRoot.Path;
 
     [Fact]
     public void The_guard_sees_the_projects_the_api_depends_on()
@@ -63,16 +63,5 @@ public class DockerfileTests
         }
 
         return seen;
-    }
-
-    private static string FindRoot()
-    {
-        DirectoryInfo? directory = new(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Urban.slnx")))
-        {
-            directory = directory.Parent;
-        }
-
-        return directory?.FullName ?? throw new InvalidOperationException("Não achei a raiz do repositório (Urban.slnx).");
     }
 }
