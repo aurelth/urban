@@ -4,7 +4,7 @@ using Urban.Identity.Domain.Users;
 namespace Urban.Identity.Application.RegistrationRequests;
 
 /// <summary>
-/// Quem pode ver e decidir pedidos de cadastro. O papel do token não basta: a conta é lida de novo, para que um SuperAdmin
+/// Quem pode ver e decidir pedidos de cadastro e administrar os síndicos. O papel do token não basta: a conta é lida de novo, para que um SuperAdmin
 /// suspenso ou apagado perca o acesso na hora, e não só quando o token expirar.
 /// </summary>
 internal static class RegistrationReviewers

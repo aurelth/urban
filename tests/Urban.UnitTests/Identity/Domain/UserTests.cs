@@ -288,6 +288,28 @@ public class UserTests
     }
 
     [Fact]
+    public void Suspend_WithAReasonLongerThanTheLimit_FailsAndKeepsTheStatus()
+    {
+        User user = UserBuilder.InStatus(AccountStatus.Active);
+
+        Result result = user.Suspend(UserBuilder.ActorId, new string('a', User.MaxReasonLength + 1), UserBuilder.Now);
+
+        result.Error.Should().Be(UserErrors.ReasonTooLong);
+        user.Status.Should().Be(AccountStatus.Active);
+    }
+
+    [Fact]
+    public void Suspend_WithAReasonOfExactlyTheLimit_Works()
+    {
+        User user = UserBuilder.InStatus(AccountStatus.Active);
+
+        Result result = user.Suspend(UserBuilder.ActorId, new string('a', User.MaxReasonLength), UserBuilder.Now);
+
+        result.IsSuccess.Should().BeTrue();
+        user.StatusReason.Should().HaveLength(User.MaxReasonLength);
+    }
+
+    [Fact]
     public void Reactivate_ClearsTheSuspensionReason()
     {
         User user = UserBuilder.InStatus(AccountStatus.Suspended);

@@ -20,6 +20,9 @@ public sealed class User
         StatusChangedAt = createdAt;
     }
 
+    /// <summary>Tamanho máximo do motivo de uma suspensão; é também o tamanho da coluna.</summary>
+    public const int MaxReasonLength = 500;
+
     public Guid Id { get; }
 
     public Email Email { get; private set; }
@@ -130,8 +133,13 @@ public sealed class User
     {
         string trimmed = (reason ?? string.Empty).Trim();
 
-        return trimmed.Length == 0
-            ? Result.Failure(UserErrors.ReasonRequired)
+        if (trimmed.Length == 0)
+        {
+            return Result.Failure(UserErrors.ReasonRequired);
+        }
+
+        return trimmed.Length > MaxReasonLength
+            ? Result.Failure(UserErrors.ReasonTooLong)
             : MoveTo(AccountStatus.Suspended, [AccountStatus.Active, AccountStatus.Deactivated], actorId, trimmed, now);
     }
 

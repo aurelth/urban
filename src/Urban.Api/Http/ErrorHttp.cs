@@ -11,6 +11,7 @@ using Urban.Finance.Domain.Expenses;
 using Urban.Finance.Domain.Closing;
 using Urban.Finance.Domain.Consumption;
 using Urban.Finance.Domain.Months;
+using Urban.Identity.Application.Administration;
 using Urban.Identity.Application.Authentication;
 using Urban.Identity.Application.Authentication.Login;
 using Urban.Identity.Application.Authentication.Refresh;
@@ -54,6 +55,11 @@ public static class ErrorHttp
         [UserErrors.InvalidTransition.Code] = StatusCodes.Status409Conflict,
         [BootstrapErrors.EmailTakenByAnotherRole.Code] = StatusCodes.Status409Conflict,
         [UserErrors.ReasonRequired.Code] = StatusCodes.Status400BadRequest,
+        [UserErrors.ReasonTooLong.Code] = StatusCodes.Status400BadRequest,
+        [AdministrationErrors.Forbidden.Code] = StatusCodes.Status403Forbidden,
+        [AdministrationErrors.ManagerNotFound.Code] = StatusCodes.Status404NotFound,
+        [AdministrationErrors.PageInvalid.Code] = StatusCodes.Status400BadRequest,
+        [AdministrationErrors.StatusFilterInvalid.Code] = StatusCodes.Status400BadRequest,
         [UserErrors.CondominiumMismatch.Code] = StatusCodes.Status422UnprocessableEntity,
         [UserErrors.CondominiumRequired.Code] = StatusCodes.Status422UnprocessableEntity,
         [UserErrors.NotManager.Code] = StatusCodes.Status403Forbidden,

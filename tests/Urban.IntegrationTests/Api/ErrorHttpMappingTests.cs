@@ -13,6 +13,7 @@ using Urban.Finance.Domain.Closing;
 using Urban.Finance.Domain.Consumption;
 using Urban.Finance.Domain.Expenses;
 using Urban.Finance.Domain.Months;
+using Urban.Identity.Application.Administration;
 using Urban.Identity.Application.Authentication;
 using Urban.Identity.Application.Authentication.Login;
 using Urban.Identity.Application.Authentication.Refresh;
@@ -43,6 +44,12 @@ public sealed class ErrorHttpMappingTests
         { RegistrationRequestErrors.Forbidden.Code, 403 },
         { RegistrationRequestErrors.NotFound.Code, 404 },
         { RequestedCondominiumName.Invalid.Code, 400 },
+        { AdministrationErrors.Forbidden.Code, 403 },
+        { AdministrationErrors.ManagerNotFound.Code, 404 },
+        { AdministrationErrors.PageInvalid.Code, 400 },
+        { AdministrationErrors.StatusFilterInvalid.Code, 400 },
+        { UserErrors.ReasonRequired.Code, 400 },
+        { UserErrors.ReasonTooLong.Code, 400 },
         { UserErrors.InvalidTransition.Code, 409 },
         { BootstrapErrors.EmailTakenByAnotherRole.Code, 409 },
         { EmailVerificationTokenErrors.Invalid.Code, 400 },
