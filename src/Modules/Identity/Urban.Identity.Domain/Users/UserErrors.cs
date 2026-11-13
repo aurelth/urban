@@ -11,6 +11,9 @@ public static class UserErrors
     public static readonly Error ReasonRequired =
         new("identity.user.reason_required", "Informe o motivo");
 
+    public static readonly Error ReasonTooLong =
+        new("identity.user.reason_too_long", "O motivo deve ter no máximo 500 caracteres");
+
     public static readonly Error CondominiumMismatch =
         new("identity.user.condominium_mismatch", "O papel e o condomínio do usuário não combinam");
 

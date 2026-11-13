@@ -60,6 +60,7 @@ public static class IdentityInfrastructureExtensions
         services.AddScoped<IEmailVerificationDispatcher, HangfireEmailVerificationDispatcher>();
         services.AddScoped<SendEmailVerificationJob>();
         services.AddScoped<IRegistrationRequests, RegistrationRequests>();
+        services.AddScoped<IManagerAccounts, ManagerAccounts>();
         services.AddScoped<IRegistrationRequestNotifier, RegistrationRequestNotifier>();
         services.AddScoped<IRegistrationRequestDispatcher, HangfireRegistrationRequestDispatcher>();
         services.AddScoped<NotifyRegistrationRequestJob>();

@@ -35,6 +35,7 @@ public static class CondominiumInfrastructureExtensions
         services.AddScoped<IUnits, CondominiumUnits>();
         services.AddScoped<IApportionments, ApportionmentSettings>();
         services.AddScoped<IApportionmentBasis, ApportionmentBasisProvider>();
+        services.AddScoped<ICondominiumDirectory, CondominiumDirectory>();
 
         return services;
     }

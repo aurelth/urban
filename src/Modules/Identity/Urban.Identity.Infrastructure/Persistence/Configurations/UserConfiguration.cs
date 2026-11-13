@@ -7,7 +7,6 @@ namespace Urban.Identity.Infrastructure.Persistence.Configurations;
 internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
 {
     private const int EnumNameMaxLength = 30;
-    private const int StatusReasonMaxLength = 500;
 
     public void Configure(EntityTypeBuilder<User> builder)
     {
@@ -37,7 +36,7 @@ internal sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.CreatedAt);
         builder.Property(u => u.StatusChangedAt);
         builder.Property(u => u.StatusChangedBy);
-        builder.Property(u => u.StatusReason).HasMaxLength(StatusReasonMaxLength);
+        builder.Property(u => u.StatusReason).HasMaxLength(User.MaxReasonLength);
         builder.Property(u => u.DeletedAt);
     }
 }
