@@ -1,0 +1,45 @@
+<h2 mat-dialog-title>Suspender {{ label }}</h2>
+<form [formGroup]="form" (ngSubmit)="confirm()" novalidate>
+  <mat-dialog-content>
+    <p class="mb-6">
+      A pessoa perde o acesso ao Urban agora e as sessões abertas são encerradas. Você pode reativar
+      a conta quando quiser.
+    </p>
+
+    <mat-form-field appearance="outline" class="w-full">
+      <mat-label>Motivo da suspensão</mat-label>
+      <textarea matInput formControlName="reason" rows="3"></textarea>
+      <mat-hint>Fica registrado e aparece na lista de síndicos</mat-hint>
+      @if (form.controls.reason.hasError('required')) {
+        <mat-error>Informe o motivo da suspensão</mat-error>
+      } @else if (form.controls.reason.hasError('maxlength')) {
+        <mat-error>O motivo pode ter até {{ maxLength }} caracteres</mat-error>
+      }
+    </mat-form-field>
+
+    @if (error(); as message) {
+      <p role="alert" class="flex items-start gap-2 text-error">
+        <mat-icon svgIcon="error" aria-hidden="true" />
+        <span>{{ message }}</span>
+      </p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button
+      mat-button
+      type="button"
+      data-testid="cancel"
+      [disabled]="busy()"
+      (click)="ref.close(false)"
+    >
+      Cancelar
+    </button>
+    <button mat-flat-button type="submit" [disabled]="busy()">
+      @if (busy()) {
+        Suspendendo
+      } @else {
+        Suspender acesso
+      }
+    </button>
+  </mat-dialog-actions>
+</form>
