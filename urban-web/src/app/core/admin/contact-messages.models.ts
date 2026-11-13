@@ -1,3 +1,26 @@
+/** Arquivo anexado a uma resposta. A API guarda só estes dados: o arquivo foi direto ao e-mail e não fica no Urban. */
+export interface ContactReplyAttachment {
+  readonly fileName: string;
+  readonly contentType: string;
+  /** Tamanho em bytes. */
+  readonly size: number;
+}
+
+/** Resposta do administrador a uma mensagem, enviada por e-mail ao síndico. */
+export interface ContactReply {
+  readonly id: string;
+  readonly sentAt: string;
+  readonly body: string;
+  readonly attachments: readonly ContactReplyAttachment[];
+}
+
+/** Resposta de POST /api/admin/contact-messages/{id}/replies. */
+export interface ContactReplyReceipt {
+  readonly id: string;
+  readonly sentAt: string;
+  readonly attachments: readonly ContactReplyAttachment[];
+}
+
 /** Mensagem do síndico ao dono da plataforma (item de GET /api/admin/contact-messages). */
 export interface ContactMessage {
   readonly id: string;
@@ -12,6 +35,8 @@ export interface ContactMessage {
   readonly sentAt: string;
   /** Primeira leitura pelo administrador; nulo enquanto não lida. */
   readonly readAt: string | null;
+  /** Respostas já enviadas, da mais antiga à mais nova. */
+  readonly replies: readonly ContactReply[];
 }
 
 /** Resposta de GET /api/admin/contact-messages. */

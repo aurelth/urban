@@ -1,7 +1,7 @@
 <section class="mx-auto max-w-3xl p-6">
   <h1 class="mb-1 text-3xl font-semibold tracking-tight">Mensagens</h1>
   <p class="mb-6 text-on-surface-variant">
-    Leia o que os síndicos escreveram e responda por e-mail
+    Leia o que os síndicos escreveram e responda por aqui, com anexos se precisar
   </p>
 
   @switch (store.status()) {
@@ -23,7 +23,7 @@
     }
     @case ('ready') {
       @if (notice(); as message) {
-        <p role="status" class="mb-4 flex items-start gap-2" data-testid="notice">
+        <p role="status" class="mb-6 flex items-start gap-2" data-testid="notice">
           <span class="inline-flex text-success"
             ><mat-icon svgIcon="check_circle" aria-hidden="true"
           /></span>
@@ -31,7 +31,7 @@
         </p>
       }
       @if (actionError(); as message) {
-        <p role="alert" class="mb-4 flex items-start gap-2 text-error" data-testid="action-error">
+        <p role="alert" class="mb-6 flex items-start gap-2 text-error" data-testid="action-error">
           <mat-icon svgIcon="error" aria-hidden="true" />
           <span>{{ message }}</span>
         </p>
@@ -111,6 +111,40 @@
               <p class="mb-4 break-words whitespace-pre-line" data-testid="message-body">
                 {{ message.body }}
               </p>
+              @if (message.replies.length > 0) {
+                <ul
+                  class="m-0 mb-4 flex list-none flex-col gap-4 border-l-2 border-outline-variant p-0 pl-4"
+                  data-testid="replies"
+                >
+                  @for (reply of message.replies; track reply.id) {
+                    <li data-testid="reply-item">
+                      <p class="mb-1 text-sm text-on-surface-variant" data-testid="reply-date">
+                        Respondida em {{ formatDate(reply.sentAt) }}
+                      </p>
+                      <p class="mb-2 break-words whitespace-pre-line" data-testid="reply-body">
+                        {{ reply.body }}
+                      </p>
+                      @if (reply.attachments.length > 0) {
+                        <ul
+                          class="m-0 flex list-none flex-col gap-1 p-0 text-sm"
+                          data-testid="reply-attachments"
+                        >
+                          @for (attachment of reply.attachments; track $index) {
+                            <li class="flex items-start gap-1" data-testid="reply-attachment">
+                              <mat-icon svgIcon="attach_file" aria-hidden="true" class="shrink-0" />
+                              <span class="min-w-0 break-all">{{ attachment.fileName }}</span
+                              >{{ ' ' }}
+                              <span class="shrink-0 text-on-surface-variant">{{
+                                formatSize(attachment.size)
+                              }}</span>
+                            </li>
+                          }
+                        </ul>
+                      }
+                    </li>
+                  }
+                </ul>
+              }
               <p class="mb-4 flex items-center gap-1 text-sm" data-testid="message-status">
                 @if (message.readAt; as readAt) {
                   <mat-icon svgIcon="mark_email_read" aria-hidden="true" />
@@ -121,9 +155,16 @@
                 }
               </p>
               <div class="flex flex-wrap gap-2">
-                <a mat-stroked-button data-testid="reply" [href]="replyLink(message)">
-                  Responder por e-mail
-                </a>
+                @if (!replying().has(message.id)) {
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    data-testid="reply"
+                    (click)="openReply(message)"
+                  >
+                    Responder
+                  </button>
+                }
                 @if (!message.readAt) {
                   <button
                     mat-flat-button
@@ -136,6 +177,13 @@
                   </button>
                 }
               </div>
+              @if (replying().has(message.id)) {
+                <urban-contact-reply-form
+                  [message]="message"
+                  (sent)="onReplySent(message)"
+                  (cancelled)="closeReply(message)"
+                />
+              }
             </li>
           }
         </ul>

@@ -3,6 +3,20 @@ export const MESSAGES_PATH = '/admin/mensagens';
 const SEND_URL = '/api/contact/messages';
 const MESSAGES_LIST = /\/api\/admin\/contact-messages(\?.*)?$/;
 const MESSAGE_READ = /\/api\/admin\/contact-messages\/[^/?]+\/read$/;
+const MESSAGE_REPLY = /\/api\/admin\/contact-messages\/[^/?]+\/replies$/;
+
+export interface StubReplyAttachment {
+  fileName: string;
+  contentType: string;
+  size: number;
+}
+
+export interface StubReply {
+  id: string;
+  sentAt: string;
+  body: string;
+  attachments: StubReplyAttachment[];
+}
 
 export interface StubMessage {
   id: string;
@@ -14,6 +28,7 @@ export interface StubMessage {
   body: string;
   sentAt: string;
   readAt: string | null;
+  replies: StubReply[];
 }
 
 export const UNREAD_MESSAGE: StubMessage = {
@@ -26,6 +41,7 @@ export const UNREAD_MESSAGE: StubMessage = {
   body: 'Digitei o CNPJ errado no cadastro.\nPode corrigir para 11.222.333/0001-81?',
   sentAt: '2026-11-13T15:05:00+00:00',
   readAt: null,
+  replies: [],
 };
 
 export const READ_MESSAGE: StubMessage = {
@@ -38,6 +54,7 @@ export const READ_MESSAGE: StubMessage = {
   body: 'Como o rateio por fração ideal é calculado?',
   sentAt: '2026-11-12T13:05:00+00:00',
   readAt: '2026-11-12T20:00:00+00:00',
+  replies: [],
 };
 
 /** O envio dá certo. */
@@ -56,9 +73,51 @@ export function stubContactSendRejected(statusCode: number, code: string): void 
   }).as('send');
 }
 
-/** A API simulada guarda a caixa de entrada: filtra pelas não lidas, pagina e marca como lida. */
+/** Hora em que a API simulada diz que a resposta saiu (14:30 em Brasília). */
+export const REPLY_SENT_AT = '2026-11-13T17:30:00+00:00';
+
+export interface ReceivedReply {
+  body: string;
+  files: { fileName: string; contentType: string; size: number }[];
+}
+
+/**
+ * Lê o corpo multipart que o navegador montou. O Cypress entrega o texto cru: cada parte começa depois da linha do
+ * limite, com `Content-Disposition` (e `Content-Type`, nos arquivos), uma linha em branco e o conteúdo.
+ */
+export function readReply(request: {
+  headers: Record<string, string | string[]>;
+  body: unknown;
+}): ReceivedReply {
+  const type = String(request.headers['content-type']);
+  const boundary = /boundary=(.+)$/.exec(type)?.[1] ?? '';
+  const raw =
+    typeof request.body === 'string'
+      ? request.body
+      : new TextDecoder().decode(request.body as ArrayBuffer);
+  const reply: ReceivedReply = { body: '', files: [] };
+  for (const part of raw.split(`--${boundary}`)) {
+    const divider = part.indexOf('\r\n\r\n');
+    if (divider < 0) {
+      continue;
+    }
+    const head = part.slice(0, divider);
+    const content = part.slice(divider + 4).replace(/\r\n$/, '');
+    const name = /name="([^"]+)"/.exec(head)?.[1];
+    const fileName = /filename="([^"]*)"/.exec(head)?.[1];
+    if (name === 'body') {
+      reply.body = content;
+    } else if (name === 'attachments' && fileName !== undefined) {
+      const contentType = /Content-Type: (.+)/i.exec(head)?.[1].trim() ?? '';
+      reply.files.push({ fileName, contentType, size: content.length });
+    }
+  }
+  return reply;
+}
+
+/** A API simulada guarda a caixa de entrada: filtra pelas não lidas, pagina, marca como lida e guarda as respostas. */
 export function stubContactMessages(initial: StubMessage[] = [UNREAD_MESSAGE, READ_MESSAGE]): void {
-  const messages = initial.map((message) => ({ ...message }));
+  const messages = initial.map((message) => ({ ...message, replies: [...message.replies] }));
   cy.intercept('GET', MESSAGES_LIST, (request) => {
     const url = new URL(request.url);
     const unreadOnly = url.searchParams.get('status') === 'unread';
@@ -83,4 +142,31 @@ export function stubContactMessages(initial: StubMessage[] = [UNREAD_MESSAGE, RE
     }
     request.reply({ statusCode: 204 });
   }).as('read');
+  cy.intercept('POST', MESSAGE_REPLY, (request) => {
+    const id = request.url.split('/').at(-2);
+    const found = messages.find((message) => message.id === id);
+    const received = readReply(request);
+    const reply: StubReply = {
+      id: `0198f3c1-6a4e-7c20-9d52-3f7a1b2c70${String(found?.replies.length ?? 0).padStart(2, '0')}`,
+      sentAt: REPLY_SENT_AT,
+      body: received.body,
+      attachments: received.files,
+    };
+    if (found !== undefined) {
+      found.replies.push(reply);
+      found.readAt ??= REPLY_SENT_AT;
+    }
+    request.reply({
+      statusCode: 201,
+      body: { id: reply.id, sentAt: reply.sentAt, attachments: reply.attachments },
+    });
+  }).as('reply');
+}
+
+/** O envio da resposta é recusado pela API (o e-mail não saiu, anexo inválido, limite de requisições). */
+export function stubReplyRejected(statusCode: number, code: string): void {
+  cy.intercept('POST', MESSAGE_REPLY, {
+    statusCode,
+    body: { status: statusCode, code, detail: 'Detalhe da API' },
+  }).as('reply');
 }

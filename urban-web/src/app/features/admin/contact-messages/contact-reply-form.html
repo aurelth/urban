@@ -1,0 +1,126 @@
+<form
+  [formGroup]="form"
+  (ngSubmit)="send()"
+  class="mt-4 flex flex-col border-t border-outline-variant pt-4"
+  data-testid="reply-form"
+  novalidate
+>
+  <p class="mb-1 text-lg font-medium break-words" data-testid="reply-heading">
+    Responder a {{ message().senderName ?? message().senderEmail }}
+  </p>
+  <p class="mb-6 text-sm break-words text-on-surface-variant" data-testid="reply-recipient">
+    Enviaremos por e-mail para {{ message().senderEmail }}. Se a pessoa responder, a resposta chega
+    ao seu e-mail
+  </p>
+
+  <div class="mb-3">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic" class="w-full">
+      <mat-label>Resposta</mat-label>
+      <textarea
+        matInput
+        formControlName="body"
+        rows="6"
+        required
+        [readOnly]="submitting()"
+      ></textarea>
+      <mat-hint align="end" data-testid="reply-counter"
+        >{{ bodyLength() }} de {{ bodyLimits.max }} caracteres</mat-hint
+      >
+      @if (form.controls.body.hasError('required')) {
+        <mat-error>{{ bodyErrors['required'] }}</mat-error>
+      } @else if (form.controls.body.hasError('tooShort')) {
+        <mat-error>{{ bodyErrors['tooShort'] }}</mat-error>
+      } @else if (form.controls.body.hasError('tooLong')) {
+        <mat-error>{{ bodyErrors['tooLong'] }}</mat-error>
+      }
+    </mat-form-field>
+  </div>
+
+  @if (files().length > 0) {
+    <ul class="m-0 mb-3 flex list-none flex-col gap-2 p-0" data-testid="attachments">
+      @for (file of files(); track file; let index = $index) {
+        <li class="flex items-center gap-2">
+          <mat-icon svgIcon="attach_file" aria-hidden="true" class="shrink-0" />
+          <span class="min-w-0 flex-1 break-all" data-testid="attachment-name">{{
+            file.name
+          }}</span>
+          <span class="shrink-0 text-sm text-on-surface-variant" data-testid="attachment-size">{{
+            formatSize(file.size)
+          }}</span>
+          <button
+            mat-icon-button
+            type="button"
+            class="shrink-0"
+            data-testid="remove-attachment"
+            [attr.aria-label]="'Remover ' + file.name"
+            [disabled]="submitting()"
+            (click)="remove(index)"
+          >
+            <mat-icon svgIcon="close" aria-hidden="true" />
+          </button>
+        </li>
+      }
+    </ul>
+  }
+
+  @if (attachmentProblems().length > 0) {
+    <div
+      role="alert"
+      class="mb-3 flex items-start gap-2 text-error"
+      data-testid="attachment-errors"
+    >
+      <mat-icon svgIcon="error" aria-hidden="true" class="shrink-0" />
+      <ul class="m-0 flex list-none flex-col gap-1 p-0">
+        @for (problem of attachmentProblems(); track $index) {
+          <li class="break-words">{{ problem }}</li>
+        }
+      </ul>
+    </div>
+  }
+
+  <input
+    #fileInput
+    type="file"
+    class="hidden"
+    aria-label="Anexar arquivos"
+    multiple
+    tabindex="-1"
+    data-testid="file-input"
+    [accept]="accept"
+    (change)="onPicked($event)"
+  />
+  @if (files().length < maxFiles) {
+    <div class="mb-3">
+      <button
+        mat-stroked-button
+        type="button"
+        data-testid="attach"
+        [disabled]="submitting()"
+        (click)="fileInput.click()"
+      >
+        <mat-icon svgIcon="attach_file" aria-hidden="true" />
+        Anexar arquivos
+      </button>
+    </div>
+  }
+  <p class="mb-6 text-sm text-on-surface-variant" data-testid="attachment-hint">{{ hint }}</p>
+
+  <div class="flex flex-wrap items-end gap-2">
+    <urban-form-submit
+      class="max-w-full min-w-0"
+      label="Enviar resposta"
+      busyLabel="Enviando"
+      [busy]="submitting()"
+      [error]="error()"
+    />
+    <button
+      mat-button
+      type="button"
+      data-testid="cancel-reply"
+      [disabled]="submitting()"
+      (click)="cancelled.emit()"
+    >
+      Cancelar
+    </button>
+  </div>
+</form>

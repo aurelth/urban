@@ -7,9 +7,11 @@ import {
   MESSAGES_PATH,
   READ_MESSAGE,
   UNREAD_MESSAGE,
+  readReply,
   stubContactMessages,
   stubContactSend,
   stubContactSendRejected,
+  stubReplyRejected,
 } from '../support/contato';
 import { MANAGER, stubAnonymous, stubSignedIn } from '../support/session';
 
@@ -205,17 +207,149 @@ describe('Mensagens do administrador', () => {
     cy.get('[data-testid="empty"]').should('contain.text', 'Nenhuma mensagem recebida ainda');
   });
 
-  it('responde por e-mail ao remetente', () => {
+  it('não tem mais o link de e-mail: a resposta é escrita no próprio Urban', () => {
     cy.visit(MESSAGES_PATH);
+    messages().should('have.length', 2);
 
-    cy.get('[data-testid="reply"]')
-      .first()
-      .should('contain.text', 'Responder por e-mail')
-      .and(
-        'have.attr',
-        'href',
-        'mailto:ana@example.com?subject=Re%3A%20Corrigir%20o%20CNPJ%20do%20condom%C3%ADnio',
+    cy.get('a[href^="mailto:"]').should('not.exist');
+    cy.get('[data-testid="reply"]').first().should('contain.text', 'Responder');
+  });
+
+  describe('resposta', () => {
+    const ANSWER = 'Corrigi o CNPJ no cadastro. Confira em Meus dados.';
+
+    function openReply(): void {
+      cy.visit(MESSAGES_PATH);
+      messages().should('have.length', 2);
+      messages().first().find('[data-testid="reply"]').click();
+      cy.get('[data-testid="reply-form"]').should('be.visible');
+    }
+
+    function writeAnswer(value = ANSWER): void {
+      cy.get('textarea[formControlName="body"]').click('right').type(value);
+    }
+
+    function attach(name: string, contents: string): void {
+      cy.get('[data-testid="file-input"]').selectFile(
+        { contents: Cypress.Buffer.from(contents), fileName: name },
+        { force: true },
       );
+    }
+
+    it('escreve a resposta, anexa um arquivo e envia: a resposta fica no cartão e a mensagem vira lida', () => {
+      openReply();
+      cy.get('[data-testid="reply-heading"]').should('contain.text', 'Responder a Ana');
+
+      writeAnswer();
+      attach('comprovante.pdf', '%PDF-1.4 conteudo de teste');
+      cy.get('[data-testid="attachment-name"]').should('have.text', 'comprovante.pdf');
+      cy.contains('button', 'Enviar resposta').click();
+
+      cy.wait('@reply').then(({ request }) => {
+        expect(request.url).to.contain(`${UNREAD_MESSAGE.id}/replies`);
+        expect(String(request.headers['content-type'])).to.match(
+          /^multipart\/form-data; boundary=/,
+        );
+        expect(readReply(request).body).to.eq(ANSWER);
+        expect(readReply(request).files.map((file) => file.fileName)).to.deep.eq([
+          'comprovante.pdf',
+        ]);
+      });
+      cy.get('[data-testid="reply-form"]').should('not.exist');
+      cy.get('[data-testid="notice"]')
+        .should('contain.text', 'Resposta enviada a Ana')
+        .find('.text-success mat-icon')
+        .should('have.css', 'color', PALETTE.light.success);
+      messages()
+        .first()
+        .within(() => {
+          cy.get('[data-testid="reply-date"]').should(
+            'contain.text',
+            'Respondida em 13/11/2026 às 14:30',
+          );
+          cy.get('[data-testid="reply-body"]').should('contain.text', ANSWER);
+          cy.get('[data-testid="reply-attachment"]').should('contain.text', 'comprovante.pdf');
+          cy.get('[data-testid="message-status"]').should(
+            'contain.text',
+            'Lida em 13/11/2026 às 14:30',
+          );
+          cy.get('[data-testid="mark-read"]').should('not.exist');
+        });
+    });
+
+    it('envia só o texto, sem anexo', () => {
+      openReply();
+
+      writeAnswer();
+      cy.contains('button', 'Enviar resposta').click();
+
+      cy.wait('@reply').then(({ request }) => {
+        expect(readReply(request).files).to.have.length(0);
+      });
+      messages().first().find('[data-testid="reply-item"]').should('have.length', 1);
+    });
+
+    it('pede o texto antes de enviar, sem chamar a API', () => {
+      openReply();
+
+      cy.contains('button', 'Enviar resposta').click();
+
+      cy.contains('mat-error', 'Informe a resposta').should('be.visible');
+      cy.get('textarea[formControlName="body"]').should('be.focused');
+      cy.get('@reply.all').should('have.length', 0);
+    });
+
+    it('recusa na hora o arquivo de tipo que não é aceito, e guarda o que serve', () => {
+      openReply();
+
+      attach('programa.exe', 'MZ');
+      cy.get('[data-testid="attachment-errors"]')
+        .should('contain.text', '“programa.exe”: tipo de arquivo não aceito')
+        .and('have.attr', 'role', 'alert');
+      cy.get('[data-testid="attachment-name"]').should('not.exist');
+
+      attach('ata.txt', 'texto simples');
+      cy.get('[data-testid="attachment-errors"]').should('not.exist');
+      cy.get('[data-testid="attachment-name"]').should('have.text', 'ata.txt');
+    });
+
+    it('tira um anexo da lista antes de enviar', () => {
+      openReply();
+      attach('ata.txt', 'texto simples');
+
+      cy.get('[data-testid="remove-attachment"]').click();
+
+      cy.get('[data-testid="attachment-name"]').should('not.exist');
+    });
+
+    it('explica que o e-mail não saiu e guarda o texto e os anexos para tentar de novo', () => {
+      stubReplyRejected(502, 'identity.contact.reply_not_delivered');
+      openReply();
+      writeAnswer();
+      attach('ata.txt', 'texto simples');
+
+      cy.contains('button', 'Enviar resposta').click();
+
+      cy.wait('@reply');
+      cy.get('[data-testid="reply-form"] [role="alert"]')
+        .should('contain.text', 'O e-mail não pôde ser entregue ao provedor de envio')
+        .find('mat-icon')
+        .should('exist');
+      cy.get('textarea[formControlName="body"]').should('have.value', ANSWER);
+      cy.get('[data-testid="attachment-name"]').should('have.text', 'ata.txt');
+      cy.get('[data-testid="reply-item"]').should('not.exist');
+    });
+
+    it('"Cancelar" descarta o rascunho e volta o botão "Responder"', () => {
+      openReply();
+      writeAnswer();
+
+      cy.get('[data-testid="cancel-reply"]').click();
+
+      cy.get('[data-testid="reply-form"]').should('not.exist');
+      messages().first().find('[data-testid="reply"]').should('be.visible');
+      cy.get('@reply.all').should('have.length', 0);
+    });
   });
 
   it('leva o síndico de volta ao painel', () => {

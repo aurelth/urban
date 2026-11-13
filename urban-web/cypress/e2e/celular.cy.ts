@@ -125,6 +125,32 @@ describe('Tela de celular (375 x 667)', () => {
     expectNoHorizontalScroll();
   });
 
+  it('mostra a resposta ao síndico, com anexo de nome comprido, sem rolagem horizontal', () => {
+    stubSignedIn(ADMIN);
+    stubContactMessages();
+    cy.visit(MESSAGES_PATH);
+
+    cy.get('[data-testid="reply"]').first().click();
+    cy.get('[data-testid="file-input"]').selectFile(
+      {
+        contents: Cypress.Buffer.from('texto'),
+        fileName:
+          'relatorio-de-prestacao-de-contas-do-condominio-residencial-aurora-novembro-2026.txt',
+      },
+      { force: true },
+    );
+
+    cy.get('[data-testid="reply-form"]').then(($form) => {
+      const { left, right } = $form[0].getBoundingClientRect();
+      expect(left).to.be.at.least(0);
+      expect(right).to.be.at.most(375);
+    });
+    cy.get('[data-testid="attachment-name"]').should('be.visible');
+    cy.contains('button', 'Enviar resposta').should('be.visible');
+    cy.get('[data-testid="cancel-reply"]').should('be.visible');
+    expectNoHorizontalScroll();
+  });
+
   it('mostra a visão geral do administrador em coluna única, sem rolagem horizontal', () => {
     stubSignedIn(ADMIN);
     stubManagers();

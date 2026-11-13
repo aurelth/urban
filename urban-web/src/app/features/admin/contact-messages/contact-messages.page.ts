@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
-import { MatAnchor, MatButton } from '@angular/material/button';
+import { MatButton } from '@angular/material/button';
 import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatIcon } from '@angular/material/icon';
 import { ContactMessage, ContactMessagesFilter } from '../../../core/admin/contact-messages.models';
@@ -8,24 +8,22 @@ import { MenuOption, MenuSelect } from '../../../shared/ui/menu-select/menu-sele
 import { formatRequestedAt } from '../registration-requests/requested-at';
 import { MARK_READ_MESSAGES } from './contact-messages.messages';
 import { ContactMessagesStore } from './contact-messages.store';
+import { ContactReplyForm } from './contact-reply-form';
+import { formatFileSize } from './reply-attachments';
 
 const STATUS_OPTIONS: readonly MenuOption[] = [
   { value: '', label: 'Todas' },
   { value: 'unread', label: 'Não lidas' },
 ];
 
-/** Link que abre o e-mail do administrador já endereçado ao síndico, com o assunto da mensagem. */
-export function replyLink(message: ContactMessage): string {
-  return `mailto:${message.senderEmail}?subject=${encodeURIComponent(`Re: ${message.subject}`)}`;
-}
-
 /**
- * Caixa de mensagens que os síndicos mandam ao dono da plataforma. Não há conversa dentro do sistema: a resposta vai
- * por e-mail, e aqui só se lê e se marca como lida.
+ * Caixa de mensagens que os síndicos mandam ao dono da plataforma. O administrador lê, marca como lida e responde aqui
+ * mesmo: a resposta (com anexos) vai por e-mail ao síndico e fica registrada no cartão. A conversa não continua dentro do
+ * sistema: o síndico responde pelo e-mail do administrador.
  */
 @Component({
   selector: 'urban-contact-messages-page',
-  imports: [MatButton, MatAnchor, MatFormField, MatLabel, MatIcon, MenuSelect],
+  imports: [MatButton, MatFormField, MatLabel, MatIcon, MenuSelect, ContactReplyForm],
   templateUrl: './contact-messages.page.html',
   providers: [ContactMessagesStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -38,7 +36,10 @@ export class ContactMessagesPage implements OnInit {
 
   protected readonly statusOptions = STATUS_OPTIONS;
   protected readonly formatDate = formatRequestedAt;
-  protected readonly replyLink = replyLink;
+  protected readonly formatSize = formatFileSize;
+
+  /** Mensagens com o formulário de resposta aberto; cada uma guarda o seu rascunho enquanto estiver aberta. */
+  protected readonly replying = signal<ReadonlySet<string>>(new Set());
 
   ngOnInit(): void {
     void this.load();
@@ -59,6 +60,24 @@ export class ContactMessagesPage implements OnInit {
 
   protected goTo(page: number): void {
     void this.store.goToPage(page);
+  }
+
+  protected openReply(message: ContactMessage): void {
+    this.replying.update((open) => new Set(open).add(message.id));
+  }
+
+  protected closeReply(message: ContactMessage): void {
+    this.replying.update((open) => {
+      const rest = new Set(open);
+      rest.delete(message.id);
+      return rest;
+    });
+  }
+
+  protected onReplySent(message: ContactMessage): void {
+    this.closeReply(message);
+    this.actionError.set(null);
+    this.notice.set(`Resposta enviada a ${message.senderName ?? message.senderEmail}`);
   }
 
   protected async markRead(message: ContactMessage): Promise<void> {
