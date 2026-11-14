@@ -4,6 +4,8 @@ import { TestBed } from '@angular/core/testing';
 import { resident, residentPage } from '../../testing/residents.fixtures';
 import {
   DEFAULT_RESIDENTS_QUERY,
+  EndOccupancyPayload,
+  OccupancyPayload,
   ResidentPayload,
   ResidentsQuery,
   UpdateResidentPayload,
@@ -132,6 +134,42 @@ describe('ResidentsApi', () => {
       request.flush(updated);
 
       expect(request.request.method).toBe('PUT');
+      expect(request.request.body).toEqual(payload);
+      expect(received).toEqual(updated);
+    });
+  });
+
+  describe('addOccupancy', () => {
+    it('manda POST /api/residents/{id}/occupancies com o corpo como está e devolve o morador', () => {
+      const updated = resident();
+      const payload: OccupancyPayload = {
+        unitId: '0199aaaa-0000-7000-8000-000000000002',
+        kind: 'tenant',
+        startDate: '2026-01-05',
+      };
+      let received: unknown;
+
+      api.addOccupancy(updated.id, payload).subscribe((value) => (received = value));
+      const request = http.expectOne(`/api/residents/${updated.id}/occupancies`);
+      request.flush(updated, { status: 201, statusText: 'Created' });
+
+      expect(request.request.method).toBe('POST');
+      expect(request.request.body).toEqual(payload);
+      expect(received).toEqual(updated);
+    });
+  });
+
+  describe('endOccupancy', () => {
+    it('manda POST .../occupancies/{occupancyId}/end com a data e devolve o morador', () => {
+      const updated = resident();
+      const payload: EndOccupancyPayload = { endDate: '2026-11-10' };
+      let received: unknown;
+
+      api.endOccupancy(updated.id, 'occ-1', payload).subscribe((value) => (received = value));
+      const request = http.expectOne(`/api/residents/${updated.id}/occupancies/occ-1/end`);
+      request.flush(updated);
+
+      expect(request.request.method).toBe('POST');
       expect(request.request.body).toEqual(payload);
       expect(received).toEqual(updated);
     });
