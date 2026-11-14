@@ -39,6 +39,8 @@ public sealed class RateLimitingTests(ApiFixture fixture)
 
     private const string ResidentsRoute = "/api/residents";
 
+    private const string VehiclesRoute = "/api/vehicles";
+
     private const string FinanceRoute = "/api/finance/months/2026-11";
 
     private static readonly IPAddress TrustedProxy = IPAddress.Parse("10.0.0.2");
@@ -65,6 +67,7 @@ public sealed class RateLimitingTests(ApiFixture fixture)
     [InlineData(UnitsRoute)]
     [InlineData(UnitBatchRoute)]
     [InlineData(ResidentsRoute)]
+    [InlineData(VehiclesRoute)]
     [InlineData(FinanceRoute)]
     public async Task Blocks_a_client_that_exceeds_the_limit_of_the_route(string route)
     {
@@ -100,6 +103,7 @@ public sealed class RateLimitingTests(ApiFixture fixture)
     [InlineData(UnitsRoute, 14)]
     [InlineData(UnitBatchRoute, 15)]
     [InlineData(ResidentsRoute, 17)]
+    [InlineData(VehiclesRoute, 18)]
     [InlineData(FinanceRoute, 16)]
     public async Task Applies_the_limit_configured_for_that_route(string route, int permits)
     {
@@ -121,6 +125,7 @@ public sealed class RateLimitingTests(ApiFixture fixture)
             ["RateLimiting:Units:PermitLimit"] = "14",
             ["RateLimiting:UnitBatch:PermitLimit"] = "15",
             ["RateLimiting:Residents:PermitLimit"] = "17",
+            ["RateLimiting:Vehicles:PermitLimit"] = "18",
             ["RateLimiting:Finance:PermitLimit"] = "16",
         };
         await using ApiFactory factory = CreateFactory(TimeSpan.FromMinutes(1), settings: limits);
@@ -152,6 +157,7 @@ public sealed class RateLimitingTests(ApiFixture fixture)
     [InlineData(UnitsRoute, 120)]
     [InlineData(UnitBatchRoute, 10)]
     [InlineData(ResidentsRoute, 120)]
+    [InlineData(VehiclesRoute, 120)]
     [InlineData(FinanceRoute, 120)]
     public async Task Ships_with_the_limits_of_the_appsettings(string route, int permits)
     {
@@ -254,12 +260,12 @@ public sealed class RateLimitingTests(ApiFixture fixture)
 
     private static HttpMethod MethodFor(string route) => route switch
     {
-        MeRoute or TermsRoute or PostalCodesRoute or ProfileRoute or UnitsRoute or ResidentsRoute or FinanceRoute => HttpMethod.Get,
+        MeRoute or TermsRoute or PostalCodesRoute or ProfileRoute or UnitsRoute or ResidentsRoute or VehiclesRoute or FinanceRoute => HttpMethod.Get,
         IdentityRoute => HttpMethod.Put,
         _ => HttpMethod.Post,
     };
 
-    private static bool HasBody(string route) => route is not (MeRoute or TermsRoute or PostalCodesRoute or ProfileRoute or UnitsRoute or ResidentsRoute or FinanceRoute or RefreshRoute or LogoutRoute);
+    private static bool HasBody(string route) => route is not (MeRoute or TermsRoute or PostalCodesRoute or ProfileRoute or UnitsRoute or ResidentsRoute or VehiclesRoute or FinanceRoute or RefreshRoute or LogoutRoute);
 
     private static object BodyFor(string route) => route switch
     {

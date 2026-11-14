@@ -33,6 +33,7 @@ public class RateLimitingConfigurationTests
     [InlineData("Units", 0)]
     [InlineData("UnitBatch", -1)]
     [InlineData("Residents", 0)]
+    [InlineData("Vehicles", -1)]
     [InlineData("Finance", 0)]
     [InlineData("Admin", 0)]
     [InlineData("Contact", -1)]
@@ -63,6 +64,7 @@ public class RateLimitingConfigurationTests
     [InlineData("Units")]
     [InlineData("UnitBatch")]
     [InlineData("Residents")]
+    [InlineData("Vehicles")]
     [InlineData("Finance")]
     [InlineData("Admin")]
     [InlineData("Contact")]
@@ -166,6 +168,7 @@ public class RateLimitingConfigurationTests
         Units = route == "Units" ? rule : ValidRule,
         UnitBatch = route == "UnitBatch" ? rule : ValidRule,
         Residents = route == "Residents" ? rule : ValidRule,
+        Vehicles = route == "Vehicles" ? rule : ValidRule,
         Finance = route == "Finance" ? rule : ValidRule,
         Admin = route == "Admin" ? rule : ValidRule,
         Contact = route == "Contact" ? rule : ValidRule,
