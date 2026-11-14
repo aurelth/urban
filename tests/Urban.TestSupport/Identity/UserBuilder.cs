@@ -10,15 +10,15 @@ public static class UserBuilder
 
     public static readonly Guid ActorId = Guid.CreateVersion7();
 
-    public static User InStatus(AccountStatus status, UserRole role = UserRole.Resident, string address = "ana@example.com")
+    public static User InStatus(AccountStatus status, UserRole role = UserRole.Resident, string address = "ana@example.com", Guid? condominiumId = null)
     {
         if (status is AccountStatus.PendingApproval or AccountStatus.Rejected)
         {
             return Requested(status, address);
         }
 
-        Guid? condominiumId = role == UserRole.SuperAdmin ? null : Guid.CreateVersion7();
-        User user = User.Register(Email.Create(address).Value, role, condominiumId, Now).Value;
+        Guid? tenant = role == UserRole.SuperAdmin ? null : condominiumId ?? Guid.CreateVersion7();
+        User user = User.Register(Email.Create(address).Value, role, tenant, Now).Value;
 
         return MoveTo(user, status);
     }
