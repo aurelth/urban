@@ -1,12 +1,13 @@
-export type MaskKind = 'cpf' | 'cnpj' | 'cep' | 'phone' | 'date';
+export type MaskKind = 'cpf' | 'cnpj' | 'cep' | 'phone' | 'date' | 'plate';
 
-/** Teclado que o celular abre em cada campo. O CNPJ pode ter letras, então usa o teclado de texto. */
+/** Teclado que o celular abre em cada campo. O CNPJ e a placa têm letras, então usam o teclado de texto. */
 export const MASK_INPUTMODE: Record<MaskKind, 'numeric' | 'text' | 'tel'> = {
   cpf: 'numeric',
   cnpj: 'text',
   cep: 'numeric',
   phone: 'tel',
   date: 'numeric',
+  plate: 'text',
 };
 
 const CPF_LENGTH = 11;
@@ -15,6 +16,7 @@ const CNPJ_BASE_LENGTH = 12;
 const CEP_LENGTH = 8;
 const DATE_LENGTH = 8;
 const PHONE_MAX_LENGTH = 11;
+const PLATE_LENGTH = 7;
 const PHONE_LANDLINE_LENGTH = 10;
 const COUNTRY_CODE = '55';
 
@@ -39,6 +41,8 @@ export function applyMask(kind: MaskKind, value: string): string {
       return draw(CEP_PATTERN, digits(value, CEP_LENGTH));
     case 'date':
       return draw(DATE_PATTERN, digits(value, DATE_LENGTH));
+    case 'plate':
+      return plateCharacters(value);
     case 'phone': {
       const number = phoneDigits(value);
       return draw(
@@ -63,6 +67,8 @@ export function unmask(kind: MaskKind, value: string): string {
       return digits(value, CEP_LENGTH);
     case 'phone':
       return phoneDigits(value);
+    case 'plate':
+      return plateCharacters(value);
     case 'date':
       return toIsoDate(value);
   }
@@ -70,7 +76,7 @@ export function unmask(kind: MaskKind, value: string): string {
 
 /** Quantos caracteres do valor (e não da pontuação) há em `text`. Serve para achar o cursor. */
 export function countSignificant(kind: MaskKind, text: string): number {
-  const pattern = kind === 'cnpj' ? /[0-9a-z]/gi : /[0-9]/g;
+  const pattern = kind === 'cnpj' || kind === 'plate' ? /[0-9a-z]/gi : /[0-9]/g;
   return text.match(pattern)?.length ?? 0;
 }
 
@@ -115,6 +121,14 @@ function cnpjCharacters(value: string): string {
   const base = characters.slice(0, CNPJ_BASE_LENGTH);
   const verifiers = characters.slice(CNPJ_BASE_LENGTH).replace(/\D/g, '');
   return (base + verifiers).slice(0, CNPJ_LENGTH);
+}
+
+/** A placa (ABC1234 ou ABC1D23) é mostrada em maiúsculas e sem hífen: o formato antigo e o Mercosul têm o mesmo tamanho. */
+function plateCharacters(value: string): string {
+  return value
+    .replace(/[^0-9a-zA-Z]/g, '')
+    .toUpperCase()
+    .slice(0, PLATE_LENGTH);
 }
 
 /** O +55 só é descartado quando vem com o sinal de mais, para não confundir com o DDD 55. */
