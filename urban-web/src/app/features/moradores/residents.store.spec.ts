@@ -191,4 +191,29 @@ describe('ResidentsStore', () => {
       expect(store.hasFilters()).toBe(true);
     });
   });
+
+  describe('markInvited', () => {
+    it('troca só a situação do acesso do morador convidado, sem nova busca', async () => {
+      const { store, http } = setup();
+      const invited = resident();
+      const other = resident();
+      await loaded(store, http, [invited, other]);
+
+      store.markInvited(invited.id);
+
+      expect(store.items().map((item) => item.accessStatus)).toEqual(['invited', 'none']);
+      expect(store.items()[0]).toEqual({ ...invited, accessStatus: 'invited' });
+      expect(store.items()[1]).toBe(other);
+    });
+
+    it('ignora um id que não está na página', async () => {
+      const { store, http } = setup();
+      const items = [resident()];
+      await loaded(store, http, items);
+
+      store.markInvited('outro-id');
+
+      expect(store.items()).toEqual(items);
+    });
+  });
 });

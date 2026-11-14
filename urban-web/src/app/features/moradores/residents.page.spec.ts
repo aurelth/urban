@@ -178,6 +178,80 @@ describe('ResidentsPage', () => {
     });
   });
 
+  describe('acesso ao sistema', () => {
+    function statusOf(row: HTMLElement): string {
+      return row
+        .querySelector('[data-testid="access-status"]')!
+        .textContent!.replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    it('mostra a situação do acesso de cada morador, uma só vez por linha', async () => {
+      const { html } = await setup([
+        resident({ accessStatus: 'none' }),
+        resident({ accessStatus: 'invited' }),
+        resident({ accessStatus: 'active' }),
+        resident({ accessStatus: 'inactive' }),
+      ]);
+
+      expect(rows(html).map(statusOf)).toEqual([
+        'Sem acesso',
+        'Convite enviado',
+        'Acesso ativo',
+        'Acesso desativado',
+      ]);
+      for (const row of rows(html)) {
+        expect(row.querySelectorAll('[data-testid="access-status"]')).toHaveLength(1);
+      }
+    });
+
+    it('oferece "Convidar" a quem tem e-mail e ainda não foi convidado, e só a esse', async () => {
+      const { html } = await setup([LIVES, LEFT]);
+
+      const [withEmail, withoutEmail] = rows(html);
+      expect(withEmail.querySelector('[data-testid="invite"]')?.textContent?.trim()).toBe(
+        'Convidar',
+      );
+      expect(withoutEmail.querySelector('[data-testid="invite"]')).toBeNull();
+      expect(withoutEmail.querySelector('[data-testid="access-hint"]')).not.toBeNull();
+    });
+
+    it('depois de convidar, a linha passa a "Convite enviado" com "Reenviar convite", sem buscar a lista de novo', async () => {
+      const { html, http, fixture } = await setup([LIVES, LEFT]);
+      const [row] = rows(html);
+
+      row.querySelector<HTMLElement>('[data-testid="invite"]')!.click();
+      http
+        .expectOne(`/api/residents/${LIVES.id}/invitation`)
+        .flush(null, { status: 202, statusText: 'Accepted' });
+      await settle(fixture);
+
+      const [updated] = rows(html);
+      expect(statusOf(updated)).toBe('Convite enviado');
+      expect(updated.querySelector('[data-testid="resend-invite"]')).not.toBeNull();
+      expect(updated.querySelector('[data-testid="invite"]')).toBeNull();
+      expect(rowText(updated)).toContain('Convite enviado para ana@exemplo.com');
+      http.expectNone((request) => request.url === '/api/residents');
+    });
+
+    it('uma recusa aparece na linha do morador e nada muda na situação', async () => {
+      const { html, http, fixture } = await setup([LIVES, LEFT]);
+
+      rows(html)[0].querySelector<HTMLElement>('[data-testid="invite"]')!.click();
+      http
+        .expectOne(`/api/residents/${LIVES.id}/invitation`)
+        .flush(
+          { status: 409, code: 'identity.resident_access.email_unavailable' },
+          { status: 409, statusText: 'Conflict' },
+        );
+      await settle(fixture);
+
+      const [row] = rows(html);
+      expect(rowText(row)).toContain('Este e-mail já tem uma conta no Urban');
+      expect(statusOf(row)).toBe('Sem acesso');
+    });
+  });
+
   describe('lista', () => {
     it('mostra uma linha por morador, com nome, CPF mascarado, contato, unidades e situação', async () => {
       const { html } = await setup();

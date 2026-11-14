@@ -498,4 +498,43 @@ describe('ResidentFormStore', () => {
       });
     });
   });
+
+  describe('refreshResident', () => {
+    async function editing(store: Store, http: HttpTestingController): Promise<void> {
+      const loading = store.loadForEdit('abc');
+      http.expectOne('/api/residents/abc').flush(resident({ id: 'abc', version: '7' }));
+      await loading;
+    }
+
+    it('lê o morador de novo sem passar por "loading" e troca o acesso e a versão', async () => {
+      const { store, http } = setup();
+      await editing(store, http);
+      const fresh = resident({ id: 'abc', accessStatus: 'invited', version: '12' });
+
+      const refreshing = store.refreshResident('abc');
+      expect(store.status()).toBe('ready');
+      http.expectOne('/api/residents/abc').flush(fresh);
+      await refreshing;
+
+      expect(store.resident()).toEqual(fresh);
+      expect(store.status()).toBe('ready');
+    });
+
+    it('vira "not-found" quando o morador sumiu e ignora as outras falhas', async () => {
+      const { store, http } = setup();
+      await editing(store, http);
+      const before = store.resident();
+
+      const first = store.refreshResident('abc');
+      reject(http.expectOne('/api/residents/abc'), 500);
+      await first;
+      expect(store.status()).toBe('ready');
+      expect(store.resident()).toBe(before);
+
+      const second = store.refreshResident('abc');
+      reject(http.expectOne('/api/residents/abc'), 404, 'condominium.resident.not_found');
+      await second;
+      expect(store.status()).toBe('not-found');
+    });
+  });
 });

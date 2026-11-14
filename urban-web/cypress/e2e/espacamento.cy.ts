@@ -28,6 +28,8 @@ import {
   NEW_RESIDENT_PATH,
   RESIDENTS_PATH,
   editResidentPath,
+  stubInvitation,
+  stubInvitationRejected,
   stubResidentDetail,
   stubResidents,
 } from '../support/moradores';
@@ -187,6 +189,28 @@ SCREENS.forEach(([where, width, height]) => {
       stubResidentDetail();
       cy.visit(editResidentPath(CURRENT_RESIDENT.id));
       cy.get('[formControlName="fullName"]').should('be.visible');
+      expectBreathingRoom();
+    });
+
+    it('não cola texto em container no cartão de acesso do morador, com o aviso do convite e com o erro', () => {
+      stubSignedIn(MANAGER);
+      stubResidentDetail();
+      stubInvitation(CURRENT_RESIDENT);
+      cy.visit(editResidentPath(CURRENT_RESIDENT.id));
+      cy.get('[data-testid="access-card"]').should('be.visible');
+      expectBreathingRoom();
+      cy.get('[data-testid="invite"]').click();
+      cy.get('[data-testid="access-notice"]').should('be.visible');
+      expectBreathingRoom();
+    });
+
+    it('não cola texto em container na lista de moradores com convite, situação e erro de convite', () => {
+      stubSignedIn(MANAGER);
+      stubResidents();
+      stubInvitationRejected(CURRENT_RESIDENT, 409, 'identity.resident_access.email_unavailable');
+      cy.visit(RESIDENTS_PATH);
+      cy.get('[data-testid="invite"]').first().click();
+      cy.get('[data-testid="access-error"]').should('be.visible');
       expectBreathingRoom();
     });
 

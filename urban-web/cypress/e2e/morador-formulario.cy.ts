@@ -9,8 +9,12 @@ import {
   editResidentPath,
   fillResidentTexts,
   stubResidentCreateRejected,
+  stubInvitation,
+  stubInvitationRejected,
+  stubResident,
   stubResidentCreated,
   stubResidentDetail,
+  stubResidentDetailInvitedLater,
   stubResidentUpdateRejected,
   stubResidentUpdated,
   stubResidents,
@@ -165,6 +169,96 @@ describe('Formulário de morador', () => {
     });
   });
 
+  describe('acesso ao sistema', () => {
+    it('convida pela edição: o cartão passa a "Convite enviado" e o salvamento seguinte usa a versão nova', () => {
+      stubResidentDetailInvitedLater(CURRENT_RESIDENT);
+      stubInvitation(CURRENT_RESIDENT);
+      stubResidentUpdated({ ...CURRENT_RESIDENT, version: '8' }, { profession: 'Médica' });
+      cy.visit(editResidentPath(CURRENT_RESIDENT.id));
+
+      cy.get('[data-testid="access-card"]').should('contain.text', 'Acesso ao sistema');
+      cy.get('[data-testid="invite"]').click();
+
+      cy.wait('@invite');
+      cy.get('[data-testid="access-status"]').should('contain.text', 'Convite enviado');
+      cy.get('[data-testid="access-notice"]').should(
+        'contain.text',
+        'Convite enviado para ana@exemplo.com',
+      );
+      cy.get('[data-testid="resend-invite"]').should('be.visible');
+
+      typeInto('profession', 'Médica');
+      cy.contains('button[type="submit"]', 'Salvar alterações').click();
+      cy.wait('@updateResident').its('request.body.version').should('eq', '8');
+    });
+
+    it('com alteração por salvar, pede para salvar antes de convidar', () => {
+      stubResidentDetail();
+      cy.visit(editResidentPath(CURRENT_RESIDENT.id));
+
+      typeInto('profession', 'Médica');
+
+      cy.get('[data-testid="access-blocked"]').should(
+        'contain.text',
+        'Salve ou descarte as alterações antes de convidar',
+      );
+      cy.get('[data-testid="invite"]').should('be.disabled');
+    });
+
+    it('mostra o motivo quando a API recusa o convite', () => {
+      stubResidentDetail();
+      stubInvitationRejected(CURRENT_RESIDENT, 409, 'identity.resident_access.email_unavailable');
+      cy.visit(editResidentPath(CURRENT_RESIDENT.id));
+
+      cy.get('[data-testid="invite"]').click();
+
+      cy.get('[data-testid="access-error"]').should('contain.text', 'já tem uma conta');
+      cy.get('[data-testid="access-status"]').should('contain.text', 'Sem acesso');
+    });
+
+    it('com acesso ativo, trava o e-mail e explica por quê', () => {
+      stubResidentDetail(stubResident({ accessStatus: 'active' }));
+      cy.visit(editResidentPath(CURRENT_RESIDENT.id));
+
+      cy.get('[data-testid="access-status"]').should('contain.text', 'Acesso ativo');
+      cy.get('[formControlName="email"]').should('be.disabled');
+      cy.contains('mat-hint', 'não pode ser alterado depois que o morador cria a senha').should(
+        'be.visible',
+      );
+      cy.get('[data-testid="invite"], [data-testid="resend-invite"]').should('not.exist');
+    });
+
+    it('com convite enviado, ainda deixa corrigir o e-mail e oferece reenviar', () => {
+      stubResidentDetail(stubResident({ accessStatus: 'invited' }));
+      stubResidentUpdated(stubResident({ accessStatus: 'invited' }), {
+        email: 'ana.certa@exemplo.com',
+      });
+      cy.visit(editResidentPath(CURRENT_RESIDENT.id));
+
+      cy.get('[formControlName="email"]').should('not.be.disabled');
+      typeInto('email', 'ana.certa@exemplo.com');
+      cy.contains('button[type="submit"]', 'Salvar alterações').click();
+
+      cy.wait('@updateResident').its('request.body.email').should('eq', 'ana.certa@exemplo.com');
+      cy.get('[data-testid="resend-invite"]').should('be.visible');
+    });
+
+    it('e-mail travado na API aparece como aviso do formulário', () => {
+      stubResidentDetail(stubResident({ accessStatus: 'invited' }));
+      stubResidentUpdateRejected(
+        stubResident({ accessStatus: 'invited' }),
+        409,
+        'condominium.resident.email_locked',
+      );
+      cy.visit(editResidentPath(CURRENT_RESIDENT.id));
+
+      typeInto('email', 'outro@exemplo.com');
+      cy.contains('button[type="submit"]', 'Salvar alterações').click();
+
+      cy.get('[role="alert"]').should('contain.text', 'não pode ser alterado');
+    });
+  });
+
   describe('no celular', () => {
     it('o cadastro cabe na tela, sem rolagem horizontal', () => {
       cy.viewport(PHONE.width, PHONE.height);
@@ -176,12 +270,13 @@ describe('Formulário de morador', () => {
       });
     });
 
-    it('a edição cabe na tela, sem rolagem horizontal', () => {
+    it('a edição cabe na tela, sem rolagem horizontal, com o cartão de acesso', () => {
       stubResidentDetail();
       cy.viewport(PHONE.width, PHONE.height);
       cy.visit(editResidentPath(CURRENT_RESIDENT.id));
 
       cy.get('[formControlName="fullName"]').should('be.visible');
+      cy.get('[data-testid="access-card"]').scrollIntoView().should('be.visible');
       cy.document().should((doc) => {
         expect(doc.documentElement.scrollWidth).to.be.at.most(doc.documentElement.clientWidth);
       });

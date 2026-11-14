@@ -19,6 +19,7 @@ export interface StubResident {
   email: string | null;
   profession: string | null;
   emergencyContact: { name: string; relationship: string; phone: string } | null;
+  accessStatus: 'none' | 'invited' | 'active' | 'inactive';
   occupancies: StubOccupancy[];
   version: string;
 }
@@ -33,6 +34,7 @@ export function stubResident(overrides: Partial<StubResident> = {}): StubResiden
     email: 'ana@exemplo.com',
     profession: 'Engenheira',
     emergencyContact: { name: 'Carlos Lima', relationship: 'Irmão', phone: '4733334444' },
+    accessStatus: 'none',
     occupancies: [
       {
         id: '0199cccc-0000-7000-8000-000000000001',
@@ -201,4 +203,37 @@ export function stubOccupancyRejected(
   cy.intercept('POST', url, { statusCode: status, body: { status, code, detail: 'Recusado' } }).as(
     action === 'add' ? 'addOccupancy' : 'endOccupancy',
   );
+}
+
+/** O convite que a API aceita (202, sem corpo: o e-mail sai em segundo plano). */
+export function stubInvitation(resident: StubResident): void {
+  cy.intercept('POST', `/api/residents/${resident.id}/invitation`, { statusCode: 202 }).as(
+    'invite',
+  );
+}
+
+/** O convite que a API recusa, com o código do motivo. */
+export function stubInvitationRejected(resident: StubResident, status: number, code: string): void {
+  cy.intercept('POST', `/api/residents/${resident.id}/invitation`, {
+    statusCode: status,
+    body: { status, code, detail: 'Recusado' },
+  }).as('invite');
+}
+
+/**
+ * O morador da edição antes e depois do convite: a primeira leitura vem como está e as seguintes já com o acesso "convidado" e
+ * a versão seguinte (o convite grava a pessoa, então o `xmin` muda).
+ */
+export function stubResidentDetailInvitedLater(resident: StubResident): void {
+  let reads = 0;
+  cy.intercept('GET', `/api/residents/${resident.id}`, (request) => {
+    reads += 1;
+    request.reply({
+      statusCode: 200,
+      body:
+        reads === 1
+          ? resident
+          : { ...resident, accessStatus: 'invited', version: String(Number(resident.version) + 1) },
+    });
+  }).as('residentDetail');
 }

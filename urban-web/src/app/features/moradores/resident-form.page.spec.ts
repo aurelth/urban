@@ -585,4 +585,170 @@ describe('ResidentFormPage, vínculos', () => {
     expect(update.request.body.version).toBe('7');
     update.flush(found);
   });
+
+  describe('acesso ao sistema', () => {
+    const MESSAGE_LOCKED = 'O e-mail não pode ser alterado depois que o morador cria a senha';
+
+    function emailInput(html: HTMLElement): HTMLInputElement {
+      return field(html, 'email') as HTMLInputElement;
+    }
+
+    function emailHint(html: HTMLElement): string {
+      return (
+        emailInput(html)
+          .closest('mat-form-field')
+          ?.querySelector('mat-hint')
+          ?.textContent?.trim() ?? ''
+      );
+    }
+
+    function accessText(html: HTMLElement, id: string): string {
+      return testId(html, id)?.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+    }
+
+    it('mostra o cartão "Acesso ao sistema" na edição', async () => {
+      const { html } = await openEdit(resident({ accessStatus: 'none' }));
+
+      expect(accessText(html, 'access-card')).toContain('Acesso ao sistema');
+      expect(accessText(html, 'access-status')).toBe('Sem acesso');
+    });
+
+    it('o cadastro não mostra o cartão de acesso: o convite vem depois de cadastrar', async () => {
+      const { html } = await openNew();
+
+      expect(testId(html, 'access-card')).toBeNull();
+    });
+
+    it('sem acesso, o e-mail segue livre e o cartão oferece "Convidar"', async () => {
+      const { html } = await openEdit(resident({ accessStatus: 'none' }));
+
+      expect(emailInput(html).disabled).toBe(false);
+      expect(testId(html, 'invite')?.textContent?.trim()).toBe('Convidar');
+    });
+
+    it.each(['active', 'inactive'] as const)(
+      'com acesso "%s", o e-mail fica travado e a tela explica por quê',
+      async (status) => {
+        const { html } = await openEdit(resident({ accessStatus: status }));
+
+        expect(emailInput(html).disabled).toBe(true);
+        expect(emailHint(html)).toBe(MESSAGE_LOCKED);
+        expect(testId(html, 'invite')).toBeNull();
+        expect(testId(html, 'resend-invite')).toBeNull();
+      },
+    );
+
+    it('com convite enviado, o e-mail ainda se corrige e a dica explica o reenvio', async () => {
+      const { html } = await openEdit(resident({ accessStatus: 'invited' }));
+
+      expect(emailInput(html).disabled).toBe(false);
+      expect(emailHint(html)).toBe(
+        'O convite já foi enviado a este endereço. Para corrigi-lo, salve e use Reenviar convite',
+      );
+      expect(testId(html, 'resend-invite')).not.toBeNull();
+    });
+
+    it('sem convite, a dica do e-mail é a do cadastro', async () => {
+      const { html } = await openEdit(resident({ accessStatus: 'none' }));
+
+      expect(emailHint(html)).toBe(
+        'Opcional. Sem e-mail o morador fica cadastrado, mas não pode ser convidado a acessar o sistema',
+      );
+    });
+
+    it('com alteração por salvar, o convite fica desabilitado e a tela pede para salvar antes', async () => {
+      const h = await openEdit(resident({ accessStatus: 'none' }));
+      expect(testId(h.html, 'access-blocked')).toBeNull();
+
+      fill(h.html, 'profession', 'Médica');
+      await settle(h.fixture);
+
+      expect(accessText(h.html, 'access-blocked')).toBe(
+        'Salve ou descarte as alterações antes de convidar',
+      );
+      expect(testId(h.html, 'invite')?.hasAttribute('disabled')).toBe(true);
+    });
+
+    it('depois de convidar, lê o morador de novo: o acesso vira "convite enviado" e a versão nova vale no próximo salvamento', async () => {
+      const found = resident({ accessStatus: 'none', version: '7' });
+      const h = await openEdit(found);
+
+      testId(h.html, 'invite')!.click();
+      h.http
+        .expectOne(`/api/residents/${found.id}/invitation`)
+        .flush(null, { status: 202, statusText: 'Accepted' });
+      await settle(h.fixture);
+      h.http
+        .expectOne(`/api/residents/${found.id}`)
+        .flush({ ...found, accessStatus: 'invited', version: '8' });
+      await settle(h.fixture);
+
+      expect(accessText(h.html, 'access-status')).toBe('Convite enviado');
+      expect(testId(h.html, 'resend-invite')).not.toBeNull();
+      expect(accessText(h.html, 'access-notice')).toContain('Convite enviado para');
+
+      fill(h.html, 'profession', 'Médica');
+      await settle(h.fixture);
+      await submit(h);
+      const update = h.http.expectOne(`/api/residents/${found.id}`);
+      expect(update.request.body.version).toBe('8');
+      update.flush({ ...found, accessStatus: 'invited', profession: 'Médica', version: '9' });
+    });
+
+    it('e-mail travado na API (409) vira aviso do formulário e a tela continua editável', async () => {
+      const found = resident({ accessStatus: 'invited', email: 'maria@exemplo.com' });
+      const h = await openEdit(found);
+      fill(h.html, 'email', '');
+      await settle(h.fixture);
+
+      await submit(h);
+      reject(
+        h.http.expectOne(`/api/residents/${found.id}`),
+        409,
+        'condominium.resident.email_locked',
+      );
+      await settle(h.fixture);
+
+      expect(alertTexts(h.html)).toContain(MESSAGE_LOCKED);
+      expect(testId(h.html, 'conflict')).toBeNull();
+      expect(submitButton(h.html).disabled).toBe(false);
+    });
+
+    it('e-mail que já tem conta em outro cadastro (409) vira aviso do formulário', async () => {
+      const found = resident({ accessStatus: 'invited', email: 'maria@exemplo.com' });
+      const h = await openEdit(found);
+      fill(h.html, 'email', 'outra@exemplo.com');
+      await settle(h.fixture);
+
+      await submit(h);
+      reject(
+        h.http.expectOne(`/api/residents/${found.id}`),
+        409,
+        'identity.resident_access.email_unavailable',
+      );
+      await settle(h.fixture);
+
+      expect(alertTexts(h.html)).toContain(
+        'Este e-mail já tem uma conta no Urban. Informe outro endereço',
+      );
+      expect(valueOf(h.html, 'email')).toBe('outra@exemplo.com');
+    });
+
+    it('corrigir o e-mail de quem foi convidado salva pelo mesmo PUT e não reenvia o convite', async () => {
+      const found = resident({ accessStatus: 'invited', email: 'maria@exemplo.com' });
+      const h = await openEdit(found);
+      fill(h.html, 'email', 'maria.certa@exemplo.com');
+      await settle(h.fixture);
+
+      await submit(h);
+      const update = h.http.expectOne(`/api/residents/${found.id}`);
+      expect(update.request.body.email).toBe('maria.certa@exemplo.com');
+      update.flush({ ...found, email: 'maria.certa@exemplo.com', version: '9' });
+      await settle(h.fixture);
+
+      h.http.expectNone(`/api/residents/${found.id}/invitation`);
+      expect(testId(h.html, 'saved')).not.toBeNull();
+      expect(testId(h.html, 'resend-invite')).not.toBeNull();
+    });
+  });
 });
