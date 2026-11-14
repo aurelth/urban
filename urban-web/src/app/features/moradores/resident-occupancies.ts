@@ -14,12 +14,14 @@ import { MatIcon } from '@angular/material/icon';
 import { ApiProblem } from '../../core/http/api-problem';
 import { describeProblem } from '../../core/http/problem-message';
 import { OccupancyKind, ResidentOccupancy } from '../../core/residents/residents.models';
+import { isMinorBirth } from '../../shared/forms/birth-date.validator';
 import { focusFirstInvalidInput } from '../../shared/forms/focus-first-invalid';
 import { FormSubmit } from '../../shared/ui/form-submit/form-submit';
 import { SelectField, SelectOption } from '../../shared/ui/select-field/select.field';
 import { TextField } from '../../shared/ui/text-field/text.field';
 import { unitLabel } from '../units/unit-values';
 import { entryDate, exitDate } from './resident-field.validators';
+import { minorKind } from './resident-minor';
 import { RESIDENT_FORM_MESSAGES } from './resident-form.messages';
 import { ResidentFormStore } from './resident-form.store';
 import { HOUSING_ERRORS, KIND_OPTIONS } from './resident-housing.fields';
@@ -60,12 +62,21 @@ export class ResidentOccupancies {
   private readonly builder = inject(NonNullableFormBuilder);
   private readonly changeDetector = inject(ChangeDetectorRef);
 
+  /** Quem tem menos de 18 anos só ganha vínculo de dependente (a API recusa os outros). */
+  private readonly isMinor = computed(() => {
+    const resident = this.store.resident();
+    return resident !== null && isMinorBirth(formatDay(resident.birthDate));
+  });
+
   protected readonly endForm = this.builder.group({
     endDate: ['', [Validators.required]],
   });
   protected readonly addForm = this.builder.group({
     unitId: ['', [Validators.required]],
-    kind: this.builder.control<OccupancyKind | ''>('', [Validators.required]),
+    kind: this.builder.control<OccupancyKind | ''>('', [
+      Validators.required,
+      minorKind(() => this.isMinor()),
+    ]),
     startDate: ['', [Validators.required, entryDate()]],
   });
 

@@ -1,4 +1,5 @@
 import {
+  EmergencyContact,
   OccupancyKind,
   Resident,
   ResidentPayload,
@@ -89,13 +90,21 @@ function personalPayload(
     birthDate: unmask('date', value.birthDate),
     phone: unmask('phone', value.phone),
     email: cleanText(value.email) || null,
-    profession: cleanText(value.profession),
-    emergencyContact: {
-      name: cleanText(value.contactName),
-      relationship: cleanText(value.contactRelationship),
-      phone: unmask('phone', value.contactPhone),
-    },
+    profession: cleanText(value.profession) || null,
+    emergencyContact: contactPayload(value),
   };
+}
+
+/** Sem nenhum dos três campos o contato vai nulo (o dependente menor de idade); com algum, vai como está, para a API apontar o que falta. */
+function contactPayload(value: ResidentFormValue): EmergencyContact | null {
+  const contact = {
+    name: cleanText(value.contactName),
+    relationship: cleanText(value.contactRelationship),
+    phone: unmask('phone', value.contactPhone),
+  };
+  return contact.name === '' && contact.relationship === '' && contact.phone === ''
+    ? null
+    : contact;
 }
 
 function toDisplayDate(isoDate: string): string {

@@ -17,7 +17,7 @@ import { RouterLink } from '@angular/router';
 import { ApiProblem } from '../../core/http/api-problem';
 import { describeProblem } from '../../core/http/problem-message';
 import { OccupancyKind, Resident } from '../../core/residents/residents.models';
-import { birthDate } from '../../shared/forms/birth-date.validator';
+import { birthDate, isMinorBirth } from '../../shared/forms/birth-date.validator';
 import { cpfNumber } from '../../shared/forms/cpf.validator';
 import { emailFormat } from '../../shared/forms/email.validator';
 import { focusFirstInvalidInput } from '../../shared/forms/focus-first-invalid';
@@ -30,6 +30,7 @@ import { SelectField, SelectOption } from '../../shared/ui/select-field/select.f
 import { TextField } from '../../shared/ui/text-field/text.field';
 import { unitLabel } from '../units/unit-values';
 import { entryDate } from './resident-field.validators';
+import { minorKind, unlessMinor } from './resident-minor';
 import {
   ResidentFormValue,
   residentChanged,
@@ -88,23 +89,59 @@ export class ResidentFormPage implements OnInit {
   private readonly builder = inject(NonNullableFormBuilder);
   private readonly changeDetector = inject(ChangeDetectorRef);
 
+  /** Quem tem menos de 18 anos é dependente e fica dispensado de profissão e de contato de emergência. */
+  protected readonly isMinor = signal(false);
+
   protected readonly form = this.builder.group({
     fullName: ['', [requiredText, fullName]],
     // Na edição fica desabilitado (fora da validação) até a pessoa pedir para trocar o CPF.
     cpf: ['', [Validators.required, cpfNumber]],
-    birthDate: ['', [Validators.required, birthDate()]],
+    birthDate: ['', [Validators.required, birthDate(undefined, { allowMinor: true })]],
     phone: ['', [Validators.required, brazilianPhone]],
     email: ['', [emailFormat]],
-    profession: ['', [requiredText, trimmedLength(PROFESSION_LENGTH.min, PROFESSION_LENGTH.max)]],
-    contactName: ['', [requiredText, fullName]],
+    profession: [
+      '',
+      [
+        unlessMinor(
+          () => this.isMinor(),
+          Validators.compose([
+            requiredText,
+            trimmedLength(PROFESSION_LENGTH.min, PROFESSION_LENGTH.max),
+          ])!,
+        ),
+      ],
+    ],
+    contactName: [
+      '',
+      [unlessMinor(() => this.contactMayBeBlank(), Validators.compose([requiredText, fullName])!)],
+    ],
     contactRelationship: [
       '',
-      [requiredText, trimmedLength(RELATIONSHIP_LENGTH.min, RELATIONSHIP_LENGTH.max)],
+      [
+        unlessMinor(
+          () => this.contactMayBeBlank(),
+          Validators.compose([
+            requiredText,
+            trimmedLength(RELATIONSHIP_LENGTH.min, RELATIONSHIP_LENGTH.max),
+          ])!,
+        ),
+      ],
     ],
-    contactPhone: ['', [Validators.required, brazilianPhone]],
+    contactPhone: [
+      '',
+      [
+        unlessMinor(
+          () => this.contactMayBeBlank(),
+          Validators.compose([Validators.required, brazilianPhone])!,
+        ),
+      ],
+    ],
     // Os três últimos só valem no cadastro: na edição ficam desabilitados.
     unitId: ['', [Validators.required]],
-    kind: this.builder.control<OccupancyKind | ''>('', [Validators.required]),
+    kind: this.builder.control<OccupancyKind | ''>('', [
+      Validators.required,
+      minorKind(() => this.isMinor()),
+    ]),
     startDate: ['', [Validators.required, entryDate()]],
   });
 
@@ -174,7 +211,6 @@ export class ResidentFormPage implements OnInit {
   protected readonly cpfErrors = { required: 'Informe o CPF', cpf: 'Informe um CPF válido' };
   protected readonly birthDateErrors = {
     required: 'Informe a data de nascimento',
-    underAge: 'O morador precisa ter 18 anos ou mais',
     date: 'Informe uma data válida, como 31/01/1980',
   };
   protected readonly phoneErrors = {
@@ -209,6 +245,7 @@ export class ResidentFormPage implements OnInit {
       this.disableCreateOnlyFields();
     }
     this.form.valueChanges.subscribe(() => {
+      this.syncMinor();
       this.current.set(this.form.getRawValue());
       this.saved.set(false);
     });
@@ -306,6 +343,7 @@ export class ResidentFormPage implements OnInit {
   private fill(resident: Resident): void {
     this.stopChangingCpf();
     this.form.reset(toResidentFormValue(resident), { emitEvent: false });
+    this.syncMinor();
     this.applyEmailLock(resident);
     this.current.set(this.form.getRawValue());
   }
@@ -318,6 +356,36 @@ export class ResidentFormPage implements OnInit {
       email.disable({ emitEvent: false });
     } else {
       email.enable({ emitEvent: false });
+    }
+  }
+
+  /**
+   * O menor pode deixar o contato inteiro em branco, mas quem começa a preenchê-lo precisa terminar. As regras de
+   * profissão, contato e vínculo dependem da data de nascimento e dos outros campos do contato, então são conferidas de novo
+   * a cada mudança.
+   */
+  private contactMayBeBlank(): boolean {
+    if (!this.isMinor()) {
+      return false;
+    }
+    const { contactName, contactRelationship, contactPhone } = this.form.controls;
+    return [contactName, contactRelationship, contactPhone].every(
+      (control) => control.value.trim() === '',
+    );
+  }
+
+  private syncMinor(): void {
+    const {
+      birthDate: born,
+      profession,
+      contactName,
+      contactRelationship,
+      contactPhone,
+      kind,
+    } = this.form.controls;
+    this.isMinor.set(isMinorBirth(born.value));
+    for (const control of [profession, contactName, contactRelationship, contactPhone, kind]) {
+      control.updateValueAndValidity({ emitEvent: false, onlySelf: true });
     }
   }
 

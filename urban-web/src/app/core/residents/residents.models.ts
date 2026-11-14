@@ -1,4 +1,4 @@
-export type OccupancyKind = 'owner' | 'tenant';
+export type OccupancyKind = 'owner' | 'tenant' | 'dependent';
 
 /**
  * Situação do acesso do morador ao sistema: sem convite, convite enviado (a senha ainda não foi escolhida: o e-mail ainda se
@@ -58,7 +58,8 @@ export interface ResidentsQuery {
 
 /**
  * Corpo de POST /api/residents: só dígitos nos documentos e telefones, datas em AAAA-MM-DD. O e-mail é opcional (nulo
- * quando não há) e o primeiro vínculo, com a unidade, vai junto.
+ * quando não há) e o primeiro vínculo, com a unidade, vai junto. Profissão e contato de emergência só podem ser nulos
+ * para menores de 18 anos, que são sempre dependentes.
  */
 export interface ResidentPayload {
   readonly fullName: string;
@@ -66,8 +67,8 @@ export interface ResidentPayload {
   readonly birthDate: string;
   readonly phone: string;
   readonly email: string | null;
-  readonly profession: string;
-  readonly emergencyContact: EmergencyContact;
+  readonly profession: string | null;
+  readonly emergencyContact: EmergencyContact | null;
   readonly unitId: string;
   readonly kind: OccupancyKind;
   readonly startDate: string;
@@ -84,8 +85,8 @@ export interface UpdateResidentPayload {
   readonly birthDate: string;
   readonly phone: string;
   readonly email: string | null;
-  readonly profession: string;
-  readonly emergencyContact: EmergencyContact;
+  readonly profession: string | null;
+  readonly emergencyContact: EmergencyContact | null;
 }
 
 /** Corpo de POST /api/residents/{id}/occupancies: a unidade, o tipo do vínculo e o dia da entrada (AAAA-MM-DD). */
