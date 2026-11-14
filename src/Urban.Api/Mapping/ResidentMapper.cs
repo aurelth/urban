@@ -31,6 +31,29 @@ public static partial class ResidentMapper
             request.StartDate);
     }
 
+    public static UpdateResidentCommand ToCommand(Guid residentId, ResidentUpdateRequest request, Guid actorUserId)
+    {
+        EmergencyContactRequest contact = request.EmergencyContact ?? NoContact;
+
+        return new UpdateResidentCommand(
+            actorUserId,
+            residentId,
+            request.Version,
+            request.FullName,
+            request.Cpf,
+            request.BirthDate,
+            request.Phone,
+            request.Email,
+            request.Profession,
+            new EmergencyContactInput(contact.Name, contact.Relationship, contact.Phone));
+    }
+
+    public static AddOccupancyCommand ToCommand(Guid residentId, OccupancyRequest request, Guid actorUserId) =>
+        new(actorUserId, residentId, request.UnitId, ParseKind(request.Kind), request.StartDate);
+
+    public static EndOccupancyCommand ToCommand(Guid residentId, Guid occupancyId, OccupancyEndRequest request, Guid actorUserId) =>
+        new(actorUserId, residentId, occupancyId, request.EndDate);
+
     // ---- Do resultado para a resposta ----
 
     public static partial ResidentResponse ToResponse(ResidentView view);

@@ -125,6 +125,30 @@ public sealed class Person
         });
     }
 
+    /// <summary>
+    /// Edição do morador pelo síndico: todos os dados do cadastro de uma vez. A idade já foi conferida ao montar a data de
+    /// nascimento, e o CPF repetido é decidido pelo índice único na gravação.
+    /// </summary>
+    public Result UpdateResident(
+        PersonName fullName,
+        Cpf cpf,
+        BirthDate birthDate,
+        PhoneNumber phone,
+        ContactEmail? email,
+        Profession profession,
+        EmergencyContact emergencyContact)
+    {
+        FullName = fullName;
+        Cpf = cpf;
+        BirthDate = birthDate;
+        Phone = phone;
+        Email = email;
+        Profession = profession;
+        EmergencyContact = emergencyContact;
+
+        return Result.Success();
+    }
+
     /// <summary>O endereço do síndico, que sempre tem um. Chamar para quem não é síndico é erro de programação.</summary>
     public Address RequireAddress() =>
         Address ?? throw new InvalidOperationException("Esta pessoa não tem endereço próprio: só o síndico tem.");

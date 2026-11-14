@@ -82,4 +82,26 @@ public sealed class Occupancy
 
         return Result.Success(new Occupancy(condominiumId, personId, unitId, kind, start, now));
     }
+
+    /// <summary>
+    /// Encerra o vínculo: a pessoa saiu da unidade. O registro fica, com a data de saída, para o histórico de quem morou ali.
+    /// A saída é de entre a data de entrada e hoje.
+    /// </summary>
+    /// <param name="today">Data de hoje, recebida de fora para a regra continuar pura e testável.</param>
+    public Result MoveOut(DateOnly? endDate, DateOnly today)
+    {
+        if (EndDate is not null)
+        {
+            return Result.Failure(OccupancyErrors.AlreadyEnded);
+        }
+
+        if (endDate is not { } end || end < StartDate || end > today)
+        {
+            return Result.Failure(OccupancyErrors.EndDateInvalid);
+        }
+
+        EndDate = end;
+
+        return Result.Success();
+    }
 }

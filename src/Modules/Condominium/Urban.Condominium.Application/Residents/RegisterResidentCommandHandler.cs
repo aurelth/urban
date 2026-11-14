@@ -1,8 +1,6 @@
 using MediatR;
 using Urban.Condominium.Application.Abstractions;
 using Urban.Condominium.Domain.Condominiums;
-using Urban.Condominium.Domain.Contacts;
-using Urban.Condominium.Domain.Documents;
 using Urban.Condominium.Domain.Occupancies;
 using Urban.Condominium.Domain.People;
 using Urban.Condominium.Domain.Units;
@@ -56,24 +54,15 @@ public sealed class RegisterResidentCommandHandler(IResidents residents, IUnits 
     {
         DateOnly today = BrazilCalendar.Today(now);
 
-        Result<PersonName> fullName = PersonName.Create(request.FullName);
-        Result<Cpf> cpf = Cpf.Create(request.Cpf);
-        Result<BirthDate> birthDate = BirthDate.Create(request.BirthDate, today, ResidentErrors.UnderAge);
-        Result<PhoneNumber> phone = PhoneNumber.Create(request.Phone);
-        Result<ContactEmail?> email = OptionalEmail(request.Email);
-        Result<Profession> profession = Profession.Create(request.Profession);
-        Result<EmergencyContact> emergencyContact = EmergencyContact.Create(request.EmergencyContact.Name, request.EmergencyContact.Relationship, request.EmergencyContact.Phone);
-
-        foreach (Result part in new Result[] { fullName, cpf, birthDate, phone, email, profession, emergencyContact })
+        Result<ResidentData> data = ResidentData.Parse(
+            request.FullName, request.Cpf, request.BirthDate, request.Phone, request.Email, request.Profession, request.EmergencyContact, today);
+        if (data.IsFailure)
         {
-            if (part.IsFailure)
-            {
-                return Result.Failure<Registration>(part.Error);
-            }
+            return Result.Failure<Registration>(data.Error);
         }
 
         Result<Person> person = Person.RegisterResident(
-            condominiumId, fullName.Value, cpf.Value, birthDate.Value, phone.Value, email.Value, profession.Value, emergencyContact.Value, now);
+            condominiumId, data.Value.FullName, data.Value.Cpf, data.Value.BirthDate, data.Value.Phone, data.Value.Email, data.Value.Profession, data.Value.EmergencyContact, now);
         if (person.IsFailure)
         {
             return Result.Failure<Registration>(person.Error);
@@ -84,19 +73,6 @@ public sealed class RegisterResidentCommandHandler(IResidents residents, IUnits 
         return occupancy.IsFailure
             ? Result.Failure<Registration>(occupancy.Error)
             : Result.Success(new Registration(person.Value, occupancy.Value));
-    }
-
-    /// <summary>O e-mail é opcional: vazio é "sem e-mail"; preenchido, tem de ser válido.</summary>
-    private static Result<ContactEmail?> OptionalEmail(string? text)
-    {
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            return Result.Success<ContactEmail?>(null);
-        }
-
-        Result<ContactEmail> email = ContactEmail.Create(text);
-
-        return email.IsFailure ? Result.Failure<ContactEmail?>(email.Error) : Result.Success<ContactEmail?>(email.Value);
     }
 
     /// <summary>A unidade tem de existir no condomínio da requisição (a de outro condomínio é "não encontrada") e estar ativa.</summary>

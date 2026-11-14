@@ -50,6 +50,40 @@ public static class ResidentEndpoints
             .Produces<ResidentResponse>(StatusCodes.Status201Created)
             .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound, StatusCodes.Status409Conflict);
 
+        residents.MapPut("/{id:guid}", UpdateAsync)
+            .WithName("UpdateResident")
+            .WithSummary("Edita os dados de um morador")
+            .WithDescription(
+                "Substitui todos os dados pessoais do cadastro. O corpo leva a version que a tela leu: sem ela, 400; se outra pessoa editou antes, 409 com concurrency.conflict. "
+                + "O CPF é opcional: a resposta só mostra o CPF mascarado, então em branco mantém o atual e preenchido troca (o CPF não pode ser o de outra pessoa do condomínio: 409). "
+                + "O e-mail em branco limpa o e-mail. Se nada mudou, nada é gravado e a versão continua a mesma. Dado inválido responde 400 com o código do campo (o primeiro que falhar). "
+                + "O registro da alteração guarda só os nomes dos campos. Um morador de outro condomínio responde 404. A resposta nunca é guardada em cache. " + RateLimitText)
+            .RequireRateLimiting(RateLimitPolicies.Residents)
+            .Produces<ResidentResponse>()
+            .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound, StatusCodes.Status409Conflict);
+
+        residents.MapPost("/{id:guid}/occupancies", AddOccupancyAsync)
+            .WithName("AddResidentOccupancy")
+            .WithSummary("Liga o morador a mais uma unidade")
+            .WithDescription(
+                "Cria um novo vínculo (proprietário ou inquilino) de um morador que já existe com uma unidade ativa do condomínio. "
+                + "Quem já mora na unidade não ganha um segundo vínculo em andamento (409); quem já saiu dela pode voltar. A data de entrada vai até 1 ano à frente. "
+                + "Dado inválido responde 400 com o código do campo. Devolve 201 com o morador e todos os vínculos. " + RateLimitText)
+            .RequireRateLimiting(RateLimitPolicies.Residents)
+            .Produces<ResidentResponse>(StatusCodes.Status201Created)
+            .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound, StatusCodes.Status409Conflict);
+
+        residents.MapPost("/{id:guid}/occupancies/{occupancyId:guid}/end", EndOccupancyAsync)
+            .WithName("EndResidentOccupancy")
+            .WithSummary("Registra a saída do morador de uma unidade")
+            .WithDescription(
+                "Preenche a data de saída do vínculo, que não é apagado: fica no histórico de quem morou na unidade. "
+                + "A data vai da entrada até hoje (horário de Brasília); fora disso, 400 com condominium.occupancy.end_date_invalid. "
+                + "Um vínculo que já terminou responde 409; o de outro morador responde 404. Devolve o morador com os vínculos. " + RateLimitText)
+            .RequireRateLimiting(RateLimitPolicies.Residents)
+            .Produces<ResidentResponse>()
+            .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound, StatusCodes.Status409Conflict);
+
         return app;
     }
 
@@ -95,5 +129,48 @@ public static class ResidentEndpoints
         Result<ResidentView> result = await sender.Send(ResidentMapper.ToCommand(request, userId), cancellationToken);
 
         return ApiResults.Created(result, response, view => $"{ResidentRoutes.Prefix}/{view.Id}", view => ResidentMapper.ToResponse(view));
+    }
+
+    private static async Task<IResult> UpdateAsync(Guid id, ResidentUpdateRequest request, ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken cancellationToken)
+    {
+        if (!ManagerAccess.TryRead(user, out Guid userId, out IResult? refusal))
+        {
+            return refusal;
+        }
+
+        Result<ResidentView> result = await sender.Send(ResidentMapper.ToCommand(id, request, userId), cancellationToken);
+
+        return ApiResults.Respond(result, response, view => ResidentMapper.ToResponse(view));
+    }
+
+    private static async Task<IResult> AddOccupancyAsync(Guid id, OccupancyRequest request, ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken cancellationToken)
+    {
+        if (!ManagerAccess.TryRead(user, out Guid userId, out IResult? refusal))
+        {
+            return refusal;
+        }
+
+        Result<ResidentView> result = await sender.Send(ResidentMapper.ToCommand(id, request, userId), cancellationToken);
+
+        return ApiResults.Created(result, response, view => $"{ResidentRoutes.Prefix}/{view.Id}", view => ResidentMapper.ToResponse(view));
+    }
+
+    private static async Task<IResult> EndOccupancyAsync(
+        Guid id,
+        Guid occupancyId,
+        OccupancyEndRequest request,
+        ClaimsPrincipal user,
+        HttpResponse response,
+        ISender sender,
+        CancellationToken cancellationToken)
+    {
+        if (!ManagerAccess.TryRead(user, out Guid userId, out IResult? refusal))
+        {
+            return refusal;
+        }
+
+        Result<ResidentView> result = await sender.Send(ResidentMapper.ToCommand(id, occupancyId, request, userId), cancellationToken);
+
+        return ApiResults.Respond(result, response, view => ResidentMapper.ToResponse(view));
     }
 }

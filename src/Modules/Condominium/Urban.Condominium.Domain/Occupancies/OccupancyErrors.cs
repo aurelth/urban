@@ -13,4 +13,12 @@ public static class OccupancyErrors
     public static readonly Error PersonRequired = new("condominium.occupancy.person_required", "O vínculo precisa apontar para uma pessoa");
 
     public static readonly Error UnitRequired = new("condominium.occupancy.unit_required", "O vínculo precisa apontar para uma unidade");
+
+    public static readonly Error EndDateInvalid = new("condominium.occupancy.end_date_invalid", "Informe uma data de saída entre a de entrada e hoje");
+
+    public static readonly Error NotFound = new("condominium.occupancy.not_found", "Vínculo não encontrado");
+
+    public static readonly Error AlreadyActive = new("condominium.occupancy.already_active", "A pessoa já mora nesta unidade");
+
+    public static readonly Error AlreadyEnded = new("condominium.occupancy.already_ended", "O vínculo já foi encerrado");
 }
