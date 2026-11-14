@@ -15,7 +15,7 @@ public class AddOccupancyCommandHandlerTests
 {
     private readonly ResidentsTestKit _kit = new();
 
-    private AddOccupancyCommandHandler Handler() => new(_kit.Residents.Object, _kit.Units.Object, _kit.Tenant, _kit.Clock.Object);
+    private AddOccupancyCommandHandler Handler() => new(_kit.Residents.Object, _kit.Units.Object, _kit.Tenant, _kit.Clock.Object, _kit.Views);
 
     private CondominiumUnit OtherUnit()
     {

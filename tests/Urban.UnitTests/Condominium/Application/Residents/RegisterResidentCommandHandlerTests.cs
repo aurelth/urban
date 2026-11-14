@@ -15,7 +15,7 @@ public class RegisterResidentCommandHandlerTests
 {
     private readonly ResidentsTestKit _kit = new();
 
-    private RegisterResidentCommandHandler Handler() => new(_kit.Residents.Object, _kit.Units.Object, _kit.Tenant, _kit.Clock.Object);
+    private RegisterResidentCommandHandler Handler() => new(_kit.Residents.Object, _kit.Units.Object, _kit.Tenant, _kit.Clock.Object, _kit.Views);
 
     private RegisterResidentCommand Valid(string? email = "maria@exemplo.com", OccupancyKind kind = OccupancyKind.Owner) =>
         ResidentCommands.Valid(_kit.Unit.Id, email: email, kind: kind);

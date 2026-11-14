@@ -256,6 +256,193 @@ public class ResidentAccessTests
         NothingWasQueued();
     }
 
+    // ---- Situação do acesso, em lote ----
+
+    [Fact]
+    public async Task GetStatuses_AsksTheAccountsOnceAndTranslatesEachStatusForTheCondominium()
+    {
+        Guid invited = Guid.CreateVersion7();
+        Guid active = Guid.CreateVersion7();
+        Guid deactivated = Guid.CreateVersion7();
+        Guid suspended = Guid.CreateVersion7();
+        _accounts
+            .Setup(a => a.ListStatusesAsync(CondominiumId, It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, AccountStatus>
+            {
+                [invited] = AccountStatus.PendingVerification,
+                [active] = AccountStatus.Active,
+                [deactivated] = AccountStatus.Deactivated,
+                [suspended] = AccountStatus.Suspended,
+            });
+
+        IReadOnlyDictionary<Guid, ResidentAccessStatus> statuses = await _access.GetStatusesAsync(CondominiumId, [invited, active, deactivated, suspended], default);
+
+        statuses.Should().Equal(new Dictionary<Guid, ResidentAccessStatus>
+        {
+            [invited] = ResidentAccessStatus.Invited,
+            [active] = ResidentAccessStatus.Active,
+            [deactivated] = ResidentAccessStatus.Inactive,
+            [suspended] = ResidentAccessStatus.Inactive,
+        });
+        _accounts.Verify(a => a.ListStatusesAsync(It.IsAny<Guid>(), It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetStatuses_ForADeletedAccount_ReportsInactive()
+    {
+        Guid deleted = Guid.CreateVersion7();
+        _accounts
+            .Setup(a => a.ListStatusesAsync(CondominiumId, It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, AccountStatus> { [deleted] = AccountStatus.Deleted });
+
+        IReadOnlyDictionary<Guid, ResidentAccessStatus> statuses = await _access.GetStatusesAsync(CondominiumId, [deleted], default);
+
+        statuses[deleted].Should().Be(ResidentAccessStatus.Inactive);
+    }
+
+    [Fact]
+    public async Task GetStatuses_OmitsTheAccountsTheStoreDoesNotReturn_SuchAsOnesFromAnotherCondominium()
+    {
+        Guid stranger = Guid.CreateVersion7();
+        _accounts
+            .Setup(a => a.ListStatusesAsync(CondominiumId, It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, AccountStatus>());
+
+        IReadOnlyDictionary<Guid, ResidentAccessStatus> statuses = await _access.GetStatusesAsync(CondominiumId, [stranger], default);
+
+        statuses.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetStatuses_WithNoIds_ReturnsEmptyWithoutTouchingTheStore()
+    {
+        IReadOnlyDictionary<Guid, ResidentAccessStatus> statuses = await _access.GetStatusesAsync(CondominiumId, [], default);
+
+        statuses.Should().BeEmpty();
+        _accounts.Verify(a => a.ListStatusesAsync(It.IsAny<Guid>(), It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    // ---- Corrigir o e-mail do convite pendente ----
+
+    [Fact]
+    public async Task ChangeInvitedEmail_ForAPendingResident_MovesTheAccountToTheNewAddressAtTheCurrentInstant()
+    {
+        User manager = GivenManager();
+        User resident = GivenResident(AccountStatus.PendingVerification);
+        User? saved = null;
+        _verifications
+            .Setup(v => v.ChangePendingEmailAsync(It.IsAny<User>(), Now, It.IsAny<CancellationToken>()))
+            .Callback<User, DateTimeOffset, CancellationToken>((u, _, _) => saved = u)
+            .ReturnsAsync(true);
+
+        Result result = await _access.ChangeInvitedEmailAsync(resident.Id, CondominiumId, " Outro@Exemplo.com ", manager.Id, default);
+
+        result.IsSuccess.Should().BeTrue();
+        saved!.Id.Should().Be(resident.Id);
+        saved.Email.Value.Should().Be("outro@exemplo.com");
+        saved.Status.Should().Be(AccountStatus.PendingVerification);
+    }
+
+    [Fact]
+    public async Task ChangeInvitedEmail_WithTheSameAddress_SucceedsAndWritesNothing()
+    {
+        User manager = GivenManager();
+        User resident = GivenResident(AccountStatus.PendingVerification);
+
+        Result result = await _access.ChangeInvitedEmailAsync(resident.Id, CondominiumId, "MARIA@exemplo.com", manager.Id, default);
+
+        result.IsSuccess.Should().BeTrue();
+        NothingWasChanged();
+    }
+
+    [Fact]
+    public async Task ChangeInvitedEmail_WithAnInvalidAddress_FailsAndWritesNothing()
+    {
+        User manager = GivenManager();
+        User resident = GivenResident(AccountStatus.PendingVerification);
+
+        Result result = await _access.ChangeInvitedEmailAsync(resident.Id, CondominiumId, "sem-arroba", manager.Id, default);
+
+        result.Error.Should().Be(Email.Invalid);
+        NothingWasChanged();
+    }
+
+    [Fact]
+    public async Task ChangeInvitedEmail_ForAnAddressThatAlreadyHasAnAccount_FailsAsUnavailable()
+    {
+        User manager = GivenManager();
+        User resident = GivenResident(AccountStatus.PendingVerification);
+        _accounts
+            .Setup(a => a.FindByEmailAsync(It.Is<Email>(e => e.Value == "outro@exemplo.com"), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(UserBuilder.InStatus(AccountStatus.Active, address: "outro@exemplo.com"));
+
+        Result result = await _access.ChangeInvitedEmailAsync(resident.Id, CondominiumId, "outro@exemplo.com", manager.Id, default);
+
+        result.Error.Should().Be(ResidentAccessErrors.EmailUnavailable);
+        NothingWasChanged();
+    }
+
+    [Fact]
+    public async Task ChangeInvitedEmail_WhenAnotherRegistrationWinsTheRace_FailsAsUnavailable()
+    {
+        User manager = GivenManager();
+        User resident = GivenResident(AccountStatus.PendingVerification);
+        _verifications.Setup(v => v.ChangePendingEmailAsync(It.IsAny<User>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
+
+        Result result = await _access.ChangeInvitedEmailAsync(resident.Id, CondominiumId, "outro@exemplo.com", manager.Id, default);
+
+        result.Error.Should().Be(ResidentAccessErrors.EmailUnavailable);
+    }
+
+    [Theory]
+    [InlineData(AccountStatus.Active)]
+    [InlineData(AccountStatus.Deactivated)]
+    [InlineData(AccountStatus.Suspended)]
+    public async Task ChangeInvitedEmail_ForAResidentWhoAlreadyChoseThePassword_FailsAsNotPending(AccountStatus status)
+    {
+        User manager = GivenManager();
+        User resident = GivenResident(status);
+
+        Result result = await _access.ChangeInvitedEmailAsync(resident.Id, CondominiumId, "outro@exemplo.com", manager.Id, default);
+
+        result.Error.Should().Be(ResidentAccessErrors.NotPending);
+        NothingWasChanged();
+    }
+
+    [Fact]
+    public async Task ChangeInvitedEmail_ForAnUnknownUserOrOneFromAnotherCondominiumOrNotAResident_FailsAsNotFound()
+    {
+        User manager = GivenManager();
+        Guid unknown = Guid.CreateVersion7();
+        _accounts.Setup(a => a.FindByIdAsync(unknown, It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
+        User other = UserBuilder.InStatus(AccountStatus.PendingVerification, UserRole.Resident, "outro-cond@example.com", Guid.CreateVersion7());
+        GivenAccount(other);
+        User someoneElse = UserBuilder.InStatus(AccountStatus.PendingVerification, UserRole.Manager, "sindico2@example.com", CondominiumId);
+        GivenAccount(someoneElse);
+
+        foreach (Guid id in new[] { unknown, other.Id, someoneElse.Id })
+        {
+            Result result = await _access.ChangeInvitedEmailAsync(id, CondominiumId, "novo@exemplo.com", manager.Id, default);
+
+            result.Error.Should().Be(ResidentAccessErrors.NotFound);
+        }
+
+        NothingWasChanged();
+    }
+
+    [Fact]
+    public async Task ChangeInvitedEmail_ForAnActorWhoCannotManageTheCondominium_FailsAsForbidden()
+    {
+        User actor = UserBuilder.InStatus(AccountStatus.Active, UserRole.Resident, "vizinho@example.com", CondominiumId);
+        GivenAccount(actor);
+        User resident = GivenResident(AccountStatus.PendingVerification);
+
+        Result result = await _access.ChangeInvitedEmailAsync(resident.Id, CondominiumId, "novo@exemplo.com", actor.Id, default);
+
+        result.Error.Should().Be(ResidentAccessErrors.Forbidden);
+        NothingWasChanged();
+    }
+
     // ---- Apoio ----
 
     private User GivenManager()
@@ -284,6 +471,9 @@ public class ResidentAccessTests
 
     private void NothingWasRegistered() =>
         _verifications.Verify(v => v.TryRegisterAsync(It.IsAny<User>(), It.IsAny<CancellationToken>()), Times.Never);
+
+    private void NothingWasChanged() =>
+        _verifications.Verify(v => v.ChangePendingEmailAsync(It.IsAny<User>(), It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()), Times.Never);
 
     private void NothingWasQueued() =>
         _dispatcher.Verify(d => d.EnqueueAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);

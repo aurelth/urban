@@ -15,9 +15,9 @@ public class ResidentQueriesHandlerTests
 {
     private readonly ResidentsTestKit _kit = new();
 
-    private ListResidentsQueryHandler ListHandler() => new(_kit.Residents.Object, _kit.Tenant);
+    private ListResidentsQueryHandler ListHandler() => new(_kit.Residents.Object, _kit.Tenant, _kit.Views);
 
-    private GetResidentQueryHandler GetHandler() => new(_kit.Residents.Object, _kit.Tenant);
+    private GetResidentQueryHandler GetHandler() => new(_kit.Residents.Object, _kit.Tenant, _kit.Views);
 
     private void ListReturns(IReadOnlyList<ResidentRecord> items, int total) =>
         _kit.Residents

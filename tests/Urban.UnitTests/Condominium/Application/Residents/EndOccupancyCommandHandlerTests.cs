@@ -14,7 +14,7 @@ public class EndOccupancyCommandHandlerTests
 {
     private readonly ResidentsTestKit _kit = new();
 
-    private EndOccupancyCommandHandler Handler() => new(_kit.Residents.Object, _kit.Tenant, _kit.Clock.Object);
+    private EndOccupancyCommandHandler Handler() => new(_kit.Residents.Object, _kit.Tenant, _kit.Clock.Object, _kit.Views);
 
     private static EndOccupancyCommand Command(Guid residentId, Guid occupancyId, DateOnly? end = null) =>
         new(Guid.CreateVersion7(), residentId, occupancyId, end ?? new DateOnly(2026, 10, 31));

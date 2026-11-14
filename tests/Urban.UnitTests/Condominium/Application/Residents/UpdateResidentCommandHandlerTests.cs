@@ -14,7 +14,7 @@ public class UpdateResidentCommandHandlerTests
 {
     private readonly ResidentsTestKit _kit = new();
 
-    private UpdateResidentCommandHandler Handler() => new(_kit.Residents.Object, _kit.Tenant, _kit.Clock.Object);
+    private UpdateResidentCommandHandler Handler() => new(_kit.Residents.Object, _kit.Access.Object, _kit.Atomic, _kit.Views, _kit.Tenant, _kit.Clock.Object);
 
     /// <summary>O morador que "já está no banco" e o comando que repete os mesmos dados dele (versão "4").</summary>
     private (ResidentRecord Record, UpdateResidentCommand Same) Existing()

@@ -198,6 +198,59 @@ public sealed class EmailVerificationsTests(PostgresFixture postgres)
         (await db.UserConsents.AnyAsync(c => c.UserId == other.Id)).Should().BeFalse();
     }
 
+    [Fact]
+    public async Task ChangePendingEmail_stores_the_new_address_and_retires_every_open_link()
+    {
+        (EmailVerificationToken first, User user) = await SeedPendingAsync();
+        EmailVerificationToken second = EmailVerificationToken.Issue(user.Id, NewHash(), Now.AddMinutes(-2));
+        await RunAsync(v => v.AddAsync(second, Ct));
+        Email newAddress = Email.Create($"{Guid.NewGuid():N}@example.com").Value;
+        user.ChangeEmail(newAddress);
+
+        bool changed = await RunAsync(v => v.ChangePendingEmailAsync(user, Now, Ct));
+
+        changed.Should().BeTrue();
+        await using IdentityDbContext db = postgres.CreateContext();
+        (await db.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id)).Email.Should().Be(newAddress);
+        (await db.EmailVerificationTokens.AsNoTracking().SingleAsync(t => t.Id == first.Id)).UsedAt.Should().Be(Now);
+        (await db.EmailVerificationTokens.AsNoTracking().SingleAsync(t => t.Id == second.Id)).UsedAt.Should().Be(Now);
+    }
+
+    [Fact]
+    public async Task ChangePendingEmail_returns_false_and_changes_nothing_when_the_address_belongs_to_another_account()
+    {
+        (EmailVerificationToken token, User user) = await SeedPendingAsync();
+        User owner = await postgres.SeedUserAsync();
+        Email original = user.Email;
+        user.ChangeEmail(owner.Email);
+
+        bool changed = await RunAsync(v => v.ChangePendingEmailAsync(user, Now, Ct));
+
+        changed.Should().BeFalse();
+        await using IdentityDbContext db = postgres.CreateContext();
+        (await db.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id)).Email.Should().Be(original);
+        (await db.EmailVerificationTokens.AsNoTracking().SingleAsync(t => t.Id == token.Id)).UsedAt.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task ChangePendingEmail_leaves_the_other_columns_of_the_account_alone()
+    {
+        (_, User user) = await SeedPendingAsync();
+        await using (IdentityDbContext other = postgres.CreateContext())
+        {
+            User tracked = await other.Users.SingleAsync(u => u.Id == user.Id, Ct);
+            tracked.Suspend(UserBuilder.ActorId, "Motivo de teste", Now).IsSuccess.Should().BeTrue();
+            await other.SaveChangesAsync(Ct);
+        }
+
+        user.ChangeEmail(Email.Create($"{Guid.NewGuid():N}@example.com").Value);
+
+        await RunAsync(v => v.ChangePendingEmailAsync(user, Now, Ct));
+
+        await using IdentityDbContext db = postgres.CreateContext();
+        (await db.Users.AsNoTracking().SingleAsync(u => u.Id == user.Id)).Status.Should().Be(AccountStatus.Suspended);
+    }
+
     private static string NewHash() => Guid.NewGuid().ToString("N");
 
     private static UserConsent ConsentOf(User user) => UserConsent.Record(user.Id, TermsVersion, Now);
