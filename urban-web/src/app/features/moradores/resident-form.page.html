@@ -123,7 +123,7 @@
                 label="E-mail"
                 inputmode="email"
                 [optional]="true"
-                hint="Opcional. Sem e-mail o morador fica cadastrado, mas não pode ser convidado a acessar o sistema"
+                [hint]="emailHint()"
                 [errors]="emailErrors"
               />
             </div>
@@ -230,6 +230,18 @@
       </form>
 
       @if (isEditing()) {
+        <mat-card appearance="outlined" class="mt-8" data-testid="access-card">
+          <mat-card-content class="p-6">
+            <h2 class="mb-6 text-xl font-semibold">Acesso ao sistema</h2>
+            @if (store.resident(); as current) {
+              <urban-resident-access
+                [resident]="current"
+                [blockedReason]="inviteBlockedReason()"
+                (invited)="onInvited()"
+              />
+            }
+          </mat-card-content>
+        </mat-card>
         <urban-resident-occupancies />
       }
     }

@@ -181,6 +181,19 @@ export const ResidentFormStore = signalStore(
           }
         }
       },
+      /**
+       * Lê o morador de novo sem passar por "loading" (o formulário continua na tela). Depois do convite a pessoa ganha a conta,
+       * então o acesso e a versão mudam; falha que não é 404 é ignorada (a próxima gravação recusa a versão velha).
+       */
+      refreshResident: async (id: string): Promise<void> => {
+        try {
+          patchState(store, { resident: await firstValueFrom(residents.get(id)) });
+        } catch (error) {
+          if (isResidentNotFound(toApiProblem(error))) {
+            patchState(store, { status: 'not-found' });
+          }
+        }
+      },
       /** Volta do aviso de sucesso para o formulário vazio; as unidades já estão carregadas. */
       startAnother: (): void => patchState(store, { created: null }),
     };

@@ -37,11 +37,18 @@ import {
   toResidentFormValue,
   toUpdatePayload,
 } from './resident-form.payload';
-import { RESIDENT_FORM_MESSAGES } from './resident-form.messages';
+import { ResidentAccess } from './resident-access';
+import { EMAIL_LOCKED_MESSAGE, RESIDENT_FORM_MESSAGES } from './resident-form.messages';
 import { ResidentFormStore } from './resident-form.store';
 import { HOUSING_ERRORS, KIND_OPTIONS } from './resident-housing.fields';
 import { ResidentOccupancies } from './resident-occupancies';
 import { occupancyUnit } from './resident-values';
+
+const CREATE_EMAIL_HINT =
+  'Opcional. Sem e-mail o morador fica cadastrado, mas não pode ser convidado a acessar o sistema';
+const INVITED_EMAIL_HINT =
+  'O convite já foi enviado a este endereço. Para corrigi-lo, salve e use Reenviar convite';
+const UNSAVED_MESSAGE = 'Salve ou descarte as alterações antes de convidar';
 
 const PROFESSION_LENGTH = { min: 2, max: 80 };
 const RELATIONSHIP_LENGTH = { min: 2, max: 40 };
@@ -65,6 +72,7 @@ const RELATIONSHIP_LENGTH = { min: 2, max: 40 };
     TextField,
     SelectField,
     FormSubmit,
+    ResidentAccess,
     ResidentOccupancies,
   ],
   templateUrl: './resident-form.page.html',
@@ -131,6 +139,28 @@ export class ResidentFormPage implements OnInit {
     );
   });
   protected readonly busy = computed(() => this.store.status() === 'saving');
+
+  /** A dica do e-mail segue o acesso: livre sem convite, corrigível com o convite enviado e travado depois da senha. */
+  protected readonly emailHint = computed(() => {
+    switch (this.store.resident()?.accessStatus) {
+      case 'active':
+      case 'inactive':
+        return EMAIL_LOCKED_MESSAGE;
+      case 'invited':
+        return INVITED_EMAIL_HINT;
+      default:
+        return CREATE_EMAIL_HINT;
+    }
+  });
+
+  /** Convidar lê o morador gravado, então com dados por salvar o botão espera (senão o convite iria para o e-mail antigo). */
+  protected readonly inviteBlockedReason = computed(() => {
+    const original = this.original();
+    const current = this.current();
+    return original !== null && current !== null && residentChanged(original, current)
+      ? UNSAVED_MESSAGE
+      : null;
+  });
 
   protected readonly createdUnit = computed(() => {
     const occupancy = this.store.created()?.occupancies[0];
@@ -201,6 +231,25 @@ export class ResidentFormPage implements OnInit {
     }
   }
 
+  /** O convite saiu: o morador ganhou a conta, então lê de novo (acesso e versão) sem apagar o que a pessoa já digitou. */
+  protected async onInvited(): Promise<void> {
+    const id = this.id();
+    if (id === undefined) {
+      return;
+    }
+    const before = this.current();
+    await this.store.refreshResident(id);
+    const fresh = this.store.resident();
+    if (fresh === null) {
+      return;
+    }
+    if (this.current() === before) {
+      this.fill(fresh);
+    } else {
+      this.applyEmailLock(fresh);
+    }
+  }
+
   protected changeCpf(): void {
     this.changingCpf.set(true);
     this.form.controls.cpf.enable();
@@ -257,7 +306,19 @@ export class ResidentFormPage implements OnInit {
   private fill(resident: Resident): void {
     this.stopChangingCpf();
     this.form.reset(toResidentFormValue(resident), { emitEvent: false });
+    this.applyEmailLock(resident);
     this.current.set(this.form.getRawValue());
+  }
+
+  /** Depois que o morador cria a senha o e-mail é o login dele e não muda mais; o valor continua indo na gravação. */
+  private applyEmailLock(resident: Resident): void {
+    const locked = resident.accessStatus === 'active' || resident.accessStatus === 'inactive';
+    const email = this.form.controls.email;
+    if (locked) {
+      email.disable({ emitEvent: false });
+    } else {
+      email.enable({ emitEvent: false });
+    }
   }
 
   private stopChangingCpf(): void {

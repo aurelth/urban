@@ -1,5 +1,11 @@
 export type OccupancyKind = 'owner' | 'tenant';
 
+/**
+ * Situação do acesso do morador ao sistema: sem convite, convite enviado (a senha ainda não foi escolhida: o e-mail ainda se
+ * corrige), acesso ativo ou desativado (conta desativada, suspensa ou excluída).
+ */
+export type ResidentAccessStatus = 'none' | 'invited' | 'active' | 'inactive';
+
 export type ResidentStatusFilter = 'active' | 'former' | 'all';
 
 export interface EmergencyContact {
@@ -29,6 +35,7 @@ export interface Resident {
   readonly email: string | null;
   readonly profession: string | null;
   readonly emergencyContact: EmergencyContact | null;
+  readonly accessStatus: ResidentAccessStatus;
   readonly occupancies: readonly ResidentOccupancy[];
   readonly version: string;
 }
