@@ -193,6 +193,50 @@ public sealed class UserAccountsTests(PostgresFixture postgres)
         untouched.DisplayName.Should().BeNull();
     }
 
+    [Fact]
+    public async Task ListStatuses_returns_the_status_of_the_residents_of_that_condominium_only()
+    {
+        Guid condominium = Guid.CreateVersion7();
+        User invited = await SeedAsync(AccountStatus.PendingVerification, UserRole.Resident, condominium);
+        User active = await SeedAsync(AccountStatus.Active, UserRole.Resident, condominium);
+        User deactivated = await SeedAsync(AccountStatus.Deactivated, UserRole.Resident, condominium);
+        User ofAnotherCondominium = await SeedAsync(AccountStatus.Active, UserRole.Resident, Guid.CreateVersion7());
+        User manager = await SeedAsync(AccountStatus.Active, UserRole.Manager, condominium);
+        Guid[] asked = [invited.Id, active.Id, deactivated.Id, ofAnotherCondominium.Id, manager.Id, Guid.CreateVersion7()];
+
+        IReadOnlyDictionary<Guid, AccountStatus> statuses = await ListStatusesAsync(condominium, asked);
+
+        statuses.Should().Equal(new Dictionary<Guid, AccountStatus>
+        {
+            [invited.Id] = AccountStatus.PendingVerification,
+            [active.Id] = AccountStatus.Active,
+            [deactivated.Id] = AccountStatus.Deactivated,
+        });
+    }
+
+    [Fact]
+    public async Task ListStatuses_with_no_ids_returns_empty()
+    {
+        (await ListStatusesAsync(Guid.CreateVersion7(), [])).Should().BeEmpty();
+    }
+
+    private async Task<User> SeedAsync(AccountStatus status, UserRole role, Guid condominiumId)
+    {
+        User user = UserBuilder.InStatus(status, role, $"{Guid.NewGuid():N}@example.com", condominiumId);
+        await using IdentityDbContext db = postgres.CreateContext();
+        db.Users.Add(user);
+        await db.SaveChangesAsync(Ct);
+
+        return user;
+    }
+
+    private async Task<IReadOnlyDictionary<Guid, AccountStatus>> ListStatusesAsync(Guid condominiumId, IReadOnlyCollection<Guid> ids)
+    {
+        await using IdentityDbContext db = postgres.CreateContext();
+
+        return await new UserAccounts(db, PostgresFixture.Hasher, _clock).ListStatusesAsync(condominiumId, ids, Ct);
+    }
+
     private static SpyPasswordHasher Spy() => new(PostgresFixture.Hasher);
 
     private async Task<Result<User>> CheckAsync(string email, string password, SpyPasswordHasher? hasher = null)

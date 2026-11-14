@@ -4,13 +4,20 @@ import { MANAGER, stubSignedIn } from '../support/session';
 import { stubUnits } from '../support/unidades';
 import {
   CURRENT_RESIDENT,
+  MINOR_BIRTH_YEAR,
+  MINOR_RESIDENT,
   NEW_RESIDENT_PATH,
   RESIDENTS_PATH,
   editResidentPath,
+  fillMinorTexts,
   fillResidentTexts,
   stubResidentCreateRejected,
+  stubInvitation,
+  stubInvitationRejected,
+  stubResident,
   stubResidentCreated,
   stubResidentDetail,
+  stubResidentDetailInvitedLater,
   stubResidentUpdateRejected,
   stubResidentUpdated,
   stubResidents,
@@ -61,6 +68,87 @@ describe('Formulário de morador', () => {
       cy.get('[data-testid="created"]').should('contain.text', 'Morador cadastrado');
       cy.get('[data-testid="created"]').should('contain.text', 'Bloco A · 101');
       cy.get('[data-testid="residents-link"]').should('have.attr', 'href', RESIDENTS_PATH);
+    });
+
+    it('cadastra um dependente menor de idade sem profissão nem contato de emergência', () => {
+      stubResidentCreated(MINOR_RESIDENT);
+      cy.visit(NEW_RESIDENT_PATH);
+
+      fillMinorTexts();
+      cy.get('[data-testid="minor-note"]').should(
+        'contain.text',
+        'Para menores de 18 anos, profissão e contato de emergência são opcionais',
+      );
+      chooseMenu('[formControlName="unitId"]', 'Bloco A · 101');
+      chooseMenu('[formControlName="kind"]', 'Dependente');
+      cy.contains('button[type="submit"]', 'Cadastrar morador').click();
+
+      cy.wait('@createResident')
+        .its('request.body')
+        .should('deep.equal', {
+          fullName: 'Pedro Souza',
+          cpf: '52998224725',
+          birthDate: `${MINOR_BIRTH_YEAR}-04-10`,
+          phone: '47998765432',
+          email: null,
+          profession: null,
+          emergencyContact: null,
+          unitId: '0199aaaa-0000-7000-8000-000000000001',
+          kind: 'dependent',
+          startDate: '2024-03-01',
+        });
+      cy.get('[data-testid="created"]').should('contain.text', 'Pedro Souza');
+    });
+
+    it('não deixa o menor de idade ser inquilino: avisa e não chama a API', () => {
+      stubResidentCreated(MINOR_RESIDENT);
+      cy.visit(NEW_RESIDENT_PATH);
+
+      fillMinorTexts();
+      chooseMenu('[formControlName="unitId"]', 'Bloco A · 101');
+      chooseMenu('[formControlName="kind"]', 'Inquilino');
+      cy.contains('button[type="submit"]', 'Cadastrar morador').click();
+
+      cy.contains('mat-error', 'Quem tem menos de 18 anos só pode ser dependente').should(
+        'be.visible',
+      );
+      cy.get('@createResident.all').should('have.length', 0);
+    });
+
+    it('o adulto continua precisando de profissão e contato, mesmo como dependente', () => {
+      stubResidentCreated();
+      cy.visit(NEW_RESIDENT_PATH);
+
+      typeInto('fullName', 'Maria Souza');
+      typeInto('cpf', '52998224725');
+      typeInto('birthDate', '20051990');
+      typeInto('phone', '47998765432');
+      typeInto('startDate', '01032024');
+      chooseMenu('[formControlName="unitId"]', 'Bloco A · 101');
+      chooseMenu('[formControlName="kind"]', 'Dependente');
+      cy.contains('button[type="submit"]', 'Cadastrar morador').click();
+
+      cy.contains('mat-error', 'Informe a profissão').should('be.visible');
+      cy.contains('mat-error', 'Informe o nome do contato').should('be.visible');
+      cy.get('@createResident.all').should('have.length', 0);
+    });
+
+    it('mostra o menor de idade já cadastrado, sem profissão e contato, e salva sem exigi-los', () => {
+      stubResidentDetail(MINOR_RESIDENT);
+      stubResidentUpdated(MINOR_RESIDENT, { phone: '47991112222' });
+      cy.visit(editResidentPath(MINOR_RESIDENT.id));
+
+      cy.get('[formControlName="profession"]').should('have.value', '');
+      cy.get('[data-testid="minor-note"]').should('be.visible');
+      typeInto('phone', '47991112222');
+      cy.contains('button[type="submit"]', 'Salvar alterações').click();
+
+      cy.wait('@updateResident').its('request.body').should('include', {
+        phone: '47991112222',
+        profession: null,
+        emergencyContact: null,
+      });
+      cy.get('[data-testid="saved"]').should('contain.text', 'Dados salvos');
     });
 
     it('mostra o que falta quando se envia vazio e não chama a API', () => {
@@ -165,6 +253,96 @@ describe('Formulário de morador', () => {
     });
   });
 
+  describe('acesso ao sistema', () => {
+    it('convida pela edição: o cartão passa a "Convite enviado" e o salvamento seguinte usa a versão nova', () => {
+      stubResidentDetailInvitedLater(CURRENT_RESIDENT);
+      stubInvitation(CURRENT_RESIDENT);
+      stubResidentUpdated({ ...CURRENT_RESIDENT, version: '8' }, { profession: 'Médica' });
+      cy.visit(editResidentPath(CURRENT_RESIDENT.id));
+
+      cy.get('[data-testid="access-card"]').should('contain.text', 'Acesso ao sistema');
+      cy.get('[data-testid="invite"]').click();
+
+      cy.wait('@invite');
+      cy.get('[data-testid="access-status"]').should('contain.text', 'Convite enviado');
+      cy.get('[data-testid="access-notice"]').should(
+        'contain.text',
+        'Convite enviado para ana@exemplo.com',
+      );
+      cy.get('[data-testid="resend-invite"]').should('be.visible');
+
+      typeInto('profession', 'Médica');
+      cy.contains('button[type="submit"]', 'Salvar alterações').click();
+      cy.wait('@updateResident').its('request.body.version').should('eq', '8');
+    });
+
+    it('com alteração por salvar, pede para salvar antes de convidar', () => {
+      stubResidentDetail();
+      cy.visit(editResidentPath(CURRENT_RESIDENT.id));
+
+      typeInto('profession', 'Médica');
+
+      cy.get('[data-testid="access-blocked"]').should(
+        'contain.text',
+        'Salve ou descarte as alterações antes de convidar',
+      );
+      cy.get('[data-testid="invite"]').should('be.disabled');
+    });
+
+    it('mostra o motivo quando a API recusa o convite', () => {
+      stubResidentDetail();
+      stubInvitationRejected(CURRENT_RESIDENT, 409, 'identity.resident_access.email_unavailable');
+      cy.visit(editResidentPath(CURRENT_RESIDENT.id));
+
+      cy.get('[data-testid="invite"]').click();
+
+      cy.get('[data-testid="access-error"]').should('contain.text', 'já tem uma conta');
+      cy.get('[data-testid="access-status"]').should('contain.text', 'Sem acesso');
+    });
+
+    it('com acesso ativo, trava o e-mail e explica por quê', () => {
+      stubResidentDetail(stubResident({ accessStatus: 'active' }));
+      cy.visit(editResidentPath(CURRENT_RESIDENT.id));
+
+      cy.get('[data-testid="access-status"]').should('contain.text', 'Acesso ativo');
+      cy.get('[formControlName="email"]').should('be.disabled');
+      cy.contains('mat-hint', 'não pode ser alterado depois que o morador cria a senha').should(
+        'be.visible',
+      );
+      cy.get('[data-testid="invite"], [data-testid="resend-invite"]').should('not.exist');
+    });
+
+    it('com convite enviado, ainda deixa corrigir o e-mail e oferece reenviar', () => {
+      stubResidentDetail(stubResident({ accessStatus: 'invited' }));
+      stubResidentUpdated(stubResident({ accessStatus: 'invited' }), {
+        email: 'ana.certa@exemplo.com',
+      });
+      cy.visit(editResidentPath(CURRENT_RESIDENT.id));
+
+      cy.get('[formControlName="email"]').should('not.be.disabled');
+      typeInto('email', 'ana.certa@exemplo.com');
+      cy.contains('button[type="submit"]', 'Salvar alterações').click();
+
+      cy.wait('@updateResident').its('request.body.email').should('eq', 'ana.certa@exemplo.com');
+      cy.get('[data-testid="resend-invite"]').should('be.visible');
+    });
+
+    it('e-mail travado na API aparece como aviso do formulário', () => {
+      stubResidentDetail(stubResident({ accessStatus: 'invited' }));
+      stubResidentUpdateRejected(
+        stubResident({ accessStatus: 'invited' }),
+        409,
+        'condominium.resident.email_locked',
+      );
+      cy.visit(editResidentPath(CURRENT_RESIDENT.id));
+
+      typeInto('email', 'outro@exemplo.com');
+      cy.contains('button[type="submit"]', 'Salvar alterações').click();
+
+      cy.get('[role="alert"]').should('contain.text', 'não pode ser alterado');
+    });
+  });
+
   describe('no celular', () => {
     it('o cadastro cabe na tela, sem rolagem horizontal', () => {
       cy.viewport(PHONE.width, PHONE.height);
@@ -176,12 +354,24 @@ describe('Formulário de morador', () => {
       });
     });
 
-    it('a edição cabe na tela, sem rolagem horizontal', () => {
+    it('o cadastro de um menor de idade, com o aviso, cabe na tela sem rolagem horizontal', () => {
+      cy.viewport(PHONE.width, PHONE.height);
+      cy.visit(NEW_RESIDENT_PATH);
+
+      typeInto('birthDate', `1004${MINOR_BIRTH_YEAR}`);
+      cy.get('[data-testid="minor-note"]').should('be.visible');
+      cy.document().should((doc) => {
+        expect(doc.documentElement.scrollWidth).to.be.at.most(doc.documentElement.clientWidth);
+      });
+    });
+
+    it('a edição cabe na tela, sem rolagem horizontal, com o cartão de acesso', () => {
       stubResidentDetail();
       cy.viewport(PHONE.width, PHONE.height);
       cy.visit(editResidentPath(CURRENT_RESIDENT.id));
 
       cy.get('[formControlName="fullName"]').should('be.visible');
+      cy.get('[data-testid="access-card"]').scrollIntoView().should('be.visible');
       cy.document().should((doc) => {
         expect(doc.documentElement.scrollWidth).to.be.at.most(doc.documentElement.clientWidth);
       });

@@ -91,6 +91,9 @@ describe('ConfirmEmailPage', () => {
     expect(html.querySelector('h1')?.textContent?.trim()).toBe('Link incompleto');
     expect(html.querySelector('form')).toBeNull();
     expect(html.querySelector('a[href="/cadastrar"]')?.textContent).toContain('novo cadastro');
+    expect(html.querySelector('[role="alert"]')?.textContent).toContain(
+      'peça ao síndico que reenvie o convite',
+    );
   });
 
   it('com token, mostra o formulario e busca a versao vigente dos termos', async () => {
@@ -170,10 +173,13 @@ describe('ConfirmEmailPage', () => {
   });
 
   it.each([
-    ['identity.email_verification.invalid', 'Link inválido ou já usado. Faça o cadastro novamente'],
+    [
+      'identity.email_verification.invalid',
+      'Link inválido ou já usado. Se você foi convidado pelo síndico, peça que ele reenvie o convite. Se está se cadastrando, faça o cadastro novamente',
+    ],
     [
       'identity.email_verification.expired',
-      'Link expirado. Faça o cadastro novamente para receber outro',
+      'Link expirado. Se você foi convidado pelo síndico, peça que ele reenvie o convite. Se está se cadastrando, faça o cadastro novamente',
     ],
   ])('troca o formulario por novo cadastro quando a API diz %s', async (code, message) => {
     const harness = await open();

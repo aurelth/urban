@@ -17,7 +17,7 @@ describe('navGroupsFor', () => {
     ]);
     expect(groups.map((group) => group.items.map((item) => item.id))).toEqual([
       ['dashboard'],
-      ['units', 'residents'],
+      ['units', 'residents', 'vehicles'],
       ['expenses', 'tariffs', 'readings', 'entries'],
     ]);
   });
@@ -29,6 +29,7 @@ describe('navGroupsFor', () => {
       ['Painel', '/dashboard', 'dashboard'],
       ['Unidades', '/unidades', 'home_work'],
       ['Moradores', '/moradores', 'groups'],
+      ['Veículos', '/veiculos', 'directions_car'],
       ['Despesas', '/financeiro/despesas', 'receipt_long'],
       ['Tarifas', '/financeiro/tarifas', 'price_change'],
       ['Leituras', '/financeiro/leituras', 'water_drop'],

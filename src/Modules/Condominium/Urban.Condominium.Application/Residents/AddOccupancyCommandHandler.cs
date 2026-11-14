@@ -14,7 +14,7 @@ namespace Urban.Condominium.Application.Residents;
 /// memória dá a resposta rápida e o índice único do banco resiste a dois pedidos ao mesmo tempo); quem já saiu pode voltar.
 /// Depois de gravar, devolve o morador como o banco o lê, já com o vínculo novo.
 /// </summary>
-public sealed class AddOccupancyCommandHandler(IResidents residents, IUnits units, ITenantContext tenant, IClock clock)
+public sealed class AddOccupancyCommandHandler(IResidents residents, IUnits units, ITenantContext tenant, IClock clock, ResidentViews views)
     : IRequestHandler<AddOccupancyCommand, Result<ResidentView>>
 {
     public async Task<Result<ResidentView>> Handle(AddOccupancyCommand request, CancellationToken cancellationToken)
@@ -54,6 +54,11 @@ public sealed class AddOccupancyCommandHandler(IResidents residents, IUnits unit
             return Result.Failure<ResidentView>(occupancy.Error);
         }
 
+        if (ResidentData.BreaksMinorRule(record.Person.BirthDate.IsMinorOn(BrazilCalendar.Today(now)), request.Kind))
+        {
+            return Result.Failure<ResidentView>(ResidentErrors.UnderAge);
+        }
+
         ChangeLogEntry entry = new(condominiumId, request.ActorUserId, ChangeKind.Resident, ["occupancy"], now, record.Person.Id);
         Result added = await residents.AddOccupancyAsync(occupancy.Value, entry, cancellationToken);
         if (added.IsFailure)
@@ -65,6 +70,6 @@ public sealed class AddOccupancyCommandHandler(IResidents residents, IUnits unit
 
         return reloaded is null
             ? Result.Failure<ResidentView>(ResidentErrors.NotFound)
-            : Result.Success(ResidentView.From(reloaded));
+            : Result.Success(await views.ViewAsync(reloaded, cancellationToken));
     }
 }

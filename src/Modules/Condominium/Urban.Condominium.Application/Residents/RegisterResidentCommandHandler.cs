@@ -10,11 +10,11 @@ using Urban.SharedKernel.Abstractions;
 namespace Urban.Condominium.Application.Residents;
 
 /// <summary>
-/// Cadastra um morador adulto com o primeiro vínculo, no condomínio da requisição. Valida tudo em memória antes de falar com o
+/// Cadastra um morador com o primeiro vínculo, no condomínio da requisição. Valida tudo em memória antes de falar com o
 /// banco (vale o primeiro erro, cujo código diz o campo); só então confere a unidade. O CPF repetido é decidido na gravação,
-/// pelo índice único, que resiste a dois cadastros ao mesmo tempo. Cadastrar não cria conta nem manda e-mail: o acesso é o convite.
+/// pelo índice único, que resiste a dois cadastros ao mesmo tempo. Menor de 18 anos só entra como dependente. Cadastrar não cria conta nem manda e-mail: o acesso é o convite.
 /// </summary>
-public sealed class RegisterResidentCommandHandler(IResidents residents, IUnits units, ITenantContext tenant, IClock clock)
+public sealed class RegisterResidentCommandHandler(IResidents residents, IUnits units, ITenantContext tenant, IClock clock, ResidentViews views)
     : IRequestHandler<RegisterResidentCommand, Result<ResidentView>>
 {
     public async Task<Result<ResidentView>> Handle(RegisterResidentCommand request, CancellationToken cancellationToken)
@@ -47,7 +47,7 @@ public sealed class RegisterResidentCommandHandler(IResidents residents, IUnits 
 
         ResidentRecord record = new(person, [new ResidentOccupancy(built.Value.Occupancy, unit.Value.Block, unit.Value.Number)], saved.Value);
 
-        return Result.Success(ResidentView.From(record));
+        return Result.Success(await views.ViewAsync(record, cancellationToken));
     }
 
     private static Result<Registration> Build(RegisterResidentCommand request, Guid condominiumId, DateTimeOffset now)
@@ -69,9 +69,13 @@ public sealed class RegisterResidentCommandHandler(IResidents residents, IUnits 
         }
 
         Result<Occupancy> occupancy = Occupancy.Start(condominiumId, person.Value.Id, request.UnitId, request.Kind, request.StartDate, today, now);
+        if (occupancy.IsFailure)
+        {
+            return Result.Failure<Registration>(occupancy.Error);
+        }
 
-        return occupancy.IsFailure
-            ? Result.Failure<Registration>(occupancy.Error)
+        return ResidentData.BreaksMinorRule(data.Value.IsMinor, request.Kind)
+            ? Result.Failure<Registration>(ResidentErrors.UnderAge)
             : Result.Success(new Registration(person.Value, occupancy.Value));
     }
 
@@ -98,8 +102,16 @@ public sealed class RegisterResidentCommandHandler(IResidents residents, IUnits 
             fields.Add("email");
         }
 
-        fields.Add("profession");
-        fields.Add("emergencyContact");
+        if (person.Profession is not null)
+        {
+            fields.Add("profession");
+        }
+
+        if (person.EmergencyContact is not null)
+        {
+            fields.Add("emergencyContact");
+        }
+
         fields.Add("occupancy");
 
         return fields;

@@ -1,10 +1,12 @@
 using Moq;
 using Urban.Condominium.Application.Abstractions;
+using Urban.Condominium.Application.Residents;
 using Urban.Condominium.Domain.Occupancies;
 using Urban.Condominium.Domain.People;
 using Urban.Condominium.Domain.Units;
 using Urban.SharedKernel;
 using Urban.SharedKernel.Abstractions;
+using Urban.SharedKernel.Contracts;
 using Urban.TestSupport.Condominium;
 
 namespace Urban.UnitTests.Condominium.Application.Residents;
@@ -25,6 +27,15 @@ internal sealed class ResidentsTestKit
 
     public Mock<IClock> Clock { get; } = new();
 
+    /// <summary>O contrato do Identity: por padrão devolve a situação de cada conta registrada em <see cref="AccessStatuses"/> e ignora as outras.</summary>
+    public Mock<IResidentAccess> Access { get; } = new();
+
+    public Dictionary<Guid, ResidentAccessStatus> AccessStatuses { get; } = [];
+
+    public ResidentViews Views { get; }
+
+    public RecordingAtomicWork Atomic { get; } = new();
+
     public ITenantContext Tenant { get; private set; }
 
     public CondominiumUnit Unit { get; }
@@ -44,6 +55,11 @@ internal sealed class ResidentsTestKit
     public ResidentsTestKit()
     {
         Tenant = new FixedTenant(CondominiumId);
+        Views = new ResidentViews(Access.Object);
+        Access
+            .Setup(a => a.GetStatusesAsync(It.IsAny<Guid>(), It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid _, IReadOnlyCollection<Guid> ids, CancellationToken _) =>
+                (IReadOnlyDictionary<Guid, ResidentAccessStatus>)ids.Where(AccessStatuses.ContainsKey).ToDictionary(id => id, id => AccessStatuses[id]));
         Clock.SetupGet(c => c.UtcNow).Returns(Now);
 
         Unit = UnitBuilders.Unit(CondominiumId, "Bloco A", "101");
@@ -106,6 +122,16 @@ internal sealed class ResidentsTestKit
         Occupancy occupancy = ResidentBuilders.Occupancy(resident, Unit.Id, kind, new DateOnly(2024, 3, 1));
 
         return Existing(resident, new ResidentOccupancy(occupancy, Unit.Block, Unit.Number));
+    }
+
+    /// <summary>Dá à pessoa uma conta de acesso na situação pedida, como o convite faria.</summary>
+    public Person WithAccount(Person person, ResidentAccessStatus status)
+    {
+        Guid userId = Guid.CreateVersion7();
+        person.AttachUser(userId);
+        AccessStatuses[userId] = status;
+
+        return person;
     }
 
     public Person NewResident(string name = "Maria Souza", string? email = "maria@exemplo.com") =>

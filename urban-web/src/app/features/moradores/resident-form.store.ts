@@ -10,6 +10,7 @@ import {
   ResidentPayload,
   UpdateResidentPayload,
 } from '../../core/residents/residents.models';
+import { fetchActiveUnits } from '../../core/units/active-units';
 import { UnitsApi } from '../../core/units/units.api';
 import { Unit } from '../../core/units/units.models';
 
@@ -28,8 +29,6 @@ export const CONCURRENCY_CONFLICT = 'concurrency.conflict';
 const NOT_FOUND_STATUS = 404;
 const CONFLICT_STATUS = 409;
 const RESIDENT_NOT_FOUND = 'condominium.resident.not_found';
-/** O maior tamanho de página que a API de unidades aceita. */
-const UNITS_PAGE_SIZE = 200;
 
 /** As unidades de quem edita um morador só são buscadas quando a pessoa vai adicionar um vínculo. */
 export type UnitsStatus = 'idle' | 'loading' | 'ready' | 'error';
@@ -60,27 +59,6 @@ export const ResidentFormStore = signalStore(
   withMethods((store) => {
     const residents = inject(ResidentsApi);
     const unitsApi = inject(UnitsApi);
-
-    /** As unidades ativas, página a página (a API entrega até 200 por vez), até juntar todas. */
-    const fetchActiveUnits = async (): Promise<Unit[]> => {
-      const units: Unit[] = [];
-      for (let page = 1; ; page++) {
-        const result = await firstValueFrom(
-          unitsApi.list({
-            status: 'active',
-            type: null,
-            block: '',
-            search: '',
-            page,
-            pageSize: UNITS_PAGE_SIZE,
-          }),
-        );
-        units.push(...result.items);
-        if (result.items.length === 0 || units.length >= result.total) {
-          return units;
-        }
-      }
-    };
 
     /** Grava, guarda o que a API devolver com `keep` e devolve o problema (ou nulo) para a tela explicar. */
     const save = async (
@@ -132,7 +110,7 @@ export const ResidentFormStore = signalStore(
       loadForCreate: async (): Promise<void> => {
         patchState(store, { status: 'loading' });
         try {
-          patchState(store, { status: 'ready', units: await fetchActiveUnits() });
+          patchState(store, { status: 'ready', units: await fetchActiveUnits(unitsApi) });
         } catch {
           patchState(store, { status: 'error' });
         }
@@ -158,7 +136,7 @@ export const ResidentFormStore = signalStore(
         }
         patchState(store, { unitsStatus: 'loading' });
         try {
-          patchState(store, { unitsStatus: 'ready', units: await fetchActiveUnits() });
+          patchState(store, { unitsStatus: 'ready', units: await fetchActiveUnits(unitsApi) });
         } catch {
           patchState(store, { unitsStatus: 'error' });
         }
@@ -175,6 +153,19 @@ export const ResidentFormStore = signalStore(
       refreshOccupancies: async (id: string): Promise<void> => {
         try {
           keepOccupancies(await firstValueFrom(residents.get(id)));
+        } catch (error) {
+          if (isResidentNotFound(toApiProblem(error))) {
+            patchState(store, { status: 'not-found' });
+          }
+        }
+      },
+      /**
+       * Lê o morador de novo sem passar por "loading" (o formulário continua na tela). Depois do convite a pessoa ganha a conta,
+       * então o acesso e a versão mudam; falha que não é 404 é ignorada (a próxima gravação recusa a versão velha).
+       */
+      refreshResident: async (id: string): Promise<void> => {
+        try {
+          patchState(store, { resident: await firstValueFrom(residents.get(id)) });
         } catch (error) {
           if (isResidentNotFound(toApiProblem(error))) {
             patchState(store, { status: 'not-found' });

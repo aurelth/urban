@@ -17,7 +17,7 @@ import { RouterLink } from '@angular/router';
 import { ApiProblem } from '../../core/http/api-problem';
 import { describeProblem } from '../../core/http/problem-message';
 import { OccupancyKind, Resident } from '../../core/residents/residents.models';
-import { birthDate } from '../../shared/forms/birth-date.validator';
+import { birthDate, isMinorBirth } from '../../shared/forms/birth-date.validator';
 import { cpfNumber } from '../../shared/forms/cpf.validator';
 import { emailFormat } from '../../shared/forms/email.validator';
 import { focusFirstInvalidInput } from '../../shared/forms/focus-first-invalid';
@@ -30,6 +30,7 @@ import { SelectField, SelectOption } from '../../shared/ui/select-field/select.f
 import { TextField } from '../../shared/ui/text-field/text.field';
 import { unitLabel } from '../units/unit-values';
 import { entryDate } from './resident-field.validators';
+import { minorKind, unlessMinor } from './resident-minor';
 import {
   ResidentFormValue,
   residentChanged,
@@ -37,11 +38,18 @@ import {
   toResidentFormValue,
   toUpdatePayload,
 } from './resident-form.payload';
-import { RESIDENT_FORM_MESSAGES } from './resident-form.messages';
+import { ResidentAccess } from './resident-access';
+import { EMAIL_LOCKED_MESSAGE, RESIDENT_FORM_MESSAGES } from './resident-form.messages';
 import { ResidentFormStore } from './resident-form.store';
 import { HOUSING_ERRORS, KIND_OPTIONS } from './resident-housing.fields';
 import { ResidentOccupancies } from './resident-occupancies';
 import { occupancyUnit } from './resident-values';
+
+const CREATE_EMAIL_HINT =
+  'Opcional. Sem e-mail o morador fica cadastrado, mas não pode ser convidado a acessar o sistema';
+const INVITED_EMAIL_HINT =
+  'O convite já foi enviado a este endereço. Para corrigi-lo, salve e use Reenviar convite';
+const UNSAVED_MESSAGE = 'Salve ou descarte as alterações antes de convidar';
 
 const PROFESSION_LENGTH = { min: 2, max: 80 };
 const RELATIONSHIP_LENGTH = { min: 2, max: 40 };
@@ -65,6 +73,7 @@ const RELATIONSHIP_LENGTH = { min: 2, max: 40 };
     TextField,
     SelectField,
     FormSubmit,
+    ResidentAccess,
     ResidentOccupancies,
   ],
   templateUrl: './resident-form.page.html',
@@ -80,23 +89,59 @@ export class ResidentFormPage implements OnInit {
   private readonly builder = inject(NonNullableFormBuilder);
   private readonly changeDetector = inject(ChangeDetectorRef);
 
+  /** Quem tem menos de 18 anos é dependente e fica dispensado de profissão e de contato de emergência. */
+  protected readonly isMinor = signal(false);
+
   protected readonly form = this.builder.group({
     fullName: ['', [requiredText, fullName]],
     // Na edição fica desabilitado (fora da validação) até a pessoa pedir para trocar o CPF.
     cpf: ['', [Validators.required, cpfNumber]],
-    birthDate: ['', [Validators.required, birthDate()]],
+    birthDate: ['', [Validators.required, birthDate(undefined, { allowMinor: true })]],
     phone: ['', [Validators.required, brazilianPhone]],
     email: ['', [emailFormat]],
-    profession: ['', [requiredText, trimmedLength(PROFESSION_LENGTH.min, PROFESSION_LENGTH.max)]],
-    contactName: ['', [requiredText, fullName]],
+    profession: [
+      '',
+      [
+        unlessMinor(
+          () => this.isMinor(),
+          Validators.compose([
+            requiredText,
+            trimmedLength(PROFESSION_LENGTH.min, PROFESSION_LENGTH.max),
+          ])!,
+        ),
+      ],
+    ],
+    contactName: [
+      '',
+      [unlessMinor(() => this.contactMayBeBlank(), Validators.compose([requiredText, fullName])!)],
+    ],
     contactRelationship: [
       '',
-      [requiredText, trimmedLength(RELATIONSHIP_LENGTH.min, RELATIONSHIP_LENGTH.max)],
+      [
+        unlessMinor(
+          () => this.contactMayBeBlank(),
+          Validators.compose([
+            requiredText,
+            trimmedLength(RELATIONSHIP_LENGTH.min, RELATIONSHIP_LENGTH.max),
+          ])!,
+        ),
+      ],
     ],
-    contactPhone: ['', [Validators.required, brazilianPhone]],
+    contactPhone: [
+      '',
+      [
+        unlessMinor(
+          () => this.contactMayBeBlank(),
+          Validators.compose([Validators.required, brazilianPhone])!,
+        ),
+      ],
+    ],
     // Os três últimos só valem no cadastro: na edição ficam desabilitados.
     unitId: ['', [Validators.required]],
-    kind: this.builder.control<OccupancyKind | ''>('', [Validators.required]),
+    kind: this.builder.control<OccupancyKind | ''>('', [
+      Validators.required,
+      minorKind(() => this.isMinor()),
+    ]),
     startDate: ['', [Validators.required, entryDate()]],
   });
 
@@ -132,6 +177,28 @@ export class ResidentFormPage implements OnInit {
   });
   protected readonly busy = computed(() => this.store.status() === 'saving');
 
+  /** A dica do e-mail segue o acesso: livre sem convite, corrigível com o convite enviado e travado depois da senha. */
+  protected readonly emailHint = computed(() => {
+    switch (this.store.resident()?.accessStatus) {
+      case 'active':
+      case 'inactive':
+        return EMAIL_LOCKED_MESSAGE;
+      case 'invited':
+        return INVITED_EMAIL_HINT;
+      default:
+        return CREATE_EMAIL_HINT;
+    }
+  });
+
+  /** Convidar lê o morador gravado, então com dados por salvar o botão espera (senão o convite iria para o e-mail antigo). */
+  protected readonly inviteBlockedReason = computed(() => {
+    const original = this.original();
+    const current = this.current();
+    return original !== null && current !== null && residentChanged(original, current)
+      ? UNSAVED_MESSAGE
+      : null;
+  });
+
   protected readonly createdUnit = computed(() => {
     const occupancy = this.store.created()?.occupancies[0];
     return occupancy === undefined ? null : occupancyUnit(occupancy);
@@ -144,7 +211,6 @@ export class ResidentFormPage implements OnInit {
   protected readonly cpfErrors = { required: 'Informe o CPF', cpf: 'Informe um CPF válido' };
   protected readonly birthDateErrors = {
     required: 'Informe a data de nascimento',
-    underAge: 'O morador precisa ter 18 anos ou mais',
     date: 'Informe uma data válida, como 31/01/1980',
   };
   protected readonly phoneErrors = {
@@ -179,6 +245,7 @@ export class ResidentFormPage implements OnInit {
       this.disableCreateOnlyFields();
     }
     this.form.valueChanges.subscribe(() => {
+      this.syncMinor();
       this.current.set(this.form.getRawValue());
       this.saved.set(false);
     });
@@ -198,6 +265,25 @@ export class ResidentFormPage implements OnInit {
     const resident = this.store.resident();
     if (resident !== null) {
       this.fill(resident);
+    }
+  }
+
+  /** O convite saiu: o morador ganhou a conta, então lê de novo (acesso e versão) sem apagar o que a pessoa já digitou. */
+  protected async onInvited(): Promise<void> {
+    const id = this.id();
+    if (id === undefined) {
+      return;
+    }
+    const before = this.current();
+    await this.store.refreshResident(id);
+    const fresh = this.store.resident();
+    if (fresh === null) {
+      return;
+    }
+    if (this.current() === before) {
+      this.fill(fresh);
+    } else {
+      this.applyEmailLock(fresh);
     }
   }
 
@@ -257,7 +343,50 @@ export class ResidentFormPage implements OnInit {
   private fill(resident: Resident): void {
     this.stopChangingCpf();
     this.form.reset(toResidentFormValue(resident), { emitEvent: false });
+    this.syncMinor();
+    this.applyEmailLock(resident);
     this.current.set(this.form.getRawValue());
+  }
+
+  /** Depois que o morador cria a senha o e-mail é o login dele e não muda mais; o valor continua indo na gravação. */
+  private applyEmailLock(resident: Resident): void {
+    const locked = resident.accessStatus === 'active' || resident.accessStatus === 'inactive';
+    const email = this.form.controls.email;
+    if (locked) {
+      email.disable({ emitEvent: false });
+    } else {
+      email.enable({ emitEvent: false });
+    }
+  }
+
+  /**
+   * O menor pode deixar o contato inteiro em branco, mas quem começa a preenchê-lo precisa terminar. As regras de
+   * profissão, contato e vínculo dependem da data de nascimento e dos outros campos do contato, então são conferidas de novo
+   * a cada mudança.
+   */
+  private contactMayBeBlank(): boolean {
+    if (!this.isMinor()) {
+      return false;
+    }
+    const { contactName, contactRelationship, contactPhone } = this.form.controls;
+    return [contactName, contactRelationship, contactPhone].every(
+      (control) => control.value.trim() === '',
+    );
+  }
+
+  private syncMinor(): void {
+    const {
+      birthDate: born,
+      profession,
+      contactName,
+      contactRelationship,
+      contactPhone,
+      kind,
+    } = this.form.controls;
+    this.isMinor.set(isMinorBirth(born.value));
+    for (const control of [profession, contactName, contactRelationship, contactPhone, kind]) {
+      control.updateValueAndValidity({ emitEvent: false, onlySelf: true });
+    }
   }
 
   private stopChangingCpf(): void {

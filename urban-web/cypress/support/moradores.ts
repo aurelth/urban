@@ -5,7 +5,7 @@ export interface StubOccupancy {
   unitId: string;
   unitBlock: string | null;
   unitNumber: string;
-  kind: 'owner' | 'tenant';
+  kind: 'owner' | 'tenant' | 'dependent';
   startDate: string;
   endDate: string | null;
 }
@@ -19,6 +19,7 @@ export interface StubResident {
   email: string | null;
   profession: string | null;
   emergencyContact: { name: string; relationship: string; phone: string } | null;
+  accessStatus: 'none' | 'invited' | 'active' | 'inactive';
   occupancies: StubOccupancy[];
   version: string;
 }
@@ -33,6 +34,7 @@ export function stubResident(overrides: Partial<StubResident> = {}): StubResiden
     email: 'ana@exemplo.com',
     profession: 'Engenheira',
     emergencyContact: { name: 'Carlos Lima', relationship: 'Irmão', phone: '4733334444' },
+    accessStatus: 'none',
     occupancies: [
       {
         id: '0199cccc-0000-7000-8000-000000000001',
@@ -162,6 +164,41 @@ export function fillResidentTexts(): void {
   typeInto('startDate', '01032024');
 }
 
+/** Ano de nascimento de um dependente com 10 anos, sempre menor de idade. */
+export const MINOR_BIRTH_YEAR = new Date().getFullYear() - 10;
+
+/** Um dependente menor de idade: sem e-mail, sem profissão e sem contato de emergência. */
+export const MINOR_RESIDENT = stubResident({
+  id: '0199bbbb-0000-7000-8000-000000000003',
+  fullName: 'Pedro Souza',
+  maskedCpf: '***.222.333-**',
+  birthDate: `${MINOR_BIRTH_YEAR}-04-10`,
+  email: null,
+  profession: null,
+  emergencyContact: null,
+  occupancies: [
+    {
+      id: '0199cccc-0000-7000-8000-000000000003',
+      unitId: '0199aaaa-0000-7000-8000-000000000001',
+      unitBlock: 'A',
+      unitNumber: '101',
+      kind: 'dependent',
+      startDate: '2024-03-01',
+      endDate: null,
+    },
+  ],
+  version: '9',
+});
+
+/** Preenche os campos do cadastro de um dependente menor de idade: sem profissão e sem contato de emergência. */
+export function fillMinorTexts(): void {
+  typeInto('fullName', 'Pedro Souza');
+  typeInto('cpf', '52998224725');
+  typeInto('birthDate', `1004${MINOR_BIRTH_YEAR}`);
+  typeInto('phone', '47998765432');
+  typeInto('startDate', '01032024');
+}
+
 /** O novo vínculo que dá certo: devolve o morador com o vínculo acrescentado. */
 export function stubOccupancyAdded(resident: StubResident, added: StubOccupancy): void {
   cy.intercept('POST', `/api/residents/${resident.id}/occupancies`, {
@@ -201,4 +238,37 @@ export function stubOccupancyRejected(
   cy.intercept('POST', url, { statusCode: status, body: { status, code, detail: 'Recusado' } }).as(
     action === 'add' ? 'addOccupancy' : 'endOccupancy',
   );
+}
+
+/** O convite que a API aceita (202, sem corpo: o e-mail sai em segundo plano). */
+export function stubInvitation(resident: StubResident): void {
+  cy.intercept('POST', `/api/residents/${resident.id}/invitation`, { statusCode: 202 }).as(
+    'invite',
+  );
+}
+
+/** O convite que a API recusa, com o código do motivo. */
+export function stubInvitationRejected(resident: StubResident, status: number, code: string): void {
+  cy.intercept('POST', `/api/residents/${resident.id}/invitation`, {
+    statusCode: status,
+    body: { status, code, detail: 'Recusado' },
+  }).as('invite');
+}
+
+/**
+ * O morador da edição antes e depois do convite: a primeira leitura vem como está e as seguintes já com o acesso "convidado" e
+ * a versão seguinte (o convite grava a pessoa, então o `xmin` muda).
+ */
+export function stubResidentDetailInvitedLater(resident: StubResident): void {
+  let reads = 0;
+  cy.intercept('GET', `/api/residents/${resident.id}`, (request) => {
+    reads += 1;
+    request.reply({
+      statusCode: 200,
+      body:
+        reads === 1
+          ? resident
+          : { ...resident, accessStatus: 'invited', version: String(Number(resident.version) + 1) },
+    });
+  }).as('residentDetail');
 }

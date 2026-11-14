@@ -25,13 +25,17 @@ import { MANAGER, stubAnonymous, stubSignedIn } from '../support/session';
 import { TARIFFS_PATH, stubTariffs } from '../support/tarifas';
 import {
   CURRENT_RESIDENT,
+  MINOR_BIRTH_YEAR,
   NEW_RESIDENT_PATH,
   RESIDENTS_PATH,
   editResidentPath,
+  stubInvitation,
+  stubInvitationRejected,
   stubResidentDetail,
   stubResidents,
 } from '../support/moradores';
 import { BATCH_PATH, UNITS_PATH, stubUnits } from '../support/unidades';
+import { VEHICLES_PATH, stubVehicles } from '../support/veiculos';
 
 function closeDialog(): void {
   cy.get('.mat-mdc-dialog-container [data-testid="cancel"]').click();
@@ -166,6 +170,21 @@ SCREENS.forEach(([where, width, height]) => {
       expectBreathingRoom();
     });
 
+    it('não cola texto em container nos veículos, no diálogo e na confirmação de exclusão', () => {
+      stubSignedIn(MANAGER);
+      stubUnits();
+      stubVehicles();
+      cy.visit(VEHICLES_PATH);
+      cy.get('[data-testid="vehicles-table"]').should('be.visible');
+      expectBreathingRoom();
+      cy.get('button[aria-label="Excluir veículo ABC1D23"]').click();
+      cy.get('[data-testid="delete-confirm"]').should('be.visible');
+      expectBreathingRoom();
+      cy.get('[data-testid="cancel-delete"]').click();
+      cy.get('[data-testid="new-vehicle"]').click();
+      expectDialogBreathingRoom();
+    });
+
     it('não cola texto em container na lista de moradores', () => {
       stubSignedIn(MANAGER);
       stubResidents();
@@ -182,11 +201,42 @@ SCREENS.forEach(([where, width, height]) => {
       expectBreathingRoom();
     });
 
+    it('não cola texto em container no cadastro de dependente menor de idade, com o aviso', () => {
+      stubSignedIn(MANAGER);
+      stubUnits();
+      cy.visit(NEW_RESIDENT_PATH);
+      cy.get('[formControlName="birthDate"]').click('right').type(`1004${MINOR_BIRTH_YEAR}`);
+      cy.get('[data-testid="minor-note"]').should('be.visible');
+      expectBreathingRoom();
+    });
+
     it('não cola texto em container na edição de morador', () => {
       stubSignedIn(MANAGER);
       stubResidentDetail();
       cy.visit(editResidentPath(CURRENT_RESIDENT.id));
       cy.get('[formControlName="fullName"]').should('be.visible');
+      expectBreathingRoom();
+    });
+
+    it('não cola texto em container no cartão de acesso do morador, com o aviso do convite e com o erro', () => {
+      stubSignedIn(MANAGER);
+      stubResidentDetail();
+      stubInvitation(CURRENT_RESIDENT);
+      cy.visit(editResidentPath(CURRENT_RESIDENT.id));
+      cy.get('[data-testid="access-card"]').should('be.visible');
+      expectBreathingRoom();
+      cy.get('[data-testid="invite"]').click();
+      cy.get('[data-testid="access-notice"]').should('be.visible');
+      expectBreathingRoom();
+    });
+
+    it('não cola texto em container na lista de moradores com convite, situação e erro de convite', () => {
+      stubSignedIn(MANAGER);
+      stubResidents();
+      stubInvitationRejected(CURRENT_RESIDENT, 409, 'identity.resident_access.email_unavailable');
+      cy.visit(RESIDENTS_PATH);
+      cy.get('[data-testid="invite"]').first().click();
+      cy.get('[data-testid="access-error"]').should('be.visible');
       expectBreathingRoom();
     });
 

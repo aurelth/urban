@@ -6,7 +6,7 @@ public static class ResidentErrors
 {
     public static readonly Error NotFound = new("condominium.resident.not_found", "Morador não encontrado");
 
-    public static readonly Error UnderAge = new("condominium.resident.under_age", "O morador precisa ter 18 anos ou mais");
+    public static readonly Error UnderAge = new("condominium.resident.under_age", "Quem tem menos de 18 anos só pode ser cadastrado como dependente");
 
     public static readonly Error EmailRequiredForInvitation =
         new("condominium.resident.email_required", "Cadastre o e-mail do morador para poder convidá-lo");

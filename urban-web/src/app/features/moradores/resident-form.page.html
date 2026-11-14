@@ -94,6 +94,18 @@
         <mat-card appearance="outlined" data-testid="person-section">
           <mat-card-content class="p-6">
             <h2 class="mb-6 text-xl font-semibold">Dados pessoais</h2>
+            @if (isMinor()) {
+              <p
+                class="mb-6 flex items-start gap-2 text-on-surface-variant"
+                data-testid="minor-note"
+              >
+                <mat-icon svgIcon="info" aria-hidden="true" />
+                <span>
+                  Para menores de 18 anos, profissão e contato de emergência são opcionais. O
+                  vínculo deve ser de dependente
+                </span>
+              </p>
+            }
             <div class="grid gap-x-4 sm:grid-cols-2">
               <urban-text-field
                 class="sm:col-span-2"
@@ -116,14 +128,19 @@
                 [mask]="'phone'"
                 [errors]="phoneErrors"
               />
-              <urban-text-field name="profession" label="Profissão" [errors]="professionErrors" />
+              <urban-text-field
+                name="profession"
+                label="Profissão"
+                [optional]="isMinor()"
+                [errors]="professionErrors"
+              />
               <urban-text-field
                 class="sm:col-span-2"
                 name="email"
                 label="E-mail"
                 inputmode="email"
                 [optional]="true"
-                hint="Opcional. Sem e-mail o morador fica cadastrado, mas não pode ser convidado a acessar o sistema"
+                [hint]="emailHint()"
                 [errors]="emailErrors"
               />
             </div>
@@ -165,16 +182,19 @@
                 class="sm:col-span-2"
                 name="contactName"
                 label="Nome do contato"
+                [optional]="isMinor()"
                 [errors]="contactNameErrors"
               />
               <urban-text-field
                 name="contactRelationship"
                 label="Parentesco"
+                [optional]="isMinor()"
                 [errors]="relationshipErrors"
               />
               <urban-text-field
                 name="contactPhone"
                 label="Telefone do contato"
+                [optional]="isMinor()"
                 [mask]="'phone'"
                 [errors]="contactPhoneErrors"
               />
@@ -230,6 +250,18 @@
       </form>
 
       @if (isEditing()) {
+        <mat-card appearance="outlined" class="mt-8" data-testid="access-card">
+          <mat-card-content class="p-6">
+            <h2 class="mb-6 text-xl font-semibold">Acesso ao sistema</h2>
+            @if (store.resident(); as current) {
+              <urban-resident-access
+                [resident]="current"
+                [blockedReason]="inviteBlockedReason()"
+                (invited)="onInvited()"
+              />
+            }
+          </mat-card-content>
+        </mat-card>
         <urban-resident-occupancies />
       }
     }

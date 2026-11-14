@@ -381,6 +381,64 @@ namespace Urban.Condominium.Infrastructure.Persistence.Migrations
                     b.ToTable("unit", "condominium");
                 });
 
+            modelBuilder.Entity("Urban.Condominium.Domain.Vehicles.Vehicle", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Color")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("color");
+
+                    b.Property<Guid>("CondominiumId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("condominium_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("model");
+
+                    b.Property<string>("Plate")
+                        .IsRequired()
+                        .HasMaxLength(7)
+                        .HasColumnType("character varying(7)")
+                        .HasColumnName("plate");
+
+                    b.Property<Guid>("UnitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("unit_id");
+
+                    b.Property<uint>("xmin")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
+
+                    b.HasKey("Id")
+                        .HasName("pk_vehicle");
+
+                    b.HasIndex("UnitId")
+                        .HasDatabaseName("ix_vehicle_unit_id");
+
+                    b.HasIndex("CondominiumId", "Plate")
+                        .IsUnique()
+                        .HasDatabaseName("ix_vehicle_plate");
+
+                    b.HasIndex("CondominiumId", "UnitId")
+                        .HasDatabaseName("ix_vehicle_condominium_id_unit_id");
+
+                    b.ToTable("vehicle", "condominium");
+                });
+
             modelBuilder.Entity("Urban.Condominium.Infrastructure.Persistence.ChangeLogRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -465,6 +523,23 @@ namespace Urban.Condominium.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_unit_condominium_condominium_id");
+                });
+
+            modelBuilder.Entity("Urban.Condominium.Domain.Vehicles.Vehicle", b =>
+                {
+                    b.HasOne("Urban.Condominium.Domain.Condominiums.Condominium", null)
+                        .WithMany()
+                        .HasForeignKey("CondominiumId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_vehicle_condominium_condominium_id");
+
+                    b.HasOne("Urban.Condominium.Domain.Units.CondominiumUnit", null)
+                        .WithMany()
+                        .HasForeignKey("UnitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_vehicle_unit_unit_id");
                 });
 
             modelBuilder.Entity("Urban.Condominium.Infrastructure.Persistence.ChangeLogRecord", b =>

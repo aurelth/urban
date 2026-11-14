@@ -158,3 +158,76 @@ describe('residentChanged', () => {
     expect(residentChanged(original, { ...original, email: '' })).toBe(true);
   });
 });
+
+describe('dependente menor de idade', () => {
+  const MINOR: ResidentFormValue = {
+    ...FILLED,
+    fullName: 'Pedro Souza',
+    birthDate: '10/04/2015',
+    email: '',
+    profession: '',
+    contactName: '',
+    contactRelationship: '',
+    contactPhone: '',
+    kind: 'dependent',
+  };
+
+  it('sem profissão e sem contato de emergência manda os dois nulos no cadastro', () => {
+    const payload = toCreatePayload(MINOR);
+
+    expect(payload.profession).toBeNull();
+    expect(payload.emergencyContact).toBeNull();
+    expect(payload.kind).toBe('dependent');
+    expect(payload.email).toBeNull();
+    expect(payload.birthDate).toBe('2015-04-10');
+  });
+
+  it('sem profissão e sem contato de emergência manda os dois nulos na edição', () => {
+    const payload = toUpdatePayload(MINOR, '7');
+
+    expect(payload.profession).toBeNull();
+    expect(payload.emergencyContact).toBeNull();
+  });
+
+  it('com o contato preenchido pela metade manda o que há, para a API apontar o campo que falta', () => {
+    const payload = toCreatePayload({ ...MINOR, contactName: 'Carlos Souza' });
+
+    expect(payload.emergencyContact).toEqual({ name: 'Carlos Souza', relationship: '', phone: '' });
+  });
+
+  it('com profissão e contato preenchidos manda como o adulto', () => {
+    const payload = toCreatePayload({
+      ...MINOR,
+      profession: ' Estudante ',
+      contactName: 'Carlos Souza',
+      contactRelationship: 'Tio',
+      contactPhone: '(47) 3333-4444',
+    });
+
+    expect(payload.profession).toBe('Estudante');
+    expect(payload.emergencyContact).toEqual({
+      name: 'Carlos Souza',
+      relationship: 'Tio',
+      phone: '4733334444',
+    });
+  });
+
+  it('o morador lido sem profissão e sem contato volta ao formulário com os campos em branco', () => {
+    const value = toResidentFormValue(
+      resident({ birthDate: '2015-04-10', profession: null, emergencyContact: null }),
+    );
+
+    expect(value.profession).toBe('');
+    expect(value.contactName).toBe('');
+    expect(value.contactPhone).toBe('');
+    expect(residentChanged(value, value)).toBe(false);
+  });
+
+  it('preencher a profissão de um menor é mudança', () => {
+    const original = toResidentFormValue(
+      resident({ birthDate: '2015-04-10', profession: null, emergencyContact: null }),
+    );
+
+    expect(residentChanged(original, { ...original, profession: 'Estudante' })).toBe(true);
+  });
+});

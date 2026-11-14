@@ -1,0 +1,43 @@
+<h2 mat-dialog-title>{{ editing ? 'Editar veículo' : 'Novo veículo' }}</h2>
+<form [formGroup]="form" (ngSubmit)="confirm()" novalidate>
+  <mat-dialog-content>
+    <div class="mt-2 grid gap-x-4 sm:grid-cols-2">
+      <urban-select-field
+        name="unitId"
+        label="Unidade"
+        [options]="unitOptions"
+        [errors]="unitErrors"
+      />
+      <urban-text-field name="plate" label="Placa" mask="plate" [errors]="plateErrors" />
+      <urban-text-field name="model" label="Modelo" [errors]="modelErrors" />
+      <urban-text-field name="color" label="Cor" [errors]="colorErrors" />
+    </div>
+
+    @if (error(); as message) {
+      <p role="alert" class="mb-4 flex items-start gap-2 text-error">
+        <mat-icon svgIcon="error" aria-hidden="true" />
+        <span>{{ message }}</span>
+      </p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button
+      mat-button
+      type="button"
+      data-testid="cancel"
+      [disabled]="busy()"
+      (click)="ref.close(false)"
+    >
+      Cancelar
+    </button>
+    <button mat-flat-button type="submit" [disabled]="!canSave()">
+      @if (busy()) {
+        Salvando
+      } @else if (editing) {
+        Salvar alterações
+      } @else {
+        Cadastrar veículo
+      }
+    </button>
+  </mat-dialog-actions>
+</form>

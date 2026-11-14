@@ -15,7 +15,7 @@ public class AddOccupancyCommandHandlerTests
 {
     private readonly ResidentsTestKit _kit = new();
 
-    private AddOccupancyCommandHandler Handler() => new(_kit.Residents.Object, _kit.Units.Object, _kit.Tenant, _kit.Clock.Object);
+    private AddOccupancyCommandHandler Handler() => new(_kit.Residents.Object, _kit.Units.Object, _kit.Tenant, _kit.Clock.Object, _kit.Views);
 
     private CondominiumUnit OtherUnit()
     {
@@ -162,5 +162,47 @@ public class AddOccupancyCommandHandlerTests
         Result<ResidentView> result = await Handler().Handle(Command(record.Person.Id, OtherUnit().Id), default);
 
         result.Error.Should().Be(OccupancyErrors.AlreadyActive);
+    }
+
+    [Fact]
+    public async Task Handle_AMinorCanBeAddedToAnotherUnitOnlyAsADependent()
+    {
+        Person minor = ResidentBuilders.Minor(_kit.CondominiumId);
+        _kit.Existing(minor);
+        CondominiumUnit other = OtherUnit();
+
+        Result<ResidentView> asDependent = await Handler().Handle(Command(minor.Id, other.Id, OccupancyKind.Dependent), default);
+        Result<ResidentView> asTenant = await Handler().Handle(Command(minor.Id, other.Id, OccupancyKind.Tenant), default);
+        Result<ResidentView> asOwner = await Handler().Handle(Command(minor.Id, other.Id, OccupancyKind.Owner), default);
+
+        asDependent.IsSuccess.Should().BeTrue();
+        asTenant.Error.Should().Be(ResidentErrors.UnderAge);
+        asOwner.Error.Should().Be(ResidentErrors.UnderAge);
+        _kit.OccupanciesAdded.Should().ContainSingle().Which.Kind.Should().Be(OccupancyKind.Dependent);
+    }
+
+    [Fact]
+    public async Task Handle_AnAdultMayBeAddedAsADependent()
+    {
+        ResidentRecord record = _kit.ExistingWithActiveOccupancy();
+        CondominiumUnit other = OtherUnit();
+
+        Result<ResidentView> result = await Handler().Handle(Command(record.Person.Id, other.Id, OccupancyKind.Dependent), default);
+
+        result.IsSuccess.Should().BeTrue();
+        _kit.OccupanciesAdded.Should().ContainSingle().Which.Kind.Should().Be(OccupancyKind.Dependent);
+    }
+
+    [Fact]
+    public async Task Handle_AMinorBornOnTheLimitIsAdultInBrazilTimeAndNoLongerNeedsToBeADependent()
+    {
+        // 18 anos feitos em 13/11/2026 (hora de Brasília, 15:00 UTC = 12:00 no Brasil): já é adulto.
+        Person justAdult = ResidentBuilders.Minor(_kit.CondominiumId, birthDate: new DateOnly(2008, 11, 13));
+        _kit.Existing(justAdult);
+        CondominiumUnit other = OtherUnit();
+
+        Result<ResidentView> result = await Handler().Handle(Command(justAdult.Id, other.Id, OccupancyKind.Tenant), default);
+
+        result.IsSuccess.Should().BeTrue();
     }
 }

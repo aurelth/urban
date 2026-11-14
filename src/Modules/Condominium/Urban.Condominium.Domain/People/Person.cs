@@ -61,10 +61,10 @@ public sealed class Person
     /// <summary>E-mail de contato, opcional. É para ele que o convite vai; quem não tem e-mail fica cadastrado, sem acesso.</summary>
     public ContactEmail? Email { get; private set; }
 
-    /// <summary>Preenchida nos moradores adultos.</summary>
+    /// <summary>Preenchida nos moradores adultos; o dependente menor de idade fica sem.</summary>
     public Profession? Profession { get; private set; }
 
-    /// <summary>Preenchido nos moradores adultos.</summary>
+    /// <summary>Preenchido nos moradores adultos; o dependente menor de idade fica sem.</summary>
     public EmergencyContact? EmergencyContact { get; private set; }
 
     public DateTimeOffset CreatedAt { get; }
@@ -98,7 +98,8 @@ public sealed class Person
     }
 
     /// <summary>
-    /// Cadastra um morador adulto. A pessoa nasce sem conta (<see cref="UserId"/> nulo) e sem endereço próprio. O vínculo com
+    /// Cadastra um morador. Profissão e contato de emergência são obrigatórios para adultos e dispensados para menores de idade
+    /// (quem chama já conferiu isso, junto com o vínculo). A pessoa nasce sem conta (<see cref="UserId"/> nulo) e sem endereço próprio. O vínculo com
     /// a unidade é um <c>Occupancy</c>, criado junto.
     /// </summary>
     public static Result<Person> RegisterResident(
@@ -108,8 +109,8 @@ public sealed class Person
         BirthDate birthDate,
         PhoneNumber phone,
         ContactEmail? email,
-        Profession profession,
-        EmergencyContact emergencyContact,
+        Profession? profession,
+        EmergencyContact? emergencyContact,
         DateTimeOffset now)
     {
         if (condominiumId == Guid.Empty)
@@ -135,8 +136,8 @@ public sealed class Person
         BirthDate birthDate,
         PhoneNumber phone,
         ContactEmail? email,
-        Profession profession,
-        EmergencyContact emergencyContact)
+        Profession? profession,
+        EmergencyContact? emergencyContact)
     {
         FullName = fullName;
         Cpf = cpf;

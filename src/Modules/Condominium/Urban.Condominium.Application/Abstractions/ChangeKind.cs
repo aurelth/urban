@@ -20,4 +20,7 @@ public enum ChangeKind
 
     /// <summary>Cadastro ou edição de um morador e dos vínculos dele com as unidades.</summary>
     Resident,
+
+    /// <summary>Cadastro, edição ou exclusão de um veículo de uma unidade.</summary>
+    Vehicle,
 }

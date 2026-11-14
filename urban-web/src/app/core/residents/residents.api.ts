@@ -34,6 +34,14 @@ export class ResidentsApi {
     return this.http.put<Resident>(`${BASE}/${id}`, payload);
   }
 
+  /**
+   * Convida o morador a acessar o sistema: na primeira vez cria o acesso e, nas seguintes, reenvia o link. A API responde 202 sem
+   * corpo, porque o e-mail sai em segundo plano.
+   */
+  invite(id: string): Observable<void> {
+    return this.http.post<void>(`${BASE}/${id}/invitation`, null);
+  }
+
   /** Liga o morador a mais uma unidade; devolve o morador com todos os vínculos. */
   addOccupancy(id: string, payload: OccupancyPayload): Observable<Resident> {
     return this.http.post<Resident>(`${BASE}/${id}/occupancies`, payload);

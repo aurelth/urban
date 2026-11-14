@@ -11,31 +11,44 @@ interface CalendarDay {
 }
 
 /**
- * Data de nascimento do síndico no formato dd/mm/aaaa: `date` quando não existe, é futura ou tem
- * mais de 120 anos; `underAge` quando ainda não tem 18. Mesma regra da API. O relógio entra de
- * fora para o teste fixar o dia de hoje. Vazio fica por conta do Validators.required.
+ * Data de nascimento no formato dd/mm/aaaa: `date` quando não existe, é futura ou tem mais de 120 anos;
+ * `underAge` quando ainda não tem 18, salvo com `allowMinor` (o dependente menor de idade). Mesma regra
+ * da API. O relógio entra de fora para o teste fixar o dia de hoje. Vazio fica por conta do
+ * Validators.required.
  */
-export function birthDate(clock: () => Date = () => new Date()): ValidatorFn {
+export function birthDate(
+  clock: () => Date = () => new Date(),
+  options: { allowMinor?: boolean } = {},
+): ValidatorFn {
   return (control: AbstractControl<string>): ValidationErrors | null => {
     const value = control.value;
     if (value === '') {
       return null;
     }
     const born = parse(value);
-    if (!born) {
+    const today = calendarToday(clock);
+    if (!born || isAfter(born, today) || isAfter(shiftYears(today, -MAX_AGE), born)) {
       return { date: true };
     }
-    const now = clock();
-    const today: CalendarDay = {
-      year: now.getFullYear(),
-      month: now.getMonth() + 1,
-      day: now.getDate(),
-    };
-    if (isAfter(born, today) || isAfter(shiftYears(today, -MAX_AGE), born)) {
-      return { date: true };
-    }
-    return isAfter(eighteenthBirthday(born), today) ? { underAge: true } : null;
+    return !options.allowMinor && isAfter(eighteenthBirthday(born), today)
+      ? { underAge: true }
+      : null;
   };
+}
+
+/**
+ * Quem nasceu na data (dd/mm/aaaa) ainda não fez 18 anos? Data incompleta, que não existe ou futura não conta como menor:
+ * valem as regras do adulto até a data ficar certa.
+ */
+export function isMinorBirth(value: string, clock: () => Date = () => new Date()): boolean {
+  const born = parse(value);
+  const today = calendarToday(clock);
+  return born !== null && !isAfter(born, today) && isAfter(eighteenthBirthday(born), today);
+}
+
+function calendarToday(clock: () => Date): CalendarDay {
+  const now = clock();
+  return { year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate() };
 }
 
 function parse(text: string): CalendarDay | null {

@@ -25,6 +25,24 @@ public sealed class EmailVerifications(IdentityDbContext db) : IEmailVerificatio
         await db.SaveChangesAsync(cancellationToken);
     }
 
+    public async Task<bool> ChangePendingEmailAsync(User user, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        if (db.Entry(user).State == EntityState.Detached)
+        {
+            db.Users.Attach(user).Property(u => u.Email).IsModified = true;
+        }
+
+        List<EmailVerificationToken> open = await db.EmailVerificationTokens
+            .Where(t => t.UserId == user.Id && t.UsedAt == null)
+            .ToListAsync(cancellationToken);
+        foreach (EmailVerificationToken token in open)
+        {
+            _ = token.Consume(now);
+        }
+
+        return await db.TrySaveAsync(cancellationToken);
+    }
+
     public Task<EmailVerificationToken?> FindByHashAsync(string tokenHash, CancellationToken cancellationToken) =>
         db.EmailVerificationTokens.SingleOrDefaultAsync(t => t.TokenHash == tokenHash, cancellationToken);
 

@@ -8,7 +8,7 @@ using Urban.SharedKernel.Abstractions;
 namespace Urban.Condominium.Application.Residents;
 
 /// <summary>Os moradores do condomínio da requisição, em ordem de nome, com filtros e página. A ordem e o recorte são do banco.</summary>
-public sealed class ListResidentsQueryHandler(IResidents residents, ITenantContext tenant) : IRequestHandler<ListResidentsQuery, Result<ResidentListing>>
+public sealed class ListResidentsQueryHandler(IResidents residents, ITenantContext tenant, ResidentViews views) : IRequestHandler<ListResidentsQuery, Result<ResidentListing>>
 {
     public const int MaxPageSize = 200;
 
@@ -27,6 +27,6 @@ public sealed class ListResidentsQueryHandler(IResidents residents, ITenantConte
         ResidentFilter filter = new(string.IsNullOrWhiteSpace(request.Search) ? null : request.Search.Trim(), request.UnitId, request.Status);
         PagedResidents page = await residents.ListAsync(filter, request.Page, request.PageSize, cancellationToken);
 
-        return Result.Success(new ResidentListing([.. page.Items.Select(ResidentView.From)], page.Total, request.Page, request.PageSize));
+        return Result.Success(new ResidentListing(await views.ViewAllAsync(page.Items, cancellationToken), page.Total, request.Page, request.PageSize));
     }
 }

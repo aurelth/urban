@@ -174,4 +174,18 @@ describe('ResidentsApi', () => {
       expect(received).toEqual(updated);
     });
   });
+
+  describe('invite', () => {
+    it('manda POST /api/residents/{id}/invitation sem corpo e termina quando a API aceita (202)', () => {
+      let finished = false;
+
+      api.invite('morador-1').subscribe({ complete: () => (finished = true) });
+      const request = http.expectOne('/api/residents/morador-1/invitation');
+      request.flush(null, { status: 202, statusText: 'Accepted' });
+
+      expect(request.request.method).toBe('POST');
+      expect(request.request.body).toBeNull();
+      expect(finished).toBe(true);
+    });
+  });
 });

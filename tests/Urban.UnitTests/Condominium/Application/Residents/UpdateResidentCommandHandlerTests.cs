@@ -4,6 +4,7 @@ using Urban.Condominium.Application.Abstractions;
 using Urban.Condominium.Application.Residents;
 using Urban.Condominium.Domain.Condominiums;
 using Urban.Condominium.Domain.Documents;
+using Urban.Condominium.Domain.Occupancies;
 using Urban.Condominium.Domain.People;
 using Urban.SharedKernel;
 using Urban.TestSupport.Condominium;
@@ -14,7 +15,7 @@ public class UpdateResidentCommandHandlerTests
 {
     private readonly ResidentsTestKit _kit = new();
 
-    private UpdateResidentCommandHandler Handler() => new(_kit.Residents.Object, _kit.Tenant, _kit.Clock.Object);
+    private UpdateResidentCommandHandler Handler() => new(_kit.Residents.Object, _kit.Access.Object, _kit.Atomic, _kit.Views, _kit.Tenant, _kit.Clock.Object);
 
     /// <summary>O morador que "já está no banco" e o comando que repete os mesmos dados dele (versão "4").</summary>
     private (ResidentRecord Record, UpdateResidentCommand Same) Existing()
@@ -223,5 +224,102 @@ public class UpdateResidentCommandHandlerTests
         string text = same.ToString();
 
         text.Should().NotContain(same.Cpf!).And.NotContain("Maria").And.NotContain("maria@exemplo.com").And.NotContain("Carlos");
+    }
+
+    private (ResidentRecord Record, UpdateResidentCommand Same) ExistingMinor()
+    {
+        Person minor = ResidentBuilders.Minor(_kit.CondominiumId);
+        Occupancy occupancy = ResidentBuilders.Occupancy(minor, _kit.Unit.Id, OccupancyKind.Dependent, new DateOnly(2024, 3, 1));
+        ResidentRecord record = _kit.Existing(minor, new ResidentOccupancy(occupancy, _kit.Unit.Block, _kit.Unit.Number));
+
+        return (record, ResidentCommands.UpdateMinor(minor.Id, "4", cpf: minor.Cpf.Value));
+    }
+
+    [Fact]
+    public async Task Handle_AMinorDependent_IsEditedWithoutProfessionOrEmergencyContact()
+    {
+        (_, UpdateResidentCommand same) = ExistingMinor();
+
+        Result<ResidentView> result = await Handler().Handle(same with { Phone = "(47) 99111-2222" }, default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Profession.Should().BeNull();
+        result.Value.EmergencyContact.Should().BeNull();
+        _kit.Logged.Should().ContainSingle().Which.Fields.Should().Equal("phone");
+    }
+
+    [Fact]
+    public async Task Handle_AMinorDependentWithNothingChanged_SavesNothing()
+    {
+        (_, UpdateResidentCommand same) = ExistingMinor();
+
+        Result<ResidentView> result = await Handler().Handle(same, default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Version.Should().Be("4");
+        _kit.Saved.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_FillingInTheProfessionOfAMinor_IsAChange()
+    {
+        (_, UpdateResidentCommand same) = ExistingMinor();
+
+        Result<ResidentView> result = await Handler().Handle(same with { Profession = "Estudante" }, default);
+
+        result.Value.Profession.Should().Be("Estudante");
+        _kit.Logged.Should().ContainSingle().Which.Fields.Should().Equal("profession");
+    }
+
+    [Fact]
+    public async Task Handle_WhenTheMinorTurnsAdultByTheEditedDate_ProfessionAndContactBecomeRequired()
+    {
+        (_, UpdateResidentCommand same) = ExistingMinor();
+
+        Result<ResidentView> result = await Handler().Handle(same with { BirthDate = new DateOnly(1990, 5, 20) }, default);
+
+        result.Error.Code.Should().Be("condominium.profession.invalid");
+        _kit.Saved.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_MakingAnAdultOwnerAMinor_FailsAsUnderAge_AndNeverSaves()
+    {
+        (_, UpdateResidentCommand same) = Existing();
+
+        Result<ResidentView> result = await Handler().Handle(
+            same with { BirthDate = new DateOnly(2015, 4, 10), Profession = null, EmergencyContact = new EmergencyContactInput(null, null, null) }, default);
+
+        result.Error.Should().Be(ResidentErrors.UnderAge);
+        _kit.Saved.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_MakingAnAdultDependentAMinor_IsAllowed()
+    {
+        Person person = _kit.NewResident();
+        Occupancy occupancy = ResidentBuilders.Occupancy(person, _kit.Unit.Id, OccupancyKind.Dependent, new DateOnly(2024, 3, 1));
+        _kit.Existing(person, new ResidentOccupancy(occupancy, _kit.Unit.Block, _kit.Unit.Number));
+
+        Result<ResidentView> result = await Handler().Handle(
+            ResidentCommands.Update(person.Id, "4", cpf: person.Cpf.Value) with { BirthDate = new DateOnly(2015, 4, 10) }, default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.BirthDate.Should().Be(new DateOnly(2015, 4, 10));
+    }
+
+    [Fact]
+    public async Task Handle_AMinorWhoLeftAnOwnerOccupancyBefore_CanStillBeEditedWhenOnlyDependentsAreActive()
+    {
+        Person person = ResidentBuilders.Minor(_kit.CondominiumId);
+        Occupancy old = ResidentBuilders.Occupancy(person, _kit.Unit.Id, OccupancyKind.Owner, new DateOnly(2020, 1, 1));
+        old.MoveOut(new DateOnly(2022, 1, 1), ResidentBuilders.Today);
+        Occupancy current = ResidentBuilders.Occupancy(person, Guid.CreateVersion7(), OccupancyKind.Dependent, new DateOnly(2024, 3, 1));
+        _kit.Existing(person, new ResidentOccupancy(old, _kit.Unit.Block, _kit.Unit.Number), new ResidentOccupancy(current, "Bloco B", "202"));
+
+        Result<ResidentView> result = await Handler().Handle(
+            ResidentCommands.UpdateMinor(person.Id, "4", cpf: person.Cpf.Value) with { Phone = "(47) 99111-2222" }, default);
+
+        result.IsSuccess.Should().BeTrue();
     }
 }

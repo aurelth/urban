@@ -1,5 +1,5 @@
 import { FormControl } from '@angular/forms';
-import { birthDate } from './birth-date.validator';
+import { birthDate, isMinorBirth } from './birth-date.validator';
 
 function check(value: string, today: Date = new Date(2026, 9, 29, 12)) {
   return birthDate(() => today)(new FormControl(value, { nonNullable: true }));
@@ -69,4 +69,54 @@ describe('birthDate', () => {
     expect(validator(bornIn(year - 30))).toBeNull();
     expect(validator(bornIn(year - 10))).toEqual({ underAge: true });
   });
+});
+
+describe('birthDate permitindo menores (dependentes)', () => {
+  const today = new Date(2026, 9, 29, 12);
+  const allowing = (value: string, now: Date = today) =>
+    birthDate(() => now, { allowMinor: true })(new FormControl(value, { nonNullable: true }));
+
+  it.each(['30/10/2008', '15/06/2020', '28/10/2026', '29/10/2026', '15/06/1980'])(
+    'aceita "%s" em 29/10/2026',
+    (value) => {
+      expect(allowing(value)).toBeNull();
+    },
+  );
+
+  it.each(['30/10/2026', '01/01/2030', '28/10/1906', '31/02/2000', '15/06', 'aa/bb/cccc'])(
+    'continua recusando "%s" como data inválida',
+    (value) => {
+      expect(allowing(value)).toEqual({ date: true });
+    },
+  );
+
+  it('deixa o campo vazio para o validador de obrigatoriedade', () => {
+    expect(allowing('')).toBeNull();
+  });
+});
+
+describe('isMinorBirth', () => {
+  const today = new Date(2026, 9, 29, 12);
+
+  it.each([
+    ['30/10/2008', true],
+    ['15/06/2020', true],
+    ['29/10/2026', true],
+    ['29/10/2008', false],
+    ['15/06/1980', false],
+  ])('quem nasceu em %s em 29/10/2026: menor = %s', (value, expected) => {
+    expect(isMinorBirth(value, () => today)).toBe(expected);
+  });
+
+  it('conta os 18 anos de quem nasceu em 29 de fevereiro a partir de 1º de março', () => {
+    expect(isMinorBirth('29/02/2008', () => new Date(2026, 1, 28))).toBe(true);
+    expect(isMinorBirth('29/02/2008', () => new Date(2026, 2, 1))).toBe(false);
+  });
+
+  it.each(['', '15/06', '31/02/2000', '30/10/2026', 'aa/bb/cccc'])(
+    'data incompleta ou inválida ("%s") não é menor: valem as regras do adulto até a data ficar certa',
+    (value) => {
+      expect(isMinorBirth(value, () => today)).toBe(false);
+    },
+  );
 });

@@ -119,6 +119,11 @@
                         [ngTemplateOutletContext]="{ $implicit: item }"
                       />
                     </span>
+                    <urban-resident-access
+                      class="mt-3 block"
+                      [resident]="item"
+                      (invited)="store.markInvited(item.id)"
+                    />
                     <a
                       mat-button
                       class="mt-1 -ml-3"

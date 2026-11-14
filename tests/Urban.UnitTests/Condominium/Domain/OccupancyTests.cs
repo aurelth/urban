@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Urban.Condominium.Domain.Occupancies;
+using Urban.Condominium.Domain.People;
 using Urban.SharedKernel;
 
 namespace Urban.UnitTests.Condominium.Domain;
@@ -46,7 +47,7 @@ public class OccupancyTests
 
     [Theory]
     [InlineData(0)]
-    [InlineData(3)]
+    [InlineData(4)]
     [InlineData(-1)]
     public void Start_WithAnUnknownKind_Fails(int kind)
     {
@@ -81,5 +82,22 @@ public class OccupancyTests
         OccupancyErrors.CondominiumRequired.Code.Should().Be("condominium.occupancy.condominium_required");
         OccupancyErrors.PersonRequired.Code.Should().Be("condominium.occupancy.person_required");
         OccupancyErrors.UnitRequired.Code.Should().Be("condominium.occupancy.unit_required");
+    }
+
+    [Fact]
+    public void Start_AsADependent_CreatesTheOccupancy()
+    {
+        Result<Occupancy> result = Start(kind: OccupancyKind.Dependent);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Kind.Should().Be(OccupancyKind.Dependent);
+        ((int)OccupancyKind.Dependent).Should().Be(3);
+    }
+
+    [Fact]
+    public void UnderAge_ExplainsThatOnlyDependentsCanBeMinors()
+    {
+        ResidentErrors.UnderAge.Code.Should().Be("condominium.resident.under_age");
+        ResidentErrors.UnderAge.Description.Should().Be("Quem tem menos de 18 anos só pode ser cadastrado como dependente");
     }
 }

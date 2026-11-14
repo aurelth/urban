@@ -14,6 +14,7 @@ import {
   occupancyPeriod,
   occupancyUnit,
 } from './resident-values';
+import { ResidentAccess } from './resident-access';
 import { ResidentsStore } from './residents.store';
 
 const STATUSES: readonly ResidentStatusFilter[] = ['active', 'former', 'all'];
@@ -26,7 +27,7 @@ const STATUS_OPTIONS: readonly MenuOption[] = [
 
 /**
  * Lista dos moradores do condomínio: busca por nome, filtro entre quem mora e quem já saiu, e uma linha por pessoa com o
- * contato e todos os vínculos (unidade, tipo e período). Daqui se abre o cadastro ("Novo morador") e a edição de cada morador.
+ * contato, a situação do acesso ao sistema (com "Convidar") e todos os vínculos (unidade, tipo e período). Daqui se abre o cadastro ("Novo morador") e a edição de cada morador.
  */
 @Component({
   selector: 'urban-residents-page',
@@ -38,6 +39,7 @@ const STATUS_OPTIONS: readonly MenuOption[] = [
     MatInput,
     MenuSelect,
     NgTemplateOutlet,
+    ResidentAccess,
     RouterLink,
   ],
   templateUrl: './residents.page.html',

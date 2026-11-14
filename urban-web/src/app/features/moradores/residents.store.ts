@@ -70,6 +70,13 @@ export const ResidentsStore = signalStore(
       /** Muda os filtros e volta para a primeira página. */
       filter: (filters: Filters): Promise<void> =>
         loadList({ ...store.query(), ...filters, page: 1 }),
+      /** O convite saiu: a linha do morador passa a "convite enviado" sem buscar a lista de novo. */
+      markInvited: (id: string): void =>
+        patchState(store, {
+          items: store
+            .items()
+            .map((item) => (item.id === id ? { ...item, accessStatus: 'invited' } : item)),
+        }),
       goToPage: async (page: number): Promise<void> => {
         if (Number.isInteger(page) && page >= 1 && page <= store.pageCount()) {
           await loadList({ ...store.query(), page });

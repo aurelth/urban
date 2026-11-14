@@ -154,10 +154,37 @@ describe('unmask', () => {
   );
 
   it('devolve vazio quando não há nada', () => {
-    const kinds: MaskKind[] = ['cpf', 'cnpj', 'cep', 'phone', 'date'];
+    const kinds: MaskKind[] = ['cpf', 'cnpj', 'cep', 'phone', 'date', 'plate'];
     for (const kind of kinds) {
       expect(unmask(kind, '')).toBe('');
     }
+  });
+});
+
+describe('plate', () => {
+  it.each([
+    ['abc1d23', 'ABC1D23'],
+    ['ABC-1234', 'ABC1234'],
+    ['abc 1d23', 'ABC1D23'],
+    ['AB', 'AB'],
+    ['', ''],
+  ])('mostra "%s" como "%s"', (typed, shown) => {
+    expect(applyMask('plate', typed)).toBe(shown);
+  });
+
+  it('descarta o que não é letra nem dígito e o que passa de 7 caracteres', () => {
+    expect(applyMask('plate', 'ÁÇ-ab*1')).toBe('AB1');
+    expect(applyMask('plate', 'ABC1D234X')).toBe('ABC1D23');
+  });
+
+  it('manda para a API a placa em maiúsculas e sem pontuação', () => {
+    expect(unmask('plate', 'abc-1d23')).toBe('ABC1D23');
+    expect(unmask('plate', ' abc 1234 ')).toBe('ABC1234');
+  });
+
+  it('conta letras e dígitos como significativos', () => {
+    expect(countSignificant('plate', 'abc-1')).toBe(4);
+    expect(caretAfter('plate', 'ABC1D23', 4)).toBe(4);
   });
 });
 
@@ -209,6 +236,7 @@ describe('MASK_INPUTMODE', () => {
     ['cep', 'numeric'],
     ['phone', 'tel'],
     ['date', 'numeric'],
+    ['plate', 'text'],
   ] as const)('escolhe o teclado do campo %s', (kind, inputmode) => {
     expect(MASK_INPUTMODE[kind]).toBe(inputmode);
   });

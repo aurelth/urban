@@ -120,7 +120,9 @@ public sealed class ResidentEndpointsTests(ApiFixture fixture) : IDisposable
     [InlineData("owner")]
     [InlineData("tenant")]
     [InlineData("OWNER")]
-    public async Task Post_accepts_both_kinds(string kind)
+    [InlineData("dependent")]
+    [InlineData("Dependent")]
+    public async Task Post_accepts_every_kind(string kind)
     {
         ManagerSession manager = await ManagerSetup.RegisterAsync(fixture, _client);
         Guid unitId = await CreateUnitAsync(manager, "101");
@@ -128,6 +130,74 @@ public sealed class ResidentEndpointsTests(ApiFixture fixture) : IDisposable
         HttpResponseMessage response = await _client.SendJsonAsync(HttpMethod.Post, Residents, manager.AccessToken, ResidentBody(unitId, kind: kind));
 
         response.StatusCode.Should().Be(HttpStatusCode.Created, await response.Content.ReadAsStringAsync(Ct));
+    }
+
+    [Fact]
+    public async Task Post_registers_a_minor_dependent_without_profession_nor_emergency_contact()
+    {
+        ManagerSession manager = await ManagerSetup.RegisterAsync(fixture, _client);
+        Guid unitId = await CreateUnitAsync(manager, "101");
+        JsonObject body = MinorBody(unitId);
+
+        HttpResponseMessage response = await _client.SendJsonAsync(HttpMethod.Post, Residents, manager.AccessToken, body);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Created, await response.Content.ReadAsStringAsync(Ct));
+        JsonElement json = await response.Content.ReadFromJsonAsync<JsonElement>();
+        json.GetProperty("fullName").GetString().Should().Be("Pedro Souza");
+        json.GetProperty("birthDate").GetString().Should().Be("2015-04-10");
+        json.GetProperty("profession").ValueKind.Should().Be(JsonValueKind.Null);
+        json.GetProperty("emergencyContact").ValueKind.Should().Be(JsonValueKind.Null);
+        json.GetProperty("occupancies").EnumerateArray().Should().ContainSingle()
+            .Which.GetProperty("kind").GetString().Should().Be("dependent");
+
+        HttpResponseMessage read = await _client.SendJsonAsync(HttpMethod.Get, $"{Residents}/{json.GetProperty("id").GetGuid()}", manager.AccessToken);
+        JsonElement reread = await read.Content.ReadFromJsonAsync<JsonElement>();
+        reread.GetProperty("profession").ValueKind.Should().Be(JsonValueKind.Null);
+        reread.GetProperty("emergencyContact").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Theory]
+    [InlineData("owner")]
+    [InlineData("tenant")]
+    public async Task Post_of_a_minor_who_is_not_a_dependent_answers_400_under_age(string kind)
+    {
+        ManagerSession manager = await ManagerSetup.RegisterAsync(fixture, _client);
+        Guid unitId = await CreateUnitAsync(manager, "101");
+        JsonObject body = MinorBody(unitId);
+        body["kind"] = kind;
+
+        HttpResponseMessage response = await _client.SendJsonAsync(HttpMethod.Post, Residents, manager.AccessToken, body);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.CodeAsync()).Should().Be("condominium.resident.under_age");
+    }
+
+    [Fact]
+    public async Task Post_of_an_adult_dependent_still_needs_profession_and_emergency_contact()
+    {
+        ManagerSession manager = await ManagerSetup.RegisterAsync(fixture, _client);
+        Guid unitId = await CreateUnitAsync(manager, "101");
+        JsonObject body = ResidentBody(unitId, kind: "dependent");
+        body["profession"] = null;
+
+        HttpResponseMessage response = await _client.SendJsonAsync(HttpMethod.Post, Residents, manager.AccessToken, body);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.CodeAsync()).Should().Be("condominium.profession.invalid");
+    }
+
+    [Fact]
+    public async Task The_list_shows_the_minor_dependent_with_the_dependent_kind()
+    {
+        ManagerSession manager = await ManagerSetup.RegisterAsync(fixture, _client);
+        Guid unitId = await CreateUnitAsync(manager, "101");
+        (await _client.SendJsonAsync(HttpMethod.Post, Residents, manager.AccessToken, MinorBody(unitId))).StatusCode.Should().Be(HttpStatusCode.Created);
+
+        JsonElement list = await ListAsync(manager, "?status=active");
+
+        JsonElement item = list.GetProperty("items").EnumerateArray().Should().ContainSingle().Subject;
+        item.GetProperty("profession").ValueKind.Should().Be(JsonValueKind.Null);
+        item.GetProperty("occupancies")[0].GetProperty("kind").GetString().Should().Be("dependent");
     }
 
     [Theory]
@@ -470,6 +540,18 @@ public sealed class ResidentEndpointsTests(ApiFixture fixture) : IDisposable
         ["emergencyContact"] = new JsonObject { ["name"] = "Carlos Souza", ["relationship"] = "Irmão", ["phone"] = "(47) 3333-4444" },
         ["unitId"] = unitId,
         ["kind"] = kind,
+        ["startDate"] = "2024-03-01",
+    };
+
+    /// <summary>Um dependente menor de idade: sem profissão, sem contato de emergência e sem e-mail.</summary>
+    private static JsonObject MinorBody(Guid unitId) => new()
+    {
+        ["fullName"] = "Pedro Souza",
+        ["cpf"] = CondominiumBuilders.UniqueCpf().Value,
+        ["birthDate"] = "2015-04-10",
+        ["phone"] = "(47) 99876-5432",
+        ["unitId"] = unitId,
+        ["kind"] = "dependent",
         ["startDate"] = "2024-03-01",
     };
 

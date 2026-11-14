@@ -10,6 +10,7 @@ const MOBILE_SPLIT = 7;
 const KIND_LABELS: Readonly<Record<OccupancyKind, string>> = {
   owner: 'Proprietário',
   tenant: 'Inquilino',
+  dependent: 'Dependente',
 };
 
 /** Mora hoje quem tem ao menos um vínculo em andamento; quem só tem vínculos encerrados é ex-morador. */

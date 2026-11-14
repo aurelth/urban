@@ -31,6 +31,19 @@ public static class ResidentBuilders
             SampleEmergencyContact(),
             Now).Value;
 
+    /// <summary>Um dependente menor de idade (11 anos em <see cref="Today"/>): sem profissão e sem contato de emergência.</summary>
+    public static Person Minor(Guid? condominiumId = null, string name = "Pedro Souza", DateOnly? birthDate = null) =>
+        Person.RegisterResident(
+            condominiumId ?? Guid.CreateVersion7(),
+            PersonName.Create(name).Value,
+            CondominiumBuilders.UniqueCpf(),
+            BirthDate.CreateAllowingMinor(birthDate ?? new DateOnly(2015, 4, 10), Today).Value,
+            PhoneNumber.Create("(47) 99876-5432").Value,
+            null,
+            null,
+            null,
+            Now).Value;
+
     public static Occupancy Occupancy(
         Person person,
         Guid? unitId = null,

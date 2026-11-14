@@ -119,6 +119,13 @@ export const routes: Routes = [
             loadComponent: () =>
               import('./features/moradores/resident-form.page').then((m) => m.ResidentFormPage),
           },
+          {
+            path: 'veiculos',
+            title: 'Veículos',
+            canActivate: [managerGuard],
+            loadComponent: () =>
+              import('./features/vehicles/vehicles.page').then((m) => m.VehiclesPage),
+          },
           { path: 'financeiro', pathMatch: 'full', redirectTo: 'financeiro/despesas' },
           {
             path: 'financeiro/despesas',

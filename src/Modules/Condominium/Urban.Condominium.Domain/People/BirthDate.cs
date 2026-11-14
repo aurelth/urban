@@ -23,18 +23,27 @@ public sealed record BirthDate
     /// <param name="underAge">O erro para quem ainda não tem 18 anos; o padrão fala do síndico, e quem cadastra outro papel manda o seu.</param>
     public static Result<BirthDate> Create(DateOnly? value, DateOnly today, Error? underAge = null)
     {
+        Result<BirthDate> date = CreateAllowingMinor(value, today);
+
+        return date.IsSuccess && date.Value.IsMinorOn(today) ? Result.Failure<BirthDate>(underAge ?? UnderAge) : date;
+    }
+
+    /// <summary>
+    /// Como <see cref="Create"/>, mas aceita quem ainda não fez 18 anos: é o caso do dependente menor. Só a data é conferida
+    /// (não no futuro, no máximo 120 anos); quem decide se um menor serve é a regra do vínculo.
+    /// </summary>
+    public static Result<BirthDate> CreateAllowingMinor(DateOnly? value, DateOnly today)
+    {
         if (value is null || value > today || value < today.AddYears(-MaximumAge))
         {
             return Result.Failure<BirthDate>(Invalid);
         }
 
-        // AddYears leva 29 de fevereiro para 28 de fevereiro nos anos comuns; a regra civil usa 1º de março.
-        DateOnly eighteenthBirthday = TurnsAgeOn(value.Value, MinimumAge);
-
-        return eighteenthBirthday <= today
-            ? Result.Success(new BirthDate(value.Value))
-            : Result.Failure<BirthDate>(underAge ?? UnderAge);
+        return Result.Success(new BirthDate(value.Value));
     }
+
+    /// <summary>Verdadeiro até o dia anterior ao 18º aniversário; no aniversário a pessoa já é adulta.</summary>
+    public bool IsMinorOn(DateOnly today) => TurnsAgeOn(Value, MinimumAge) > today;
 
     /// <summary>Reconstitui uma data já aceita no cadastro, vinda do armazenamento. A regra de idade vale no momento do cadastro, não a cada leitura.</summary>
     public static BirthDate Restore(DateOnly value) => new(value);

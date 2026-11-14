@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Urban.Identity.Application.Abstractions;
 using Urban.Identity.Application.Authentication.Login;
+using Urban.Identity.Domain.Access;
 using Urban.Identity.Domain.Users;
 using Urban.SharedKernel;
 using Urban.SharedKernel.Abstractions;
@@ -38,6 +39,22 @@ public sealed class UserAccounts(IdentityDbContext db, IPasswordHasher passwordH
 
     public Task<User?> FindByEmailAsync(Email email, CancellationToken cancellationToken) =>
         db.Users.AsNoTracking().SingleOrDefaultAsync(u => u.Email == email, cancellationToken);
+
+    public async Task<IReadOnlyDictionary<Guid, AccountStatus>> ListStatusesAsync(Guid condominiumId, IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken)
+    {
+        if (userIds.Count == 0)
+        {
+            return new Dictionary<Guid, AccountStatus>();
+        }
+
+        Guid[] ids = [.. userIds];
+
+        return await db.Users
+            .AsNoTracking()
+            .Where(u => ids.Contains(u.Id) && u.CondominiumId == condominiumId && u.Role == UserRole.Resident)
+            .Select(u => new { u.Id, u.Status })
+            .ToDictionaryAsync(u => u.Id, u => u.Status, cancellationToken);
+    }
 
     public async Task SaveEnrollmentAsync(User user, CancellationToken cancellationToken)
     {

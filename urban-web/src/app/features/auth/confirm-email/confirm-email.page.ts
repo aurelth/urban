@@ -15,10 +15,13 @@ import { PasswordField } from '../../../shared/ui/password-field/password.field'
 import { LinkProblemNotice } from '../link-problem/link-problem.notice';
 import { PASSWORD_POLICY_MESSAGES } from '../password-messages';
 
+/** A mesma tela serve ao síndico que se cadastra e ao morador convidado: cada um tem o seu caminho para um link novo. */
+const LINK_HELP =
+  'Se você foi convidado pelo síndico, peça que ele reenvie o convite. Se está se cadastrando, faça o cadastro novamente';
+
 const CONFIRM_MESSAGES: MessagesByCode = {
-  'identity.email_verification.invalid': 'Link inválido ou já usado. Faça o cadastro novamente',
-  'identity.email_verification.expired':
-    'Link expirado. Faça o cadastro novamente para receber outro',
+  'identity.email_verification.invalid': `Link inválido ou já usado. ${LINK_HELP}`,
+  'identity.email_verification.expired': `Link expirado. ${LINK_HELP}`,
   ...PASSWORD_POLICY_MESSAGES,
   'identity.consent.required': 'Aceite os termos de uso e a política de privacidade para continuar',
   'identity.consent.outdated': 'Os termos foram atualizados. Leia e aceite de novo para continuar',
@@ -30,7 +33,7 @@ const LINK_ERROR_CODES: ReadonlySet<string> = new Set([
 ]);
 
 const MISSING_TOKEN_MESSAGE =
-  'Este link está incompleto. Abra o link do e-mail de novo ou faça o cadastro novamente';
+  'Este link está incompleto. Abra o link do e-mail de novo. Se não funcionar, peça ao síndico que reenvie o convite ou faça o cadastro novamente';
 
 @Component({
   selector: 'urban-confirm-email-page',

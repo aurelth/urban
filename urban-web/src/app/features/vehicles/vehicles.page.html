@@ -1,0 +1,261 @@
+<section class="mx-auto max-w-6xl p-6">
+  <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="mb-1 text-3xl font-semibold tracking-tight">Veículos</h1>
+      <p class="m-0 text-on-surface-variant">Os veículos de cada unidade, com a placa de cada um</p>
+    </div>
+    @if (store.status() === 'ready' && store.units().length > 0) {
+      <button
+        mat-flat-button
+        type="button"
+        data-testid="new-vehicle"
+        [disabled]="store.busy()"
+        (click)="create()"
+      >
+        <mat-icon svgIcon="add" />
+        Novo veículo
+      </button>
+    }
+  </div>
+
+  @switch (store.status()) {
+    @case ('loading') {
+      <p role="status" class="text-on-surface-variant" data-testid="loading">
+        Carregando os veículos
+      </p>
+    }
+    @case ('error') {
+      <div class="flex flex-col items-start gap-4" data-testid="load-error">
+        <p class="flex items-start gap-2 text-error">
+          <mat-icon svgIcon="error" aria-hidden="true" />
+          <span>Não foi possível carregar os veículos</span>
+        </p>
+        <button mat-stroked-button type="button" data-testid="retry" (click)="load()">
+          Tentar de novo
+        </button>
+      </div>
+    }
+    @case ('ready') {
+      @if (notice(); as message) {
+        <p role="status" class="mb-4 flex items-start gap-2" data-testid="notice">
+          <span class="inline-flex text-success"
+            ><mat-icon svgIcon="check_circle" aria-hidden="true"
+          /></span>
+          <span>{{ message }}</span>
+        </p>
+      }
+      @if (actionError(); as message) {
+        <p role="alert" class="mb-4 flex items-start gap-2 text-error" data-testid="action-error">
+          <mat-icon svgIcon="error" aria-hidden="true" />
+          <span>{{ message }}</span>
+        </p>
+      }
+
+      <form
+        class="grid gap-x-4 sm:grid-cols-2"
+        data-testid="filters"
+        (submit)="$event.preventDefault()"
+      >
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="mb-4 w-full">
+          <mat-label>Unidade</mat-label>
+          <urban-menu-select
+            data-testid="filter-unit"
+            [options]="unitOptions()"
+            [value]="store.query().unitId ?? ''"
+            (valueChange)="onUnit($event)"
+          />
+        </mat-form-field>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="mb-4 w-full">
+          <mat-label>Buscar por placa, modelo ou cor</mat-label>
+          <input
+            matInput
+            data-testid="filter-search"
+            autocomplete="off"
+            [value]="store.query().search"
+            (change)="onSearch($event)"
+          />
+        </mat-form-field>
+      </form>
+      @if (store.hasFilters()) {
+        <button
+          mat-button
+          type="button"
+          class="mb-4"
+          data-testid="clear-filters"
+          [disabled]="store.busy()"
+          (click)="clearFilters()"
+        >
+          Limpar filtros
+        </button>
+      }
+
+      @if (store.total() === 0 && !store.hasFilters()) {
+        @if (store.units().length === 0) {
+          <div
+            class="rounded-xl border border-outline-variant bg-surface-container p-6 text-center"
+            data-testid="no-units"
+          >
+            <p class="mb-1 text-lg font-medium">Cadastre uma unidade primeiro</p>
+            <p class="mb-4 text-on-surface-variant">
+              Cada veículo pertence a uma unidade. Cadastre uma unidade e volte aqui para cadastrar
+              os veículos
+            </p>
+            <a mat-stroked-button routerLink="/unidades" data-testid="no-units-link">
+              Ir para as unidades
+            </a>
+          </div>
+        } @else {
+          <div
+            class="rounded-xl border border-outline-variant bg-surface-container p-6 text-center"
+            data-testid="empty"
+          >
+            <p class="mb-1 text-lg font-medium">Nenhum veículo cadastrado ainda</p>
+            <p class="m-0 text-on-surface-variant">
+              Cadastre os veículos de cada unidade para ter a placa de cada um à mão
+            </p>
+          </div>
+        }
+      } @else if (store.items().length === 0) {
+        <p
+          class="rounded-xl border border-outline-variant bg-surface-container p-6 text-center text-on-surface-variant"
+          data-testid="no-results"
+        >
+          Nenhum veículo encontrado com estes filtros
+        </p>
+      } @else {
+        <p class="mb-4 text-sm text-on-surface-variant" data-testid="total">
+          {{ store.total() }} {{ store.total() === 1 ? 'veículo' : 'veículos' }}
+        </p>
+        <div class="overflow-x-auto rounded-xl border border-outline-variant bg-surface-container">
+          <table class="w-full border-collapse text-left" data-testid="vehicles-table">
+            <caption class="sr-only">
+              Lista de veículos
+            </caption>
+            <thead>
+              <tr class="border-b border-outline-variant text-sm text-on-surface-variant">
+                <th scope="col" class="p-3 font-medium">Placa</th>
+                <th scope="col" class="p-3 font-medium max-sm:hidden">Veículo</th>
+                <th scope="col" class="p-3 font-medium">Unidade</th>
+                <th scope="col" class="p-3 font-medium">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of store.items(); track item.id) {
+                <tr
+                  class="border-b border-outline-variant align-top last:border-b-0"
+                  data-testid="vehicle-row"
+                >
+                  <td class="p-3">
+                    <span class="block font-medium">{{ item.plate }}</span>
+                    <span class="mt-1 block text-sm text-on-surface-variant sm:hidden">
+                      {{ item.model }} · {{ item.color }}
+                    </span>
+                  </td>
+                  <td class="p-3 max-sm:hidden">
+                    <span class="block">{{ item.model }}</span>
+                    <span class="block text-sm text-on-surface-variant">{{ item.color }}</span>
+                  </td>
+                  <td class="p-3">{{ unit(item) }}</td>
+                  <td class="p-1 whitespace-nowrap">
+                    <button
+                      mat-icon-button
+                      type="button"
+                      [attr.aria-label]="'Editar veículo ' + item.plate"
+                      [attr.title]="'Editar veículo ' + item.plate"
+                      [disabled]="store.busy()"
+                      (click)="edit(item)"
+                    >
+                      <mat-icon svgIcon="edit" />
+                    </button>
+                    <button
+                      mat-icon-button
+                      type="button"
+                      [attr.aria-label]="'Excluir veículo ' + item.plate"
+                      [attr.title]="'Excluir veículo ' + item.plate"
+                      [disabled]="store.busy()"
+                      (click)="askToRemove(item)"
+                    >
+                      <mat-icon svgIcon="delete" />
+                    </button>
+                  </td>
+                </tr>
+                @if (confirming() === item.id) {
+                  <tr class="border-b border-outline-variant last:border-b-0">
+                    <td colspan="4" class="p-4">
+                      <div
+                        role="alertdialog"
+                        aria-labelledby="delete-title"
+                        data-testid="delete-confirm"
+                      >
+                        <p id="delete-title" class="mb-1 font-medium">
+                          Excluir o veículo {{ item.plate }}?
+                        </p>
+                        <p class="mb-4 text-on-surface-variant">
+                          A exclusão é definitiva: o veículo some da lista e a placa fica livre para
+                          ser cadastrada de novo
+                        </p>
+                        <div class="flex flex-wrap gap-2">
+                          <button
+                            mat-flat-button
+                            type="button"
+                            data-testid="confirm-delete"
+                            [disabled]="store.busy()"
+                            (click)="remove(item)"
+                          >
+                            <mat-icon svgIcon="delete" />
+                            Excluir veículo
+                          </button>
+                          <button
+                            mat-button
+                            type="button"
+                            data-testid="cancel-delete"
+                            [disabled]="store.busy()"
+                            (click)="cancelRemoval()"
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                }
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+
+      @if (store.pageCount() > 1) {
+        <nav
+          class="mt-4 flex items-center justify-between gap-4"
+          aria-label="Paginação"
+          data-testid="pagination"
+        >
+          <button
+            mat-stroked-button
+            type="button"
+            data-testid="previous"
+            [disabled]="store.busy() || store.query().page <= 1"
+            (click)="goTo(store.query().page - 1)"
+          >
+            <mat-icon svgIcon="chevron_left" />
+            Anterior
+          </button>
+          <span aria-live="polite" data-testid="page-status"
+            >Página {{ store.query().page }} de {{ store.pageCount() }}</span
+          >
+          <button
+            mat-stroked-button
+            type="button"
+            data-testid="next"
+            [disabled]="store.busy() || store.query().page >= store.pageCount()"
+            (click)="goTo(store.query().page + 1)"
+          >
+            Próxima
+            <mat-icon svgIcon="chevron_right" />
+          </button>
+        </nav>
+      }
+    }
+  }
+</section>

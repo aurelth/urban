@@ -3,6 +3,7 @@ using Urban.Condominium.Application.Abstractions;
 using Urban.Condominium.Domain.Occupancies;
 using Urban.Condominium.Domain.People;
 using Urban.Condominium.Domain.Units;
+using Urban.Condominium.Domain.Vehicles;
 using Urban.SharedKernel.Abstractions;
 using CondominiumEntity = Urban.Condominium.Domain.Condominiums.Condominium;
 
@@ -40,6 +41,8 @@ public sealed class CondominiumDbContext : DbContext
 
     public DbSet<Occupancy> Occupancies => Set<Occupancy>();
 
+    public DbSet<Vehicle> Vehicles => Set<Vehicle>();
+
     internal IPersonalDataProtector Protector { get; }
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
@@ -62,6 +65,7 @@ public sealed class CondominiumDbContext : DbContext
         modelBuilder.ApplyConfiguration(new Configurations.PersonConfiguration(Protector));
         modelBuilder.ApplyConfiguration(new Configurations.UnitConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.OccupancyConfiguration());
+        modelBuilder.ApplyConfiguration(new Configurations.VehicleConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.ChangeLogConfiguration());
 
         // Sem tenant (SuperAdmin, síndico antes de cadastrar o condomínio, anônimo) a comparação com nulo não casa com
@@ -69,6 +73,7 @@ public sealed class CondominiumDbContext : DbContext
         modelBuilder.Entity<Person>().HasQueryFilter(person => person.CondominiumId == _tenant.CondominiumId);
         modelBuilder.Entity<CondominiumUnit>().HasQueryFilter(unit => unit.CondominiumId == _tenant.CondominiumId);
         modelBuilder.Entity<Occupancy>().HasQueryFilter(occupancy => occupancy.CondominiumId == _tenant.CondominiumId);
+        modelBuilder.Entity<Vehicle>().HasQueryFilter(vehicle => vehicle.CondominiumId == _tenant.CondominiumId);
     }
 
     private static bool CpfNeedsAHash(Microsoft.EntityFrameworkCore.ChangeTracking.EntityEntry<Person> entry) =>

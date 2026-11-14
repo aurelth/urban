@@ -12,7 +12,7 @@ namespace Urban.Condominium.Application.Residents;
 /// Encerra um vínculo do morador. "Hoje" é o de Brasília, porque a data de saída é um dia do calendário do condomínio. A
 /// gravação só vale se o vínculo ainda estiver aberto, o que resolve dois pedidos ao mesmo tempo.
 /// </summary>
-public sealed class EndOccupancyCommandHandler(IResidents residents, ITenantContext tenant, IClock clock)
+public sealed class EndOccupancyCommandHandler(IResidents residents, ITenantContext tenant, IClock clock, ResidentViews views)
     : IRequestHandler<EndOccupancyCommand, Result<ResidentView>>
 {
     public async Task<Result<ResidentView>> Handle(EndOccupancyCommand request, CancellationToken cancellationToken)
@@ -45,6 +45,8 @@ public sealed class EndOccupancyCommandHandler(IResidents residents, ITenantCont
         ChangeLogEntry entry = new(condominiumId, request.ActorUserId, ChangeKind.Resident, ["occupancyEnd"], now, record.Person.Id);
         Result saved = await residents.EndOccupancyAsync(occupancy, entry, cancellationToken);
 
-        return saved.IsSuccess ? Result.Success(ResidentView.From(record)) : Result.Failure<ResidentView>(saved.Error);
+        return saved.IsSuccess
+            ? Result.Success(await views.ViewAsync(record, cancellationToken))
+            : Result.Failure<ResidentView>(saved.Error);
     }
 }
