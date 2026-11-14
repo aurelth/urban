@@ -54,6 +54,11 @@ public sealed class AddOccupancyCommandHandler(IResidents residents, IUnits unit
             return Result.Failure<ResidentView>(occupancy.Error);
         }
 
+        if (ResidentData.BreaksMinorRule(record.Person.BirthDate.IsMinorOn(BrazilCalendar.Today(now)), request.Kind))
+        {
+            return Result.Failure<ResidentView>(ResidentErrors.UnderAge);
+        }
+
         ChangeLogEntry entry = new(condominiumId, request.ActorUserId, ChangeKind.Resident, ["occupancy"], now, record.Person.Id);
         Result added = await residents.AddOccupancyAsync(occupancy.Value, entry, cancellationToken);
         if (added.IsFailure)

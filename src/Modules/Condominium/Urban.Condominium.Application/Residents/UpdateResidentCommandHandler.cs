@@ -64,6 +64,11 @@ public sealed class UpdateResidentCommandHandler(
         }
 
         ResidentData data = parsed.Value;
+        if (record.Occupancies.Any(item => item.Occupancy.IsActive && ResidentData.BreaksMinorRule(data.IsMinor, item.Occupancy.Kind)))
+        {
+            return Result.Failure<ResidentView>(ResidentErrors.UnderAge);
+        }
+
         Guid? invitedAccount = null;
         if (person.UserId is { } accountId && person.Email != data.Email)
         {

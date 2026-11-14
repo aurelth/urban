@@ -27,5 +27,8 @@ public sealed record RegisterResidentCommand(
 
 public sealed record EmergencyContactInput(string? Name, string? Relationship, string? Phone)
 {
+    /// <summary>Nenhum dos três campos foi preenchido: é o que o dependente menor de idade manda.</summary>
+    public bool IsEmpty => string.IsNullOrWhiteSpace(Name) && string.IsNullOrWhiteSpace(Relationship) && string.IsNullOrWhiteSpace(Phone);
+
     public override string ToString() => nameof(EmergencyContactInput);
 }

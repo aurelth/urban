@@ -89,6 +89,7 @@ public static partial class ResidentMapper
     {
         "owner" => OccupancyKind.Owner,
         "tenant" => OccupancyKind.Tenant,
+        "dependent" => OccupancyKind.Dependent,
         _ => 0,
     };
 
@@ -105,6 +106,7 @@ public static partial class ResidentMapper
     {
         OccupancyKind.Owner => "owner",
         OccupancyKind.Tenant => "tenant",
+        OccupancyKind.Dependent => "dependent",
         _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Tipo de vínculo desconhecido."),
     };
 }

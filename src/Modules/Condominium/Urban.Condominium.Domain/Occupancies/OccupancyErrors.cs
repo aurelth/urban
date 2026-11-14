@@ -4,7 +4,7 @@ namespace Urban.Condominium.Domain.Occupancies;
 
 public static class OccupancyErrors
 {
-    public static readonly Error KindInvalid = new("condominium.occupancy.kind_invalid", "Escolha se a pessoa é proprietária ou inquilina");
+    public static readonly Error KindInvalid = new("condominium.occupancy.kind_invalid", "Escolha se a pessoa é proprietária, inquilina ou dependente");
 
     public static readonly Error StartDateInvalid = new("condominium.occupancy.start_date_invalid", "Informe uma data de entrada válida, até 1 ano à frente");
 

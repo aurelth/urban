@@ -1,9 +1,10 @@
 namespace Urban.Api.Endpoints;
 
 /// <summary>
-/// Os dados de um morador adulto, para cadastrar. Datas em AAAA-MM-DD; CPF e telefones só com dígitos (a pontuação é aceita e
-/// ignorada). <c>Kind</c> é "owner" ou "tenant"; qualquer outro valor responde 400 com o código do campo. O e-mail é opcional:
-/// sem ele a pessoa fica cadastrada, mas não pode ser convidada.
+/// Os dados de um morador, para cadastrar. Datas em AAAA-MM-DD; CPF e telefones só com dígitos (a pontuação é aceita e
+/// ignorada). <c>Kind</c> é "owner", "tenant" ou "dependent"; qualquer outro valor responde 400 com o código do campo. O e-mail é opcional:
+/// sem ele a pessoa fica cadastrada, mas não pode ser convidada. Quem tem menos de 18 anos só pode ser "dependent" e fica
+/// dispensado de <c>Profession</c> e de <c>EmergencyContact</c> (<c>condominium.resident.under_age</c> quando o vínculo é outro).
 /// </summary>
 public sealed record ResidentRequest(
     string? FullName,
@@ -33,7 +34,7 @@ public sealed record ResidentUpdateRequest(
     string? Profession,
     EmergencyContactRequest? EmergencyContact);
 
-/// <summary>Um novo vínculo de um morador que já existe. <c>Kind</c> é "owner" ou "tenant".</summary>
+/// <summary>Um novo vínculo de um morador que já existe. <c>Kind</c> é "owner", "tenant" ou "dependent"; menor de 18 anos só aceita "dependent".</summary>
 public sealed record OccupancyRequest(Guid UnitId, string? Kind, DateOnly? StartDate);
 
 /// <summary>A saída do morador de uma unidade: a data (AAAA-MM-DD) vai da entrada até hoje.</summary>

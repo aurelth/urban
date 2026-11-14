@@ -16,7 +16,7 @@ public sealed record ResidentResponse(
 
 public sealed record EmergencyContactResponse(string Name, string Relationship, string Phone);
 
-/// <summary><c>Kind</c> é "owner" ou "tenant". <c>EndDate</c> é nula enquanto a pessoa mora na unidade.</summary>
+/// <summary><c>Kind</c> é "owner", "tenant" ou "dependent". <c>EndDate</c> é nula enquanto a pessoa mora na unidade.</summary>
 public sealed record ResidentOccupancyResponse(
     Guid Id,
     Guid UnitId,
