@@ -49,7 +49,7 @@ export function formatPhone(digits: string): string {
 }
 
 /** "2026-11-10" vira "10/11/2026". */
-function formatDay(date: string): string {
+export function formatDay(date: string): string {
   const [year, month, day] = date.split('-');
   return `${day}/${month}/${year}`;
 }

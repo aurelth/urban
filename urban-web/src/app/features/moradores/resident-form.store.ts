@@ -4,6 +4,8 @@ import { Observable, firstValueFrom } from 'rxjs';
 import { ApiProblem, toApiProblem } from '../../core/http/api-problem';
 import { ResidentsApi } from '../../core/residents/residents.api';
 import {
+  EndOccupancyPayload,
+  OccupancyPayload,
   Resident,
   ResidentPayload,
   UpdateResidentPayload,
@@ -25,8 +27,12 @@ export type ResidentFormStatus =
 export const CONCURRENCY_CONFLICT = 'concurrency.conflict';
 const NOT_FOUND_STATUS = 404;
 const CONFLICT_STATUS = 409;
+const RESIDENT_NOT_FOUND = 'condominium.resident.not_found';
 /** O maior tamanho de página que a API de unidades aceita. */
 const UNITS_PAGE_SIZE = 200;
+
+/** As unidades de quem edita um morador só são buscadas quando a pessoa vai adicionar um vínculo. */
+export type UnitsStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 interface ResidentFormState {
   status: ResidentFormStatus;
@@ -34,13 +40,23 @@ interface ResidentFormState {
   resident: Resident | null;
   /** No cadastro, o morador que acabou de ser criado; a tela troca o formulário pela confirmação. */
   created: Resident | null;
-  /** No cadastro, todas as unidades ativas, para escolher a do vínculo. */
+  /** Todas as unidades ativas, para escolher a do vínculo (no cadastro, ou ao adicionar uma unidade na edição). */
   units: readonly Unit[];
+  unitsStatus: UnitsStatus;
+  /** Um vínculo está sendo gravado (novo ou saída): a tela trava os botões dele sem esconder o formulário. */
+  occupancyBusy: boolean;
 }
 
 /** Estado do formulário de morador, de cadastro e de edição. Fornecido no componente, então cada visita começa do zero. */
 export const ResidentFormStore = signalStore(
-  withState<ResidentFormState>({ status: 'loading', resident: null, created: null, units: [] }),
+  withState<ResidentFormState>({
+    status: 'loading',
+    resident: null,
+    created: null,
+    units: [],
+    unitsStatus: 'idle',
+    occupancyBusy: false,
+  }),
   withMethods((store) => {
     const residents = inject(ResidentsApi);
     const unitsApi = inject(UnitsApi);
@@ -83,6 +99,34 @@ export const ResidentFormStore = signalStore(
       }
     };
 
+    const keepOccupancies = (fresh: Resident): void => {
+      const current = store.resident();
+      patchState(store, {
+        resident: current === null ? fresh : { ...current, occupancies: fresh.occupancies },
+      });
+    };
+
+    /**
+     * Grava um vínculo. Os vínculos têm vida própria na API: trocam só `occupancies` do morador lido e deixam a versão, a
+     * situação e o conflito dos dados pessoais como estavam, senão uma saída registrada "curaria" um formulário velho
+     * e o salvamento seguinte passaria por cima da edição de outra pessoa.
+     */
+    const saveOccupancy = async (request: Observable<Resident>): Promise<ApiProblem | null> => {
+      patchState(store, { occupancyBusy: true });
+      try {
+        keepOccupancies(await firstValueFrom(request));
+        return null;
+      } catch (error) {
+        const problem = toApiProblem(error);
+        if (isResidentNotFound(problem)) {
+          patchState(store, { status: 'not-found' });
+        }
+        return problem;
+      } finally {
+        patchState(store, { occupancyBusy: false });
+      }
+    };
+
     return {
       /** Cadastro: busca as unidades ativas. Serve também para tentar de novo depois de um erro. */
       loadForCreate: async (): Promise<void> => {
@@ -107,6 +151,36 @@ export const ResidentFormStore = signalStore(
         save(residents.create(payload), (created) => ({ created })),
       update: (id: string, payload: UpdateResidentPayload): Promise<ApiProblem | null> =>
         save(residents.update(id, payload), (resident) => ({ resident })),
+      /** Edição: busca as unidades ativas na primeira vez que a pessoa vai adicionar um vínculo (ou ao tentar de novo). */
+      loadUnits: async (): Promise<void> => {
+        if (store.unitsStatus() === 'ready' || store.unitsStatus() === 'loading') {
+          return;
+        }
+        patchState(store, { unitsStatus: 'loading' });
+        try {
+          patchState(store, { unitsStatus: 'ready', units: await fetchActiveUnits() });
+        } catch {
+          patchState(store, { unitsStatus: 'error' });
+        }
+      },
+      addOccupancy: (id: string, payload: OccupancyPayload): Promise<ApiProblem | null> =>
+        saveOccupancy(residents.addOccupancy(id, payload)),
+      endOccupancy: (
+        id: string,
+        occupancyId: string,
+        payload: EndOccupancyPayload,
+      ): Promise<ApiProblem | null> =>
+        saveOccupancy(residents.endOccupancy(id, occupancyId, payload)),
+      /** Depois de uma recusa por tela desatualizada: lê os vínculos de novo, sem mexer no resto. Falha que não é 404 é ignorada. */
+      refreshOccupancies: async (id: string): Promise<void> => {
+        try {
+          keepOccupancies(await firstValueFrom(residents.get(id)));
+        } catch (error) {
+          if (isResidentNotFound(toApiProblem(error))) {
+            patchState(store, { status: 'not-found' });
+          }
+        }
+      },
       /** Volta do aviso de sucesso para o formulário vazio; as unidades já estão carregadas. */
       startAnother: (): void => patchState(store, { created: null }),
     };
@@ -115,11 +189,15 @@ export const ResidentFormStore = signalStore(
 
 /** Só o 409 de versão é "conflito"; o 409 de CPF repetido é um erro de campo e a tela continua editável. */
 function statusAfterFailure(problem: ApiProblem): ResidentFormStatus {
-  if (problem.status === NOT_FOUND_STATUS && problem.code === 'condominium.resident.not_found') {
+  if (isResidentNotFound(problem)) {
     return 'not-found';
   }
   if (problem.status === CONFLICT_STATUS && problem.code === CONCURRENCY_CONFLICT) {
     return 'conflict';
   }
   return 'ready';
+}
+
+function isResidentNotFound(problem: ApiProblem): boolean {
+  return problem.status === NOT_FOUND_STATUS && problem.code === RESIDENT_NOT_FOUND;
 }
