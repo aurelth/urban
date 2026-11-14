@@ -1,7 +1,6 @@
 /** Resultado da leitura de um campo numérico opcional: vazio é válido e vira nulo. */
 export type NumberInput =
-  | { readonly valid: true; readonly value: number | null }
-  | { readonly valid: false };
+  { readonly valid: true; readonly value: number | null } | { readonly valid: false };
 
 const PERCENT_DECIMALS = 6;
 const AREA_DECIMALS = 2;
