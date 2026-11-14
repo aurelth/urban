@@ -271,6 +271,9 @@ public sealed class OpenApiDocumentationTests
     [InlineData("/api/residents", "get")]
     [InlineData("/api/residents", "post")]
     [InlineData("/api/residents/{id}", "get")]
+    [InlineData("/api/residents/{id}", "put")]
+    [InlineData("/api/residents/{id}/occupancies", "post")]
+    [InlineData("/api/residents/{id}/occupancies/{occupancyId}/end", "post")]
     public async Task Development_documents_every_resident_route_as_protected_with_a_summary_and_the_error_statuses(string path, string method)
     {
         await using ApiFactory factory = new() { EnvironmentName = "Development" };

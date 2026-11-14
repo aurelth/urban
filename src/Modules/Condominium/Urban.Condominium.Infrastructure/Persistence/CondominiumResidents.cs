@@ -1,17 +1,21 @@
 using System.Globalization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Npgsql;
 using Urban.Condominium.Application.Abstractions;
+using Urban.Condominium.Domain.Condominiums;
 using Urban.Condominium.Domain.Occupancies;
 using Urban.Condominium.Domain.People;
+using Urban.Condominium.Infrastructure.Persistence.Configurations;
 using Urban.SharedKernel;
 
 namespace Urban.Condominium.Infrastructure.Persistence;
 
 /// <summary>
 /// Os moradores no PostgreSQL. A leitura só enxerga o condomínio da requisição (filtro de tenant do contexto). Morador é a
-/// pessoa com ao menos um vínculo: o síndico sem unidade fica de fora. O CPF repetido é decidido pelo índice único do banco, que
-/// vale mesmo com dois cadastros ao mesmo tempo.
+/// pessoa com ao menos um vínculo: o síndico sem unidade fica de fora. O CPF repetido e o segundo vínculo em andamento na mesma
+/// unidade são decididos pelos índices únicos do banco, que valem mesmo com dois pedidos ao mesmo tempo; a versão velha de uma
+/// edição é decidida pelo <c>xmin</c>.
 /// </summary>
 public sealed class CondominiumResidents(CondominiumDbContext db) : IResidents
 {
@@ -66,21 +70,84 @@ public sealed class CondominiumResidents(CondominiumDbContext db) : IResidents
     {
         db.People.Add(person);
         db.Occupancies.Add(occupancy);
+
+        return await SaveWithLogAsync(entry, () => CurrentVersion(person), cancellationToken);
+    }
+
+    public async Task<Result<string>> SaveAsync(ResidentRecord record, ChangeLogEntry entry, CancellationToken cancellationToken) =>
+        await SaveWithLogAsync(entry, () => CurrentVersion(record.Person), cancellationToken);
+
+    public async Task<Result> AddOccupancyAsync(Occupancy occupancy, ChangeLogEntry entry, CancellationToken cancellationToken)
+    {
+        db.Occupancies.Add(occupancy);
+
+        Result<string> saved = await SaveWithLogAsync(entry, () => string.Empty, cancellationToken);
+
+        return saved.IsSuccess ? Result.Success() : Result.Failure(saved.Error);
+    }
+
+    /// <summary>
+    /// A leitura dos vínculos não rastreia as entidades, então não há versão para comparar. Em vez disso a atualização é
+    /// condicional ("só se ainda não tem data de saída"): de dois pedidos ao mesmo tempo, só o primeiro muda uma linha. O registro
+    /// vai na mesma transação, para não ficar nem sem ele nem com ele sem a saída.
+    /// </summary>
+    public async Task<Result> EndOccupancyAsync(Occupancy occupancy, ChangeLogEntry entry, CancellationToken cancellationToken)
+    {
+        await using IDbContextTransaction? own = db.Database.CurrentTransaction is null ? await db.Database.BeginTransactionAsync(cancellationToken) : null;
+
+        DateOnly? endDate = occupancy.EndDate;
+        int ended = await db.Occupancies
+            .Where(o => o.Id == occupancy.Id && o.EndDate == null)
+            .ExecuteUpdateAsync(set => set.SetProperty(o => o.EndDate, endDate), cancellationToken);
+        if (ended == 0)
+        {
+            return Result.Failure(OccupancyErrors.AlreadyEnded);
+        }
+
+        db.Set<ChangeLogRecord>().Add(ChangeLogRecord.From(entry));
+        await db.SaveChangesAsync(cancellationToken);
+
+        if (own is not null)
+        {
+            await own.CommitAsync(cancellationToken);
+        }
+
+        return Result.Success();
+    }
+
+    /// <summary>Grava o que já está no contexto junto com o registro de alterações e traduz as violações que o banco decide.</summary>
+    private async Task<Result<string>> SaveWithLogAsync(ChangeLogEntry entry, Func<string> version, CancellationToken cancellationToken)
+    {
         db.Set<ChangeLogRecord>().Add(ChangeLogRecord.From(entry));
 
         try
         {
             await db.SaveChangesAsync(cancellationToken);
 
-            return Result.Success(CurrentVersion(person));
+            return Result.Success(version());
         }
-        catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: CpfIndex })
+        catch (DbUpdateConcurrencyException)
+        {
+            db.ChangeTracker.Clear();
+
+            return Result.Failure<string>(CondominiumErrors.ConcurrencyConflict);
+        }
+        catch (DbUpdateException ex) when (Violates(ex, CpfIndex))
         {
             db.ChangeTracker.Clear();
 
             return Result.Failure<string>(PersonErrors.CpfAlreadyRegistered);
         }
+        catch (DbUpdateException ex) when (Violates(ex, OccupancyConfiguration.ActivePerPersonAndUnitIndex))
+        {
+            db.ChangeTracker.Clear();
+
+            return Result.Failure<string>(OccupancyErrors.AlreadyActive);
+        }
     }
+
+    private static bool Violates(DbUpdateException ex, string index) =>
+        ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } violation && violation.ConstraintName == index;
 
     /// <summary>Todos os vínculos das pessoas dadas, com bloco e número da unidade, os em andamento primeiro e depois os mais recentes.</summary>
     private async Task<ILookup<Guid, ResidentOccupancy>> OccupanciesOfAsync(IReadOnlyCollection<Guid> personIds, CancellationToken cancellationToken)

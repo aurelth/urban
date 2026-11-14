@@ -135,6 +135,10 @@ public static class ErrorHttp
         [OccupancyErrors.CondominiumRequired.Code] = StatusCodes.Status422UnprocessableEntity,
         [OccupancyErrors.PersonRequired.Code] = StatusCodes.Status422UnprocessableEntity,
         [OccupancyErrors.UnitRequired.Code] = StatusCodes.Status422UnprocessableEntity,
+        [OccupancyErrors.EndDateInvalid.Code] = StatusCodes.Status400BadRequest,
+        [OccupancyErrors.NotFound.Code] = StatusCodes.Status404NotFound,
+        [OccupancyErrors.AlreadyActive.Code] = StatusCodes.Status409Conflict,
+        [OccupancyErrors.AlreadyEnded.Code] = StatusCodes.Status409Conflict,
 
         [UnitErrors.NumberInvalid.Code] = StatusCodes.Status400BadRequest,
         [UnitErrors.BlockInvalid.Code] = StatusCodes.Status400BadRequest,
