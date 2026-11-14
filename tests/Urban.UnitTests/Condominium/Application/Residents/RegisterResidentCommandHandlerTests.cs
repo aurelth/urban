@@ -203,4 +203,93 @@ public class RegisterResidentCommandHandlerTests
 
         return $"***.{digits[3..6]}.{digits[6..9]}-**";
     }
+
+    [Fact]
+    public async Task Handle_ARegisteredMinorAsADependent_NeedsNoProfessionNorEmergencyContact()
+    {
+        RegisterResidentCommand command = ResidentCommands.Minor(_kit.Unit.Id);
+
+        Result<ResidentView> result = await Handler().Handle(command, default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.FullName.Should().Be("Pedro Souza");
+        result.Value.BirthDate.Should().Be(new DateOnly(2015, 4, 10));
+        result.Value.Profession.Should().BeNull();
+        result.Value.EmergencyContact.Should().BeNull();
+        result.Value.Email.Should().BeNull();
+        result.Value.Occupancies.Should().ContainSingle().Which.Kind.Should().Be(OccupancyKind.Dependent);
+        _kit.AddedOccupancies.Should().ContainSingle().Which.Kind.Should().Be(OccupancyKind.Dependent);
+    }
+
+    [Fact]
+    public async Task Handle_ALoggedMinor_NamesNeitherProfessionNorEmergencyContact()
+    {
+        await Handler().Handle(ResidentCommands.Minor(_kit.Unit.Id), default);
+
+        _kit.Logged.Should().ContainSingle().Which.Fields.Should().Equal("fullName", "cpf", "birthDate", "phone", "occupancy");
+    }
+
+    [Theory]
+    [InlineData(OccupancyKind.Owner)]
+    [InlineData(OccupancyKind.Tenant)]
+    public async Task Handle_AMinorAsOwnerOrTenant_FailsAsUnderAge_AndNeverSaves(OccupancyKind kind)
+    {
+        Result<ResidentView> result = await Handler().Handle(ResidentCommands.Minor(_kit.Unit.Id, kind: kind), default);
+
+        result.Error.Should().Be(ResidentErrors.UnderAge);
+        _kit.AddedPeople.Should().BeEmpty();
+        _kit.Units.Verify(u => u.FindAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_AMinorWithAnUnknownKind_FailsAsKindInvalid()
+    {
+        Result<ResidentView> result = await Handler().Handle(ResidentCommands.Minor(_kit.Unit.Id) with { Kind = 0 }, default);
+
+        result.Error.Should().Be(OccupancyErrors.KindInvalid);
+    }
+
+    [Fact]
+    public async Task Handle_AMinorMayStillGiveAProfessionAndAContact_AndThenTheyAreValidated()
+    {
+        RegisterResidentCommand filled = ResidentCommands.Minor(_kit.Unit.Id) with
+        {
+            Profession = "Estudante",
+            EmergencyContact = new EmergencyContactInput("Carlos Souza", "Tio", "(47) 3333-4444"),
+        };
+
+        Result<ResidentView> ok = await Handler().Handle(filled, default);
+        Result<ResidentView> invalid = await Handler().Handle(filled with { Profession = "x" }, default);
+
+        ok.Value.Profession.Should().Be("Estudante");
+        ok.Value.EmergencyContact!.Name.Should().Be("Carlos Souza");
+        invalid.Error.Code.Should().Be("condominium.profession.invalid");
+    }
+
+    [Fact]
+    public async Task Handle_AnAdultDependent_StillNeedsProfessionAndEmergencyContact()
+    {
+        RegisterResidentCommand adult = ResidentCommands.Valid(_kit.Unit.Id, kind: OccupancyKind.Dependent);
+
+        Result<ResidentView> ok = await Handler().Handle(adult, default);
+        Result<ResidentView> noProfession = await Handler().Handle(adult with { Profession = null }, default);
+        Result<ResidentView> noContact = await Handler().Handle(adult with { EmergencyContact = new EmergencyContactInput(null, null, null) }, default);
+
+        ok.IsSuccess.Should().BeTrue();
+        noProfession.Error.Code.Should().Be("condominium.profession.invalid");
+        noContact.Error.Code.Should().Be("condominium.emergency_contact.name_invalid");
+    }
+
+    [Fact]
+    public async Task Handle_AMinorWithAPartialEmergencyContact_IsValidatedLikeAnyOther()
+    {
+        RegisterResidentCommand command = ResidentCommands.Minor(_kit.Unit.Id) with
+        {
+            EmergencyContact = new EmergencyContactInput("Carlos Souza", null, null),
+        };
+
+        Result<ResidentView> result = await Handler().Handle(command, default);
+
+        result.Error.Code.Should().Be("condominium.emergency_contact.relationship_invalid");
+    }
 }

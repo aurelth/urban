@@ -72,4 +72,29 @@ public class ResidentPersonTests
         manager.Profession.Should().BeNull();
         manager.EmergencyContact.Should().BeNull();
     }
+
+    [Fact]
+    public void RegisterResident_AMinorWithoutProfessionNorEmergencyContact_IsAccepted()
+    {
+        Person minor = ResidentBuilders.Minor(name: "Pedro Souza");
+
+        minor.BirthDate!.IsMinorOn(ResidentBuilders.Today).Should().BeTrue();
+        minor.Profession.Should().BeNull();
+        minor.EmergencyContact.Should().BeNull();
+        minor.Email.Should().BeNull();
+        minor.UserId.Should().BeNull();
+        minor.Address.Should().BeNull();
+    }
+
+    [Fact]
+    public void UpdateResident_CanClearTheProfessionAndTheEmergencyContact()
+    {
+        Person person = ResidentBuilders.Resident();
+
+        Result result = person.UpdateResident(person.FullName, person.Cpf, person.BirthDate, person.Phone, person.Email, null, null);
+
+        result.IsSuccess.Should().BeTrue();
+        person.Profession.Should().BeNull();
+        person.EmergencyContact.Should().BeNull();
+    }
 }

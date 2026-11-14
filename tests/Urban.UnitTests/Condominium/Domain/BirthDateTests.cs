@@ -93,4 +93,60 @@ public class BirthDateTests
 
         BirthDate.Restore(stored).Value.Should().Be(stored);
     }
+
+    [Theory]
+    [InlineData(2026, 10, 29)]
+    [InlineData(2015, 4, 10)]
+    [InlineData(2008, 10, 30)]
+    [InlineData(2008, 10, 29)]
+    [InlineData(1990, 5, 20)]
+    public void CreateAllowingMinor_AcceptsAnyAgeUpTo120Years(int year, int month, int day)
+    {
+        Result<BirthDate> result = BirthDate.CreateAllowingMinor(new DateOnly(year, month, day), Today);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Value.Should().Be(new DateOnly(year, month, day));
+    }
+
+    [Theory]
+    [InlineData(2026, 10, 30)]
+    [InlineData(2030, 1, 1)]
+    [InlineData(1906, 10, 28)]
+    public void CreateAllowingMinor_InTheFutureOrOlderThan120Years_FailsAsInvalid(int year, int month, int day)
+    {
+        BirthDate.CreateAllowingMinor(new DateOnly(year, month, day), Today).Error.Should().Be(BirthDate.Invalid);
+    }
+
+    [Fact]
+    public void CreateAllowingMinor_WithoutADate_FailsAsInvalid()
+    {
+        BirthDate.CreateAllowingMinor(null, Today).Error.Should().Be(BirthDate.Invalid);
+    }
+
+    [Fact]
+    public void IsMinorOn_IsTrueUntilTheDayBeforeTheEighteenthBirthday_AndFalseOnIt()
+    {
+        BirthDate born = BirthDate.CreateAllowingMinor(new DateOnly(2008, 10, 30), Today).Value;
+
+        born.IsMinorOn(Today).Should().BeTrue();
+        born.IsMinorOn(new DateOnly(2026, 10, 29)).Should().BeTrue();
+        born.IsMinorOn(new DateOnly(2026, 10, 30)).Should().BeFalse();
+        born.IsMinorOn(new DateOnly(2026, 10, 31)).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsMinorOn_ForSomeoneBornOnFebruary29_TurnsAdultOnMarch1InCommonYears()
+    {
+        BirthDate born = BirthDate.CreateAllowingMinor(new DateOnly(2008, 2, 29), Today).Value;
+
+        born.IsMinorOn(new DateOnly(2026, 2, 28)).Should().BeTrue();
+        born.IsMinorOn(new DateOnly(2026, 3, 1)).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsMinorOn_ForARestoredDate_UsesTheSameRule()
+    {
+        BirthDate.Restore(new DateOnly(2015, 4, 10)).IsMinorOn(Today).Should().BeTrue();
+        BirthDate.Restore(new DateOnly(1990, 5, 20)).IsMinorOn(Today).Should().BeFalse();
+    }
 }

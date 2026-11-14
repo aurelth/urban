@@ -38,4 +38,24 @@ public static class ResidentCommands
             email,
             "Engenheira",
             new EmergencyContactInput("Carlos Souza", "Irmão", "(47) 3333-4444"));
+
+    /// <summary>O cadastro de um dependente menor de idade (11 anos em 13/11/2026): sem profissão, sem contato de emergência e sem e-mail.</summary>
+    public static RegisterResidentCommand Minor(Guid unitId, Guid? actorUserId = null, OccupancyKind kind = OccupancyKind.Dependent) =>
+        Valid(unitId, actorUserId, email: null, kind: kind) with
+        {
+            FullName = "Pedro Souza",
+            BirthDate = new DateOnly(2015, 4, 10),
+            Profession = null,
+            EmergencyContact = new EmergencyContactInput(null, null, null),
+        };
+
+    /// <summary>A edição de um dependente criado por <see cref="ResidentBuilders.Minor"/>: repete os dados dele, sem profissão nem contato.</summary>
+    public static UpdateResidentCommand UpdateMinor(Guid residentId, string? version = "4", string? cpf = null) =>
+        Update(residentId, version, cpf: cpf, email: null) with
+        {
+            FullName = "Pedro Souza",
+            BirthDate = new DateOnly(2015, 4, 10),
+            Profession = null,
+            EmergencyContact = new EmergencyContactInput(null, null, null),
+        };
 }
