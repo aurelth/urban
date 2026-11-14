@@ -245,6 +245,7 @@ describe('ShellLayout', () => {
       expect(links(html).map((link) => link.dataset['testid'])).toEqual([
         'nav-dashboard',
         'nav-units',
+        'nav-residents',
         'nav-expenses',
         'nav-tariffs',
         'nav-readings',
@@ -254,6 +255,7 @@ describe('ShellLayout', () => {
       expect(links(html).map(text)).toEqual([
         'Painel',
         'Unidades',
+        'Moradores',
         'Despesas',
         'Tarifas',
         'Leituras',
@@ -263,6 +265,7 @@ describe('ShellLayout', () => {
       expect(links(html).map((link) => link.getAttribute('href'))).toEqual([
         '/dashboard',
         '/unidades',
+        '/moradores',
         '/financeiro/despesas',
         '/financeiro/tarifas',
         '/financeiro/leituras',
@@ -406,6 +409,7 @@ describe('ShellLayout', () => {
         expect(labels(html).map(text)).toEqual([
           'Painel',
           'Unidades',
+          'Moradores',
           'Despesas',
           'Tarifas',
           'Leituras',

@@ -61,6 +61,29 @@ public class ResidentQueriesHandlerTests
     }
 
     [Theory]
+    [InlineData(ResidentStatusFilter.Active)]
+    [InlineData(ResidentStatusFilter.Former)]
+    [InlineData(ResidentStatusFilter.All)]
+    public async Task List_PassesTheStatusFilterToTheStore(ResidentStatusFilter status)
+    {
+        ListReturns([], 0);
+
+        await ListHandler().Handle(new ListResidentsQuery(Status: status), default);
+
+        _kit.Residents.Verify(r => r.ListAsync(new ResidentFilter(null, null, status), 1, 50, It.IsAny<CancellationToken>()));
+    }
+
+    [Fact]
+    public async Task List_WithoutAStatus_BringsEveryone()
+    {
+        ListReturns([], 0);
+
+        await ListHandler().Handle(new ListResidentsQuery(), default);
+
+        _kit.Residents.Verify(r => r.ListAsync(new ResidentFilter(null, null, ResidentStatusFilter.All), 1, 50, It.IsAny<CancellationToken>()));
+    }
+
+    [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]

@@ -340,6 +340,70 @@ public sealed class CondominiumResidentsTests(CondominiumPostgresFixture postgre
     }
 
     [Fact]
+    public async Task The_status_filter_separates_who_lives_in_the_condominium_from_who_left_every_unit()
+    {
+        CondominiumEntity condominium = await SeedCondominiumAsync();
+        CondominiumUnit a = await SeedUnitAsync(condominium, "Bloco A", "101");
+        CondominiumUnit b = await SeedUnitAsync(condominium, "Bloco B", "202");
+        Person lives = await AddResidentAsync(condominium, a, "Ana Lima", new DateOnly(2024, 1, 1));
+        Person left = await AddResidentAsync(condominium, a, "Beto Rocha", new DateOnly(2024, 1, 1));
+        Person moved = await AddResidentAsync(condominium, a, "Carla Dias", new DateOnly(2024, 1, 1));
+        await EndOccupancyAsync(left.Id, a.Id, new DateOnly(2025, 1, 1));
+        await EndOccupancyAsync(moved.Id, a.Id, new DateOnly(2025, 1, 1));
+        await AddOccupancyDirectlyAsync(condominium, ResidentBuilders.Occupancy(moved, b.Id, OccupancyKind.Tenant, new DateOnly(2025, 2, 1)));
+
+        PagedResidents active = await ListAsync(condominium, new ResidentFilter(null, null, ResidentStatusFilter.Active), 1, 50);
+        PagedResidents former = await ListAsync(condominium, new ResidentFilter(null, null, ResidentStatusFilter.Former), 1, 50);
+        PagedResidents all = await ListAsync(condominium, new ResidentFilter(null, null, ResidentStatusFilter.All), 1, 50);
+
+        active.Items.Select(i => i.Person.Id).Should().BeEquivalentTo([lives.Id, moved.Id]);
+        active.Total.Should().Be(2);
+        former.Items.Select(i => i.Person.Id).Should().Equal(left.Id);
+        former.Total.Should().Be(1);
+        all.Total.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task With_a_unit_the_status_is_about_that_unit_and_the_occupancies_returned_are_still_all_of_them()
+    {
+        CondominiumEntity condominium = await SeedCondominiumAsync();
+        CondominiumUnit a = await SeedUnitAsync(condominium, "Bloco A", "101");
+        CondominiumUnit b = await SeedUnitAsync(condominium, "Bloco B", "202");
+        Person stayed = await AddResidentAsync(condominium, a, "Ana Lima", new DateOnly(2024, 1, 1));
+        Person moved = await AddResidentAsync(condominium, a, "Carla Dias", new DateOnly(2024, 1, 1));
+        await EndOccupancyAsync(moved.Id, a.Id, new DateOnly(2025, 1, 1));
+        await AddOccupancyDirectlyAsync(condominium, ResidentBuilders.Occupancy(moved, b.Id, OccupancyKind.Tenant, new DateOnly(2025, 2, 1)));
+
+        PagedResidents activeInA = await ListAsync(condominium, new ResidentFilter(null, a.Id, ResidentStatusFilter.Active), 1, 50);
+        PagedResidents formerInA = await ListAsync(condominium, new ResidentFilter(null, a.Id, ResidentStatusFilter.Former), 1, 50);
+        PagedResidents activeInB = await ListAsync(condominium, new ResidentFilter(null, b.Id, ResidentStatusFilter.Active), 1, 50);
+        PagedResidents formerInB = await ListAsync(condominium, new ResidentFilter(null, b.Id, ResidentStatusFilter.Former), 1, 50);
+
+        activeInA.Items.Select(i => i.Person.Id).Should().Equal(stayed.Id);
+        formerInA.Items.Select(i => i.Person.Id).Should().Equal(moved.Id);
+        formerInA.Items.Single().Occupancies.Should().HaveCount(2);
+        activeInB.Items.Select(i => i.Person.Id).Should().Equal(moved.Id);
+        formerInB.Total.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task The_status_filter_combines_with_the_search_and_pages_by_the_filtered_total()
+    {
+        CondominiumEntity condominium = await SeedCondominiumAsync();
+        CondominiumUnit a = await SeedUnitAsync(condominium, "Bloco A", "101");
+        Person one = await AddResidentAsync(condominium, a, "Maria Souza", new DateOnly(2024, 1, 1));
+        await AddResidentAsync(condominium, a, "Maria Teresa", new DateOnly(2024, 1, 1));
+        Person other = await AddResidentAsync(condominium, a, "Joao Pereira", new DateOnly(2024, 1, 1));
+        await EndOccupancyAsync(one.Id, a.Id, new DateOnly(2025, 1, 1));
+        await EndOccupancyAsync(other.Id, a.Id, new DateOnly(2025, 1, 1));
+
+        PagedResidents result = await ListAsync(condominium, new ResidentFilter("maria", null, ResidentStatusFilter.Former), 1, 1);
+
+        result.Total.Should().Be(1);
+        result.Items.Select(i => i.Person.Id).Should().Equal(one.Id);
+    }
+
+    [Fact]
     public async Task A_resident_with_two_occupancies_appears_once_with_the_active_first_and_then_the_most_recent()
     {
         CondominiumEntity condominium = await SeedCondominiumAsync();

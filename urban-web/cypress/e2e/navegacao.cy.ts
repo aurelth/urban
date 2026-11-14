@@ -14,6 +14,7 @@ import { stubUnits } from '../support/unidades';
 const LINKS = [
   ['nav-dashboard', 'Painel', '/dashboard'],
   ['nav-units', 'Unidades', '/unidades'],
+  ['nav-residents', 'Moradores', '/moradores'],
   ['nav-expenses', 'Despesas', '/financeiro/despesas'],
   ['nav-tariffs', 'Tarifas', '/financeiro/tarifas'],
   ['nav-readings', 'Leituras', '/financeiro/leituras'],
@@ -138,7 +139,7 @@ describe('Navegação', () => {
           ).to.be.at.most(1);
         });
         cy.get('[data-testid="nav-group"]').should('not.exist');
-        cy.get('nav[aria-label="Menu principal"] a mat-icon').should('have.length', 6);
+        cy.get('nav[aria-label="Menu principal"] a mat-icon').should('have.length', LINKS.length);
         cy.get('nav[aria-label="Menu principal"] a mat-icon').each(($icon) => {
           cy.wrap($icon).should('be.visible');
         });

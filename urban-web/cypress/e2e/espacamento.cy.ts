@@ -23,6 +23,7 @@ import { PROFILE_PATH, stubProfile } from '../support/perfil';
 import { ADMIN, REQUESTS_PATH, stubRequests } from '../support/pedidos';
 import { MANAGER, stubAnonymous, stubSignedIn } from '../support/session';
 import { TARIFFS_PATH, stubTariffs } from '../support/tarifas';
+import { RESIDENTS_PATH, stubResidents } from '../support/moradores';
 import { BATCH_PATH, UNITS_PATH, stubUnits } from '../support/unidades';
 
 function closeDialog(): void {
@@ -155,6 +156,14 @@ SCREENS.forEach(([where, width, height]) => {
       closeDialog();
       cy.visit(BATCH_PATH);
       cy.get('[data-testid="generator"]').should('be.visible');
+      expectBreathingRoom();
+    });
+
+    it('não cola texto em container na lista de moradores', () => {
+      stubSignedIn(MANAGER);
+      stubResidents();
+      cy.visit(RESIDENTS_PATH);
+      cy.get('[data-testid="residents-table"]').should('be.visible');
       expectBreathingRoom();
     });
 
