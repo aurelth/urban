@@ -93,3 +93,71 @@ export function stubResidents(
     });
   }).as(alias);
 }
+
+export const NEW_RESIDENT_PATH = '/moradores/novo';
+
+export function editResidentPath(id: string): string {
+  return `${RESIDENTS_PATH}/${id}/editar`;
+}
+
+/** O morador que a tela de edição busca, pelo id. */
+export function stubResidentDetail(resident: StubResident = CURRENT_RESIDENT): void {
+  cy.intercept('GET', `/api/residents/${resident.id}`, { statusCode: 200, body: resident }).as(
+    'residentDetail',
+  );
+}
+
+/** O cadastro que dá certo: devolve o morador criado, com o vínculo à unidade pedida. */
+export function stubResidentCreated(created: StubResident = CURRENT_RESIDENT): void {
+  cy.intercept('POST', '/api/residents', { statusCode: 201, body: created }).as('createResident');
+}
+
+/** O cadastro que a API recusa, com o código do motivo. */
+export function stubResidentCreateRejected(status: number, code: string): void {
+  cy.intercept('POST', '/api/residents', {
+    statusCode: status,
+    body: { status, code, detail: 'Recusado' },
+  }).as('createResident');
+}
+
+/** A edição que dá certo: devolve o morador com a versão seguinte. */
+export function stubResidentUpdated(resident: StubResident, changes: Partial<StubResident>): void {
+  cy.intercept('PUT', `/api/residents/${resident.id}`, {
+    statusCode: 200,
+    body: { ...resident, ...changes, version: String(Number(resident.version) + 1) },
+  }).as('updateResident');
+}
+
+/** A edição que a API recusa, com o código do motivo. */
+export function stubResidentUpdateRejected(
+  resident: StubResident,
+  status: number,
+  code: string,
+): void {
+  cy.intercept('PUT', `/api/residents/${resident.id}`, {
+    statusCode: status,
+    body: { status, code, detail: 'Recusado' },
+  }).as('updateResident');
+}
+
+function field(name: string): Cypress.Chainable<JQuery<HTMLElement>> {
+  return cy.get(`[formControlName="${name}"]`);
+}
+
+/** Digita num campo de texto: o rótulo flutuante do Material cobre o meio do campo vazio, então o clique vai à direita. */
+export function typeInto(name: string, value: string): void {
+  field(name).click('right').type(`{selectall}${value}`);
+}
+
+/** Preenche os campos obrigatórios do cadastro, menos a unidade e o tipo de vínculo (que são menus). */
+export function fillResidentTexts(): void {
+  typeInto('fullName', 'Maria Souza');
+  typeInto('cpf', '52998224725');
+  typeInto('birthDate', '20051990');
+  typeInto('phone', '47998765432');
+  typeInto('profession', 'Engenheira');
+  typeInto('contactName', 'Carlos Souza');
+  typeInto('contactRelationship', 'Irmão');
+  typeInto('contactPhone', '4733334444');
+  typeInto('startDate', '01032024');
+}

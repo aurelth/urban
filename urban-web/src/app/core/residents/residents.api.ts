@@ -1,7 +1,13 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
-import { ResidentPage, ResidentsQuery } from './residents.models';
+import {
+  Resident,
+  ResidentPage,
+  ResidentPayload,
+  ResidentsQuery,
+  UpdateResidentPayload,
+} from './residents.models';
 
 const BASE = '/api/residents';
 
@@ -12,6 +18,18 @@ export class ResidentsApi {
 
   list(query: ResidentsQuery): Observable<ResidentPage> {
     return this.http.get<ResidentPage>(BASE, { params: toParams(query) });
+  }
+
+  get(id: string): Observable<Resident> {
+    return this.http.get<Resident>(`${BASE}/${id}`);
+  }
+
+  create(payload: ResidentPayload): Observable<Resident> {
+    return this.http.post<Resident>(BASE, payload);
+  }
+
+  update(id: string, payload: UpdateResidentPayload): Observable<Resident> {
+    return this.http.put<Resident>(`${BASE}/${id}`, payload);
   }
 }
 

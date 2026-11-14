@@ -49,6 +49,38 @@ export interface ResidentsQuery {
   readonly pageSize: number;
 }
 
+/**
+ * Corpo de POST /api/residents: só dígitos nos documentos e telefones, datas em AAAA-MM-DD. O e-mail é opcional (nulo
+ * quando não há) e o primeiro vínculo, com a unidade, vai junto.
+ */
+export interface ResidentPayload {
+  readonly fullName: string;
+  readonly cpf: string;
+  readonly birthDate: string;
+  readonly phone: string;
+  readonly email: string | null;
+  readonly profession: string;
+  readonly emergencyContact: EmergencyContact;
+  readonly unitId: string;
+  readonly kind: OccupancyKind;
+  readonly startDate: string;
+}
+
+/**
+ * Corpo de PUT /api/residents/{id}: os dados pessoais do cadastro e a versão lida. Sem a chave `cpf` a API mantém o
+ * atual (a resposta só mostra o CPF mascarado); e-mail nulo limpa o e-mail.
+ */
+export interface UpdateResidentPayload {
+  readonly version: string;
+  readonly fullName: string;
+  readonly cpf?: string;
+  readonly birthDate: string;
+  readonly phone: string;
+  readonly email: string | null;
+  readonly profession: string;
+  readonly emergencyContact: EmergencyContact;
+}
+
 export const RESIDENTS_PAGE_SIZE = 50;
 
 /** A tela abre com quem mora hoje; quem já saiu fica a um filtro de distância. */

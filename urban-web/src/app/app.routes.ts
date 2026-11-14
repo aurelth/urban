@@ -105,6 +105,20 @@ export const routes: Routes = [
             loadComponent: () =>
               import('./features/moradores/residents.page').then((m) => m.ResidentsPage),
           },
+          {
+            path: 'moradores/novo',
+            title: 'Novo morador',
+            canActivate: [managerGuard],
+            loadComponent: () =>
+              import('./features/moradores/resident-form.page').then((m) => m.ResidentFormPage),
+          },
+          {
+            path: 'moradores/:id/editar',
+            title: 'Editar morador',
+            canActivate: [managerGuard],
+            loadComponent: () =>
+              import('./features/moradores/resident-form.page').then((m) => m.ResidentFormPage),
+          },
           { path: 'financeiro', pathMatch: 'full', redirectTo: 'financeiro/despesas' },
           {
             path: 'financeiro/despesas',
