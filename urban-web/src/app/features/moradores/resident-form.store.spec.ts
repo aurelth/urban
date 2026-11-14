@@ -7,7 +7,7 @@ import {
 import { TestBed } from '@angular/core/testing';
 import { ResidentPayload, UpdateResidentPayload } from '../../core/residents/residents.models';
 import { flushPromises } from '../../testing/async';
-import { resident } from '../../testing/residents.fixtures';
+import { occupancy, resident } from '../../testing/residents.fixtures';
 import { unit, unitPage } from '../../testing/units.fixtures';
 import { ResidentFormStore } from './resident-form.store';
 
@@ -269,6 +269,233 @@ describe('ResidentFormStore', () => {
 
       expect(problem?.status).toBe(0);
       expect(store.status()).toBe('ready');
+    });
+  });
+
+  describe('vínculos', () => {
+    const ADD_PAYLOAD = {
+      unitId: '0199aaaa-0000-7000-8000-000000000002',
+      kind: 'tenant' as const,
+      startDate: '2026-01-05',
+    };
+
+    async function editing(store: Store, http: HttpTestingController): Promise<void> {
+      const loading = store.loadForEdit('abc');
+      http.expectOne('/api/residents/abc').flush(resident({ id: 'abc', version: '7' }));
+      await loading;
+    }
+
+    describe('loadUnits', () => {
+      it('busca as unidades ativas sem mexer na situação da tela', async () => {
+        const { store, http } = setup();
+        await editing(store, http);
+        const units = [unit(), unit()];
+
+        const loading = store.loadUnits();
+        expect(store.unitsStatus()).toBe('loading');
+        expect(store.status()).toBe('ready');
+        const request = unitsRequest(http);
+        request.flush(unitPage(units, 2, 1, 200));
+        await loading;
+
+        expect(params(request).get('status')).toBe('active');
+        expect(params(request).get('pageSize')).toBe('200');
+        expect(store.unitsStatus()).toBe('ready');
+        expect(store.units()).toEqual(units);
+        expect(store.status()).toBe('ready');
+      });
+
+      it('não busca de novo quando as unidades já estão carregadas', async () => {
+        const { store, http } = setup();
+        const first = store.loadUnits();
+        unitsRequest(http).flush(unitPage([unit()], 1, 1, 200));
+        await first;
+
+        await store.loadUnits();
+
+        http.expectNone((request) => request.url === '/api/units');
+      });
+
+      it('vira "error" quando a busca falha e dá para tentar de novo', async () => {
+        const { store, http } = setup();
+
+        const first = store.loadUnits();
+        reject(unitsRequest(http), 500);
+        await first;
+        expect(store.unitsStatus()).toBe('error');
+
+        const second = store.loadUnits();
+        unitsRequest(http).flush(unitPage([unit()], 1, 1, 200));
+        await second;
+        expect(store.unitsStatus()).toBe('ready');
+      });
+    });
+
+    describe('addOccupancy', () => {
+      it('grava, troca só os vínculos do morador, mantém a versão lida e devolve nulo', async () => {
+        const { store, http } = setup();
+        await editing(store, http);
+        const added = occupancy({ unitId: ADD_PAYLOAD.unitId, kind: 'tenant' });
+        const returned = resident({
+          id: 'abc',
+          version: '9',
+          occupancies: [occupancy(), added],
+        });
+
+        const saving = store.addOccupancy('abc', ADD_PAYLOAD);
+        expect(store.occupancyBusy()).toBe(true);
+        const request = http.expectOne('/api/residents/abc/occupancies');
+        expect(request.request.method).toBe('POST');
+        expect(request.request.body).toEqual(ADD_PAYLOAD);
+        request.flush(returned, { status: 201, statusText: 'Created' });
+
+        await expect(saving).resolves.toBeNull();
+        expect(store.occupancyBusy()).toBe(false);
+        expect(store.resident()?.occupancies).toEqual(returned.occupancies);
+        expect(store.resident()?.version).toBe('7');
+        expect(store.status()).toBe('ready');
+      });
+
+      it.each([
+        [409, 'condominium.occupancy.already_active'],
+        [409, 'unit.deactivated'],
+        [404, 'unit.not_found'],
+        [400, 'condominium.occupancy.start_date_invalid'],
+      ])('devolve o problema %s %s e deixa a tela como estava', async (status, code) => {
+        const { store, http } = setup();
+        await editing(store, http);
+        const before = store.resident();
+
+        const saving = store.addOccupancy('abc', ADD_PAYLOAD);
+        reject(http.expectOne('/api/residents/abc/occupancies'), status, code);
+        const problem = await saving;
+
+        expect(problem).toMatchObject({ status, code });
+        expect(store.occupancyBusy()).toBe(false);
+        expect(store.status()).toBe('ready');
+        expect(store.resident()).toEqual(before);
+      });
+
+      it('vira "not-found" quando o morador sumiu', async () => {
+        const { store, http } = setup();
+        await editing(store, http);
+
+        const saving = store.addOccupancy('abc', ADD_PAYLOAD);
+        reject(
+          http.expectOne('/api/residents/abc/occupancies'),
+          404,
+          'condominium.resident.not_found',
+        );
+        await saving;
+
+        expect(store.status()).toBe('not-found');
+      });
+
+      it('não tira a tela do conflito de versão: os dados pessoais continuam velhos', async () => {
+        const { store, http } = setup();
+        await editing(store, http);
+        const updating = store.update('abc', UPDATE_PAYLOAD);
+        reject(http.expectOne('/api/residents/abc'), 409, 'concurrency.conflict');
+        await updating;
+
+        const saving = store.addOccupancy('abc', ADD_PAYLOAD);
+        http
+          .expectOne('/api/residents/abc/occupancies')
+          .flush(resident({ id: 'abc', version: '9' }), { status: 201, statusText: 'Created' });
+        await saving;
+
+        expect(store.status()).toBe('conflict');
+        expect(store.resident()?.version).toBe('7');
+      });
+    });
+
+    describe('endOccupancy', () => {
+      it('grava a saída e troca só os vínculos do morador', async () => {
+        const { store, http } = setup();
+        await editing(store, http);
+        const ended = occupancy({ id: 'occ-1', endDate: '2026-11-10' });
+        const returned = resident({ id: 'abc', version: '9', occupancies: [ended] });
+
+        const saving = store.endOccupancy('abc', 'occ-1', { endDate: '2026-11-10' });
+        expect(store.occupancyBusy()).toBe(true);
+        const request = http.expectOne('/api/residents/abc/occupancies/occ-1/end');
+        expect(request.request.method).toBe('POST');
+        expect(request.request.body).toEqual({ endDate: '2026-11-10' });
+        request.flush(returned);
+
+        await expect(saving).resolves.toBeNull();
+        expect(store.occupancyBusy()).toBe(false);
+        expect(store.resident()?.occupancies).toEqual([ended]);
+        expect(store.resident()?.version).toBe('7');
+      });
+
+      it.each([
+        [400, 'condominium.occupancy.end_date_invalid'],
+        [404, 'condominium.occupancy.not_found'],
+        [409, 'condominium.occupancy.already_ended'],
+      ])('devolve o problema %s %s e deixa a tela como estava', async (status, code) => {
+        const { store, http } = setup();
+        await editing(store, http);
+        const before = store.resident();
+
+        const saving = store.endOccupancy('abc', 'occ-1', { endDate: '2026-11-10' });
+        reject(http.expectOne('/api/residents/abc/occupancies/occ-1/end'), status, code);
+        const problem = await saving;
+
+        expect(problem).toMatchObject({ status, code });
+        expect(store.occupancyBusy()).toBe(false);
+        expect(store.status()).toBe('ready');
+        expect(store.resident()).toEqual(before);
+      });
+
+      it('uma falha de rede devolve o problema e libera a tela', async () => {
+        const { store, http } = setup();
+        await editing(store, http);
+
+        const saving = store.endOccupancy('abc', 'occ-1', { endDate: '2026-11-10' });
+        http
+          .expectOne('/api/residents/abc/occupancies/occ-1/end')
+          .error(new ProgressEvent('error'));
+        const problem = await saving;
+
+        expect(problem?.status).toBe(0);
+        expect(store.occupancyBusy()).toBe(false);
+      });
+    });
+
+    describe('refreshOccupancies', () => {
+      it('busca o morador de novo e troca só os vínculos, sem mexer na versão nem na situação', async () => {
+        const { store, http } = setup();
+        await editing(store, http);
+        const fresh = resident({
+          id: 'abc',
+          version: '12',
+          occupancies: [occupancy(), occupancy()],
+        });
+
+        const refreshing = store.refreshOccupancies('abc');
+        http.expectOne('/api/residents/abc').flush(fresh);
+        await refreshing;
+
+        expect(store.resident()?.occupancies).toEqual(fresh.occupancies);
+        expect(store.resident()?.version).toBe('7');
+        expect(store.status()).toBe('ready');
+      });
+
+      it('vira "not-found" quando o morador sumiu e ignora as outras falhas', async () => {
+        const { store, http } = setup();
+        await editing(store, http);
+
+        const first = store.refreshOccupancies('abc');
+        reject(http.expectOne('/api/residents/abc'), 500);
+        await first;
+        expect(store.status()).toBe('ready');
+
+        const second = store.refreshOccupancies('abc');
+        reject(http.expectOne('/api/residents/abc'), 404, 'condominium.resident.not_found');
+        await second;
+        expect(store.status()).toBe('not-found');
+      });
     });
   });
 });

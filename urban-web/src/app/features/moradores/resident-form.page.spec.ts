@@ -535,3 +535,54 @@ describe('ResidentFormPage, edição', () => {
     expect(valueOf(harness.html, 'fullName')).toBe('Maria Souza');
   });
 });
+
+describe('ResidentFormPage, vínculos', () => {
+  afterEach(() => {
+    const http = TestBed.inject(HttpTestingController);
+    http.match((request) => request.url.startsWith('icons/'));
+    http.verify();
+  });
+
+  it('a edição mostra os vínculos do morador abaixo dos dados', async () => {
+    const found = resident({ occupancies: [occupancy()] });
+    const { html } = await openEdit(found);
+
+    expect(testId(html, 'occupancies')).not.toBeNull();
+    expect(testId(html, 'add-occupancy')).not.toBeNull();
+  });
+
+  it('o cadastro não mostra os vínculos: a moradia é o cartão do próprio formulário', async () => {
+    const { html } = await openNew();
+
+    expect(testId(html, 'occupancies')).toBeNull();
+    expect(testId(html, 'housing-section')).not.toBeNull();
+  });
+
+  it('encerrar um vínculo não apaga o que foi digitado nos dados pessoais nem libera um salvamento velho', async () => {
+    const found = resident({ version: '7', occupancies: [occupancy({ id: 'occ-1' })] });
+    const h = await openEdit(found);
+    fill(h.html, 'profession', 'Médica');
+    await settle(h.fixture);
+    expect(submitButton(h.html).disabled).toBe(false);
+
+    testId(h.html, 'end-occupancy')!.click();
+    await settle(h.fixture);
+    fill(h.html, 'endDate', '01042024');
+    testId(h.html, 'end-form')!.dispatchEvent(new Event('submit'));
+    await settle(h.fixture);
+    h.http.expectOne(`/api/residents/${found.id}/occupancies/occ-1/end`).flush({
+      ...found,
+      version: '9',
+      occupancies: [occupancy({ id: 'occ-1', endDate: '2024-04-01' })],
+    });
+    await settle(h.fixture);
+
+    expect(valueOf(h.html, 'profession')).toBe('Médica');
+    expect(submitButton(h.html).disabled).toBe(false);
+
+    await submit(h);
+    const update = h.http.expectOne(`/api/residents/${found.id}`);
+    expect(update.request.body.version).toBe('7');
+    update.flush(found);
+  });
+});

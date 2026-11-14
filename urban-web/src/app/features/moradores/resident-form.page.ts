@@ -39,22 +39,19 @@ import {
 } from './resident-form.payload';
 import { RESIDENT_FORM_MESSAGES } from './resident-form.messages';
 import { ResidentFormStore } from './resident-form.store';
-import { kindLabel, occupancyUnit } from './resident-values';
+import { HOUSING_ERRORS, KIND_OPTIONS } from './resident-housing.fields';
+import { ResidentOccupancies } from './resident-occupancies';
+import { occupancyUnit } from './resident-values';
 
 const PROFESSION_LENGTH = { min: 2, max: 80 };
 const RELATIONSHIP_LENGTH = { min: 2, max: 40 };
-
-const KIND_OPTIONS: readonly SelectOption[] = [
-  { value: 'owner', label: kindLabel('owner') },
-  { value: 'tenant', label: kindLabel('tenant') },
-];
 
 /**
  * Cadastro (`/moradores/novo`) e edição (`/moradores/:id/editar`) de um morador, na mesma tela: o `id` da rota diz qual.
  * O cadastro pede os dados pessoais, o contato de emergência e a moradia (unidade, tipo de vínculo e entrada) e termina
  * numa confirmação. A edição troca só os dados pessoais, com a versão lida (a API recusa com 409 se outra pessoa mexeu
  * antes), e o CPF só vira campo quando a pessoa pede para trocá-lo: o número salvo nunca chega à tela. O vínculo com a
- * unidade (nova moradia, saída) é de outra tela.
+ * unidade (nova moradia, saída) tem o seu próprio componente, `urban-resident-occupancies`, abaixo do formulário.
  */
 @Component({
   selector: 'urban-resident-form-page',
@@ -68,6 +65,7 @@ const KIND_OPTIONS: readonly SelectOption[] = [
     TextField,
     SelectField,
     FormSubmit,
+    ResidentOccupancies,
   ],
   templateUrl: './resident-form.page.html',
   providers: [ResidentFormStore],
@@ -172,12 +170,9 @@ export class ResidentFormPage implements OnInit {
     required: 'Informe o telefone do contato',
     phone: 'Informe um telefone com DDD',
   };
-  protected readonly unitErrors = { required: 'Escolha a unidade' };
-  protected readonly kindErrors = { required: 'Escolha se é proprietário ou inquilino' };
-  protected readonly startDateErrors = {
-    required: 'Informe a data de entrada',
-    date: 'Informe uma data de entrada válida, como 01/03/2024',
-  };
+  protected readonly unitErrors = HOUSING_ERRORS.unit;
+  protected readonly kindErrors = HOUSING_ERRORS.kind;
+  protected readonly startDateErrors = HOUSING_ERRORS.startDate;
 
   ngOnInit(): void {
     if (this.isEditing()) {

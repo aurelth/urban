@@ -190,6 +190,21 @@ SCREENS.forEach(([where, width, height]) => {
       expectBreathingRoom();
     });
 
+    it('não cola texto em container nos vínculos do morador, com os formulários de saída e de nova unidade', () => {
+      stubSignedIn(MANAGER);
+      stubUnits();
+      stubResidentDetail();
+      cy.visit(editResidentPath(CURRENT_RESIDENT.id));
+      cy.get('[data-testid="occupancies"]').should('be.visible');
+      expectBreathingRoom();
+      cy.get('[data-testid="end-occupancy"]').click();
+      cy.get('[data-testid="end-form"]').should('be.visible');
+      expectBreathingRoom();
+      cy.get('[data-testid="add-occupancy"]').click();
+      cy.get('[data-testid="add-form"]').should('be.visible');
+      expectBreathingRoom();
+    });
+
     it('não cola texto em container nas despesas e nos diálogos de despesa e de grupo', () => {
       stubSignedIn(MANAGER);
       stubExpenses();

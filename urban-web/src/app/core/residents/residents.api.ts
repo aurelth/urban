@@ -2,6 +2,8 @@ import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import {
+  EndOccupancyPayload,
+  OccupancyPayload,
   Resident,
   ResidentPage,
   ResidentPayload,
@@ -30,6 +32,20 @@ export class ResidentsApi {
 
   update(id: string, payload: UpdateResidentPayload): Observable<Resident> {
     return this.http.put<Resident>(`${BASE}/${id}`, payload);
+  }
+
+  /** Liga o morador a mais uma unidade; devolve o morador com todos os vínculos. */
+  addOccupancy(id: string, payload: OccupancyPayload): Observable<Resident> {
+    return this.http.post<Resident>(`${BASE}/${id}/occupancies`, payload);
+  }
+
+  /** Registra a saída de uma unidade (o vínculo fica no histórico); devolve o morador com todos os vínculos. */
+  endOccupancy(
+    id: string,
+    occupancyId: string,
+    payload: EndOccupancyPayload,
+  ): Observable<Resident> {
+    return this.http.post<Resident>(`${BASE}/${id}/occupancies/${occupancyId}/end`, payload);
   }
 }
 

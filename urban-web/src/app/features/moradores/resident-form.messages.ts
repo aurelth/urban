@@ -1,7 +1,7 @@
 import { MessagesByCode } from '../../core/http/problem-message';
 
 /**
- * Texto da tela para cada código de recusa que o cadastro e a edição do morador podem receber da API. O formulário já
+ * Texto da tela para cada código de recusa que o cadastro, a edição e os vínculos do morador podem receber da API. O formulário já
  * confere a maioria antes de enviar; estes textos valem quando a API discorda (ou quando a tela está desatualizada).
  */
 export const RESIDENT_FORM_MESSAGES: MessagesByCode = {
@@ -22,6 +22,11 @@ export const RESIDENT_FORM_MESSAGES: MessagesByCode = {
   'condominium.occupancy.kind_invalid': 'Escolha se a pessoa é proprietária ou inquilina',
   'condominium.occupancy.start_date_invalid':
     'Informe uma data de entrada válida, até 1 ano à frente',
+  'condominium.occupancy.already_active':
+    'Este morador já mora nesta unidade. Veja o vínculo atual na lista',
+  'condominium.occupancy.end_date_invalid': 'A data de saída deve ficar entre a entrada e hoje',
+  'condominium.occupancy.already_ended': 'Este vínculo já foi encerrado. Veja a lista atualizada',
+  'condominium.occupancy.not_found': 'Este vínculo não existe mais. Recarregue a página',
   'unit.not_found': 'Esta unidade não existe mais. Recarregue a página e escolha outra',
   'unit.deactivated': 'Esta unidade foi desativada. Recarregue a página e escolha outra',
   'condominium.version.required': 'Recarregue a página antes de continuar',

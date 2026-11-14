@@ -161,3 +161,44 @@ export function fillResidentTexts(): void {
   typeInto('contactPhone', '4733334444');
   typeInto('startDate', '01032024');
 }
+
+/** O novo vínculo que dá certo: devolve o morador com o vínculo acrescentado. */
+export function stubOccupancyAdded(resident: StubResident, added: StubOccupancy): void {
+  cy.intercept('POST', `/api/residents/${resident.id}/occupancies`, {
+    statusCode: 201,
+    body: { ...resident, occupancies: [...resident.occupancies, added] },
+  }).as('addOccupancy');
+}
+
+/** A saída que dá certo: devolve o morador com a data de saída preenchida no vínculo. */
+export function stubOccupancyEnded(
+  resident: StubResident,
+  occupancyId: string,
+  endDate: string,
+): void {
+  cy.intercept('POST', `/api/residents/${resident.id}/occupancies/${occupancyId}/end`, {
+    statusCode: 200,
+    body: {
+      ...resident,
+      occupancies: resident.occupancies.map((occupancy) =>
+        occupancy.id === occupancyId ? { ...occupancy, endDate } : occupancy,
+      ),
+    },
+  }).as('endOccupancy');
+}
+
+/** O novo vínculo ou a saída que a API recusa, com o código do motivo. */
+export function stubOccupancyRejected(
+  resident: StubResident,
+  action: 'add' | 'end',
+  status: number,
+  code: string,
+): void {
+  const url =
+    action === 'add'
+      ? `/api/residents/${resident.id}/occupancies`
+      : new RegExp(`^/api/residents/${resident.id}/occupancies/[^/]+/end$`);
+  cy.intercept('POST', url, { statusCode: status, body: { status, code, detail: 'Recusado' } }).as(
+    action === 'add' ? 'addOccupancy' : 'endOccupancy',
+  );
+}

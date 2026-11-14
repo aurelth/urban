@@ -81,6 +81,18 @@ export interface UpdateResidentPayload {
   readonly emergencyContact: EmergencyContact;
 }
 
+/** Corpo de POST /api/residents/{id}/occupancies: a unidade, o tipo do vínculo e o dia da entrada (AAAA-MM-DD). */
+export interface OccupancyPayload {
+  readonly unitId: string;
+  readonly kind: OccupancyKind;
+  readonly startDate: string;
+}
+
+/** Corpo de POST /api/residents/{id}/occupancies/{occupancyId}/end: o dia da saída (AAAA-MM-DD). */
+export interface EndOccupancyPayload {
+  readonly endDate: string;
+}
+
 export const RESIDENTS_PAGE_SIZE = 50;
 
 /** A tela abre com quem mora hoje; quem já saiu fica a um filtro de distância. */

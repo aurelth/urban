@@ -228,6 +228,10 @@
           [error]="error()"
         />
       </form>
+
+      @if (isEditing()) {
+        <urban-resident-occupancies />
+      }
     }
   } @else {
     <p role="status" class="text-on-surface-variant" data-testid="loading">
