@@ -4,17 +4,20 @@ using Urban.SharedKernel;
 
 namespace Urban.Condominium.Domain.People;
 
-/// <summary>Dados pessoais de quem usa o sistema dentro de um condomínio (hoje, o síndico).</summary>
+/// <summary>
+/// Dados pessoais de uma pessoa dentro de um condomínio: o síndico (sempre com conta e endereço próprio) e os moradores
+/// (cadastrados pelo síndico, com conta só depois do convite e sem endereço próprio, porque moram na unidade).
+/// </summary>
 public sealed class Person
 {
     private Person(
         Guid condominiumId,
-        Guid userId,
+        Guid? userId,
         PersonName fullName,
         Cpf cpf,
         BirthDate birthDate,
         PhoneNumber phone,
-        Address address,
+        Address? address,
         DateTimeOffset createdAt)
     {
         Id = Guid.CreateVersion7();
@@ -35,14 +38,14 @@ public sealed class Person
         Cpf = null!;
         BirthDate = null!;
         Phone = null!;
-        Address = null!;
     }
 
     public Guid Id { get; }
 
     public Guid CondominiumId { get; }
 
-    public Guid UserId { get; }
+    /// <summary>Nulo enquanto a pessoa não tem acesso ao sistema (morador que ainda não foi convidado).</summary>
+    public Guid? UserId { get; }
 
     public PersonName FullName { get; private set; }
 
@@ -52,7 +55,17 @@ public sealed class Person
 
     public PhoneNumber Phone { get; private set; }
 
-    public Address Address { get; private set; }
+    /// <summary>Só o síndico tem endereço próprio; o do morador é o da unidade onde ele mora.</summary>
+    public Address? Address { get; private set; }
+
+    /// <summary>E-mail de contato, opcional. É para ele que o convite vai; quem não tem e-mail fica cadastrado, sem acesso.</summary>
+    public ContactEmail? Email { get; private set; }
+
+    /// <summary>Preenchida nos moradores adultos.</summary>
+    public Profession? Profession { get; private set; }
+
+    /// <summary>Preenchido nos moradores adultos.</summary>
+    public EmergencyContact? EmergencyContact { get; private set; }
 
     public DateTimeOffset CreatedAt { get; }
 
@@ -83,6 +96,38 @@ public sealed class Person
 
         return Result.Success(new Person(condominiumId, userId, fullName, cpf, birthDate, phone, address, now));
     }
+
+    /// <summary>
+    /// Cadastra um morador adulto. A pessoa nasce sem conta (<see cref="UserId"/> nulo) e sem endereço próprio. O vínculo com
+    /// a unidade é um <c>Occupancy</c>, criado junto.
+    /// </summary>
+    public static Result<Person> RegisterResident(
+        Guid condominiumId,
+        PersonName fullName,
+        Cpf cpf,
+        BirthDate birthDate,
+        PhoneNumber phone,
+        ContactEmail? email,
+        Profession profession,
+        EmergencyContact emergencyContact,
+        DateTimeOffset now)
+    {
+        if (condominiumId == Guid.Empty)
+        {
+            return Result.Failure<Person>(PersonErrors.CondominiumRequired);
+        }
+
+        return Result.Success(new Person(condominiumId, null, fullName, cpf, birthDate, phone, null, now)
+        {
+            Email = email,
+            Profession = profession,
+            EmergencyContact = emergencyContact,
+        });
+    }
+
+    /// <summary>O endereço do síndico, que sempre tem um. Chamar para quem não é síndico é erro de programação.</summary>
+    public Address RequireAddress() =>
+        Address ?? throw new InvalidOperationException("Esta pessoa não tem endereço próprio: só o síndico tem.");
 
     /// <summary>Dados de contato, de edição livre: celular e endereço.</summary>
     public Result UpdateContact(PhoneNumber phone, Address address)

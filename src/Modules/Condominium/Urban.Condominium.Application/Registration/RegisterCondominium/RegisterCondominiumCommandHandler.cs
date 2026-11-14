@@ -22,9 +22,6 @@ public sealed class RegisterCondominiumCommandHandler(
     IAtomicWork atomicWork,
     IClock clock) : IRequestHandler<RegisterCondominiumCommand, Result<RegisteredCondominium>>
 {
-    // O Brasil não tem horário de verão desde 2019, então a data local é o horário UTC menos três horas.
-    private static readonly TimeSpan BrazilOffset = TimeSpan.FromHours(-3);
-
     public async Task<Result<RegisteredCondominium>> Handle(RegisterCondominiumCommand request, CancellationToken cancellationToken)
     {
         DateTimeOffset now = clock.UtcNow;
@@ -46,7 +43,7 @@ public sealed class RegisterCondominiumCommandHandler(
 
     private static Result<Registration> Build(RegisterCondominiumCommand request, DateTimeOffset now)
     {
-        DateOnly today = DateOnly.FromDateTime(now.ToOffset(BrazilOffset).DateTime);
+        DateOnly today = BrazilCalendar.Today(now);
 
         Result<PersonName> fullName = PersonName.Create(request.Manager.FullName);
         Result<Cpf> cpf = Cpf.Create(request.Manager.Cpf);

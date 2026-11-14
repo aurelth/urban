@@ -6,6 +6,7 @@ using Urban.Condominium.Application.PostalCodes;
 using Urban.Condominium.Domain.Condominiums;
 using Urban.Condominium.Domain.Contacts;
 using Urban.Condominium.Domain.Documents;
+using Urban.Condominium.Domain.Occupancies;
 using Urban.Condominium.Domain.People;
 using Urban.Condominium.Domain.Units;
 using Urban.Finance.Domain;
@@ -114,6 +115,19 @@ public sealed class ErrorHttpMappingTests
         { CondominiumErrors.VersionRequired.Code, 400 },
         { PersonErrors.CpfAlreadyRegistered.Code, 409 },
         { CondominiumErrors.ApportionmentMethodInvalid.Code, 400 },
+        { ContactEmail.Invalid.Code, 400 },
+        { Profession.Invalid.Code, 400 },
+        { EmergencyContact.NameInvalid.Code, 400 },
+        { EmergencyContact.RelationshipInvalid.Code, 400 },
+        { EmergencyContact.PhoneInvalid.Code, 400 },
+        { ResidentErrors.UnderAge.Code, 400 },
+        { ResidentErrors.PageInvalid.Code, 400 },
+        { ResidentErrors.NotFound.Code, 404 },
+        { OccupancyErrors.KindInvalid.Code, 400 },
+        { OccupancyErrors.StartDateInvalid.Code, 400 },
+        { OccupancyErrors.CondominiumRequired.Code, 422 },
+        { OccupancyErrors.PersonRequired.Code, 422 },
+        { OccupancyErrors.UnitRequired.Code, 422 },
         { UnitErrors.NumberInvalid.Code, 400 },
         { UnitErrors.BlockInvalid.Code, 400 },
         { UnitErrors.TypeInvalid.Code, 400 },

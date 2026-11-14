@@ -20,7 +20,8 @@ public sealed record BirthDate
 
     /// <param name="value">Data informada.</param>
     /// <param name="today">Data de hoje, recebida de fora para a regra continuar pura e testável.</param>
-    public static Result<BirthDate> Create(DateOnly? value, DateOnly today)
+    /// <param name="underAge">O erro para quem ainda não tem 18 anos; o padrão fala do síndico, e quem cadastra outro papel manda o seu.</param>
+    public static Result<BirthDate> Create(DateOnly? value, DateOnly today, Error? underAge = null)
     {
         if (value is null || value > today || value < today.AddYears(-MaximumAge))
         {
@@ -32,7 +33,7 @@ public sealed record BirthDate
 
         return eighteenthBirthday <= today
             ? Result.Success(new BirthDate(value.Value))
-            : Result.Failure<BirthDate>(UnderAge);
+            : Result.Failure<BirthDate>(underAge ?? UnderAge);
     }
 
     /// <summary>Reconstitui uma data já aceita no cadastro, vinda do armazenamento. A regra de idade vale no momento do cadastro, não a cada leitura.</summary>

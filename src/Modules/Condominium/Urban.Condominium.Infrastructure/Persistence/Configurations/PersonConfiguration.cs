@@ -21,7 +21,8 @@ internal sealed class PersonConfiguration(IPersonalDataProtector protector) : IE
         builder.HasOne<CondominiumEntity>().WithMany().HasForeignKey(p => p.CondominiumId).OnDelete(DeleteBehavior.Restrict);
         builder.Property(p => p.CondominiumId).IsRequired();
 
-        builder.Property(p => p.UserId).IsRequired();
+        // Nulo enquanto o morador não foi convidado. O índice único aceita vários nulos (cada NULL é distinto no PostgreSQL).
+        builder.Property(p => p.UserId);
         builder.HasIndex(p => p.UserId).IsUnique();
 
         builder.Property(p => p.FullName)
@@ -47,7 +48,29 @@ internal sealed class PersonConfiguration(IPersonalDataProtector protector) : IE
             .HasMaxLength(11)
             .IsRequired();
 
+        // Só o síndico tem endereço próprio: no morador as colunas ficam nulas.
         builder.ComplexProperty(p => p.Address, address => address.MapAddress());
+
+        builder.Property(p => p.Email)
+            .HasConversion(email => email!.Value, value => ContactEmail.Restore(value))
+            .HasMaxLength(ContactEmail.MaxLength);
+
+        builder.Property(p => p.Profession)
+            .HasConversion(profession => profession!.Value, value => Profession.Create(value).Value)
+            .HasMaxLength(Profession.MaxLength);
+
+        builder.ComplexProperty(p => p.EmergencyContact, contact =>
+        {
+            contact.Property(c => c.Name)
+                .HasConversion(name => name.Value, value => PersonName.Create(value).Value)
+                .HasMaxLength(120)
+                .IsRequired();
+            contact.Property(c => c.Relationship).HasMaxLength(EmergencyContact.RelationshipMaxLength).IsRequired();
+            contact.Property(c => c.Phone)
+                .HasConversion(phone => phone.Value, value => PhoneNumber.Create(value).Value)
+                .HasMaxLength(11)
+                .IsRequired();
+        });
 
         builder.Property(p => p.CreatedAt);
 

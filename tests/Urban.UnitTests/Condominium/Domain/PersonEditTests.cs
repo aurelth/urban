@@ -33,7 +33,7 @@ public class PersonEditTests
     {
         Person person = Manager();
         PhoneNumber original = person.Phone;
-        Address originalAddress = person.Address;
+        Address originalAddress = person.RequireAddress();
 
         Result result = person.UpdateContact(PhoneNumber.Create("(47) 3322-1100").Value, NewAddress);
 
@@ -61,11 +61,11 @@ public class PersonEditTests
     public void TheEditMethods_NeverTouchWhoTheRecordBelongsTo()
     {
         Person person = Manager();
-        (Guid id, Guid condominiumId, Guid userId, DateTimeOffset createdAt) = (person.Id, person.CondominiumId, person.UserId, person.CreatedAt);
+        (Guid id, Guid condominiumId, Guid userId, DateTimeOffset createdAt) = (person.Id, person.CondominiumId, person.UserId!.Value, person.CreatedAt);
 
         person.UpdateContact(PhoneNumber.Create("(47) 98888-7777").Value, NewAddress);
         person.UpdateIdentity(PersonName.Create("Ana Paula Souza").Value, CondominiumBuilders.UniqueCpf(), person.BirthDate);
 
-        (person.Id, person.CondominiumId, person.UserId, person.CreatedAt).Should().Be((id, condominiumId, userId, createdAt));
+        (person.Id, person.CondominiumId, person.UserId!.Value, person.CreatedAt).Should().Be((id, condominiumId, userId, createdAt));
     }
 }

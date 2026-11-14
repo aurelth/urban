@@ -93,7 +93,7 @@ public class RegisterCondominiumCommandHandlerTests
         _savedManager.Cpf.Value.Should().Be(command.Manager.Cpf);
         _savedManager.FullName.Value.Should().Be("Ana Maria Silva");
         _savedManager.Phone.IsMobile.Should().BeTrue();
-        _savedManager.Address.City.Should().Be("Blumenau");
+        _savedManager.RequireAddress().City.Should().Be("Blumenau");
         _savedManager.CreatedAt.Should().Be(Now);
     }
 

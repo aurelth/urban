@@ -27,7 +27,7 @@ public class UpdateMyCondominiumCommandHandlerTests
     {
         _clock.SetupGet(c => c.UtcNow).Returns(Now);
         _profiles
-            .Setup(p => p.FindOfManagerAsync(_registration.Manager.UserId, It.IsAny<CancellationToken>()))
+            .Setup(p => p.FindOfManagerAsync(_registration.Manager.UserId!.Value, It.IsAny<CancellationToken>()))
             .Callback(() => _calls.Add("find"))
             .ReturnsAsync(_registration);
         _profiles
@@ -39,10 +39,10 @@ public class UpdateMyCondominiumCommandHandlerTests
             })
             .ReturnsAsync(Result.Success("11.21"));
         _profile
-            .Setup(p => p.GetDisplayNameAsync(_registration.Manager.UserId, It.IsAny<CancellationToken>()))
+            .Setup(p => p.GetDisplayNameAsync(_registration.Manager.UserId!.Value, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CurrentDisplayName);
         _profile
-            .Setup(p => p.UpdateDisplayNameAsync(_registration.Manager.UserId, It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .Setup(p => p.UpdateDisplayNameAsync(_registration.Manager.UserId!.Value, It.IsAny<string?>(), It.IsAny<CancellationToken>()))
             .Callback(() => _calls.Add("display-name"))
             .ReturnsAsync((Guid _, string? name, CancellationToken _) => Result.Success(name!.Trim()));
     }
@@ -102,7 +102,7 @@ public class UpdateMyCondominiumCommandHandlerTests
     {
         Error refused = new("identity.display_name.invalid", "Informe como prefere ser chamado");
         _profile
-            .Setup(p => p.UpdateDisplayNameAsync(_registration.Manager.UserId, "1", It.IsAny<CancellationToken>()))
+            .Setup(p => p.UpdateDisplayNameAsync(_registration.Manager.UserId!.Value, "1", It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result.Failure<string>(refused));
 
         Result<MyCondominium> result = await Handler().Handle(Same() with { DisplayName = "1" }, default);
@@ -174,7 +174,7 @@ public class UpdateMyCondominiumCommandHandlerTests
         _logged!.Kind.Should().Be(ChangeKind.Profile);
         _logged.Fields.Should().Equal("phone", "condominiumName");
         _logged.CondominiumId.Should().Be(_registration.Condominium.Id);
-        _logged.ActorUserId.Should().Be(_registration.Manager.UserId);
+        _logged.ActorUserId.Should().Be(_registration.Manager.UserId!.Value);
         _logged.At.Should().Be(Now);
         string.Join('|', _logged.Fields).Should().NotContain("47988887777").And.NotContain("Bela Vista");
     }
@@ -201,11 +201,11 @@ public class UpdateMyCondominiumCommandHandlerTests
 
     private UpdateMyCondominiumCommand Same() =>
         new(
-            _registration.Manager.UserId,
+            _registration.Manager.UserId!.Value,
             _registration.Version,
             CurrentDisplayName,
             Phone(_registration),
-            ToInput(_registration.Manager.Address),
+            ToInput(_registration.Manager.RequireAddress()),
             _registration.Condominium.Name,
             ToInput(_registration.Condominium.Address));
 }

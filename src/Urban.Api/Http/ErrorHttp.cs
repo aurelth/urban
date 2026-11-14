@@ -4,6 +4,7 @@ using Urban.Condominium.Application.PostalCodes;
 using Urban.Condominium.Domain.Condominiums;
 using Urban.Condominium.Domain.Contacts;
 using Urban.Condominium.Domain.Documents;
+using Urban.Condominium.Domain.Occupancies;
 using Urban.Condominium.Domain.People;
 using Urban.Condominium.Domain.Units;
 using Urban.Finance.Domain;
@@ -120,6 +121,20 @@ public static class ErrorHttp
         [CondominiumErrors.VersionRequired.Code] = StatusCodes.Status400BadRequest,
         [PersonErrors.CpfAlreadyRegistered.Code] = StatusCodes.Status409Conflict,
         [CondominiumErrors.ApportionmentMethodInvalid.Code] = StatusCodes.Status400BadRequest,
+
+        [ContactEmail.Invalid.Code] = StatusCodes.Status400BadRequest,
+        [Profession.Invalid.Code] = StatusCodes.Status400BadRequest,
+        [EmergencyContact.NameInvalid.Code] = StatusCodes.Status400BadRequest,
+        [EmergencyContact.RelationshipInvalid.Code] = StatusCodes.Status400BadRequest,
+        [EmergencyContact.PhoneInvalid.Code] = StatusCodes.Status400BadRequest,
+        [ResidentErrors.UnderAge.Code] = StatusCodes.Status400BadRequest,
+        [ResidentErrors.PageInvalid.Code] = StatusCodes.Status400BadRequest,
+        [ResidentErrors.NotFound.Code] = StatusCodes.Status404NotFound,
+        [OccupancyErrors.KindInvalid.Code] = StatusCodes.Status400BadRequest,
+        [OccupancyErrors.StartDateInvalid.Code] = StatusCodes.Status400BadRequest,
+        [OccupancyErrors.CondominiumRequired.Code] = StatusCodes.Status422UnprocessableEntity,
+        [OccupancyErrors.PersonRequired.Code] = StatusCodes.Status422UnprocessableEntity,
+        [OccupancyErrors.UnitRequired.Code] = StatusCodes.Status422UnprocessableEntity,
 
         [UnitErrors.NumberInvalid.Code] = StatusCodes.Status400BadRequest,
         [UnitErrors.BlockInvalid.Code] = StatusCodes.Status400BadRequest,
