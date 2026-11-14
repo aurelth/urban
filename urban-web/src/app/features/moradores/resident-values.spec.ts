@@ -37,6 +37,7 @@ describe('kindLabel', () => {
   it('traduz o tipo de vínculo', () => {
     expect(kindLabel('owner')).toBe('Proprietário');
     expect(kindLabel('tenant')).toBe('Inquilino');
+    expect(kindLabel('dependent')).toBe('Dependente');
   });
 });
 

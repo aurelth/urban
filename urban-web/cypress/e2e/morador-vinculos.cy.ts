@@ -5,6 +5,7 @@ import { SECOND_UNIT, stubUnits } from '../support/unidades';
 import {
   CURRENT_RESIDENT,
   FORMER_RESIDENT,
+  MINOR_RESIDENT,
   editResidentPath,
   stubOccupancyAdded,
   stubOccupancyEnded,
@@ -78,6 +79,38 @@ describe('Vínculos do morador', () => {
       'A data de saída deve ficar entre a entrada e hoje',
     );
     cy.get('[formControlName="endDate"]').should('have.value', '10/11/2026');
+  });
+
+  it('o menor de idade só ganha outra unidade como dependente', () => {
+    stubResidentDetail(MINOR_RESIDENT);
+    stubOccupancyAdded(MINOR_RESIDENT, {
+      id: '0199cccc-0000-7000-8000-000000000010',
+      unitId: SECOND_UNIT.id,
+      unitBlock: 'A',
+      unitNumber: '102',
+      kind: 'dependent',
+      startDate: '2026-01-05',
+      endDate: null,
+    });
+    cy.visit(editResidentPath(MINOR_RESIDENT.id));
+
+    cy.get('[data-testid="add-occupancy"]').click();
+    chooseMenu('[formControlName="unitId"]', 'Bloco A · 102');
+    chooseMenu('[formControlName="kind"]', 'Inquilino');
+    typeInto('startDate', '05012026');
+    cy.contains('button[type="submit"]', 'Adicionar vínculo').click();
+    cy.contains('mat-error', 'Quem tem menos de 18 anos só pode ser dependente').should(
+      'be.visible',
+    );
+    cy.get('@addOccupancy.all').should('have.length', 0);
+
+    chooseMenu('[formControlName="kind"]', 'Dependente');
+    cy.contains('button[type="submit"]', 'Adicionar vínculo').click();
+
+    cy.wait('@addOccupancy')
+      .its('request.body')
+      .should('deep.equal', { unitId: SECOND_UNIT.id, kind: 'dependent', startDate: '2026-01-05' });
+    cy.get('[data-testid="occupancy"]').should('contain.text', 'Dependente, desde 01/03/2024');
   });
 
   it('adiciona o morador a outra unidade', () => {

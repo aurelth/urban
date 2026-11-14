@@ -160,6 +160,7 @@ describe('ResidentFormPage, cadastro', () => {
     expect(menuSelectOptions(field(html, 'kind')).map((option) => option.label)).toEqual([
       'Proprietário',
       'Inquilino',
+      'Dependente',
     ]);
   });
 
@@ -202,7 +203,7 @@ describe('ResidentFormPage, cadastro', () => {
         'Informe o parentesco',
         'Informe o telefone do contato',
         'Escolha a unidade',
-        'Escolha se é proprietário ou inquilino',
+        'Escolha o vínculo: proprietário, inquilino ou dependente',
         'Informe a data de entrada',
       ]),
     );
@@ -210,11 +211,10 @@ describe('ResidentFormPage, cadastro', () => {
     // Nenhuma requisição de gravação saiu: o verify() do afterEach falharia.
   });
 
-  it('avisa na hora do menor de 18 anos, do CPF e do telefone inválidos', async () => {
+  it('avisa na hora do CPF e do telefone inválidos e da data de nascimento que não existe', async () => {
     const h = await openNew();
-    const year = new Date().getFullYear() - 10;
 
-    fill(h.html, 'birthDate', `0101${year}`);
+    fill(h.html, 'birthDate', '31022000');
     fill(h.html, 'cpf', '11111111111');
     fill(h.html, 'phone', '1234');
     for (const name of ['birthDate', 'cpf', 'phone']) {
@@ -224,7 +224,7 @@ describe('ResidentFormPage, cadastro', () => {
 
     expect(errorTexts(h.html)).toEqual(
       expect.arrayContaining([
-        'O morador precisa ter 18 anos ou mais',
+        'Informe uma data válida, como 31/01/1980',
         'Informe um CPF válido',
         'Informe um telefone com DDD',
       ]),
@@ -750,5 +750,197 @@ describe('ResidentFormPage, vínculos', () => {
       expect(testId(h.html, 'saved')).not.toBeNull();
       expect(testId(h.html, 'resend-invite')).not.toBeNull();
     });
+  });
+});
+
+describe('ResidentFormPage, dependente menor de idade', () => {
+  afterEach(() => {
+    const http = TestBed.inject(HttpTestingController);
+    http.match((request) => request.url.startsWith('icons/'));
+    http.verify();
+  });
+
+  const YEAR = new Date().getFullYear() - 10;
+
+  function fillMinor(html: HTMLElement): void {
+    fill(html, 'fullName', 'Pedro Souza');
+    fill(html, 'cpf', '52998224725');
+    fill(html, 'birthDate', `1004${YEAR}`);
+    fill(html, 'phone', '47998765432');
+    fill(html, 'unitId', BLOCK_A_101.id);
+    fill(html, 'kind', 'dependent');
+    fill(html, 'startDate', '01032024');
+  }
+
+  it('a data de menor dispensa profissão e contato de emergência: nenhum erro de obrigatório', async () => {
+    const h = await openNew();
+    fillMinor(h.html);
+    await settle(h.fixture);
+
+    await submit(h);
+
+    const request = h.http.expectOne('/api/residents');
+    expect(request.request.body).toEqual({
+      fullName: 'Pedro Souza',
+      cpf: '52998224725',
+      birthDate: `${YEAR}-04-10`,
+      phone: '47998765432',
+      email: null,
+      profession: null,
+      emergencyContact: null,
+      unitId: BLOCK_A_101.id,
+      kind: 'dependent',
+      startDate: '2024-03-01',
+    });
+    request.flush(
+      resident({
+        fullName: 'Pedro Souza',
+        birthDate: `${YEAR}-04-10`,
+        profession: null,
+        emergencyContact: null,
+        occupancies: [occupancy({ kind: 'dependent' })],
+      }),
+      { status: 201, statusText: 'Created' },
+    );
+    await settle(h.fixture);
+    expect(testId(h.html, 'created')?.textContent).toContain('Pedro Souza');
+  });
+
+  it('avisa que profissão e contato são opcionais para menores de 18 anos', async () => {
+    const h = await openNew();
+
+    expect(testId(h.html, 'minor-note')).toBeNull();
+    fill(h.html, 'birthDate', `1004${YEAR}`);
+    await settle(h.fixture);
+
+    expect(testId(h.html, 'minor-note')?.textContent).toContain(
+      'Para menores de 18 anos, profissão e contato de emergência são opcionais',
+    );
+    fill(h.html, 'birthDate', '20051990');
+    await settle(h.fixture);
+    expect(testId(h.html, 'minor-note')).toBeNull();
+  });
+
+  it('o menor só pode ser dependente: outro vínculo mostra o erro e não envia', async () => {
+    const h = await openNew();
+    fillMinor(h.html);
+    fill(h.html, 'kind', 'tenant');
+    await settle(h.fixture);
+
+    await submit(h);
+
+    expect(errorTexts(h.html)).toContain('Quem tem menos de 18 anos só pode ser dependente');
+    // Nenhuma gravação saiu: o verify() do afterEach falharia.
+  });
+
+  it('o erro do vínculo some quando a pessoa passa a ser adulta ou o vínculo vira dependente', async () => {
+    const h = await openNew();
+    fillMinor(h.html);
+    fill(h.html, 'kind', 'tenant');
+    field(h.html, 'kind').dispatchEvent(new Event('blur'));
+    await settle(h.fixture);
+    expect(errorTexts(h.html)).toContain('Quem tem menos de 18 anos só pode ser dependente');
+
+    fill(h.html, 'birthDate', '20051990');
+    await settle(h.fixture);
+
+    expect(errorTexts(h.html)).not.toContain('Quem tem menos de 18 anos só pode ser dependente');
+  });
+
+  it('com o contato preenchido pela metade, o menor precisa completar o que começou', async () => {
+    const h = await openNew();
+    fillMinor(h.html);
+    fill(h.html, 'contactName', 'Carlos Souza');
+    await settle(h.fixture);
+
+    await submit(h);
+
+    expect(errorTexts(h.html)).toEqual(
+      expect.arrayContaining(['Informe o parentesco', 'Informe o telefone do contato']),
+    );
+    expect(errorTexts(h.html)).not.toContain('Informe a profissão');
+  });
+
+  it('o adulto continua precisando de profissão e contato, mesmo como dependente', async () => {
+    const h = await openNew();
+    fillRegistration(h.html);
+    fill(h.html, 'kind', 'dependent');
+    fill(h.html, 'profession', '');
+    await settle(h.fixture);
+
+    await submit(h);
+
+    expect(errorTexts(h.html)).toContain('Informe a profissão');
+  });
+
+  it('a profissão preenchida de um menor vai para a API e é conferida como a do adulto', async () => {
+    const h = await openNew();
+    fillMinor(h.html);
+    fill(h.html, 'profession', 'x');
+    await settle(h.fixture);
+
+    await submit(h);
+
+    expect(errorTexts(h.html)).toContain('A profissão deve ter de 2 a 80 caracteres');
+  });
+
+  it('quando a API recusa o menor com outro vínculo, mostra o texto novo', async () => {
+    const h = await openNew();
+    fillMinor(h.html);
+    await settle(h.fixture);
+
+    await submit(h);
+    reject(h.http.expectOne('/api/residents'), 400, 'condominium.resident.under_age');
+    await settle(h.fixture);
+
+    expect(alertTexts(h.html)).toContain(
+      'Quem tem menos de 18 anos só pode ser cadastrado como dependente',
+    );
+  });
+
+  it('na edição, o menor aparece sem profissão e sem contato e salva sem exigi-los', async () => {
+    const minor = resident({
+      fullName: 'Pedro Souza',
+      birthDate: `${YEAR}-04-10`,
+      email: null,
+      profession: null,
+      emergencyContact: null,
+      occupancies: [occupancy({ kind: 'dependent' })],
+    });
+    const h = await openEdit(minor);
+
+    expect(valueOf(h.html, 'profession')).toBe('');
+    expect(valueOf(h.html, 'contactName')).toBe('');
+    expect(testId(h.html, 'minor-note')).not.toBeNull();
+    fill(h.html, 'phone', '47991112222');
+    await settle(h.fixture);
+
+    await submit(h);
+
+    const request = h.http.expectOne(`/api/residents/${minor.id}`);
+    expect(request.request.method).toBe('PUT');
+    expect(request.request.body.profession).toBeNull();
+    expect(request.request.body.emergencyContact).toBeNull();
+    request.flush({ ...minor, phone: '47991112222', version: 'novo' });
+    await settle(h.fixture);
+    expect(testId(h.html, 'saved')).not.toBeNull();
+  });
+
+  it('na edição, quem deixa de ser menor passa a precisar de profissão e contato', async () => {
+    const minor = resident({
+      birthDate: `${YEAR}-04-10`,
+      profession: null,
+      emergencyContact: null,
+      occupancies: [occupancy({ kind: 'dependent' })],
+    });
+    const h = await openEdit(minor);
+    fill(h.html, 'birthDate', '20051990');
+    await settle(h.fixture);
+
+    await submit(h);
+
+    expect(errorTexts(h.html)).toEqual(
+      expect.arrayContaining(['Informe a profissão', 'Informe o nome do contato']),
+    );
   });
 });

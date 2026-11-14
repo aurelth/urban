@@ -5,7 +5,7 @@ export interface StubOccupancy {
   unitId: string;
   unitBlock: string | null;
   unitNumber: string;
-  kind: 'owner' | 'tenant';
+  kind: 'owner' | 'tenant' | 'dependent';
   startDate: string;
   endDate: string | null;
 }
@@ -161,6 +161,41 @@ export function fillResidentTexts(): void {
   typeInto('contactName', 'Carlos Souza');
   typeInto('contactRelationship', 'Irmão');
   typeInto('contactPhone', '4733334444');
+  typeInto('startDate', '01032024');
+}
+
+/** Ano de nascimento de um dependente com 10 anos, sempre menor de idade. */
+export const MINOR_BIRTH_YEAR = new Date().getFullYear() - 10;
+
+/** Um dependente menor de idade: sem e-mail, sem profissão e sem contato de emergência. */
+export const MINOR_RESIDENT = stubResident({
+  id: '0199bbbb-0000-7000-8000-000000000003',
+  fullName: 'Pedro Souza',
+  maskedCpf: '***.222.333-**',
+  birthDate: `${MINOR_BIRTH_YEAR}-04-10`,
+  email: null,
+  profession: null,
+  emergencyContact: null,
+  occupancies: [
+    {
+      id: '0199cccc-0000-7000-8000-000000000003',
+      unitId: '0199aaaa-0000-7000-8000-000000000001',
+      unitBlock: 'A',
+      unitNumber: '101',
+      kind: 'dependent',
+      startDate: '2024-03-01',
+      endDate: null,
+    },
+  ],
+  version: '9',
+});
+
+/** Preenche os campos do cadastro de um dependente menor de idade: sem profissão e sem contato de emergência. */
+export function fillMinorTexts(): void {
+  typeInto('fullName', 'Pedro Souza');
+  typeInto('cpf', '52998224725');
+  typeInto('birthDate', `1004${MINOR_BIRTH_YEAR}`);
+  typeInto('phone', '47998765432');
   typeInto('startDate', '01032024');
 }
 

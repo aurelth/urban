@@ -4,9 +4,12 @@ import { MANAGER, stubSignedIn } from '../support/session';
 import { stubUnits } from '../support/unidades';
 import {
   CURRENT_RESIDENT,
+  MINOR_BIRTH_YEAR,
+  MINOR_RESIDENT,
   NEW_RESIDENT_PATH,
   RESIDENTS_PATH,
   editResidentPath,
+  fillMinorTexts,
   fillResidentTexts,
   stubResidentCreateRejected,
   stubInvitation,
@@ -65,6 +68,87 @@ describe('Formulário de morador', () => {
       cy.get('[data-testid="created"]').should('contain.text', 'Morador cadastrado');
       cy.get('[data-testid="created"]').should('contain.text', 'Bloco A · 101');
       cy.get('[data-testid="residents-link"]').should('have.attr', 'href', RESIDENTS_PATH);
+    });
+
+    it('cadastra um dependente menor de idade sem profissão nem contato de emergência', () => {
+      stubResidentCreated(MINOR_RESIDENT);
+      cy.visit(NEW_RESIDENT_PATH);
+
+      fillMinorTexts();
+      cy.get('[data-testid="minor-note"]').should(
+        'contain.text',
+        'Para menores de 18 anos, profissão e contato de emergência são opcionais',
+      );
+      chooseMenu('[formControlName="unitId"]', 'Bloco A · 101');
+      chooseMenu('[formControlName="kind"]', 'Dependente');
+      cy.contains('button[type="submit"]', 'Cadastrar morador').click();
+
+      cy.wait('@createResident')
+        .its('request.body')
+        .should('deep.equal', {
+          fullName: 'Pedro Souza',
+          cpf: '52998224725',
+          birthDate: `${MINOR_BIRTH_YEAR}-04-10`,
+          phone: '47998765432',
+          email: null,
+          profession: null,
+          emergencyContact: null,
+          unitId: '0199aaaa-0000-7000-8000-000000000001',
+          kind: 'dependent',
+          startDate: '2024-03-01',
+        });
+      cy.get('[data-testid="created"]').should('contain.text', 'Pedro Souza');
+    });
+
+    it('não deixa o menor de idade ser inquilino: avisa e não chama a API', () => {
+      stubResidentCreated(MINOR_RESIDENT);
+      cy.visit(NEW_RESIDENT_PATH);
+
+      fillMinorTexts();
+      chooseMenu('[formControlName="unitId"]', 'Bloco A · 101');
+      chooseMenu('[formControlName="kind"]', 'Inquilino');
+      cy.contains('button[type="submit"]', 'Cadastrar morador').click();
+
+      cy.contains('mat-error', 'Quem tem menos de 18 anos só pode ser dependente').should(
+        'be.visible',
+      );
+      cy.get('@createResident.all').should('have.length', 0);
+    });
+
+    it('o adulto continua precisando de profissão e contato, mesmo como dependente', () => {
+      stubResidentCreated();
+      cy.visit(NEW_RESIDENT_PATH);
+
+      typeInto('fullName', 'Maria Souza');
+      typeInto('cpf', '52998224725');
+      typeInto('birthDate', '20051990');
+      typeInto('phone', '47998765432');
+      typeInto('startDate', '01032024');
+      chooseMenu('[formControlName="unitId"]', 'Bloco A · 101');
+      chooseMenu('[formControlName="kind"]', 'Dependente');
+      cy.contains('button[type="submit"]', 'Cadastrar morador').click();
+
+      cy.contains('mat-error', 'Informe a profissão').should('be.visible');
+      cy.contains('mat-error', 'Informe o nome do contato').should('be.visible');
+      cy.get('@createResident.all').should('have.length', 0);
+    });
+
+    it('mostra o menor de idade já cadastrado, sem profissão e contato, e salva sem exigi-los', () => {
+      stubResidentDetail(MINOR_RESIDENT);
+      stubResidentUpdated(MINOR_RESIDENT, { phone: '47991112222' });
+      cy.visit(editResidentPath(MINOR_RESIDENT.id));
+
+      cy.get('[formControlName="profession"]').should('have.value', '');
+      cy.get('[data-testid="minor-note"]').should('be.visible');
+      typeInto('phone', '47991112222');
+      cy.contains('button[type="submit"]', 'Salvar alterações').click();
+
+      cy.wait('@updateResident').its('request.body').should('include', {
+        phone: '47991112222',
+        profession: null,
+        emergencyContact: null,
+      });
+      cy.get('[data-testid="saved"]').should('contain.text', 'Dados salvos');
     });
 
     it('mostra o que falta quando se envia vazio e não chama a API', () => {
@@ -265,6 +349,17 @@ describe('Formulário de morador', () => {
       cy.visit(NEW_RESIDENT_PATH);
 
       cy.get('[formControlName="fullName"]').should('be.visible');
+      cy.document().should((doc) => {
+        expect(doc.documentElement.scrollWidth).to.be.at.most(doc.documentElement.clientWidth);
+      });
+    });
+
+    it('o cadastro de um menor de idade, com o aviso, cabe na tela sem rolagem horizontal', () => {
+      cy.viewport(PHONE.width, PHONE.height);
+      cy.visit(NEW_RESIDENT_PATH);
+
+      typeInto('birthDate', `1004${MINOR_BIRTH_YEAR}`);
+      cy.get('[data-testid="minor-note"]').should('be.visible');
       cy.document().should((doc) => {
         expect(doc.documentElement.scrollWidth).to.be.at.most(doc.documentElement.clientWidth);
       });

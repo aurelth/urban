@@ -324,6 +324,7 @@ describe('ResidentOccupancies', () => {
       expect(menuSelectOptions(field(h.html, 'kind')).map((option) => option.label)).toEqual([
         'Proprietário',
         'Inquilino',
+        'Dependente',
       ]);
     });
 
@@ -361,9 +362,49 @@ describe('ResidentOccupancies', () => {
 
       expect(errorTexts(h.html)).toEqual([
         'Escolha a unidade',
-        'Escolha se é proprietário ou inquilino',
+        'Escolha o vínculo: proprietário, inquilino ou dependente',
         'Informe a data de entrada',
       ]);
+    });
+
+    it('morador menor de idade: só o vínculo de dependente, os outros mostram o erro e não enviam', async () => {
+      const minor = resident({
+        birthDate: `${new Date().getFullYear() - 10}-04-10`,
+        profession: null,
+        emergencyContact: null,
+        occupancies: [occupancy({ unitId: A_101.id, kind: 'dependent' })],
+      });
+      const h = await open(minor);
+      await openAdd(h);
+      setFieldValue(field(h.html, 'unitId'), B_202.id);
+      setFieldValue(field(h.html, 'kind'), 'tenant');
+      setFieldValue(field(h.html, 'startDate'), '05012026');
+
+      await submit(h, 'add-form');
+
+      expect(errorTexts(h.html)).toEqual(['Quem tem menos de 18 anos só pode ser dependente']);
+      // Nenhuma gravação saiu: o verify() do afterEach falharia.
+    });
+
+    it('morador menor de idade pode ganhar outra unidade como dependente', async () => {
+      const minor = resident({
+        birthDate: `${new Date().getFullYear() - 10}-04-10`,
+        profession: null,
+        emergencyContact: null,
+        occupancies: [occupancy({ unitId: A_101.id, kind: 'dependent' })],
+      });
+      const h = await open(minor);
+      await openAdd(h);
+      setFieldValue(field(h.html, 'unitId'), B_202.id);
+      setFieldValue(field(h.html, 'kind'), 'dependent');
+      setFieldValue(field(h.html, 'startDate'), '05012026');
+
+      await submit(h, 'add-form');
+
+      const request = h.http.expectOne(`/api/residents/${minor.id}/occupancies`);
+      expect(request.request.body.kind).toBe('dependent');
+      request.flush({ ...minor }, { status: 201, statusText: 'Created' });
+      await settle(h.fixture);
     });
 
     it('adiciona o vínculo, atualiza a lista, fecha o formulário e avisa', async () => {

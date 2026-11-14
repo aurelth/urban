@@ -25,6 +25,7 @@ import { MANAGER, stubAnonymous, stubSignedIn } from '../support/session';
 import { TARIFFS_PATH, stubTariffs } from '../support/tarifas';
 import {
   CURRENT_RESIDENT,
+  MINOR_BIRTH_YEAR,
   NEW_RESIDENT_PATH,
   RESIDENTS_PATH,
   editResidentPath,
@@ -181,6 +182,15 @@ SCREENS.forEach(([where, width, height]) => {
       stubUnits();
       cy.visit(NEW_RESIDENT_PATH);
       cy.get('[formControlName="fullName"]').should('be.visible');
+      expectBreathingRoom();
+    });
+
+    it('não cola texto em container no cadastro de dependente menor de idade, com o aviso', () => {
+      stubSignedIn(MANAGER);
+      stubUnits();
+      cy.visit(NEW_RESIDENT_PATH);
+      cy.get('[formControlName="birthDate"]').click('right').type(`1004${MINOR_BIRTH_YEAR}`);
+      cy.get('[data-testid="minor-note"]').should('be.visible');
       expectBreathingRoom();
     });
 
