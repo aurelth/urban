@@ -1,0 +1,237 @@
+<section class="mx-auto max-w-3xl p-6">
+  <a mat-button routerLink="/moradores" class="mb-4" data-testid="back">
+    <mat-icon svgIcon="arrow_back" />
+    Moradores
+  </a>
+  <h1 class="mb-1 text-3xl font-semibold tracking-tight">
+    {{ isEditing() ? 'Editar morador' : 'Novo morador' }}
+  </h1>
+  <p class="mb-6 text-on-surface-variant">
+    @if (isEditing()) {
+      Confira e corrija os dados do morador
+    } @else {
+      Cadastre o morador e a unidade em que ele mora
+    }
+  </p>
+
+  @if (store.status() === 'not-found') {
+    <p role="alert" class="flex items-start gap-2 text-error" data-testid="not-found">
+      <mat-icon svgIcon="error" aria-hidden="true" />
+      <span>Morador não encontrado. Volte à lista e confira se ele ainda está cadastrado</span>
+    </p>
+  } @else if (store.status() === 'error') {
+    <div class="flex flex-col items-start gap-4" data-testid="load-error">
+      <p class="flex items-start gap-2 text-error">
+        <mat-icon svgIcon="error" aria-hidden="true" />
+        <span>{{
+          isEditing()
+            ? 'Não foi possível carregar o morador'
+            : 'Não foi possível carregar as unidades'
+        }}</span>
+      </p>
+      <button mat-stroked-button type="button" data-testid="retry" (click)="load()">
+        Tentar de novo
+      </button>
+    </div>
+  } @else if (store.created(); as created) {
+    <div
+      class="rounded-xl border border-outline-variant bg-surface-container p-6"
+      role="status"
+      data-testid="created"
+    >
+      <h2 class="mb-4 flex items-center gap-2 text-xl font-semibold text-success">
+        <mat-icon svgIcon="check_circle" aria-hidden="true" />
+        <span>Morador cadastrado</span>
+      </h2>
+      <p class="mb-6">
+        O cadastro de {{ created.fullName }} foi concluído
+        @if (createdUnit(); as unit) {
+          {{ ' ' }}na unidade {{ unit }}
+        }
+      </p>
+      <div class="flex flex-wrap gap-3">
+        <button mat-flat-button type="button" data-testid="create-another" (click)="startAnother()">
+          Cadastrar outro morador
+        </button>
+        <a mat-stroked-button routerLink="/moradores" data-testid="residents-link">
+          Ver moradores
+        </a>
+      </div>
+    </div>
+  } @else if (isEditing() ? store.resident() !== null : store.status() !== 'loading') {
+    @if (!isEditing() && store.units().length === 0) {
+      <div
+        class="rounded-xl border border-outline-variant bg-surface-container p-6"
+        data-testid="no-units"
+      >
+        <p class="mb-1 text-lg font-medium">Nenhuma unidade ativa</p>
+        <p class="mb-6 text-on-surface-variant">
+          Cadastre ao menos uma unidade antes de cadastrar moradores: cada morador mora numa unidade
+        </p>
+        <a mat-flat-button routerLink="/unidades" data-testid="units-link">Ir para as unidades</a>
+      </div>
+    } @else {
+      @if (store.status() === 'conflict') {
+        <div
+          role="alert"
+          class="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-outline-variant bg-surface-container p-4"
+          data-testid="conflict"
+        >
+          <p class="m-0 flex items-start gap-2 text-warning">
+            <mat-icon svgIcon="info" aria-hidden="true" />
+            <span class="text-on-surface">
+              Os dados foram alterados em outro lugar. Recarregue para ver a versão mais recente: o
+              que você digitou será substituído
+            </span>
+          </p>
+          <button mat-stroked-button type="button" data-testid="reload" (click)="load()">
+            Recarregar dados
+          </button>
+        </div>
+      }
+
+      <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-6" novalidate>
+        <mat-card appearance="outlined" data-testid="person-section">
+          <mat-card-content class="p-6">
+            <h2 class="mb-6 text-xl font-semibold">Dados pessoais</h2>
+            <div class="grid gap-x-4 sm:grid-cols-2">
+              <urban-text-field
+                class="sm:col-span-2"
+                name="fullName"
+                label="Nome completo"
+                [errors]="fullNameErrors"
+              />
+              @if (!isEditing()) {
+                <urban-text-field name="cpf" label="CPF" [mask]="'cpf'" [errors]="cpfErrors" />
+              }
+              <urban-text-field
+                name="birthDate"
+                label="Data de nascimento"
+                [mask]="'date'"
+                [errors]="birthDateErrors"
+              />
+              <urban-text-field
+                name="phone"
+                label="Telefone"
+                [mask]="'phone'"
+                [errors]="phoneErrors"
+              />
+              <urban-text-field name="profession" label="Profissão" [errors]="professionErrors" />
+              <urban-text-field
+                class="sm:col-span-2"
+                name="email"
+                label="E-mail"
+                inputmode="email"
+                [optional]="true"
+                hint="Opcional. Sem e-mail o morador fica cadastrado, mas não pode ser convidado a acessar o sistema"
+                [errors]="emailErrors"
+              />
+            </div>
+
+            @if (isEditing()) {
+              <div class="mb-5 flex flex-wrap items-center gap-x-4 gap-y-2">
+                @if (changingCpf()) {
+                  <urban-text-field
+                    class="min-w-56 grow"
+                    name="cpf"
+                    label="Novo CPF"
+                    [mask]="'cpf'"
+                    [errors]="cpfErrors"
+                  />
+                  <button mat-button type="button" data-testid="keep-cpf" (click)="keepCpf()">
+                    Manter o CPF atual
+                  </button>
+                } @else {
+                  <p class="m-0">
+                    <span class="text-on-surface-variant">CPF</span>
+                    <span class="ml-2 font-medium" data-testid="cpf-masked">{{
+                      store.resident()?.maskedCpf
+                    }}</span>
+                  </p>
+                  <button mat-button type="button" data-testid="change-cpf" (click)="changeCpf()">
+                    Alterar CPF
+                  </button>
+                }
+              </div>
+            }
+          </mat-card-content>
+        </mat-card>
+
+        <mat-card appearance="outlined" data-testid="contact-section">
+          <mat-card-content class="p-6">
+            <h2 class="mb-6 text-xl font-semibold">Contato de emergência</h2>
+            <div class="grid gap-x-4 sm:grid-cols-2">
+              <urban-text-field
+                class="sm:col-span-2"
+                name="contactName"
+                label="Nome do contato"
+                [errors]="contactNameErrors"
+              />
+              <urban-text-field
+                name="contactRelationship"
+                label="Parentesco"
+                [errors]="relationshipErrors"
+              />
+              <urban-text-field
+                name="contactPhone"
+                label="Telefone do contato"
+                [mask]="'phone'"
+                [errors]="contactPhoneErrors"
+              />
+            </div>
+          </mat-card-content>
+        </mat-card>
+
+        @if (!isEditing()) {
+          <mat-card appearance="outlined" data-testid="housing-section">
+            <mat-card-content class="p-6">
+              <h2 class="mb-6 text-xl font-semibold">Moradia</h2>
+              <div class="grid gap-x-4 sm:grid-cols-2">
+                <urban-select-field
+                  name="unitId"
+                  label="Unidade"
+                  [options]="unitOptions()"
+                  [errors]="unitErrors"
+                />
+                <urban-select-field
+                  name="kind"
+                  label="Vínculo"
+                  [options]="kindOptions"
+                  [errors]="kindErrors"
+                />
+                <urban-text-field
+                  name="startDate"
+                  label="Data de entrada"
+                  [mask]="'date'"
+                  hint="Quando a pessoa passou a morar na unidade"
+                  [errors]="startDateErrors"
+                />
+              </div>
+            </mat-card-content>
+          </mat-card>
+        }
+
+        @if (saved()) {
+          <p role="status" class="flex items-start gap-2" data-testid="saved">
+            <span class="inline-flex text-success"
+              ><mat-icon svgIcon="check_circle" aria-hidden="true"
+            /></span>
+            <span>Dados salvos</span>
+          </p>
+        }
+
+        <urban-form-submit
+          [label]="isEditing() ? 'Salvar alterações' : 'Cadastrar morador'"
+          [busyLabel]="isEditing() ? 'Salvando' : 'Cadastrando'"
+          [busy]="busy()"
+          [disabled]="saveDisabled()"
+          [error]="error()"
+        />
+      </form>
+    }
+  } @else {
+    <p role="status" class="text-on-surface-variant" data-testid="loading">
+      {{ isEditing() ? 'Carregando o morador' : 'Carregando as unidades' }}
+    </p>
+  }
+</section>

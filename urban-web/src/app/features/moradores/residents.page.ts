@@ -1,8 +1,10 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
 import { MatButton } from '@angular/material/button';
 import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatIcon } from '@angular/material/icon';
 import { MatInput } from '@angular/material/input';
+import { RouterLink } from '@angular/router';
 import { ResidentStatusFilter } from '../../core/residents/residents.models';
 import { MenuOption, MenuSelect } from '../../shared/ui/menu-select/menu-select';
 import {
@@ -24,11 +26,20 @@ const STATUS_OPTIONS: readonly MenuOption[] = [
 
 /**
  * Lista dos moradores do condomínio: busca por nome, filtro entre quem mora e quem já saiu, e uma linha por pessoa com o
- * contato e todos os vínculos (unidade, tipo e período). Só leitura por enquanto; o cadastro e a edição vêm nas próximas telas.
+ * contato e todos os vínculos (unidade, tipo e período). Daqui se abre o cadastro ("Novo morador") e a edição de cada morador.
  */
 @Component({
   selector: 'urban-residents-page',
-  imports: [MatButton, MatFormField, MatLabel, MatIcon, MatInput, MenuSelect],
+  imports: [
+    MatButton,
+    MatFormField,
+    MatLabel,
+    MatIcon,
+    MatInput,
+    MenuSelect,
+    NgTemplateOutlet,
+    RouterLink,
+  ],
   templateUrl: './residents.page.html',
   providers: [ResidentsStore],
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -1,7 +1,13 @@
 <section class="mx-auto max-w-6xl p-6">
-  <div class="mb-6">
-    <h1 class="mb-1 text-3xl font-semibold tracking-tight">Moradores</h1>
-    <p class="m-0 text-on-surface-variant">Quem mora no condomínio e quem já morou</p>
+  <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="mb-1 text-3xl font-semibold tracking-tight">Moradores</h1>
+      <p class="m-0 text-on-surface-variant">Quem mora no condomínio e quem já morou</p>
+    </div>
+    <a mat-flat-button routerLink="/moradores/novo" data-testid="new-resident">
+      <mat-icon svgIcon="add" />
+      Novo morador
+    </a>
   </div>
 
   @switch (store.status()) {
@@ -92,7 +98,7 @@
                 <th scope="col" class="p-3 font-medium">Morador</th>
                 <th scope="col" class="p-3 font-medium max-sm:hidden">Contato</th>
                 <th scope="col" class="p-3 font-medium">Unidades</th>
-                <th scope="col" class="p-3 font-medium">Situação</th>
+                <th scope="col" class="p-3 font-medium max-sm:hidden">Situação</th>
               </tr>
             </thead>
             <tbody>
@@ -107,6 +113,21 @@
                     <span class="mt-1 block text-sm sm:hidden">
                       {{ phone(item.phone) }}<br />{{ item.email ?? 'Sem e-mail' }}
                     </span>
+                    <span class="mt-2 block sm:hidden">
+                      <ng-container
+                        [ngTemplateOutlet]="situation"
+                        [ngTemplateOutletContext]="{ $implicit: item }"
+                      />
+                    </span>
+                    <a
+                      mat-button
+                      class="mt-1 -ml-3"
+                      data-testid="edit-resident"
+                      [routerLink]="['/moradores', item.id, 'editar']"
+                      [attr.aria-label]="'Editar ' + item.fullName"
+                    >
+                      Editar
+                    </a>
                   </td>
                   <td class="p-3 max-sm:hidden">
                     <span class="block">{{ phone(item.phone) }}</span>
@@ -126,18 +147,11 @@
                       }
                     </ul>
                   </td>
-                  <td class="p-3">
-                    @if (lives(item)) {
-                      <span class="inline-flex items-center gap-1 text-success">
-                        <mat-icon svgIcon="check_circle" aria-hidden="true" />
-                        <span class="text-on-surface">Mora</span>
-                      </span>
-                    } @else {
-                      <span class="inline-flex items-center gap-1 text-on-surface-variant">
-                        <mat-icon svgIcon="event_busy" aria-hidden="true" />
-                        <span>Ex-morador</span>
-                      </span>
-                    }
+                  <td class="p-3 max-sm:hidden">
+                    <ng-container
+                      [ngTemplateOutlet]="situation"
+                      [ngTemplateOutletContext]="{ $implicit: item }"
+                    />
                   </td>
                 </tr>
               }
@@ -180,3 +194,17 @@
     }
   }
 </section>
+
+<ng-template #situation let-item>
+  @if (lives(item)) {
+    <span class="inline-flex items-center gap-1 text-success">
+      <mat-icon svgIcon="check_circle" aria-hidden="true" />
+      <span class="text-on-surface">Mora</span>
+    </span>
+  } @else {
+    <span class="inline-flex items-center gap-1 text-on-surface-variant">
+      <mat-icon svgIcon="event_busy" aria-hidden="true" />
+      <span>Ex-morador</span>
+    </span>
+  }
+</ng-template>
