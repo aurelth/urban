@@ -151,6 +151,33 @@ describe('ResidentsPage', () => {
     });
   });
 
+  describe('cadastro e edição', () => {
+    it('oferece "Novo morador", que leva ao formulário de cadastro', async () => {
+      const { html } = await setup();
+
+      const link = testId(html, 'new-resident')!;
+      expect(link.textContent).toContain('Novo morador');
+      expect(link.getAttribute('href')).toBe('/moradores/novo');
+    });
+
+    it('oferece "Novo morador" também com a lista vazia, que é quando mais se precisa dele', async () => {
+      const { html } = await setup([]);
+
+      expect(testId(html, 'empty')).not.toBeNull();
+      expect(testId(html, 'new-resident')?.getAttribute('href')).toBe('/moradores/novo');
+    });
+
+    it('cada morador tem um link "Editar" para o formulário dele, com o nome para quem usa leitor de tela', async () => {
+      const { html } = await setup();
+
+      const links = [...html.querySelectorAll<HTMLElement>('[data-testid="edit-resident"]')];
+      expect(links).toHaveLength(2);
+      expect(links[0].getAttribute('href')).toBe(`/moradores/${LIVES.id}/editar`);
+      expect(links[0].getAttribute('aria-label')).toBe('Editar Ana Lima');
+      expect(links[1].getAttribute('href')).toBe(`/moradores/${LEFT.id}/editar`);
+    });
+  });
+
   describe('lista', () => {
     it('mostra uma linha por morador, com nome, CPF mascarado, contato, unidades e situação', async () => {
       const { html } = await setup();

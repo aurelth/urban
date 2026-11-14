@@ -23,7 +23,14 @@ import { PROFILE_PATH, stubProfile } from '../support/perfil';
 import { ADMIN, REQUESTS_PATH, stubRequests } from '../support/pedidos';
 import { MANAGER, stubAnonymous, stubSignedIn } from '../support/session';
 import { TARIFFS_PATH, stubTariffs } from '../support/tarifas';
-import { RESIDENTS_PATH, stubResidents } from '../support/moradores';
+import {
+  CURRENT_RESIDENT,
+  NEW_RESIDENT_PATH,
+  RESIDENTS_PATH,
+  editResidentPath,
+  stubResidentDetail,
+  stubResidents,
+} from '../support/moradores';
 import { BATCH_PATH, UNITS_PATH, stubUnits } from '../support/unidades';
 
 function closeDialog(): void {
@@ -164,6 +171,22 @@ SCREENS.forEach(([where, width, height]) => {
       stubResidents();
       cy.visit(RESIDENTS_PATH);
       cy.get('[data-testid="residents-table"]').should('be.visible');
+      expectBreathingRoom();
+    });
+
+    it('não cola texto em container no cadastro de morador', () => {
+      stubSignedIn(MANAGER);
+      stubUnits();
+      cy.visit(NEW_RESIDENT_PATH);
+      cy.get('[formControlName="fullName"]').should('be.visible');
+      expectBreathingRoom();
+    });
+
+    it('não cola texto em container na edição de morador', () => {
+      stubSignedIn(MANAGER);
+      stubResidentDetail();
+      cy.visit(editResidentPath(CURRENT_RESIDENT.id));
+      cy.get('[formControlName="fullName"]').should('be.visible');
       expectBreathingRoom();
     });
 
