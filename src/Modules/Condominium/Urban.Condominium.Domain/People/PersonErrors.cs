@@ -10,5 +10,7 @@ public static class PersonErrors
 
     public static readonly Error UserRequired = new("condominium.person.user_required", "A pessoa precisa estar ligada a um usuário");
 
+    public static readonly Error UserAlreadyAttached = new("condominium.person.user_already_attached", "Esta pessoa já tem uma conta de acesso");
+
     public static readonly Error CpfAlreadyRegistered = new("condominium.cpf.already_registered", "Este CPF já está cadastrado");
 }

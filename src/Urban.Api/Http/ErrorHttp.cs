@@ -18,6 +18,7 @@ using Urban.Identity.Application.Authentication.Login;
 using Urban.Identity.Application.Authentication.Refresh;
 using Urban.Identity.Application.Bootstrap;
 using Urban.Identity.Application.Contact;
+using Urban.Identity.Application.Invitations;
 using Urban.Identity.Application.RegistrationRequests;
 using Urban.Identity.Domain.Consent;
 using Urban.Identity.Domain.Contact;
@@ -130,6 +131,14 @@ public static class ErrorHttp
         [ResidentErrors.UnderAge.Code] = StatusCodes.Status400BadRequest,
         [ResidentErrors.PageInvalid.Code] = StatusCodes.Status400BadRequest,
         [ResidentErrors.NotFound.Code] = StatusCodes.Status404NotFound,
+        [ResidentErrors.EmailRequiredForInvitation.Code] = StatusCodes.Status422UnprocessableEntity,
+        [ResidentErrors.EmailLocked.Code] = StatusCodes.Status409Conflict,
+        [PersonErrors.UserAlreadyAttached.Code] = StatusCodes.Status409Conflict,
+        [ResidentAccessErrors.Forbidden.Code] = StatusCodes.Status403Forbidden,
+        [ResidentAccessErrors.EmailUnavailable.Code] = StatusCodes.Status409Conflict,
+        [ResidentAccessErrors.NotFound.Code] = StatusCodes.Status404NotFound,
+        [ResidentAccessErrors.NotPending.Code] = StatusCodes.Status409Conflict,
+        [ResidentAccessErrors.ResendTooSoon.Code] = StatusCodes.Status429TooManyRequests,
         [OccupancyErrors.KindInvalid.Code] = StatusCodes.Status400BadRequest,
         [OccupancyErrors.StartDateInvalid.Code] = StatusCodes.Status400BadRequest,
         [OccupancyErrors.CondominiumRequired.Code] = StatusCodes.Status422UnprocessableEntity,

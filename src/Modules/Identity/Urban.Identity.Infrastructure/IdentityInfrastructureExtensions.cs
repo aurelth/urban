@@ -6,6 +6,7 @@ using StackExchange.Redis;
 using Urban.Identity.Application.Abstractions;
 using Urban.Identity.Application.Contact;
 using Urban.Identity.Application.Enrollment;
+using Urban.Identity.Application.Invitations;
 using Urban.Identity.Infrastructure.Consent;
 using Urban.Identity.Infrastructure.Messaging;
 using Urban.Identity.Infrastructure.Persistence;
@@ -60,6 +61,10 @@ public static class IdentityInfrastructureExtensions
         services.AddScoped<IEmailVerificationNotifier, EmailVerificationNotifier>();
         services.AddScoped<IEmailVerificationDispatcher, HangfireEmailVerificationDispatcher>();
         services.AddScoped<SendEmailVerificationJob>();
+        services.AddScoped<IResidentAccess, ResidentAccess>();
+        services.AddScoped<IResidentInvitationNotifier, ResidentInvitationNotifier>();
+        services.AddScoped<IResidentInvitationDispatcher, HangfireResidentInvitationDispatcher>();
+        services.AddScoped<SendResidentInvitationJob>();
         services.AddScoped<IRegistrationRequests, RegistrationRequests>();
         services.AddScoped<IManagerAccounts, ManagerAccounts>();
         services.AddScoped<IRegistrationRequestNotifier, RegistrationRequestNotifier>();

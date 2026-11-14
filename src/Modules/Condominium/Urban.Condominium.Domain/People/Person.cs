@@ -45,7 +45,7 @@ public sealed class Person
     public Guid CondominiumId { get; }
 
     /// <summary>Nulo enquanto a pessoa não tem acesso ao sistema (morador que ainda não foi convidado).</summary>
-    public Guid? UserId { get; }
+    public Guid? UserId { get; private set; }
 
     public PersonName FullName { get; private set; }
 
@@ -145,6 +145,24 @@ public sealed class Person
         Email = email;
         Profession = profession;
         EmergencyContact = emergencyContact;
+
+        return Result.Success();
+    }
+
+    /// <summary>Liga o morador à conta criada no convite. Uma pessoa tem no máximo uma conta, e o vínculo não se desfaz por aqui.</summary>
+    public Result AttachUser(Guid userId)
+    {
+        if (userId == Guid.Empty)
+        {
+            return Result.Failure(PersonErrors.UserRequired);
+        }
+
+        if (UserId is not null)
+        {
+            return Result.Failure(PersonErrors.UserAlreadyAttached);
+        }
+
+        UserId = userId;
 
         return Result.Success();
     }

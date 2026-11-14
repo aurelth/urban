@@ -1,6 +1,6 @@
 namespace Urban.Api.Endpoints;
 
-/// <summary>Um morador como a tela o vê. O CPF só sai mascarado. <c>Version</c> volta na edição.</summary>
+/// <summary>Um morador como a tela o vê. O CPF só sai mascarado. <c>HasAccount</c> é verdadeiro depois do convite, e então o e-mail não muda mais. <c>Version</c> volta na edição.</summary>
 public sealed record ResidentResponse(
     Guid Id,
     string FullName,
@@ -11,6 +11,7 @@ public sealed record ResidentResponse(
     string? Profession,
     EmergencyContactResponse? EmergencyContact,
     IReadOnlyList<ResidentOccupancyResponse> Occupancies,
+    bool HasAccount,
     string Version);
 
 public sealed record EmergencyContactResponse(string Name, string Relationship, string Phone);

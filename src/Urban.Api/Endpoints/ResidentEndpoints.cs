@@ -85,6 +85,21 @@ public static class ResidentEndpoints
             .Produces<ResidentResponse>()
             .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound, StatusCodes.Status409Conflict);
 
+        residents.MapPost("/{id:guid}/invitation", InviteAsync)
+            .WithName("InviteResident")
+            .WithSummary("Convida o morador a entrar no sistema")
+            .WithDescription(
+                "Na primeira vez, cria a conta do morador (pendente, sem senha) com o e-mail do cadastro e envia o convite; nas seguintes, reenvia o convite. "
+                + "O e-mail traz um link que vale 72 horas e uso único, em que o morador escolhe a senha e aceita os termos; sem a senha a conta não entra. "
+                + "O envio acontece em segundo plano: 202 quer dizer que o pedido foi aceito, não que o e-mail já saiu. "
+                + "Sem e-mail no cadastro, 422 condominium.resident.email_required. E-mail que já tem conta no Urban: 409 identity.resident_access.email_unavailable. "
+                + "Reenviar para quem já criou a senha: 409 identity.resident_access.not_pending; dentro de 1 minuto do último envio: 429 identity.resident_access.resend_too_soon. "
+                + "Depois do convite o e-mail do morador não pode mais ser alterado (409 condominium.resident.email_locked na edição) e a resposta do morador traz hasAccount verdadeiro. "
+                + "Um morador de outro condomínio responde 404, igual a um que não existe. O registro da alteração guarda só o nome do campo. " + RateLimitText)
+            .RequireRateLimiting(RateLimitPolicies.Residents)
+            .Produces(StatusCodes.Status202Accepted)
+            .WithErrors(StatusCodes.Status404NotFound, StatusCodes.Status409Conflict, StatusCodes.Status422UnprocessableEntity);
+
         return app;
     }
 
@@ -179,5 +194,17 @@ public static class ResidentEndpoints
         Result<ResidentView> result = await sender.Send(ResidentMapper.ToCommand(id, occupancyId, request, userId), cancellationToken);
 
         return ApiResults.Respond(result, response, view => ResidentMapper.ToResponse(view));
+    }
+
+    private static async Task<IResult> InviteAsync(Guid id, ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken cancellationToken)
+    {
+        if (!ManagerAccess.TryRead(user, out Guid userId, out IResult? refusal))
+        {
+            return refusal;
+        }
+
+        Result result = await sender.Send(new InviteResidentCommand(userId, id), cancellationToken);
+
+        return ApiResults.Accepted(result, response);
     }
 }
