@@ -35,6 +35,12 @@ internal sealed class ResidentsTestKit
 
     public List<ChangeLogEntry> Logged { get; } = [];
 
+    public List<ResidentRecord> Saved { get; } = [];
+
+    public List<Occupancy> OccupanciesAdded { get; } = [];
+
+    public List<Occupancy> OccupanciesEnded { get; } = [];
+
     public ResidentsTestKit()
     {
         Tenant = new FixedTenant(CondominiumId);
@@ -51,6 +57,30 @@ internal sealed class ResidentsTestKit
                 Logged.Add(entry);
             })
             .ReturnsAsync(Result.Success("9"));
+
+        Residents.Setup(r => r.SaveAsync(It.IsAny<ResidentRecord>(), It.IsAny<ChangeLogEntry>(), It.IsAny<CancellationToken>()))
+            .Callback<ResidentRecord, ChangeLogEntry, CancellationToken>((record, entry, _) =>
+            {
+                Saved.Add(record);
+                Logged.Add(entry);
+            })
+            .ReturnsAsync(Result.Success("10"));
+
+        Residents.Setup(r => r.AddOccupancyAsync(It.IsAny<Occupancy>(), It.IsAny<ChangeLogEntry>(), It.IsAny<CancellationToken>()))
+            .Callback<Occupancy, ChangeLogEntry, CancellationToken>((occupancy, entry, _) =>
+            {
+                OccupanciesAdded.Add(occupancy);
+                Logged.Add(entry);
+            })
+            .ReturnsAsync(Result.Success());
+
+        Residents.Setup(r => r.EndOccupancyAsync(It.IsAny<Occupancy>(), It.IsAny<ChangeLogEntry>(), It.IsAny<CancellationToken>()))
+            .Callback<Occupancy, ChangeLogEntry, CancellationToken>((occupancy, entry, _) =>
+            {
+                OccupanciesEnded.Add(occupancy);
+                Logged.Add(entry);
+            })
+            .ReturnsAsync(Result.Success());
     }
 
     public ResidentsTestKit WithoutATenant()
@@ -67,6 +97,15 @@ internal sealed class ResidentsTestKit
         Residents.Setup(r => r.FindAsync(person.Id, It.IsAny<CancellationToken>())).ReturnsAsync(record);
 
         return record;
+    }
+
+    /// <summary>Um morador "que já está no banco" com um vínculo em andamento com a unidade do kit.</summary>
+    public ResidentRecord ExistingWithActiveOccupancy(Person? person = null, OccupancyKind kind = OccupancyKind.Owner)
+    {
+        Person resident = person ?? NewResident();
+        Occupancy occupancy = ResidentBuilders.Occupancy(resident, Unit.Id, kind, new DateOnly(2024, 3, 1));
+
+        return Existing(resident, new ResidentOccupancy(occupancy, Unit.Block, Unit.Number));
     }
 
     public Person NewResident(string name = "Maria Souza", string? email = "maria@exemplo.com") =>
