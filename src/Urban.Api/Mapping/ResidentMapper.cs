@@ -1,5 +1,6 @@
 using Riok.Mapperly.Abstractions;
 using Urban.Api.Endpoints;
+using Urban.Condominium.Application.Abstractions;
 using Urban.Condominium.Application.Residents;
 using Urban.Condominium.Domain.Occupancies;
 
@@ -59,6 +60,27 @@ public static partial class ResidentMapper
     public static partial ResidentResponse ToResponse(ResidentView view);
 
     public static partial ResidentListResponse ToResponse(ResidentListing listing);
+
+    /// <returns>Falso quando o texto não é um estado conhecido; vazio é o padrão (todos).</returns>
+    public static bool TryParseStatus(string? text, out ResidentStatusFilter status)
+    {
+        switch (text?.Trim().ToLowerInvariant())
+        {
+            case null or "":
+            case "all":
+                status = ResidentStatusFilter.All;
+                return true;
+            case "active":
+                status = ResidentStatusFilter.Active;
+                return true;
+            case "former":
+                status = ResidentStatusFilter.Former;
+                return true;
+            default:
+                status = default;
+                return false;
+        }
+    }
 
     // ---- Texto da API <-> enum (camelCase). Valor desconhecido vira 0, que o Domain recusa com o código do campo ----
 

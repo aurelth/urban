@@ -2,6 +2,7 @@ using System.Security.Claims;
 using MediatR;
 using Urban.Api.Http;
 using Urban.Api.Mapping;
+using Urban.Condominium.Application.Abstractions;
 using Urban.Condominium.Application.Residents;
 using Urban.SharedKernel;
 
@@ -21,7 +22,7 @@ public static class ResidentEndpoints
             .WithDescription(
                 "Exige o token de acesso de um síndico com condomínio cadastrado. Morador é a pessoa com ao menos um vínculo com uma unidade. "
                 + "Devolve uma página em ordem de nome, cada morador com todos os vínculos (bloco e número da unidade, tipo e datas). "
-                + "Filtros: search (trecho do nome, sem diferenciar maiúsculas), unitId (só quem tem vínculo com a unidade), page (a partir de 1) e pageSize (de 1 a 200; o padrão é 50). "
+                + "Filtros: search (trecho do nome, sem diferenciar maiúsculas), unitId (só quem tem vínculo com a unidade), status (active: tem vínculo em andamento; former: já saiu e não tem nenhum em andamento; all, o padrão: todos; com unitId, o estado é o da pessoa naquela unidade; outro valor responde 400), page (a partir de 1) e pageSize (de 1 a 200; o padrão é 50). "
                 + "Página ou tamanho fora do limite respondem 400. O CPF sai mascarado. A resposta nunca é guardada em cache. " + RateLimitText)
             .RequireRateLimiting(RateLimitPolicies.Residents)
             .Produces<ResidentListResponse>()
@@ -93,6 +94,7 @@ public static class ResidentEndpoints
         ISender sender,
         string? search,
         Guid? unitId,
+        string? status,
         int? page,
         int? pageSize,
         CancellationToken cancellationToken)
@@ -102,7 +104,12 @@ public static class ResidentEndpoints
             return refusal;
         }
 
-        Result<ResidentListing> result = await sender.Send(new ListResidentsQuery(search, unitId, page ?? 1, pageSize ?? 50), cancellationToken);
+        if (!ResidentMapper.TryParseStatus(status, out ResidentStatusFilter statusFilter))
+        {
+            return ErrorHttp.ToProblem(RequestErrors.Invalid);
+        }
+
+        Result<ResidentListing> result = await sender.Send(new ListResidentsQuery(search, unitId, page ?? 1, pageSize ?? 50, statusFilter), cancellationToken);
 
         return ApiResults.Respond(result, response, listing => ResidentMapper.ToResponse(listing));
     }

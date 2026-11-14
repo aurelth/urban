@@ -1,0 +1,182 @@
+<section class="mx-auto max-w-6xl p-6">
+  <div class="mb-6">
+    <h1 class="mb-1 text-3xl font-semibold tracking-tight">Moradores</h1>
+    <p class="m-0 text-on-surface-variant">Quem mora no condomínio e quem já morou</p>
+  </div>
+
+  @switch (store.status()) {
+    @case ('loading') {
+      <p role="status" class="text-on-surface-variant" data-testid="loading">
+        Carregando os moradores
+      </p>
+    }
+    @case ('error') {
+      <div class="flex flex-col items-start gap-4" data-testid="load-error">
+        <p class="flex items-start gap-2 text-error">
+          <mat-icon svgIcon="error" aria-hidden="true" />
+          <span>Não foi possível carregar os moradores</span>
+        </p>
+        <button mat-stroked-button type="button" data-testid="retry" (click)="load()">
+          Tentar de novo
+        </button>
+      </div>
+    }
+    @case ('ready') {
+      <form
+        class="grid gap-x-4 sm:grid-cols-2"
+        data-testid="filters"
+        (submit)="$event.preventDefault()"
+      >
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="mb-4 w-full">
+          <mat-label>Situação</mat-label>
+          <urban-menu-select
+            data-testid="filter-status"
+            [options]="statusOptions"
+            [value]="store.query().status"
+            (valueChange)="onStatus($event)"
+          />
+        </mat-form-field>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="mb-4 w-full">
+          <mat-label>Buscar por nome</mat-label>
+          <input
+            matInput
+            data-testid="filter-search"
+            autocomplete="off"
+            [value]="store.query().search"
+            (change)="onSearch($event)"
+          />
+        </mat-form-field>
+      </form>
+      @if (store.hasFilters()) {
+        <button
+          mat-button
+          type="button"
+          class="mb-4"
+          data-testid="clear-filters"
+          [disabled]="store.busy()"
+          (click)="clearFilters()"
+        >
+          Limpar filtros
+        </button>
+      }
+
+      @if (store.total() === 0 && !store.hasFilters()) {
+        <div
+          class="rounded-xl border border-outline-variant bg-surface-container p-6 text-center"
+          data-testid="empty"
+        >
+          <p class="mb-1 text-lg font-medium">Nenhum morador atual</p>
+          <p class="m-0 text-on-surface-variant">
+            Os moradores cadastrados aparecem aqui, com a unidade em que moram. Quem já saiu fica em
+            Ex-moradores
+          </p>
+        </div>
+      } @else if (store.items().length === 0) {
+        <p
+          class="rounded-xl border border-outline-variant bg-surface-container p-6 text-center text-on-surface-variant"
+          data-testid="no-results"
+        >
+          Nenhum morador encontrado com estes filtros
+        </p>
+      } @else {
+        <p class="mb-4 text-sm text-on-surface-variant" data-testid="total">
+          {{ store.total() }} {{ store.total() === 1 ? 'morador' : 'moradores' }}
+        </p>
+        <div class="overflow-x-auto rounded-xl border border-outline-variant bg-surface-container">
+          <table class="w-full border-collapse text-left" data-testid="residents-table">
+            <caption class="sr-only">
+              Lista de moradores
+            </caption>
+            <thead>
+              <tr class="border-b border-outline-variant text-sm text-on-surface-variant">
+                <th scope="col" class="p-3 font-medium">Morador</th>
+                <th scope="col" class="p-3 font-medium max-sm:hidden">Contato</th>
+                <th scope="col" class="p-3 font-medium">Unidades</th>
+                <th scope="col" class="p-3 font-medium">Situação</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of store.items(); track item.id) {
+                <tr
+                  class="border-b border-outline-variant align-top last:border-b-0"
+                  data-testid="resident-row"
+                >
+                  <td class="p-3">
+                    <span class="block font-medium">{{ item.fullName }}</span>
+                    <span class="block text-sm text-on-surface-variant">{{ item.maskedCpf }}</span>
+                    <span class="mt-1 block text-sm sm:hidden">
+                      {{ phone(item.phone) }}<br />{{ item.email ?? 'Sem e-mail' }}
+                    </span>
+                  </td>
+                  <td class="p-3 max-sm:hidden">
+                    <span class="block">{{ phone(item.phone) }}</span>
+                    <span class="block text-sm text-on-surface-variant">{{
+                      item.email ?? 'Sem e-mail'
+                    }}</span>
+                  </td>
+                  <td class="p-3">
+                    <ul class="m-0 list-none p-0">
+                      @for (occupancy of item.occupancies; track occupancy.id) {
+                        <li class="mb-1 last:mb-0" data-testid="occupancy-item">
+                          <span class="block font-medium">{{ unit(occupancy) }}</span>
+                          <span class="block text-sm text-on-surface-variant"
+                            >{{ kind(occupancy.kind) }}, {{ period(occupancy) }}</span
+                          >
+                        </li>
+                      }
+                    </ul>
+                  </td>
+                  <td class="p-3">
+                    @if (lives(item)) {
+                      <span class="inline-flex items-center gap-1 text-success">
+                        <mat-icon svgIcon="check_circle" aria-hidden="true" />
+                        <span class="text-on-surface">Mora</span>
+                      </span>
+                    } @else {
+                      <span class="inline-flex items-center gap-1 text-on-surface-variant">
+                        <mat-icon svgIcon="event_busy" aria-hidden="true" />
+                        <span>Ex-morador</span>
+                      </span>
+                    }
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+
+      @if (store.pageCount() > 1) {
+        <nav
+          class="mt-4 flex items-center justify-between gap-4"
+          aria-label="Paginação"
+          data-testid="pagination"
+        >
+          <button
+            mat-stroked-button
+            type="button"
+            data-testid="previous"
+            [disabled]="store.busy() || store.query().page <= 1"
+            (click)="goTo(store.query().page - 1)"
+          >
+            <mat-icon svgIcon="chevron_left" />
+            Anterior
+          </button>
+          <span aria-live="polite" data-testid="page-status"
+            >Página {{ store.query().page }} de {{ store.pageCount() }}</span
+          >
+          <button
+            mat-stroked-button
+            type="button"
+            data-testid="next"
+            [disabled]="store.busy() || store.query().page >= store.pageCount()"
+            (click)="goTo(store.query().page + 1)"
+          >
+            Próxima
+            <mat-icon svgIcon="chevron_right" />
+          </button>
+        </nav>
+      }
+    }
+  }
+</section>
