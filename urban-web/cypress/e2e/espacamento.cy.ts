@@ -35,6 +35,7 @@ import {
   stubResidents,
 } from '../support/moradores';
 import { BATCH_PATH, UNITS_PATH, stubUnits } from '../support/unidades';
+import { VEHICLES_PATH, stubVehicles } from '../support/veiculos';
 
 function closeDialog(): void {
   cy.get('.mat-mdc-dialog-container [data-testid="cancel"]').click();
@@ -167,6 +168,21 @@ SCREENS.forEach(([where, width, height]) => {
       cy.visit(BATCH_PATH);
       cy.get('[data-testid="generator"]').should('be.visible');
       expectBreathingRoom();
+    });
+
+    it('não cola texto em container nos veículos, no diálogo e na confirmação de exclusão', () => {
+      stubSignedIn(MANAGER);
+      stubUnits();
+      stubVehicles();
+      cy.visit(VEHICLES_PATH);
+      cy.get('[data-testid="vehicles-table"]').should('be.visible');
+      expectBreathingRoom();
+      cy.get('button[aria-label="Excluir veículo ABC1D23"]').click();
+      cy.get('[data-testid="delete-confirm"]').should('be.visible');
+      expectBreathingRoom();
+      cy.get('[data-testid="cancel-delete"]').click();
+      cy.get('[data-testid="new-vehicle"]').click();
+      expectDialogBreathingRoom();
     });
 
     it('não cola texto em container na lista de moradores', () => {
