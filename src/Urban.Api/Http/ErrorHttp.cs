@@ -7,6 +7,7 @@ using Urban.Condominium.Domain.Documents;
 using Urban.Condominium.Domain.Occupancies;
 using Urban.Condominium.Domain.People;
 using Urban.Condominium.Domain.Units;
+using Urban.Condominium.Domain.Vehicles;
 using Urban.Finance.Domain;
 using Urban.Finance.Domain.Expenses;
 using Urban.Finance.Domain.Closing;
@@ -164,6 +165,16 @@ public static class ErrorHttp
         [UnitErrors.Deactivated.Code] = StatusCodes.Status409Conflict,
         [UnitErrors.AlreadyDeactivated.Code] = StatusCodes.Status409Conflict,
         [UnitErrors.AlreadyActive.Code] = StatusCodes.Status409Conflict,
+
+        [VehicleErrors.PlateInvalid.Code] = StatusCodes.Status400BadRequest,
+        [VehicleErrors.ModelInvalid.Code] = StatusCodes.Status400BadRequest,
+        [VehicleErrors.ColorInvalid.Code] = StatusCodes.Status400BadRequest,
+        [VehicleErrors.UnitRequired.Code] = StatusCodes.Status400BadRequest,
+        [VehicleErrors.VersionRequired.Code] = StatusCodes.Status400BadRequest,
+        [VehicleErrors.PageInvalid.Code] = StatusCodes.Status400BadRequest,
+        [VehicleErrors.CondominiumRequired.Code] = StatusCodes.Status422UnprocessableEntity,
+        [VehicleErrors.NotFound.Code] = StatusCodes.Status404NotFound,
+        [VehicleErrors.PlateAlreadyRegistered.Code] = StatusCodes.Status409Conflict,
 
         [FinanceErrors.CondominiumNotFound.Code] = StatusCodes.Status404NotFound,
         [FinanceErrors.VersionRequired.Code] = StatusCodes.Status400BadRequest,
