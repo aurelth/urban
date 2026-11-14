@@ -4,7 +4,7 @@ using Urban.Condominium.Domain.People;
 
 namespace Urban.Condominium.Application.Residents;
 
-/// <summary>Um morador como a tela o vê. O CPF só sai mascarado; a versão volta na edição para detectar que outra pessoa mudou o cadastro.</summary>
+/// <summary>Um morador como a tela o vê. O CPF só sai mascarado; <c>HasAccount</c> diz se o convite já criou a conta; a versão volta na edição para detectar que outra pessoa mudou o cadastro.</summary>
 public sealed record ResidentView(
     Guid Id,
     string FullName,
@@ -15,6 +15,7 @@ public sealed record ResidentView(
     string? Profession,
     EmergencyContactView? EmergencyContact,
     IReadOnlyList<ResidentOccupancyView> Occupancies,
+    bool HasAccount,
     string Version)
 {
     internal static ResidentView From(ResidentRecord record)
@@ -31,6 +32,7 @@ public sealed record ResidentView(
             person.Profession?.Value,
             person.EmergencyContact is { } contact ? new EmergencyContactView(contact.Name.Value, contact.Relationship, contact.Phone.Value) : null,
             [.. record.Occupancies.Select(ResidentOccupancyView.From)],
+            person.UserId is not null,
             record.Version);
     }
 }

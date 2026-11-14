@@ -10,6 +10,7 @@ namespace Urban.Condominium.Application.Residents;
 /// <summary>
 /// Edita os dados pessoais de um morador. Valida e compara em memória; se nada mudou, não grava nada (nem a versão muda). O
 /// registro leva só os nomes dos campos que mudaram, nunca os valores. O CPF repetido é decidido na gravação, pelo índice único.
+/// Depois do convite o e-mail é o da conta de acesso e não muda por aqui.
 /// </summary>
 public sealed class UpdateResidentCommandHandler(IResidents residents, ITenantContext tenant, IClock clock)
     : IRequestHandler<UpdateResidentCommand, Result<ResidentView>>
@@ -55,6 +56,11 @@ public sealed class UpdateResidentCommandHandler(IResidents residents, ITenantCo
         }
 
         ResidentData data = parsed.Value;
+        if (person.UserId is not null && person.Email != data.Email)
+        {
+            return Result.Failure<ResidentView>(ResidentErrors.EmailLocked);
+        }
+
         List<string> changed = Changed(person, data);
         if (changed.Count == 0)
         {

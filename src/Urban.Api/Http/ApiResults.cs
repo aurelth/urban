@@ -28,4 +28,17 @@ public static class ApiResults
 
         return Results.Created(location(result.Value), toResponse(result.Value));
     }
+
+    /// <summary>Falha vira o problema do erro; sucesso vira 202 sem corpo: o trabalho (um e-mail, por exemplo) segue em segundo plano.</summary>
+    public static IResult Accepted(Result result, HttpResponse response)
+    {
+        if (result.IsFailure)
+        {
+            return ErrorHttp.ToProblem(result.Error);
+        }
+
+        response.PreventCaching();
+
+        return Results.Accepted();
+    }
 }

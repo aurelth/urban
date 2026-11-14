@@ -104,6 +104,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
             if (!RealBackgroundJobs)
             {
                 services.Replace(ServiceDescriptor.Scoped<IEmailVerificationDispatcher, InlineEmailVerificationDispatcher>());
+                services.Replace(ServiceDescriptor.Scoped<IResidentInvitationDispatcher, InlineResidentInvitationDispatcher>());
                 services.Replace(ServiceDescriptor.Scoped<IRegistrationRequestDispatcher, InlineRegistrationRequestDispatcher>());
                 services.Replace(ServiceDescriptor.Scoped<IContactMessageDispatcher, InlineContactMessageDispatcher>());
                 services.Replace(ServiceDescriptor.Scoped<IPasswordResetDispatcher, InlinePasswordResetDispatcher>());
