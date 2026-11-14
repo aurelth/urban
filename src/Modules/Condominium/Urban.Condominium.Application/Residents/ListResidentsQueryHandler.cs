@@ -24,7 +24,7 @@ public sealed class ListResidentsQueryHandler(IResidents residents, ITenantConte
             return Result.Failure<ResidentListing>(ResidentErrors.PageInvalid);
         }
 
-        ResidentFilter filter = new(string.IsNullOrWhiteSpace(request.Search) ? null : request.Search.Trim(), request.UnitId);
+        ResidentFilter filter = new(string.IsNullOrWhiteSpace(request.Search) ? null : request.Search.Trim(), request.UnitId, request.Status);
         PagedResidents page = await residents.ListAsync(filter, request.Page, request.PageSize, cancellationToken);
 
         return Result.Success(new ResidentListing([.. page.Items.Select(ResidentView.From)], page.Total, request.Page, request.PageSize));

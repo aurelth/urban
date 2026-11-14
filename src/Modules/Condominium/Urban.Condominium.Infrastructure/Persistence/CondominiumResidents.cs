@@ -47,8 +47,7 @@ public sealed class CondominiumResidents(CondominiumDbContext db) : IResidents
             people = people.Where(p => matching.Contains(p.Id));
         }
 
-        Guid? unitId = filter.UnitId;
-        IQueryable<Person> query = people.Where(p => db.Occupancies.Any(o => o.PersonId == p.Id && (unitId == null || o.UnitId == unitId)));
+        IQueryable<Person> query = WithStatus(people, filter);
 
         int total = await query.CountAsync(cancellationToken);
         List<PersonRow> rows = await query
@@ -148,6 +147,24 @@ public sealed class CondominiumResidents(CondominiumDbContext db) : IResidents
 
     private static bool Violates(DbUpdateException ex, string index) =>
         ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } violation && violation.ConstraintName == index;
+
+    /// <summary>
+    /// Só quem tem vínculo (com a unidade do filtro, se houver) e, conforme o estado, com vínculo em andamento ou só com vínculos
+    /// já encerrados. O estado é sempre o do mesmo recorte: quem saiu da unidade A mas mora na B é ex-morador de A.
+    /// </summary>
+    private IQueryable<Person> WithStatus(IQueryable<Person> people, ResidentFilter filter)
+    {
+        Guid? unitId = filter.UnitId;
+
+        return filter.Status switch
+        {
+            ResidentStatusFilter.Active => people.Where(p => db.Occupancies.Any(o => o.PersonId == p.Id && (unitId == null || o.UnitId == unitId) && o.EndDate == null)),
+            ResidentStatusFilter.Former => people.Where(p =>
+                db.Occupancies.Any(o => o.PersonId == p.Id && (unitId == null || o.UnitId == unitId))
+                && !db.Occupancies.Any(o => o.PersonId == p.Id && (unitId == null || o.UnitId == unitId) && o.EndDate == null)),
+            _ => people.Where(p => db.Occupancies.Any(o => o.PersonId == p.Id && (unitId == null || o.UnitId == unitId))),
+        };
+    }
 
     /// <summary>Todos os vínculos das pessoas dadas, com bloco e número da unidade, os em andamento primeiro e depois os mais recentes.</summary>
     private async Task<ILookup<Guid, ResidentOccupancy>> OccupanciesOfAsync(IReadOnlyCollection<Guid> personIds, CancellationToken cancellationToken)

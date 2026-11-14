@@ -98,6 +98,13 @@ export const routes: Routes = [
             loadComponent: () =>
               import('./features/units/units-batch.page').then((m) => m.UnitsBatchPage),
           },
+          {
+            path: 'moradores',
+            title: 'Moradores',
+            canActivate: [managerGuard],
+            loadComponent: () =>
+              import('./features/moradores/residents.page').then((m) => m.ResidentsPage),
+          },
           { path: 'financeiro', pathMatch: 'full', redirectTo: 'financeiro/despesas' },
           {
             path: 'financeiro/despesas',

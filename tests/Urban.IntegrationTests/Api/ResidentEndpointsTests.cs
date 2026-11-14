@@ -389,6 +389,36 @@ public sealed class ResidentEndpointsTests(ApiFixture fixture) : IDisposable
         Names(both).Should().Equal("Maria Teresa");
     }
 
+    [Fact]
+    public async Task List_filters_by_status_and_without_a_status_brings_everyone()
+    {
+        ManagerSession manager = await ManagerSetup.RegisterAsync(fixture, _client);
+        Guid unit = await CreateUnitAsync(manager, "101");
+        await RegisterAsync(manager, unit, "Ana Lima");
+        Guid leaver = await RegisterAsync(manager, unit, "Beto Rocha");
+        await LeaveAsync(manager, leaver);
+
+        Names(await ListAsync(manager)).Should().Equal("Ana Lima", "Beto Rocha");
+        Names(await ListAsync(manager, "?status=all")).Should().Equal("Ana Lima", "Beto Rocha");
+        Names(await ListAsync(manager, "?status=active")).Should().Equal("Ana Lima");
+        Names(await ListAsync(manager, "?status=FORMER")).Should().Equal("Beto Rocha");
+        Names(await ListAsync(manager, $"?status=former&unitId={unit}&search=beto")).Should().Equal("Beto Rocha");
+        (await ListAsync(manager, "?status=former")).GetProperty("total").GetInt32().Should().Be(1);
+    }
+
+    [Theory]
+    [InlineData("?status=gone")]
+    [InlineData("?status=1")]
+    public async Task List_with_an_unknown_status_answers_400(string query)
+    {
+        ManagerSession manager = await ManagerSetup.RegisterAsync(fixture, _client);
+
+        HttpResponseMessage response = await _client.SendJsonAsync(HttpMethod.Get, $"{Residents}{query}", manager.AccessToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.CodeAsync()).Should().Be("request.invalid");
+    }
+
     [Theory]
     [InlineData("?page=0")]
     [InlineData("?page=-1")]
@@ -470,6 +500,20 @@ public sealed class ResidentEndpointsTests(ApiFixture fixture) : IDisposable
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         return await response.Content.ReadFromJsonAsync<JsonElement>();
+    }
+
+    /// <summary>Registra a saída do morador da única unidade em que mora, no mesmo dia da entrada (vale: a saída não é antes da entrada).</summary>
+    private async Task LeaveAsync(ManagerSession manager, Guid residentId)
+    {
+        HttpResponseMessage read = await _client.SendJsonAsync(HttpMethod.Get, $"{Residents}/{residentId}", manager.AccessToken);
+        JsonElement occupancy = (await read.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("occupancies")[0];
+
+        HttpResponseMessage end = await _client.SendJsonAsync(
+            HttpMethod.Post,
+            $"{Residents}/{residentId}/occupancies/{occupancy.GetProperty("id").GetGuid()}/end",
+            manager.AccessToken,
+            new JsonObject { ["endDate"] = occupancy.GetProperty("startDate").GetString() });
+        end.StatusCode.Should().Be(HttpStatusCode.OK, await end.Content.ReadAsStringAsync(Ct));
     }
 
     private static IEnumerable<string?> Names(JsonElement list) =>

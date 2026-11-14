@@ -31,7 +31,10 @@ const MANAGER_GROUPS: readonly NavGroup[] = [
   {
     id: 'condominium',
     label: 'Condomínio',
-    items: [{ id: 'units', label: 'Unidades', icon: 'home_work', path: '/unidades' }],
+    items: [
+      { id: 'units', label: 'Unidades', icon: 'home_work', path: '/unidades' },
+      { id: 'residents', label: 'Moradores', icon: 'groups', path: '/moradores' },
+    ],
   },
   {
     id: 'finance',
