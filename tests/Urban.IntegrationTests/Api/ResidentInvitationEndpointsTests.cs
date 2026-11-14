@@ -256,8 +256,9 @@ public sealed class ResidentInvitationEndpointsTests(ApiFixture fixture) : IDisp
         HttpResponseMessage response = await ChangeEmailAsync(manager, residentId, right);
 
         response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync(Ct));
-        AccessStatusOf(await response.Content.ReadFromJsonAsync<JsonElement>()).Should().Be("invited");
-        (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("email").GetString().Should().Be(right);
+        JsonElement corrected = await response.Content.ReadFromJsonAsync<JsonElement>();
+        AccessStatusOf(corrected).Should().Be("invited");
+        corrected.GetProperty("email").GetString().Should().Be(right);
         (await ReadAccountAsync(right)).Status.Should().Be(AccountStatus.PendingVerification);
         HttpResponseMessage oldAttempt = await _client.PostAsJsonAsync(
             "/api/auth/confirm-email",

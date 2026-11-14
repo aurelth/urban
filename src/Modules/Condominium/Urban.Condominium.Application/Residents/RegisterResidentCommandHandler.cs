@@ -14,7 +14,7 @@ namespace Urban.Condominium.Application.Residents;
 /// banco (vale o primeiro erro, cujo código diz o campo); só então confere a unidade. O CPF repetido é decidido na gravação,
 /// pelo índice único, que resiste a dois cadastros ao mesmo tempo. Cadastrar não cria conta nem manda e-mail: o acesso é o convite.
 /// </summary>
-public sealed class RegisterResidentCommandHandler(IResidents residents, IUnits units, ITenantContext tenant, IClock clock)
+public sealed class RegisterResidentCommandHandler(IResidents residents, IUnits units, ITenantContext tenant, IClock clock, ResidentViews views)
     : IRequestHandler<RegisterResidentCommand, Result<ResidentView>>
 {
     public async Task<Result<ResidentView>> Handle(RegisterResidentCommand request, CancellationToken cancellationToken)
@@ -47,7 +47,7 @@ public sealed class RegisterResidentCommandHandler(IResidents residents, IUnits 
 
         ResidentRecord record = new(person, [new ResidentOccupancy(built.Value.Occupancy, unit.Value.Block, unit.Value.Number)], saved.Value);
 
-        return Result.Success(ResidentView.From(record));
+        return Result.Success(await views.ViewAsync(record, cancellationToken));
     }
 
     private static Result<Registration> Build(RegisterResidentCommand request, Guid condominiumId, DateTimeOffset now)

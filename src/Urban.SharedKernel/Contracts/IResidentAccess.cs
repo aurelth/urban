@@ -19,4 +19,17 @@ public interface IResidentAccess
     /// para conta que ainda não criou a senha e, no máximo, uma vez por minuto.
     /// </summary>
     Task<Result> SendInvitationAsync(Guid userId, Guid condominiumId, Guid invitedBy, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// A situação do acesso de várias contas de uma vez, numa única consulta: a lista de moradores pergunta uma vez por página, nunca
+    /// uma por morador. Só entram no resultado as contas de morador deste condomínio; as demais são omitidas.
+    /// </summary>
+    Task<IReadOnlyDictionary<Guid, ResidentAccessStatus>> GetStatusesAsync(Guid condominiumId, IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Corrige o e-mail de um morador cujo convite ainda não foi aceito (a conta não tem senha). Os links abertos da conta deixam de
+    /// valer, então quem lê o endereço errado não consegue mais usar o link; o síndico reenvia o convite ao endereço novo. Conta que já
+    /// tem senha falha: dali em diante o e-mail é o do login.
+    /// </summary>
+    Task<Result> ChangeInvitedEmailAsync(Guid userId, Guid condominiumId, string newEmail, Guid changedBy, CancellationToken cancellationToken);
 }

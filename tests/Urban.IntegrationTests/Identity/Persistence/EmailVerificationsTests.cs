@@ -238,9 +238,7 @@ public sealed class EmailVerificationsTests(PostgresFixture postgres)
         (_, User user) = await SeedPendingAsync();
         await using (IdentityDbContext other = postgres.CreateContext())
         {
-            User tracked = await other.Users.SingleAsync(u => u.Id == user.Id, Ct);
-            tracked.Suspend(UserBuilder.ActorId, "Motivo de teste", Now).IsSuccess.Should().BeTrue();
-            await other.SaveChangesAsync(Ct);
+            await other.Database.ExecuteSqlAsync($"update identity.\"user\" set status = 'Suspended' where id = {user.Id}", Ct);
         }
 
         user.ChangeEmail(Email.Create($"{Guid.NewGuid():N}@example.com").Value);

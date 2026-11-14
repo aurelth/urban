@@ -13,6 +13,13 @@ public interface IEmailVerifications
 
     Task AddAsync(EmailVerificationToken token, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Grava o novo e-mail de uma conta que ainda não confirmou e dá por usados os links abertos dela, na mesma transação: o link
+    /// enviado ao endereço antigo deixa de valer. Só a coluna do e-mail é escrita, para não desfazer, por exemplo, uma suspensão.
+    /// </summary>
+    /// <returns><c>false</c> quando o endereço já pertence a outra conta; nada é gravado.</returns>
+    Task<bool> ChangePendingEmailAsync(User user, DateTimeOffset now, CancellationToken cancellationToken);
+
     Task<EmailVerificationToken?> FindByHashAsync(string tokenHash, CancellationToken cancellationToken);
 
     Task<EmailVerificationToken?> FindLatestOfUserAsync(Guid userId, CancellationToken cancellationToken);

@@ -3,6 +3,7 @@ using Urban.Api.Endpoints;
 using Urban.Condominium.Application.Abstractions;
 using Urban.Condominium.Application.Residents;
 using Urban.Condominium.Domain.Occupancies;
+using Urban.SharedKernel.Contracts;
 
 namespace Urban.Api.Mapping;
 
@@ -89,6 +90,15 @@ public static partial class ResidentMapper
         "owner" => OccupancyKind.Owner,
         "tenant" => OccupancyKind.Tenant,
         _ => 0,
+    };
+
+    private static string AccessStatusName(ResidentAccessStatus status) => status switch
+    {
+        ResidentAccessStatus.None => "none",
+        ResidentAccessStatus.Invited => "invited",
+        ResidentAccessStatus.Active => "active",
+        ResidentAccessStatus.Inactive => "inactive",
+        _ => throw new ArgumentOutOfRangeException(nameof(status), status, "Situação de acesso desconhecida."),
     };
 
     private static string KindName(OccupancyKind kind) => kind switch

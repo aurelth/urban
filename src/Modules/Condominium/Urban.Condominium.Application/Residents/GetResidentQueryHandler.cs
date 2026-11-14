@@ -8,7 +8,7 @@ using Urban.SharedKernel.Abstractions;
 namespace Urban.Condominium.Application.Residents;
 
 /// <summary>Um morador do condomínio da requisição. O de outro condomínio é "não encontrado", igual a um que não existe.</summary>
-public sealed class GetResidentQueryHandler(IResidents residents, ITenantContext tenant) : IRequestHandler<GetResidentQuery, Result<ResidentView>>
+public sealed class GetResidentQueryHandler(IResidents residents, ITenantContext tenant, ResidentViews views) : IRequestHandler<GetResidentQuery, Result<ResidentView>>
 {
     public async Task<Result<ResidentView>> Handle(GetResidentQuery request, CancellationToken cancellationToken)
     {
@@ -21,6 +21,6 @@ public sealed class GetResidentQueryHandler(IResidents residents, ITenantContext
 
         return record is null
             ? Result.Failure<ResidentView>(ResidentErrors.NotFound)
-            : Result.Success(ResidentView.From(record));
+            : Result.Success(await views.ViewAsync(record, cancellationToken));
     }
 }
