@@ -443,12 +443,13 @@ public sealed class ResidentChangesEndpointsTests(ApiFixture fixture) : IDisposa
     {
         ManagerSession manager = await ManagerSetup.RegisterAsync(fixture, _client);
         Guid unitId = await CreateUnitAsync(manager, "101", "Bloco A");
-        JsonElement resident = await RegisterAsync(manager, unitId, "Maria Souza", CondominiumBuilders.UniqueCpf().Value);
+        JsonElement resident = await RegisterAsync(manager, unitId, "Maria Souza", CondominiumBuilders.UniqueCpf().Value, "maria@exemplo.com");
 
         return (manager, resident, unitId);
     }
 
-    private async Task<JsonElement> RegisterAsync(ManagerSession manager, Guid unitId, string name, string cpf)
+    /// <summary>O e-mail é único no condomínio: sem informar um, cada morador ganha o seu.</summary>
+    private async Task<JsonElement> RegisterAsync(ManagerSession manager, Guid unitId, string name, string cpf, string? email = null)
     {
         JsonObject body = new()
         {
@@ -456,7 +457,7 @@ public sealed class ResidentChangesEndpointsTests(ApiFixture fixture) : IDisposa
             ["cpf"] = cpf,
             ["birthDate"] = "1990-05-20",
             ["phone"] = "(47) 99876-5432",
-            ["email"] = "maria@exemplo.com",
+            ["email"] = email ?? $"{Guid.NewGuid():N}@exemplo.com",
             ["profession"] = "Engenheira",
             ["emergencyContact"] = new JsonObject { ["name"] = "Carlos Souza", ["relationship"] = "Irmão", ["phone"] = "(47) 3333-4444" },
             ["unitId"] = unitId,

@@ -8,6 +8,9 @@ namespace Urban.TestSupport.Condominium;
 /// <summary>Monta moradores e vínculos válidos pela API pública do Domain, para os testes mudarem só o campo que querem provar.</summary>
 public static class ResidentBuilders
 {
+    /// <summary>Valor padrão de <c>email</c>: cada morador ganha um endereço próprio, porque o e-mail é único no condomínio.</summary>
+    public const string UniqueEmail = "<unique>";
+
     public static readonly DateTimeOffset Now = new(2026, 11, 13, 15, 0, 0, TimeSpan.Zero);
 
     public static readonly DateOnly Today = new(2026, 11, 13);
@@ -19,16 +22,19 @@ public static class ResidentBuilders
         Guid? condominiumId = null,
         string name = "Maria Souza",
         Cpf? cpf = null,
-        string? email = "maria@exemplo.com") =>
+        string? email = UniqueEmail,
+        DateOnly? birthDate = null,
+        bool withProfession = true,
+        bool withEmergencyContact = true) =>
         Person.RegisterResident(
             condominiumId ?? Guid.CreateVersion7(),
             PersonName.Create(name).Value,
             cpf ?? CondominiumBuilders.UniqueCpf(),
-            BirthDate.Create(new DateOnly(1990, 5, 20), Today).Value,
+            BirthDate.CreateAllowingMinor(birthDate ?? new DateOnly(1990, 5, 20), Today).Value,
             PhoneNumber.Create("(47) 99876-5432").Value,
-            email is null ? null : ContactEmail.Create(email).Value,
-            Profession.Create("Engenheira").Value,
-            SampleEmergencyContact(),
+            email is null ? null : ContactEmail.Create(email == UniqueEmail ? $"{Guid.NewGuid():N}@exemplo.com" : email).Value,
+            withProfession ? Profession.Create("Engenheira").Value : null,
+            withEmergencyContact ? SampleEmergencyContact() : null,
             Now).Value;
 
     /// <summary>Um dependente menor de idade (11 anos em <see cref="Today"/>): sem profissão e sem contato de emergência.</summary>

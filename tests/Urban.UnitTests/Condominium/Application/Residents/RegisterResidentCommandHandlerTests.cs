@@ -292,4 +292,49 @@ public class RegisterResidentCommandHandlerTests
 
         result.Error.Code.Should().Be("condominium.emergency_contact.relationship_invalid");
     }
+
+    [Fact]
+    public async Task Handle_WithAStartDateBeforeTheBirthDate_FailsOnTheDateAndSavesNothing()
+    {
+        // Nasceu em 20/05/1990: não pode ter entrado na unidade em 19/05/1990.
+        RegisterResidentCommand command = Valid() with { StartDate = new DateOnly(1990, 5, 19) };
+
+        Result<ResidentView> result = await Handler().Handle(command, default);
+
+        result.Error.Should().Be(OccupancyErrors.StartBeforeBirth);
+        _kit.Residents.Verify(r => r.AddAsync(It.IsAny<Person>(), It.IsAny<Occupancy>(), It.IsAny<ChangeLogEntry>(), It.IsAny<CancellationToken>()), Times.Never);
+        _kit.Units.Verify(u => u.FindAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WithTheStartDateOnTheBirthDay_Registers()
+    {
+        RegisterResidentCommand command = Valid() with { StartDate = new DateOnly(1990, 5, 20) };
+
+        Result<ResidentView> result = await Handler().Handle(command, default);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_AMinorDependentCannotHaveEnteredBeforeBeingBorn()
+    {
+        RegisterResidentCommand command = ResidentCommands.Minor(_kit.Unit.Id) with { StartDate = new DateOnly(2015, 4, 9) };
+
+        Result<ResidentView> result = await Handler().Handle(command, default);
+
+        result.Error.Should().Be(OccupancyErrors.StartBeforeBirth);
+    }
+
+    [Fact]
+    public async Task Handle_PassesAnEmailThatAnotherResidentAlreadyHasBackAsTheFieldError()
+    {
+        _kit.Residents
+            .Setup(r => r.AddAsync(It.IsAny<Person>(), It.IsAny<Occupancy>(), It.IsAny<ChangeLogEntry>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure<string>(ResidentErrors.EmailAlreadyRegistered));
+
+        Result<ResidentView> result = await Handler().Handle(Valid(), default);
+
+        result.Error.Should().Be(ResidentErrors.EmailAlreadyRegistered);
+    }
 }

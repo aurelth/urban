@@ -568,7 +568,7 @@ public sealed class ResidentEndpointsTests(ApiFixture fixture) : IDisposable
 
     private async Task<Guid> RegisterAsync(ManagerSession manager, Guid unitId, string name)
     {
-        JsonObject body = ResidentBody(unitId);
+        JsonObject body = ResidentBody(unitId, email: $"{Guid.NewGuid():N}@exemplo.com");
         body["fullName"] = name;
         HttpResponseMessage response = await _client.SendJsonAsync(HttpMethod.Post, Residents, manager.AccessToken, body);
         response.StatusCode.Should().Be(HttpStatusCode.Created, await response.Content.ReadAsStringAsync(Ct));

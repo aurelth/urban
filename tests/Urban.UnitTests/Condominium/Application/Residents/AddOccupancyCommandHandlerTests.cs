@@ -205,4 +205,29 @@ public class AddOccupancyCommandHandlerTests
 
         result.IsSuccess.Should().BeTrue();
     }
+
+    [Fact]
+    public async Task Handle_WithAStartDateBeforeTheBirthDate_Fails_AndAddsNothing()
+    {
+        // O morador nasceu em 20/05/1990.
+        ResidentRecord record = _kit.ExistingWithActiveOccupancy();
+        CondominiumUnit other = OtherUnit();
+
+        Result<ResidentView> result = await Handler().Handle(Command(record.Person.Id, other.Id, OccupancyKind.Tenant, new DateOnly(1990, 5, 19)), default);
+
+        result.Error.Should().Be(OccupancyErrors.StartBeforeBirth);
+        _kit.OccupanciesAdded.Should().BeEmpty();
+        _kit.Logged.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_WithTheStartDateOnTheBirthDay_AddsTheOccupancy()
+    {
+        ResidentRecord record = _kit.ExistingWithActiveOccupancy();
+        CondominiumUnit other = OtherUnit();
+
+        Result<ResidentView> result = await Handler().Handle(Command(record.Person.Id, other.Id, OccupancyKind.Tenant, new DateOnly(1990, 5, 20)), default);
+
+        result.IsSuccess.Should().BeTrue();
+    }
 }

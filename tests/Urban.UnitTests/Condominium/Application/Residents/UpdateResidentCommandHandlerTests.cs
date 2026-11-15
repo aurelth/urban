@@ -322,4 +322,103 @@ public class UpdateResidentCommandHandlerTests
 
         result.IsSuccess.Should().BeTrue();
     }
+
+    private ResidentRecord ExistingDependent(DateOnly birthDate, DateOnly start, DateOnly? end = null)
+    {
+        Person minor = ResidentBuilders.Minor(_kit.CondominiumId, birthDate: birthDate);
+        Occupancy occupancy = ResidentBuilders.Occupancy(minor, _kit.Unit.Id, OccupancyKind.Dependent, start);
+        if (end is { } leftOn)
+        {
+            occupancy.MoveOut(leftOn, ResidentBuilders.Today);
+        }
+
+        return _kit.Existing(minor, new ResidentOccupancy(occupancy, _kit.Unit.Block, _kit.Unit.Number));
+    }
+
+    [Fact]
+    public async Task Handle_MovingTheBirthDateToAfterTheEntryInAUnit_FailsOnTheBirthDate_AndSavesNothing()
+    {
+        ResidentRecord record = ExistingDependent(new DateOnly(2015, 4, 10), start: new DateOnly(2024, 3, 1));
+
+        Result<ResidentView> result = await Handler().Handle(
+            ResidentCommands.UpdateMinor(record.Person.Id, cpf: record.Person.Cpf.Value) with { BirthDate = new DateOnly(2025, 1, 1) }, default);
+
+        result.Error.Should().Be(ResidentErrors.BirthAfterOccupancy);
+        _kit.Saved.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_TheBirthDateMayMoveToTheEntryDayItself()
+    {
+        ResidentRecord record = ExistingDependent(new DateOnly(2015, 4, 10), start: new DateOnly(2024, 3, 1));
+
+        Result<ResidentView> result = await Handler().Handle(
+            ResidentCommands.UpdateMinor(record.Person.Id, cpf: record.Person.Cpf.Value) with { BirthDate = new DateOnly(2024, 3, 1) }, default);
+
+        result.IsSuccess.Should().BeTrue();
+        _kit.Logged.Single().Fields.Should().Equal("birthDate");
+    }
+
+    [Fact]
+    public async Task Handle_TheBirthDateIsComparedWithTheEntryInEveryUnit_EvenTheOnesAlreadyLeft()
+    {
+        ResidentRecord record = ExistingDependent(new DateOnly(2015, 4, 10), start: new DateOnly(2016, 1, 1), end: new DateOnly(2017, 1, 1));
+
+        Result<ResidentView> result = await Handler().Handle(
+            ResidentCommands.UpdateMinor(record.Person.Id, cpf: record.Person.Cpf.Value) with { BirthDate = new DateOnly(2016, 6, 1) }, default);
+
+        result.Error.Should().Be(ResidentErrors.BirthAfterOccupancy);
+    }
+
+    [Fact]
+    public async Task Handle_AnEarlierBirthDateIsAlwaysFine()
+    {
+        ResidentRecord record = ExistingDependent(new DateOnly(2015, 4, 10), start: new DateOnly(2024, 3, 1));
+
+        Result<ResidentView> result = await Handler().Handle(
+            ResidentCommands.UpdateMinor(record.Person.Id, cpf: record.Person.Cpf.Value) with { BirthDate = new DateOnly(2014, 1, 1) }, default);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Handle_OldDataWithAnEntryBeforeTheBirth_DoesNotBlockEditingOtherFields()
+    {
+        // Cadastros antigos podem ter a entrada antes do nascimento; a regra só vale quando a data de nascimento muda.
+        ResidentRecord record = ExistingDependent(new DateOnly(2015, 4, 10), start: new DateOnly(2014, 1, 1));
+
+        Result<ResidentView> result = await Handler().Handle(
+            ResidentCommands.UpdateMinor(record.Person.Id, cpf: record.Person.Cpf.Value) with { Phone = "(47) 99111-2222" }, default);
+
+        result.IsSuccess.Should().BeTrue();
+        _kit.Logged.Single().Fields.Should().Equal("phone");
+    }
+
+    [Fact]
+    public async Task Handle_PassesAnEmailThatAnotherResidentAlreadyHasBackAsTheFieldError()
+    {
+        (_, UpdateResidentCommand same) = Existing();
+        _kit.Residents
+            .Setup(r => r.SaveAsync(It.IsAny<ResidentRecord>(), It.IsAny<ChangeLogEntry>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Failure<string>(ResidentErrors.EmailAlreadyRegistered));
+
+        Result<ResidentView> result = await Handler().Handle(same with { Email = "outra@exemplo.com" }, default);
+
+        result.Error.Should().Be(ResidentErrors.EmailAlreadyRegistered);
+    }
+
+    [Fact]
+    public async Task Handle_AnAdultWhoTurnedEighteenMustNowFillProfessionAndContact()
+    {
+        // Entrou como dependente menor; hoje (13/11/2026) tem 18 anos e o cadastro continua sem profissão e contato.
+        Person justAdult = ResidentBuilders.Minor(_kit.CondominiumId, birthDate: new DateOnly(2008, 11, 13));
+        Occupancy occupancy = ResidentBuilders.Occupancy(justAdult, _kit.Unit.Id, OccupancyKind.Dependent, new DateOnly(2024, 3, 1));
+        _kit.Existing(justAdult, new ResidentOccupancy(occupancy, _kit.Unit.Block, _kit.Unit.Number));
+        UpdateResidentCommand command = ResidentCommands.UpdateMinor(justAdult.Id, cpf: justAdult.Cpf.Value) with { BirthDate = new DateOnly(2008, 11, 13) };
+
+        Result<ResidentView> result = await Handler().Handle(command, default);
+
+        result.Error.Code.Should().Be("condominium.profession.invalid");
+        _kit.Saved.Should().BeEmpty();
+    }
 }

@@ -55,7 +55,7 @@ internal sealed class ResidentsTestKit
     public ResidentsTestKit()
     {
         Tenant = new FixedTenant(CondominiumId);
-        Views = new ResidentViews(Access.Object);
+        Views = new ResidentViews(Access.Object, Clock.Object);
         Access
             .Setup(a => a.GetStatusesAsync(It.IsAny<Guid>(), It.IsAny<IReadOnlyCollection<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((Guid _, IReadOnlyCollection<Guid> ids, CancellationToken _) =>

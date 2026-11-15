@@ -216,6 +216,112 @@ public sealed class CondominiumResidentsTests(CondominiumPostgresFixture postgre
         (await AddAsync(second, inSecond, ResidentBuilders.Occupancy(inSecond, secondUnit.Id))).IsSuccess.Should().BeTrue();
     }
 
+    // ---- E-mail único ----
+
+    [Fact]
+    public async Task The_same_email_cannot_be_registered_twice_in_a_condominium_even_with_another_letter_case_and_nothing_is_left_behind()
+    {
+        CondominiumEntity condominium = await SeedCondominiumAsync();
+        CondominiumUnit unit = await SeedUnitAsync(condominium);
+        Person first = ResidentBuilders.Resident(condominium.Id, "Maria Souza", email: "ana@exemplo.com");
+        Person second = ResidentBuilders.Resident(condominium.Id, "Outra Pessoa", email: "ANA@Exemplo.com");
+        await AddAsync(condominium, first, ResidentBuilders.Occupancy(first, unit.Id));
+
+        Result<string> result = await AddAsync(condominium, second, ResidentBuilders.Occupancy(second, unit.Id));
+
+        result.Error.Should().Be(ResidentErrors.EmailAlreadyRegistered);
+        await using CondominiumDbContext reader = postgres.CreateContext(condominium.Id);
+        (await reader.Occupancies.CountAsync(Ct)).Should().Be(1);
+        (await reader.People.CountAsync(p => p.Id == second.Id, Ct)).Should().Be(0);
+        (await ChangeLogCountAsync(condominium.Id, "resident")).Should().Be(1);
+    }
+
+    [Fact]
+    public async Task The_database_itself_refuses_an_email_that_differs_only_in_letter_case()
+    {
+        CondominiumEntity condominium = await SeedCondominiumAsync();
+        CondominiumUnit unit = await SeedUnitAsync(condominium);
+        Person person = ResidentBuilders.Resident(condominium.Id, email: "ana@exemplo.com");
+        await AddAsync(condominium, person, ResidentBuilders.Occupancy(person, unit.Id));
+        await using CondominiumDbContext db = postgres.CreateContext();
+        Person other = ResidentBuilders.Resident(condominium.Id);
+        await AddAsync(condominium, other, ResidentBuilders.Occupancy(other, unit.Id));
+
+        Func<Task> act = () => db.Database.ExecuteSqlInterpolatedAsync(
+            $"update condominium.person set email = upper('ana@exemplo.com') where id = {other.Id}",
+            Ct);
+
+        (await act.Should().ThrowAsync<PostgresException>()).Which.ConstraintName.Should().Be("ix_person_condominium_id_email");
+    }
+
+    [Fact]
+    public async Task The_same_email_can_be_registered_in_two_different_condominiums()
+    {
+        CondominiumEntity first = await SeedCondominiumAsync();
+        CondominiumEntity second = await SeedCondominiumAsync();
+        CondominiumUnit firstUnit = await SeedUnitAsync(first);
+        CondominiumUnit secondUnit = await SeedUnitAsync(second);
+        Person inFirst = ResidentBuilders.Resident(first.Id, email: "ana@exemplo.com");
+        Person inSecond = ResidentBuilders.Resident(second.Id, email: "ana@exemplo.com");
+
+        (await AddAsync(first, inFirst, ResidentBuilders.Occupancy(inFirst, firstUnit.Id))).IsSuccess.Should().BeTrue();
+        (await AddAsync(second, inSecond, ResidentBuilders.Occupancy(inSecond, secondUnit.Id))).IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Many_residents_without_email_are_fine()
+    {
+        CondominiumEntity condominium = await SeedCondominiumAsync();
+        CondominiumUnit unit = await SeedUnitAsync(condominium);
+
+        for (int i = 0; i < 3; i++)
+        {
+            Person person = ResidentBuilders.Resident(condominium.Id, email: null);
+            (await AddAsync(condominium, person, ResidentBuilders.Occupancy(person, unit.Id))).IsSuccess.Should().BeTrue();
+        }
+    }
+
+    // ---- Cadastro incompleto ----
+
+    [Fact]
+    public async Task The_incomplete_filter_lists_adults_without_profession_or_emergency_contact_and_never_minors()
+    {
+        CondominiumEntity condominium = await SeedCondominiumAsync();
+        CondominiumUnit unit = await SeedUnitAsync(condominium);
+        Person complete = await AddAsync(condominium, unit, ResidentBuilders.Resident(condominium.Id, "Maria Completa"));
+        Person noProfession = await AddAsync(condominium, unit, ResidentBuilders.Resident(condominium.Id, "Joao Sem Profissao", withProfession: false));
+        Person noContact = await AddAsync(condominium, unit, ResidentBuilders.Resident(condominium.Id, "Joao Sem Contato", withEmergencyContact: false));
+        Person minor = await AddAsync(condominium, unit, ResidentBuilders.Minor(condominium.Id, "Pedro Menor"));
+        Person justTurned = await AddAsync(condominium, unit, ResidentBuilders.Minor(condominium.Id, "Ana Fez Dezoito", birthDate: new DateOnly(2008, 11, 13)));
+        Person dayBefore = await AddAsync(condominium, unit, ResidentBuilders.Minor(condominium.Id, "Ana Faz Dezoito Amanha", birthDate: new DateOnly(2008, 11, 14)));
+        ResidentFilter filter = new(null, null, ResidentStatusFilter.All, ResidentBuilders.Today);
+
+        PagedResidents incomplete = await ListAsync(condominium, filter, 1, 50);
+        PagedResidents all = await ListAsync(condominium, new ResidentFilter(null, null, ResidentStatusFilter.All), 1, 50);
+
+        incomplete.Items.Select(r => r.Person.FullName.Value).Should().BeEquivalentTo("Joao Sem Profissao", "Joao Sem Contato", "Ana Fez Dezoito");
+        incomplete.Total.Should().Be(3);
+        all.Total.Should().Be(6);
+        _ = (complete, noProfession, noContact, minor, justTurned, dayBefore);
+    }
+
+    [Fact]
+    public async Task The_incomplete_filter_combines_with_the_search_and_pages_by_its_own_total()
+    {
+        CondominiumEntity condominium = await SeedCondominiumAsync();
+        CondominiumUnit unit = await SeedUnitAsync(condominium);
+        await AddAsync(condominium, unit, ResidentBuilders.Resident(condominium.Id, "Ana Sem Profissao", withProfession: false));
+        await AddAsync(condominium, unit, ResidentBuilders.Resident(condominium.Id, "Bia Sem Profissao", withProfession: false));
+        await AddAsync(condominium, unit, ResidentBuilders.Resident(condominium.Id, "Bia Completa"));
+
+        PagedResidents searched = await ListAsync(condominium, new ResidentFilter("bia", null, ResidentStatusFilter.All, ResidentBuilders.Today), 1, 50);
+        PagedResidents paged = await ListAsync(condominium, new ResidentFilter(null, null, ResidentStatusFilter.All, ResidentBuilders.Today), 2, 1);
+
+        searched.Items.Select(r => r.Person.FullName.Value).Should().Equal("Bia Sem Profissao");
+        paged.Total.Should().Be(2);
+        paged.Items.Should().ContainSingle().Which.Person.FullName.Value.Should().Be("Bia Sem Profissao");
+    }
+
     // ---- Isolamento ----
 
     [Fact]
@@ -504,6 +610,13 @@ public sealed class CondominiumResidentsTests(CondominiumPostgresFixture postgre
     {
         Person person = ResidentBuilders.Resident(condominium.Id, name);
         (await AddAsync(condominium, person, ResidentBuilders.Occupancy(person, unit.Id, startDate: startDate))).IsSuccess.Should().BeTrue();
+
+        return person;
+    }
+
+    private async Task<Person> AddAsync(CondominiumEntity condominium, CondominiumUnit unit, Person person)
+    {
+        (await AddAsync(condominium, person, ResidentBuilders.Occupancy(person, unit.Id))).IsSuccess.Should().BeTrue();
 
         return person;
     }

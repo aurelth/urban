@@ -107,6 +107,25 @@ public sealed class CondominiumResidentsChangesTests(CondominiumPostgresFixture 
         (await ChangeLogCountAsync(condominium.Id, "resident")).Should().Be(2); // só os dois cadastros
     }
 
+    [Fact]
+    public async Task Changing_the_email_to_one_already_taken_in_the_condominium_is_refused_and_nothing_changes()
+    {
+        (CondominiumEntity condominium, Person person, CondominiumUnit unit) = await SeedResidentAsync();
+        Person other = ResidentBuilders.Resident(condominium.Id, "Outra Pessoa", email: "outra@exemplo.com");
+        await AddAsync(condominium, other, ResidentBuilders.Occupancy(other, unit.Id));
+        await using CondominiumDbContext db = postgres.CreateContext(condominium.Id);
+        CondominiumResidents residents = new(db);
+        ResidentRecord record = (await residents.FindAsync(person.Id, Ct))!;
+        string original = record.Person.Email!.Value;
+        record.Person.UpdateResident(record.Person.FullName, record.Person.Cpf, record.Person.BirthDate, record.Person.Phone, ContactEmail.Create("OUTRA@exemplo.com").Value, record.Person.Profession!, record.Person.EmergencyContact!);
+
+        Result<string> result = await residents.SaveAsync(record, Entry(condominium, person.Id, "email"), Ct);
+
+        result.Error.Should().Be(ResidentErrors.EmailAlreadyRegistered);
+        (await FindAsync(condominium, person.Id))!.Person.Email!.Value.Should().Be(original);
+        (await ChangeLogCountAsync(condominium.Id, "resident")).Should().Be(2);
+    }
+
     // ---- Novo vínculo ----
 
     [Fact]
