@@ -19,8 +19,35 @@
       [required]="!optional()"
     />
   }
+  @if (mask() === 'date') {
+    <button
+      #calendarButton
+      matSuffix
+      mat-icon-button
+      type="button"
+      data-testid="open-calendar"
+      aria-label="Abrir calendário"
+      aria-haspopup="dialog"
+      [disabled]="control?.disabled ?? false"
+      (click)="openCalendar()"
+    >
+      <mat-icon svgIcon="calendar_month" />
+    </button>
+  }
   @if (hint(); as text) {
     <mat-hint>{{ text }}</mat-hint>
   }
   <mat-error>{{ errorMessage() }}</mat-error>
 </mat-form-field>
+@if (mask() === 'date') {
+  @defer (when calendarRequested()) {
+    @if (calendarRequested()) {
+      <urban-calendar-popup
+        [value]="calendarValue()"
+        [birthDate]="birthDate()"
+        (picked)="pickDate($event)"
+        (closed)="closeCalendar()"
+      />
+    }
+  }
+}

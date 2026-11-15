@@ -125,6 +125,19 @@ html {
     )
   );
 
+  // Calendario dos campos de data: o mesmo card do Urban (superficie, cantos de 20px e borda fina); sem a
+  // borda, no claro o calendario branco se confunde com os campos brancos que ele cobre.
+  @include mat.datepicker-overrides(
+    (
+      calendar-container-background-color: var(--mat-sys-surface-container),
+      calendar-container-shape: 20px,
+      calendar-container-elevation-shadow: (
+        0 0 0 1px var(--mat-sys-outline-variant),
+        0 8px 24px rgb(0 0 0 / 12%),
+      ),
+    )
+  );
+
   // O preenchimento do botao principal vem do token do Urban (--urban-accent-fill, em _tokens.scss),
   // o mesmo do cabecalho das tabelas: no claro e o proprio primary, no escuro um indigo mais escuro.
   @include mat.button-overrides(
