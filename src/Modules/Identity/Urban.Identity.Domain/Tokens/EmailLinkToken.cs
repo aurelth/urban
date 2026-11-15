@@ -36,20 +36,26 @@ public abstract class EmailLinkToken
 
     public bool WasIssuedRecently(DateTimeOffset now) => now < CreatedAt + ResendInterval;
 
-    /// <summary>Marca o link como usado. Link já usado é inválido; link vencido pede um novo.</summary>
-    private protected Result ConsumeAt(DateTimeOffset now, Error invalid, Error expired)
+    /// <summary>Confere se o link ainda serve, sem gastá-lo: as mesmas respostas de <see cref="ConsumeAt"/>.</summary>
+    private protected Result CheckAt(DateTimeOffset now, Error invalid, Error expired)
     {
         if (UsedAt is not null)
         {
             return Result.Failure(invalid);
         }
 
-        if (now >= ExpiresAt)
+        return now >= ExpiresAt ? Result.Failure(expired) : Result.Success();
+    }
+
+    /// <summary>Marca o link como usado. Link já usado é inválido; link vencido pede um novo.</summary>
+    private protected Result ConsumeAt(DateTimeOffset now, Error invalid, Error expired)
+    {
+        Result usable = CheckAt(now, invalid, expired);
+        if (usable.IsSuccess)
         {
-            return Result.Failure(expired);
+            UsedAt = now;
         }
 
-        UsedAt = now;
-        return Result.Success();
+        return usable;
     }
 }

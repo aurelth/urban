@@ -150,6 +150,31 @@ public sealed class Person
         return Result.Success();
     }
 
+    /// <summary>
+    /// O que falta no cadastro de um adulto: profissão e contato de emergência, nessa ordem (a da tela). Menores de idade são dispensados
+    /// e quem fez 18 anos depois do cadastro passa a ser cobrado no dia do aniversário. Os nomes são os da API (<c>profession</c> e <c>emergencyContact</c>).
+    /// </summary>
+    public IReadOnlyList<string> MissingAdultData(DateOnly today)
+    {
+        if (BirthDate.IsMinorOn(today))
+        {
+            return [];
+        }
+
+        List<string> missing = [];
+        if (Profession is null)
+        {
+            missing.Add("profession");
+        }
+
+        if (EmergencyContact is null)
+        {
+            missing.Add("emergencyContact");
+        }
+
+        return missing;
+    }
+
     /// <summary>Liga o morador à conta criada no convite. Uma pessoa tem no máximo uma conta, e o vínculo não se desfaz por aqui.</summary>
     public Result AttachUser(Guid userId)
     {

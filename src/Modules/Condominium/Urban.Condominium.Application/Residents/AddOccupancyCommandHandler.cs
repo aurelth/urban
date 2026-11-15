@@ -54,6 +54,11 @@ public sealed class AddOccupancyCommandHandler(IResidents residents, IUnits unit
             return Result.Failure<ResidentView>(occupancy.Error);
         }
 
+        if (record.Person.BirthDate.IsAfter(occupancy.Value.StartDate))
+        {
+            return Result.Failure<ResidentView>(OccupancyErrors.StartBeforeBirth);
+        }
+
         if (ResidentData.BreaksMinorRule(record.Person.BirthDate.IsMinorOn(BrazilCalendar.Today(now)), request.Kind))
         {
             return Result.Failure<ResidentView>(ResidentErrors.UnderAge);

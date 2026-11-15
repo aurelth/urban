@@ -13,13 +13,14 @@ namespace Urban.Condominium.Infrastructure.Persistence;
 
 /// <summary>
 /// Os moradores no PostgreSQL. A leitura só enxerga o condomínio da requisição (filtro de tenant do contexto). Morador é a
-/// pessoa com ao menos um vínculo: o síndico sem unidade fica de fora. O CPF repetido e o segundo vínculo em andamento na mesma
-/// unidade são decididos pelos índices únicos do banco, que valem mesmo com dois pedidos ao mesmo tempo; a versão velha de uma
+/// pessoa com ao menos um vínculo: o síndico sem unidade fica de fora. O CPF repetido, o e-mail repetido (sem diferenciar maiúsculas)
+/// e o segundo vínculo em andamento na mesma unidade são decididos pelos índices únicos do banco, que valem mesmo com dois pedidos ao mesmo tempo; a versão velha de uma
 /// edição é decidida pelo <c>xmin</c>.
 /// </summary>
 public sealed class CondominiumResidents(CondominiumDbContext db) : IResidents
 {
     private const string CpfIndex = "ix_person_condominium_id_cpf_hash";
+    private const string EmailIndex = "ix_person_condominium_id_email";
     private const string VersionProperty = "xmin";
 
     public async Task<ResidentRecord?> FindAsync(Guid personId, CancellationToken cancellationToken)
@@ -45,6 +46,18 @@ public sealed class CondominiumResidents(CondominiumDbContext db) : IResidents
             string pattern = $"%{EscapeLike(search)}%";
             IQueryable<Guid> matching = db.Database.SqlQuery<Guid>($"""select id as "Value" from condominium.person where full_name ilike {pattern} escape '\'""");
             people = people.Where(p => matching.Contains(p.Id));
+        }
+
+        if (filter.IncompleteOn is { } today)
+        {
+            // Adulto é quem já fez 18 anos na data dada; só ele é cobrado de profissão e contato de emergência (o contato é um tipo
+            // próprio: o nome nulo é o contato ausente). O 29 de fevereiro cai certo porque AddYears(-18) de 28/02 não alcança quem nasceu em 29/02.
+            DateOnly adultBornUntil = today.AddYears(-18);
+            IQueryable<Guid> incomplete = db.Database.SqlQuery<Guid>($"""
+                select id as "Value" from condominium.person
+                where birth_date <= {adultBornUntil} and (profession is null or emergency_contact_name is null)
+                """);
+            people = people.Where(p => incomplete.Contains(p.Id));
         }
 
         IQueryable<Person> query = WithStatus(people, filter);
@@ -136,6 +149,12 @@ public sealed class CondominiumResidents(CondominiumDbContext db) : IResidents
             db.ChangeTracker.Clear();
 
             return Result.Failure<string>(PersonErrors.CpfAlreadyRegistered);
+        }
+        catch (DbUpdateException ex) when (Violates(ex, EmailIndex))
+        {
+            db.ChangeTracker.Clear();
+
+            return Result.Failure<string>(ResidentErrors.EmailAlreadyRegistered);
         }
         catch (DbUpdateException ex) when (Violates(ex, OccupancyConfiguration.ActivePerPersonAndUnitIndex))
         {

@@ -83,6 +83,24 @@ public static partial class ResidentMapper
         }
     }
 
+    /// <returns>Falso quando o texto não é um filtro conhecido; vazio é o padrão (todos).</returns>
+    public static bool TryParseRegistration(string? text, out ResidentRegistrationFilter registration)
+    {
+        switch (text?.Trim().ToLowerInvariant())
+        {
+            case null or "":
+            case "all":
+                registration = ResidentRegistrationFilter.All;
+                return true;
+            case "incomplete":
+                registration = ResidentRegistrationFilter.Incomplete;
+                return true;
+            default:
+                registration = default;
+                return false;
+        }
+    }
+
     // ---- Texto da API <-> enum (camelCase). Valor desconhecido vira 0, que o Domain recusa com o código do campo ----
 
     public static OccupancyKind ParseKind(string? text) => text?.Trim().ToLowerInvariant() switch

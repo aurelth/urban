@@ -22,8 +22,8 @@ public static class ResidentEndpoints
             .WithDescription(
                 "Exige o token de acesso de um síndico com condomínio cadastrado. Morador é a pessoa com ao menos um vínculo com uma unidade. "
                 + "Devolve uma página em ordem de nome, cada morador com todos os vínculos (bloco e número da unidade, tipo e datas). "
-                + "Filtros: search (trecho do nome, sem diferenciar maiúsculas), unitId (só quem tem vínculo com a unidade), status (active: tem vínculo em andamento; former: já saiu e não tem nenhum em andamento; all, o padrão: todos; com unitId, o estado é o da pessoa naquela unidade; outro valor responde 400), page (a partir de 1) e pageSize (de 1 a 200; o padrão é 50). "
-                + "Página ou tamanho fora do limite respondem 400. O CPF sai mascarado. A resposta nunca é guardada em cache. " + RateLimitText)
+                + "Filtros: search (trecho do nome, sem diferenciar maiúsculas), unitId (só quem tem vínculo com a unidade), status (active: tem vínculo em andamento; former: já saiu e não tem nenhum em andamento; all, o padrão: todos; com unitId, o estado é o da pessoa naquela unidade; outro valor responde 400), registration (incomplete: só adultos sem profissão ou sem contato de emergência, o que inclui quem fez 18 anos depois de cadastrado como dependente; all, o padrão: todos; outro valor responde 400), page (a partir de 1) e pageSize (de 1 a 200; o padrão é 50). "
+                + "Página ou tamanho fora do limite respondem 400. O CPF sai mascarado. Cada morador traz missingData: o que falta no cadastro de um adulto (profession, emergencyContact), vazia para menores e cadastros completos. A resposta nunca é guardada em cache. " + RateLimitText)
             .RequireRateLimiting(RateLimitPolicies.Residents)
             .Produces<ResidentListResponse>()
             .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound);
@@ -45,7 +45,7 @@ public static class ResidentEndpoints
                 "Cadastra a pessoa e o primeiro vínculo (proprietário ou inquilino) numa gravação só. Cadastrar não cria conta nem envia e-mail: o acesso vem com o convite. "
                 + "Nome completo, CPF, data de nascimento (18 anos ou mais), celular ou telefone fixo com DDD, profissão e contato de emergência (nome, parentesco e telefone) são obrigatórios; "
                 + "o e-mail é opcional. A unidade tem de ser do condomínio e estar ativa; a data de entrada vai até 1 ano à frente. "
-                + "O mesmo CPF não se repete no condomínio: 409. Dado inválido responde 400 com o código do campo (o primeiro que falhar). Devolve 201 com o morador. "
+                + "O mesmo CPF não se repete no condomínio: 409. O e-mail também é único no condomínio, sem diferenciar maiúsculas (409 condominium.resident.email_already_registered), inclusive para dependentes. A entrada não pode ser antes do nascimento (400 condominium.occupancy.start_before_birth). Dado inválido responde 400 com o código do campo (o primeiro que falhar). Devolve 201 com o morador. "
                 + "O registro da alteração guarda só os nomes dos campos. " + RateLimitText)
             .RequireRateLimiting(RateLimitPolicies.Residents)
             .Produces<ResidentResponse>(StatusCodes.Status201Created)
@@ -57,7 +57,7 @@ public static class ResidentEndpoints
             .WithDescription(
                 "Substitui todos os dados pessoais do cadastro. O corpo leva a version que a tela leu: sem ela, 400; se outra pessoa editou antes, 409 com concurrency.conflict. "
                 + "O CPF é opcional: a resposta só mostra o CPF mascarado, então em branco mantém o atual e preenchido troca (o CPF não pode ser o de outra pessoa do condomínio: 409). "
-                + "O e-mail em branco limpa o e-mail. Se nada mudou, nada é gravado e a versão continua a mesma. Dado inválido responde 400 com o código do campo (o primeiro que falhar). "
+                + "O e-mail em branco limpa o e-mail e o novo não pode ser o de outro morador do condomínio (409 condominium.resident.email_already_registered). Mudar o nascimento para depois de uma entrada, mesmo de um vínculo já encerrado, responde 400 condominium.resident.birth_after_occupancy. Se nada mudou, nada é gravado e a versão continua a mesma. Dado inválido responde 400 com o código do campo (o primeiro que falhar). "
                 + "O registro da alteração guarda só os nomes dos campos. Um morador de outro condomínio responde 404. A resposta nunca é guardada em cache. " + RateLimitText)
             .RequireRateLimiting(RateLimitPolicies.Residents)
             .Produces<ResidentResponse>()
@@ -68,7 +68,7 @@ public static class ResidentEndpoints
             .WithSummary("Liga o morador a mais uma unidade")
             .WithDescription(
                 "Cria um novo vínculo (proprietário ou inquilino) de um morador que já existe com uma unidade ativa do condomínio. "
-                + "Quem já mora na unidade não ganha um segundo vínculo em andamento (409); quem já saiu dela pode voltar. A data de entrada vai até 1 ano à frente. "
+                + "Quem já mora na unidade não ganha um segundo vínculo em andamento (409); quem já saiu dela pode voltar. A data de entrada vai até 1 ano à frente e não pode ser antes do nascimento (400 condominium.occupancy.start_before_birth). "
                 + "Dado inválido responde 400 com o código do campo. Devolve 201 com o morador e todos os vínculos. " + RateLimitText)
             .RequireRateLimiting(RateLimitPolicies.Residents)
             .Produces<ResidentResponse>(StatusCodes.Status201Created)
@@ -110,6 +110,7 @@ public static class ResidentEndpoints
         string? search,
         Guid? unitId,
         string? status,
+        string? registration,
         int? page,
         int? pageSize,
         CancellationToken cancellationToken)
@@ -124,7 +125,12 @@ public static class ResidentEndpoints
             return ErrorHttp.ToProblem(RequestErrors.Invalid);
         }
 
-        Result<ResidentListing> result = await sender.Send(new ListResidentsQuery(search, unitId, page ?? 1, pageSize ?? 50, statusFilter), cancellationToken);
+        if (!ResidentMapper.TryParseRegistration(registration, out ResidentRegistrationFilter registrationFilter))
+        {
+            return ErrorHttp.ToProblem(RequestErrors.Invalid);
+        }
+
+        Result<ResidentListing> result = await sender.Send(new ListResidentsQuery(search, unitId, page ?? 1, pageSize ?? 50, statusFilter, registrationFilter), cancellationToken);
 
         return ApiResults.Respond(result, response, listing => ResidentMapper.ToResponse(listing));
     }

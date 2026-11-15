@@ -10,7 +10,8 @@ namespace Urban.Condominium.Application.Residents;
 
 /// <summary>
 /// Edita os dados pessoais de um morador. Valida e compara em memória; se nada mudou, não grava nada (nem a versão muda). O
-/// registro leva só os nomes dos campos que mudaram, nunca os valores. O CPF repetido é decidido na gravação, pelo índice único.
+/// registro leva só os nomes dos campos que mudaram, nunca os valores. Mudar o nascimento para depois de uma entrada (mesmo de um vínculo já encerrado) é
+/// recusado; um cadastro antigo com a entrada já antes do nascimento não trava as outras edições, só a troca da data. O CPF repetido é decidido na gravação, pelo índice único.
 /// Depois do convite o e-mail é o da conta de acesso: enquanto a pessoa ainda não escolheu a senha ele se corrige (a conta e o
 /// cadastro mudam juntos, na mesma transação); depois disso trava, porque é o e-mail do login.
 /// </summary>
@@ -64,6 +65,11 @@ public sealed class UpdateResidentCommandHandler(
         }
 
         ResidentData data = parsed.Value;
+        if (person.BirthDate != data.BirthDate && record.Occupancies.Any(item => data.BirthDate.IsAfter(item.Occupancy.StartDate)))
+        {
+            return Result.Failure<ResidentView>(ResidentErrors.BirthAfterOccupancy);
+        }
+
         if (record.Occupancies.Any(item => item.Occupancy.IsActive && ResidentData.BreaksMinorRule(data.IsMinor, item.Occupancy.Kind)))
         {
             return Result.Failure<ResidentView>(ResidentErrors.UnderAge);

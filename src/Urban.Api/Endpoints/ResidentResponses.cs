@@ -11,6 +11,7 @@ public sealed record ResidentResponse(
     string? Profession,
     EmergencyContactResponse? EmergencyContact,
     IReadOnlyList<ResidentOccupancyResponse> Occupancies,
+    IReadOnlyList<string> MissingData,
     string AccessStatus,
     string Version);
 
