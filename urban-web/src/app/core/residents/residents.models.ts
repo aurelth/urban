@@ -8,6 +8,12 @@ export type ResidentAccessStatus = 'none' | 'invited' | 'active' | 'inactive';
 
 export type ResidentStatusFilter = 'active' | 'former' | 'all';
 
+/** `incomplete` lista só os adultos a quem falta profissão ou contato de emergência. */
+export type ResidentRegistrationFilter = 'all' | 'incomplete';
+
+/** O que falta no cadastro de um adulto: a API diz quais dados, e a tela os nomeia. */
+export type MissingResidentData = 'profession' | 'emergencyContact';
+
 export interface EmergencyContact {
   readonly name: string;
   readonly relationship: string;
@@ -36,6 +42,8 @@ export interface Resident {
   readonly profession: string | null;
   readonly emergencyContact: EmergencyContact | null;
   readonly accessStatus: ResidentAccessStatus;
+  /** Dados obrigatórios do adulto que ainda faltam; vazio para menor de idade e para cadastro completo. */
+  readonly missingData: readonly MissingResidentData[];
   readonly occupancies: readonly ResidentOccupancy[];
   readonly version: string;
 }
@@ -51,6 +59,7 @@ export interface ResidentPage {
 /** O que a lista pede à API. Texto vazio significa "sem busca". */
 export interface ResidentsQuery {
   readonly status: ResidentStatusFilter;
+  readonly registration: ResidentRegistrationFilter;
   readonly search: string;
   readonly page: number;
   readonly pageSize: number;
@@ -106,6 +115,7 @@ export const RESIDENTS_PAGE_SIZE = 50;
 /** A tela abre com quem mora hoje; quem já saiu fica a um filtro de distância. */
 export const DEFAULT_RESIDENTS_QUERY: ResidentsQuery = {
   status: 'active',
+  registration: 'all',
   search: '',
   page: 1,
   pageSize: RESIDENTS_PAGE_SIZE,

@@ -980,3 +980,533 @@ describe('ResidentFormPage, dependente menor de idade', () => {
     );
   });
 });
+
+describe('ResidentFormPage, botão "Salvar alterações"', () => {
+  afterEach(() => {
+    const http = TestBed.inject(HttpTestingController);
+    http.match((request) => request.url.startsWith('icons/'));
+    http.verify();
+  });
+
+  const YEAR = new Date().getFullYear() - 10;
+  const adult = (): Resident => resident({ version: '7' });
+  const dependent = (): Resident =>
+    resident({
+      fullName: 'Pedro Souza',
+      birthDate: `${YEAR}-04-10`,
+      email: null,
+      profession: null,
+      emergencyContact: null,
+      occupancies: [occupancy({ kind: 'dependent' })],
+      version: '7',
+    });
+
+  /** Campo, o valor que difere do original e o original, no formato que a pessoa digita. */
+  const ADULT_FIELDS: readonly (readonly [string, string, string])[] = [
+    ['fullName', 'Maria Souza Lima', 'Maria Souza'],
+    ['birthDate', '21051990', '20051990'],
+    ['phone', '47991112222', '47998765432'],
+    ['email', 'nova@exemplo.com', 'maria@exemplo.com'],
+    ['profession', 'Médica', 'Engenheira'],
+    ['contactName', 'Paulo Souza', 'Carlos Souza'],
+    ['contactRelationship', 'Pai', 'Irmão'],
+    ['contactPhone', '47991113333', '4733334444'],
+  ];
+
+  it.each(ADULT_FIELDS)(
+    'adulto: mudar só "%s" para um valor válido habilita, e voltar ao original desabilita',
+    async (name, changed, original) => {
+      const { fixture, html } = await openEdit(adult());
+      expect(submitButton(html).disabled).toBe(true);
+
+      fill(html, name, changed);
+      await settle(fixture);
+      expect(submitButton(html).disabled).toBe(false);
+
+      fill(html, name, original);
+      await settle(fixture);
+      expect(submitButton(html).disabled).toBe(true);
+    },
+  );
+
+  it.each(ADULT_FIELDS)(
+    'adulto: mudar só "%s" e salvar manda a mudança, e depois dela o botão volta a habilitar com outra mudança',
+    async (name, changed) => {
+      const h = await openEdit(adult());
+      fill(h.html, name, changed);
+      await settle(h.fixture);
+
+      await submit(h);
+      const request = h.http.expectOne((r) => r.method === 'PUT');
+      request.flush({ ...adult(), id: request.request.url.split('/').pop()!, version: '8' });
+      await settle(h.fixture);
+      expect(submitButton(h.html).disabled).toBe(true);
+
+      fill(h.html, 'profession', 'Arquiteta');
+      await settle(h.fixture);
+      expect(submitButton(h.html).disabled).toBe(false);
+    },
+  );
+
+  it('trocar o CPF habilita, e desistir de trocar desabilita', async () => {
+    const { fixture, html } = await openEdit(adult());
+    testId(html, 'change-cpf')!.click();
+    await settle(fixture);
+    expect(submitButton(html).disabled).toBe(true);
+
+    fill(html, 'cpf', '52998224725');
+    await settle(fixture);
+    expect(submitButton(html).disabled).toBe(false);
+
+    testId(html, 'keep-cpf')!.click();
+    await settle(fixture);
+    expect(submitButton(html).disabled).toBe(true);
+  });
+
+  it('um valor inválido também habilita (mudou) e o envio aponta o campo; corrigido, o botão segue habilitado', async () => {
+    const h = await openEdit(adult());
+    fill(h.html, 'fullName', 'Maria');
+    await settle(h.fixture);
+    expect(submitButton(h.html).disabled).toBe(false);
+
+    await submit(h);
+    expect(errorTexts(h.html)).toContain('Informe o nome e o sobrenome');
+
+    fill(h.html, 'fullName', 'Maria Lima');
+    await settle(h.fixture);
+    expect(submitButton(h.html).disabled).toBe(false);
+  });
+
+  it.each([
+    ['fullName', 'Pedro Souza Lima'],
+    ['phone', '47991112222'],
+    ['email', 'pedro@exemplo.com'],
+    ['birthDate', '11042016'],
+  ])('dependente menor: mudar só "%s" habilita', async (name, changed) => {
+    const { fixture, html } = await openEdit(dependent());
+    expect(submitButton(html).disabled).toBe(true);
+
+    fill(html, name, name === 'birthDate' ? `11${String(4).padStart(2, '0')}${YEAR}` : changed);
+    await settle(fixture);
+
+    expect(submitButton(html).disabled).toBe(false);
+  });
+
+  it('dependente menor: preencher o contato inteiro habilita e apagá-lo de novo desabilita', async () => {
+    const { fixture, html } = await openEdit(dependent());
+
+    fill(html, 'contactName', 'Carlos Souza');
+    fill(html, 'contactRelationship', 'Pai');
+    fill(html, 'contactPhone', '4733334444');
+    await settle(fixture);
+    expect(submitButton(html).disabled).toBe(false);
+
+    fill(html, 'contactName', '');
+    fill(html, 'contactRelationship', '');
+    fill(html, 'contactPhone', '');
+    await settle(fixture);
+    expect(submitButton(html).disabled).toBe(true);
+  });
+
+  it('dependente que fez 18 anos: preencher profissão e contato habilita e o envio é aceito', async () => {
+    const grown = resident({
+      fullName: 'Ana Souza',
+      birthDate: '2008-01-01',
+      email: null,
+      profession: null,
+      emergencyContact: null,
+      occupancies: [occupancy({ kind: 'dependent' })],
+      version: '7',
+    });
+    const h = await openEdit(grown);
+
+    fill(h.html, 'profession', 'Estudante');
+    fill(h.html, 'contactName', 'Carlos Souza');
+    fill(h.html, 'contactRelationship', 'Pai');
+    fill(h.html, 'contactPhone', '4733334444');
+    await settle(h.fixture);
+    expect(submitButton(h.html).disabled).toBe(false);
+
+    await submit(h);
+    const request = h.http.expectOne((r) => r.method === 'PUT');
+    expect(request.request.body.profession).toBe('Estudante');
+    request.flush({ ...grown, profession: 'Estudante', version: '8' });
+    await settle(h.fixture);
+    expect(testId(h.html, 'saved')).not.toBeNull();
+  });
+
+  it.each(['none', 'invited'] as const)(
+    'com o acesso "%s", mudar o e-mail e outro campo habilita',
+    async (accessStatus) => {
+      const { fixture, html } = await openEdit({ ...adult(), accessStatus });
+
+      fill(html, 'email', 'nova@exemplo.com');
+      await settle(fixture);
+      expect(submitButton(html).disabled).toBe(false);
+
+      fill(html, 'email', 'maria@exemplo.com');
+      fill(html, 'profession', 'Médica');
+      await settle(fixture);
+      expect(submitButton(html).disabled).toBe(false);
+    },
+  );
+
+  it.each(['active', 'inactive'] as const)(
+    'com o acesso "%s" o e-mail é travado, mas mudar outro campo habilita',
+    async (accessStatus) => {
+      const { fixture, html } = await openEdit({ ...adult(), accessStatus });
+      expect(field(html, 'email').hasAttribute('disabled')).toBe(true);
+
+      fill(html, 'profession', 'Médica');
+      await settle(fixture);
+
+      expect(submitButton(html).disabled).toBe(false);
+    },
+  );
+
+  describe('depois de uma recusa da API', () => {
+    it.each([
+      [400, 'condominium.profession.invalid'],
+      [409, 'condominium.cpf.already_registered'],
+      [409, 'condominium.resident.email_already_registered'],
+      [409, 'condominium.resident.email_locked'],
+      [422, 'condominium.anything'],
+      [500, 'server.error'],
+    ])(
+      'o status %i %s deixa o botão habilitado, com o que foi digitado, e uma nova mudança também habilita',
+      async (status, code) => {
+        const h = await openEdit(adult());
+        fill(h.html, 'profession', 'Médica');
+        await settle(h.fixture);
+
+        await submit(h);
+        reject(
+          h.http.expectOne((r) => r.method === 'PUT'),
+          status,
+          code,
+        );
+        await settle(h.fixture);
+
+        expect(submitButton(h.html).disabled).toBe(false);
+        expect(valueOf(h.html, 'profession')).toBe('Médica');
+
+        fill(h.html, 'phone', '47991112222');
+        await settle(h.fixture);
+        expect(submitButton(h.html).disabled).toBe(false);
+        expect(submitButton(h.html).textContent?.trim()).toBe('Salvar alterações');
+      },
+    );
+
+    it('uma recusa e a correção do mesmo campo: salva na segunda tentativa', async () => {
+      const h = await openEdit(adult());
+      fill(h.html, 'email', 'outra@exemplo.com');
+      await settle(h.fixture);
+      await submit(h);
+      reject(
+        h.http.expectOne((r) => r.method === 'PUT'),
+        409,
+        'condominium.resident.email_already_registered',
+      );
+      await settle(h.fixture);
+
+      fill(h.html, 'email', 'livre@exemplo.com');
+      await settle(h.fixture);
+      expect(submitButton(h.html).disabled).toBe(false);
+      await submit(h);
+
+      const retry = h.http.expectOne((r) => r.method === 'PUT');
+      expect(retry.request.body.email).toBe('livre@exemplo.com');
+      retry.flush({ ...adult(), email: 'livre@exemplo.com', version: '8' });
+      await settle(h.fixture);
+      expect(testId(h.html, 'saved')).not.toBeNull();
+    });
+  });
+
+  describe('depois de um conflito de versão', () => {
+    it('o botão fica desabilitado até recarregar; recarregado, uma mudança habilita de novo', async () => {
+      const found = adult();
+      const h = await openEdit(found);
+      fill(h.html, 'profession', 'Médica');
+      await settle(h.fixture);
+      await submit(h);
+      reject(
+        h.http.expectOne((r) => r.method === 'PUT'),
+        409,
+        'concurrency.conflict',
+      );
+      await settle(h.fixture);
+      expect(submitButton(h.html).disabled).toBe(true);
+      expect(testId(h.html, 'conflict')).not.toBeNull();
+
+      testId(h.html, 'reload')!.click();
+      await settle(h.fixture);
+      h.http
+        .expectOne(`/api/residents/${found.id}`)
+        .flush({ ...found, profession: 'Dev', version: '9' });
+      await settle(h.fixture);
+      expect(submitButton(h.html).disabled).toBe(true);
+
+      fill(h.html, 'phone', '47991112222');
+      await settle(h.fixture);
+      expect(submitButton(h.html).disabled).toBe(false);
+    });
+  });
+});
+
+describe('ResidentFormPage, datas de nascimento e entrada', () => {
+  afterEach(() => {
+    const http = TestBed.inject(HttpTestingController);
+    http.match((request) => request.url.startsWith('icons/'));
+    http.verify();
+  });
+
+  const ENTRY_BEFORE_BIRTH = 'A data de entrada não pode ser anterior ao nascimento';
+
+  describe('cadastro', () => {
+    it('recusa a entrada antes do nascimento no campo da entrada, sem chamar a API', async () => {
+      const h = await openNew();
+      fillRegistration(h.html);
+      fill(h.html, 'startDate', '19051990');
+
+      await submit(h);
+
+      expect(errorTexts(h.html)).toEqual([ENTRY_BEFORE_BIRTH]);
+    });
+
+    it('aceita a entrada no dia do nascimento', async () => {
+      const h = await openNew();
+      fillRegistration(h.html);
+      fill(h.html, 'startDate', '20051990');
+
+      await submit(h);
+
+      const request = h.http.expectOne('/api/residents');
+      expect(request.request.body.startDate).toBe('1990-05-20');
+      request.flush(resident(), { status: 201, statusText: 'Created' });
+      await settle(h.fixture);
+    });
+
+    it('corrigir o nascimento tira o erro da entrada, sem precisar mexer nela', async () => {
+      const h = await openNew();
+      fillRegistration(h.html);
+      fill(h.html, 'startDate', '01011990');
+      await submit(h);
+      expect(errorTexts(h.html)).toEqual([ENTRY_BEFORE_BIRTH]);
+
+      fill(h.html, 'birthDate', '01011980');
+      await settle(h.fixture);
+
+      expect(errorTexts(h.html)).toEqual([]);
+    });
+
+    it('a recusa da API de entrada antes do nascimento aparece no campo da entrada', async () => {
+      const h = await openNew();
+      fillRegistration(h.html);
+      await submit(h);
+
+      reject(h.http.expectOne('/api/residents'), 400, 'condominium.occupancy.start_before_birth');
+      await settle(h.fixture);
+
+      expect(errorTexts(h.html)).toEqual([ENTRY_BEFORE_BIRTH]);
+      expect(alertTexts(h.html)).toEqual([]);
+      expect(valueOf(h.html, 'startDate')).toBe('01/03/2024');
+    });
+
+    it('e-mail já cadastrado para outro morador aparece no campo do e-mail e some ao corrigi-lo', async () => {
+      const h = await openNew();
+      fillRegistration(h.html);
+      fill(h.html, 'email', 'maria@exemplo.com');
+      await submit(h);
+
+      reject(
+        h.http.expectOne('/api/residents'),
+        409,
+        'condominium.resident.email_already_registered',
+      );
+      await settle(h.fixture);
+
+      expect(errorTexts(h.html)).toEqual(['Este e-mail já está cadastrado para outro morador']);
+      expect(alertTexts(h.html)).toEqual([]);
+      expect(valueOf(h.html, 'email')).toBe('maria@exemplo.com');
+      expect(valueOf(h.html, 'fullName')).toBe('Maria Souza');
+
+      fill(h.html, 'email', 'outra@exemplo.com');
+      await settle(h.fixture);
+      expect(errorTexts(h.html)).toEqual([]);
+    });
+  });
+
+  describe('edição', () => {
+    const FIRST_ENTRY_TOO_EARLY =
+      'A data de nascimento não pode ser posterior à primeira entrada em uma unidade, em 01/03/2024';
+
+    it('recusa o nascimento depois da entrada no campo do nascimento, sem chamar a API', async () => {
+      const h = await openEdit(resident({ version: '7' }));
+      fill(h.html, 'birthDate', '02032024');
+      await settle(h.fixture);
+
+      await submit(h);
+
+      expect(errorTexts(h.html)).toEqual([FIRST_ENTRY_TOO_EARLY]);
+    });
+
+    it('confere com a primeira entrada entre todos os vínculos, inclusive os já encerrados', async () => {
+      const found = resident({
+        version: '7',
+        occupancies: [
+          occupancy({ startDate: '2024-03-01' }),
+          occupancy({ startDate: '2023-01-10', endDate: '2023-12-31' }),
+        ],
+      });
+      const h = await openEdit(found);
+      fill(h.html, 'birthDate', '11012023');
+      await settle(h.fixture);
+
+      await submit(h);
+
+      expect(errorTexts(h.html)).toEqual([
+        'A data de nascimento não pode ser posterior à primeira entrada em uma unidade, em 10/01/2023',
+      ]);
+    });
+
+    it('aceita o nascimento no dia da primeira entrada', async () => {
+      const found = resident({
+        version: '7',
+        occupancies: [occupancy({ startDate: '2024-03-01' })],
+      });
+      const h = await openEdit(found);
+      fill(h.html, 'birthDate', '01032024');
+      fill(h.html, 'profession', '');
+      fill(h.html, 'contactName', '');
+      fill(h.html, 'contactRelationship', '');
+      fill(h.html, 'contactPhone', '');
+      await settle(h.fixture);
+
+      await submit(h);
+
+      const request = h.http.expectOne(`/api/residents/${found.id}`);
+      expect(request.request.body.birthDate).toBe('2024-03-01');
+      request.flush({ ...found, birthDate: '2024-03-01', version: '8' });
+      await settle(h.fixture);
+    });
+
+    it('a recusa da API de nascimento depois da entrada aparece no campo do nascimento', async () => {
+      const found = resident({ version: '7' });
+      const h = await openEdit(found);
+      fill(h.html, 'birthDate', '20052000');
+      await settle(h.fixture);
+      await submit(h);
+
+      reject(
+        h.http.expectOne(`/api/residents/${found.id}`),
+        400,
+        'condominium.resident.birth_after_occupancy',
+      );
+      await settle(h.fixture);
+
+      expect(errorTexts(h.html)).toEqual([FIRST_ENTRY_TOO_EARLY]);
+      expect(alertTexts(h.html)).toEqual([]);
+      expect(valueOf(h.html, 'birthDate')).toBe('20/05/2000');
+    });
+
+    it('e-mail já cadastrado para outro morador aparece no campo do e-mail, e o botão segue habilitado', async () => {
+      const found = resident({ version: '7' });
+      const h = await openEdit(found);
+      fill(h.html, 'email', 'outra@exemplo.com');
+      await settle(h.fixture);
+      await submit(h);
+
+      reject(
+        h.http.expectOne(`/api/residents/${found.id}`),
+        409,
+        'condominium.resident.email_already_registered',
+      );
+      await settle(h.fixture);
+
+      expect(errorTexts(h.html)).toEqual(['Este e-mail já está cadastrado para outro morador']);
+      expect(alertTexts(h.html)).toEqual([]);
+      expect(submitButton(h.html).disabled).toBe(false);
+
+      fill(h.html, 'email', 'livre@exemplo.com');
+      await settle(h.fixture);
+      expect(errorTexts(h.html)).toEqual([]);
+    });
+  });
+});
+
+describe('ResidentFormPage, cadastro incompleto', () => {
+  afterEach(() => {
+    const http = TestBed.inject(HttpTestingController);
+    http.match((request) => request.url.startsWith('icons/'));
+    http.verify();
+  });
+
+  const missing = (...data: Resident['missingData']): Resident =>
+    resident({
+      version: '7',
+      profession: data.includes('profession') ? null : 'Engenheira',
+      emergencyContact: data.includes('emergencyContact')
+        ? null
+        : { name: 'Carlos Souza', relationship: 'Irmão', phone: '4733334444' },
+      missingData: data,
+    });
+
+  function banner(html: HTMLElement): string {
+    return (testId(html, 'incomplete-banner')?.textContent ?? '').replace(/\s+/g, ' ').trim();
+  }
+
+  it('avisa em laranja, com ícone e texto, o que falta no cadastro do adulto', async () => {
+    const { html } = await openEdit(missing('profession', 'emergencyContact'));
+
+    expect(banner(html)).toContain('Cadastro incompleto');
+    expect(banner(html)).toContain('Falta informar: profissão e contato de emergência');
+    const element = testId(html, 'incomplete-banner')!;
+    expect(element.querySelector('.text-warning mat-icon')).not.toBeNull();
+  });
+
+  it.each([
+    [['profession'] as Resident['missingData'], 'Falta informar: profissão'],
+    [['emergencyContact'] as Resident['missingData'], 'Falta informar: contato de emergência'],
+  ])('com %j faltando, diz só isso', async (data, expected) => {
+    const { html } = await openEdit(missing(...data));
+
+    expect(banner(html)).toContain(expected);
+  });
+
+  it('não aparece com o cadastro completo nem no cadastro de um morador novo', async () => {
+    const complete = await openEdit(missing());
+    expect(testId(complete.html, 'incomplete-banner')).toBeNull();
+    TestBed.resetTestingModule();
+
+    const created = await openNew();
+    expect(testId(created.html, 'incomplete-banner')).toBeNull();
+  });
+
+  it('some depois de salvar o que faltava, quando a API devolve o cadastro completo', async () => {
+    const found = missing('profession');
+    const h = await openEdit(found);
+    fill(h.html, 'profession', 'Médica');
+    await settle(h.fixture);
+    await submit(h);
+
+    h.http.expectOne(`/api/residents/${found.id}`).flush({
+      ...found,
+      profession: 'Médica',
+      missingData: [],
+      version: '8',
+    });
+    await settle(h.fixture);
+
+    expect(testId(h.html, 'incomplete-banner')).toBeNull();
+    expect(testId(h.html, 'saved')).not.toBeNull();
+  });
+
+  it('continua enquanto o que faltava não foi salvo, mesmo com o campo já preenchido na tela', async () => {
+    const h = await openEdit(missing('profession'));
+
+    fill(h.html, 'profession', 'Médica');
+    await settle(h.fixture);
+
+    expect(banner(h.html)).toContain('Falta informar: profissão');
+  });
+});

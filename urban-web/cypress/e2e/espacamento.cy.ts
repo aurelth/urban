@@ -25,6 +25,7 @@ import { MANAGER, stubAnonymous, stubSignedIn } from '../support/session';
 import { TARIFFS_PATH, stubTariffs } from '../support/tarifas';
 import {
   CURRENT_RESIDENT,
+  INCOMPLETE_RESIDENT,
   MINOR_BIRTH_YEAR,
   NEW_RESIDENT_PATH,
   RESIDENTS_PATH,
@@ -190,6 +191,22 @@ SCREENS.forEach(([where, width, height]) => {
       stubResidents();
       cy.visit(RESIDENTS_PATH);
       cy.get('[data-testid="residents-table"]').should('be.visible');
+      expectBreathingRoom();
+    });
+
+    it('não cola texto em container na lista de moradores com a etiqueta de cadastro incompleto', () => {
+      stubSignedIn(MANAGER);
+      stubResidents([CURRENT_RESIDENT, INCOMPLETE_RESIDENT]);
+      cy.visit(RESIDENTS_PATH);
+      cy.get('[data-testid="incomplete-tag"]').should('be.visible');
+      expectBreathingRoom();
+    });
+
+    it('não cola texto em container na edição de morador com o aviso de cadastro incompleto', () => {
+      stubSignedIn(MANAGER);
+      stubResidentDetail(INCOMPLETE_RESIDENT);
+      cy.visit(editResidentPath(INCOMPLETE_RESIDENT.id));
+      cy.get('[data-testid="incomplete-banner"]').should('be.visible');
       expectBreathingRoom();
     });
 

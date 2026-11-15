@@ -102,6 +102,28 @@ describe('ResidentsStore', () => {
       expect(listParams(request).get('status')).toBe('all');
     });
 
+    it('filtra os cadastros incompletos, volta à primeira página e mantém a situação e a busca', async () => {
+      const { store, http } = setup();
+      await loaded(store, http, [resident()], 120);
+      const first = store.filter({ status: 'all', search: 'ana' });
+      listRequest(http).flush(residentPage([resident()], 120));
+      await first;
+      const second = store.goToPage(2);
+      listRequest(http).flush(residentPage([resident()], 120, 2));
+      await second;
+
+      const filtering = store.filter({ registration: 'incomplete' });
+      const request = listRequest(http);
+      request.flush(residentPage([resident()], 1));
+      await filtering;
+
+      expect(listParams(request).get('registration')).toBe('incomplete');
+      expect(listParams(request).get('page')).toBe('1');
+      expect(listParams(request).get('status')).toBe('all');
+      expect(listParams(request).get('search')).toBe('ana');
+      expect(store.query().registration).toBe('incomplete');
+    });
+
     it('trava a tela enquanto busca e destrava depois', async () => {
       const { store, http } = setup();
       await loaded(store, http);
@@ -189,6 +211,21 @@ describe('ResidentsStore', () => {
       listRequest(http).flush(residentPage([]));
       await searching;
       expect(store.hasFilters()).toBe(true);
+    });
+
+    it('diz que há filtros também com o cadastro pendente escolhido', async () => {
+      const { store, http } = setup();
+      await loaded(store, http);
+
+      const incomplete = store.filter({ registration: 'incomplete' });
+      listRequest(http).flush(residentPage([]));
+      await incomplete;
+      expect(store.hasFilters()).toBe(true);
+
+      const all = store.filter({ registration: 'all' });
+      listRequest(http).flush(residentPage([]));
+      await all;
+      expect(store.hasFilters()).toBe(false);
     });
   });
 

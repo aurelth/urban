@@ -1,10 +1,11 @@
-import { expectErrorsToStayInTheirOwnSpace } from '../support/layout';
+import { PALETTE, expectErrorsToStayInTheirOwnSpace } from '../support/layout';
 import { chooseMenu } from '../support/menu';
 import { DESKTOP, PHONE } from '../support/navegacao';
 import { MANAGER, stubSignedIn } from '../support/session';
 import { stubUnits } from '../support/unidades';
 import {
   CURRENT_RESIDENT,
+  INCOMPLETE_RESIDENT,
   MINOR_BIRTH_YEAR,
   MINOR_RESIDENT,
   NEW_RESIDENT_PATH,
@@ -208,6 +209,40 @@ describe('Formulário de morador', () => {
       cy.get('[formControlName="fullName"]').should('have.value', 'Maria Souza');
     });
 
+    it('recusa a entrada antes do nascimento no campo da entrada, sem chamar a API', () => {
+      stubResidentCreated();
+      cy.visit(NEW_RESIDENT_PATH);
+      fillResidentTexts();
+      chooseUnitAndKind();
+      typeInto('startDate', '19051990');
+
+      cy.contains('button[type="submit"]', 'Cadastrar morador').click();
+
+      cy.contains('mat-error', 'A data de entrada não pode ser anterior ao nascimento').should(
+        'be.visible',
+      );
+      cy.get('@createResident.all').should('have.length', 0);
+    });
+
+    it('avisa do e-mail já cadastrado no campo do e-mail, sem apagar o que foi digitado', () => {
+      stubResidentCreateRejected(409, 'condominium.resident.email_already_registered');
+      cy.visit(NEW_RESIDENT_PATH);
+      fillResidentTexts();
+      typeInto('email', 'maria@exemplo.com');
+      chooseUnitAndKind();
+
+      cy.contains('button[type="submit"]', 'Cadastrar morador').click();
+
+      cy.wait('@createResident');
+      cy.contains('mat-error', 'Este e-mail já está cadastrado para outro morador').should(
+        'be.visible',
+      );
+      cy.get('[role="alert"]').should('not.exist');
+      cy.get('[formControlName="fullName"]').should('have.value', 'Maria Souza');
+      typeInto('email', 'outra@exemplo.com');
+      cy.contains('mat-error', 'Este e-mail já está cadastrado').should('not.exist');
+    });
+
     it('sem unidade ativa explica e leva ao cadastro de unidades', () => {
       stubUnits([]);
       cy.visit(NEW_RESIDENT_PATH);
@@ -257,6 +292,65 @@ describe('Formulário de morador', () => {
       cy.contains('button[type="submit"]', 'Salvar alterações').should('be.disabled');
     });
 
+    it('recusa o nascimento depois da primeira entrada no campo do nascimento, sem chamar a API', () => {
+      stubResidentDetail();
+      stubResidentUpdated(CURRENT_RESIDENT, {});
+      cy.visit(editResidentPath(CURRENT_RESIDENT.id));
+
+      typeInto('birthDate', '02032024');
+      cy.contains('button[type="submit"]', 'Salvar alterações').click();
+
+      cy.contains(
+        'mat-error',
+        'A data de nascimento não pode ser posterior à primeira entrada em uma unidade, em 01/03/2024',
+      ).should('be.visible');
+      cy.get('@updateResident.all').should('have.length', 0);
+    });
+
+    it('avisa do e-mail já cadastrado no campo do e-mail', () => {
+      stubResidentDetail();
+      stubResidentUpdateRejected(
+        CURRENT_RESIDENT,
+        409,
+        'condominium.resident.email_already_registered',
+      );
+      cy.visit(editResidentPath(CURRENT_RESIDENT.id));
+
+      typeInto('email', 'outra@exemplo.com');
+      cy.contains('button[type="submit"]', 'Salvar alterações').click();
+
+      cy.contains('mat-error', 'Este e-mail já está cadastrado para outro morador').should(
+        'be.visible',
+      );
+      cy.contains('button[type="submit"]', 'Salvar alterações').should('be.enabled');
+    });
+
+    it('avisa em laranja o que falta no cadastro do adulto e o aviso some ao salvar o que faltava', () => {
+      stubResidentDetail(INCOMPLETE_RESIDENT);
+      stubResidentUpdated(INCOMPLETE_RESIDENT, {
+        profession: 'Médica',
+        emergencyContact: { name: 'Carlos Dias', relationship: 'Irmão', phone: '4733334444' },
+        missingData: [],
+      });
+      cy.visit(editResidentPath(INCOMPLETE_RESIDENT.id));
+
+      cy.get('[data-testid="incomplete-banner"]')
+        .should('contain.text', 'Cadastro incompleto')
+        .and('contain.text', 'Falta informar: profissão e contato de emergência')
+        .find('.text-warning')
+        .should('have.css', 'color', PALETTE.light.warning);
+
+      typeInto('profession', 'Médica');
+      typeInto('contactName', 'Carlos Dias');
+      typeInto('contactRelationship', 'Irmão');
+      typeInto('contactPhone', '4733334444');
+      cy.contains('button[type="submit"]', 'Salvar alterações').click();
+
+      cy.wait('@updateResident');
+      cy.get('[data-testid="saved"]').should('contain.text', 'Dados salvos');
+      cy.get('[data-testid="incomplete-banner"]').should('not.exist');
+    });
+
     it('troca o CPF só quando a pessoa pede e digita o número inteiro', () => {
       stubResidentDetail();
       stubResidentUpdated(CURRENT_RESIDENT, {});
@@ -267,6 +361,58 @@ describe('Formulário de morador', () => {
       cy.contains('button[type="submit"]', 'Salvar alterações').click();
 
       cy.wait('@updateResident').its('request.body.cpf').should('eq', '52998224725');
+    });
+
+    describe('botão "Salvar alterações" habilita com qualquer campo mudado, digitando de verdade', () => {
+      const FIELDS: readonly (readonly [string, string])[] = [
+        ['fullName', 'Ana Lima Souza'],
+        ['birthDate', '21051990'],
+        ['phone', '47991112222'],
+        ['email', 'nova@exemplo.com'],
+        ['profession', 'Médica'],
+        ['contactName', 'Paulo Lima'],
+        ['contactRelationship', 'Pai'],
+        ['contactPhone', '47991113333'],
+      ];
+
+      for (const [name, value] of FIELDS) {
+        it(`mudar só ${name}`, () => {
+          stubResidentDetail();
+          cy.visit(editResidentPath(CURRENT_RESIDENT.id));
+          cy.contains('button[type="submit"]', 'Salvar alterações').should('be.disabled');
+
+          typeInto(name, value);
+
+          cy.contains('button[type="submit"]', 'Salvar alterações').should('be.enabled');
+        });
+      }
+
+      it('depois de uma recusa do servidor, uma nova mudança continua habilitando', () => {
+        stubResidentDetail();
+        stubResidentUpdateRejected(
+          CURRENT_RESIDENT,
+          409,
+          'condominium.resident.email_already_registered',
+        );
+        cy.visit(editResidentPath(CURRENT_RESIDENT.id));
+
+        typeInto('email', 'outra@exemplo.com');
+        cy.contains('button[type="submit"]', 'Salvar alterações').click();
+        cy.wait('@updateResident');
+
+        cy.contains('button[type="submit"]', 'Salvar alterações').should('be.enabled');
+        typeInto('profession', 'Médica');
+        cy.contains('button[type="submit"]', 'Salvar alterações').should('be.enabled');
+      });
+
+      it('morador com acesso ativo: o e-mail é travado, mas outro campo habilita', () => {
+        stubResidentDetail(stubResident({ accessStatus: 'active' }));
+        cy.visit(editResidentPath(CURRENT_RESIDENT.id));
+
+        typeInto('profession', 'Médica');
+
+        cy.contains('button[type="submit"]', 'Salvar alterações').should('be.enabled');
+      });
     });
 
     it('versão velha mostra o aviso e "Recarregar dados" busca de novo', () => {
@@ -407,6 +553,22 @@ describe('Formulário de morador', () => {
 
       cy.contains('mat-error', 'A data de entrada pode ser, no máximo,').should('be.visible');
       expectErrorsToStayInTheirOwnSpace();
+    });
+
+    it('o aviso de cadastro incompleto e a mensagem do nascimento cabem na tela sem cobrir outros campos', () => {
+      stubResidentDetail(INCOMPLETE_RESIDENT);
+      cy.viewport(PHONE.width, PHONE.height);
+      cy.visit(editResidentPath(INCOMPLETE_RESIDENT.id));
+
+      cy.get('[data-testid="incomplete-banner"]').should('be.visible');
+      typeInto('birthDate', '02032024');
+      cy.contains('button[type="submit"]', 'Salvar alterações').click();
+
+      cy.contains('mat-error', 'A data de nascimento não pode ser posterior').should('be.visible');
+      expectErrorsToStayInTheirOwnSpace();
+      cy.document().should((doc) => {
+        expect(doc.documentElement.scrollWidth).to.be.at.most(doc.documentElement.clientWidth);
+      });
     });
 
     it('a edição cabe na tela, sem rolagem horizontal, com o cartão de acesso', () => {

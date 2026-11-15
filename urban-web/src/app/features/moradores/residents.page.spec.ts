@@ -336,6 +336,42 @@ describe('ResidentsPage', () => {
   });
 
   describe('filtros', () => {
+    it('marca "Cadastro incompleto" em laranja, com ícone e texto, só em quem tem dado faltando', async () => {
+      const incomplete = resident({
+        fullName: 'Caio Dias',
+        profession: null,
+        emergencyContact: null,
+        missingData: ['profession', 'emergencyContact'],
+      });
+      const { html } = await setup([LIVES, incomplete]);
+
+      const [complete, partial] = rows(html);
+      expect(rowText(complete)).not.toContain('Cadastro incompleto');
+      const tag = partial.querySelector<HTMLElement>('[data-testid="incomplete-tag"]')!;
+      expect(tag.textContent).toContain('Cadastro incompleto');
+      expect(tag.classList.contains('text-warning')).toBe(true);
+      expect(tag.querySelector('mat-icon')).not.toBeNull();
+    });
+
+    it('diz o que falta no cadastro incompleto, para a síndica saber o que pedir', async () => {
+      const onlyContact = resident({
+        fullName: 'Caio Dias',
+        emergencyContact: null,
+        missingData: ['emergencyContact'],
+      });
+      const both = resident({
+        fullName: 'Dora Reis',
+        profession: null,
+        emergencyContact: null,
+        missingData: ['profession', 'emergencyContact'],
+      });
+      const { html } = await setup([onlyContact, both]);
+
+      const [first, second] = rows(html);
+      expect(rowText(first)).toContain('Falta: contato de emergência');
+      expect(rowText(second)).toContain('Falta: profissão e contato de emergência');
+    });
+
     it('oferece a situação (moradores atuais por padrão) e a busca por nome', async () => {
       const { html } = await setup();
 
@@ -347,6 +383,49 @@ describe('ResidentsPage', () => {
       ]);
       expect(menuSelectValue(status)).toBe('active');
       expect(testId(html, 'filter-search')).not.toBeNull();
+    });
+
+    it('oferece o filtro de cadastro, com todos os cadastros por padrão', async () => {
+      const { html } = await setup();
+
+      const registration = testId(html, 'filter-registration')!;
+      expect(menuSelectOptions(registration).map((option) => option.label)).toEqual([
+        'Todos os cadastros',
+        'Cadastro pendente',
+      ]);
+      expect(menuSelectValue(registration)).toBe('all');
+    });
+
+    it('"Cadastro pendente" pede só os incompletos a partir da página 1, e "Limpar filtros" volta ao padrão', async () => {
+      const { http, html, fixture } = await setup([LIVES], 120);
+
+      choose(html, 'filter-registration', 'incomplete');
+      const request = listRequest(http);
+      request.flush(residentPage([LIVES], 1));
+      await settle(fixture);
+
+      expect(params(request).get('registration')).toBe('incomplete');
+      expect(params(request).get('page')).toBe('1');
+      expect(params(request).get('status')).toBe('active');
+
+      testId(html, 'clear-filters')!.click();
+      const cleared = listRequest(http);
+      cleared.flush(residentPage([LIVES]));
+      await settle(fixture);
+
+      expect(params(cleared).toString()).toBe('status=active&page=1&pageSize=50');
+      expect(menuSelectValue(testId(html, 'filter-registration')!)).toBe('all');
+      expect(testId(html, 'clear-filters')).toBeNull();
+    });
+
+    it('sem nenhum cadastro pendente, avisa que nenhum morador foi encontrado', async () => {
+      const { http, html, fixture } = await setup();
+
+      choose(html, 'filter-registration', 'incomplete');
+      listRequest(http).flush(residentPage([], 0));
+      await settle(fixture);
+
+      expect(text(html, 'no-results')).toContain('Nenhum morador encontrado com estes filtros');
     });
 
     it.each([

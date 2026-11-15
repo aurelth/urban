@@ -412,6 +412,52 @@ describe('ResidentOccupancies', () => {
       expect(errorTexts(h.html)).toEqual(['A data de entrada não pode ser anterior a 01/01/1900']);
     });
 
+    it('entrada antes do nascimento em "Adicionar unidade": o erro no campo diz o motivo e a API não é chamada', async () => {
+      const h = await open();
+      await openAdd(h);
+      setFieldValue(field(h.html, 'unitId'), B_202.id);
+      setFieldValue(field(h.html, 'kind'), 'tenant');
+      setFieldValue(field(h.html, 'startDate'), '19051990');
+
+      await submit(h, 'add-form');
+
+      expect(errorTexts(h.html)).toEqual(['A data de entrada não pode ser anterior ao nascimento']);
+    });
+
+    it('entrada no dia do nascimento é aceita em "Adicionar unidade"', async () => {
+      const h = await open();
+      await openAdd(h);
+      setFieldValue(field(h.html, 'unitId'), B_202.id);
+      setFieldValue(field(h.html, 'kind'), 'tenant');
+      setFieldValue(field(h.html, 'startDate'), '20051990');
+
+      await submit(h, 'add-form');
+
+      const request = h.http.expectOne(`/api/residents/${h.found.id}/occupancies`);
+      request.flush(h.found, { status: 201, statusText: 'Created' });
+      await settle(h.fixture);
+    });
+
+    it('a API que recusa a entrada antes do nascimento aparece com o texto da tela', async () => {
+      const h = await open();
+      await openAdd(h);
+      setFieldValue(field(h.html, 'unitId'), B_202.id);
+      setFieldValue(field(h.html, 'kind'), 'tenant');
+      setFieldValue(field(h.html, 'startDate'), '01032024');
+      await submit(h, 'add-form');
+
+      reject(
+        h.http.expectOne(`/api/residents/${h.found.id}/occupancies`),
+        400,
+        'condominium.occupancy.start_before_birth',
+      );
+      await settle(h.fixture);
+
+      expect(alertTexts(h.html).join(' ')).toContain(
+        'A data de entrada não pode ser anterior ao nascimento',
+      );
+    });
+
     it('morador menor de idade pode ganhar outra unidade como dependente', async () => {
       const minor = resident({
         birthDate: `${new Date().getFullYear() - 10}-04-10`,
