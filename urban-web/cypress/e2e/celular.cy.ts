@@ -5,7 +5,7 @@ import {
   stubContactMessages,
   stubContactSend,
 } from '../support/contato';
-import { stubTerms } from '../support/cadastro';
+import { stubConfirmEmailCheck, stubTerms } from '../support/cadastro';
 import { NEW_MANAGER } from '../support/condominio';
 import { MANAGER, stubAnonymous, stubSignedIn } from '../support/session';
 import { READINGS_PATH, stubReadings } from '../support/leituras';
@@ -45,6 +45,7 @@ describe('Tela de celular (375 x 667)', () => {
   it('mostra a criação de senha inteira, sem rolagem horizontal', () => {
     stubAnonymous();
     stubTerms();
+    stubConfirmEmailCheck();
     cy.visit('/confirmar-email?token=token-do-link');
 
     cy.contains('h1', 'Criar senha').should('be.visible');

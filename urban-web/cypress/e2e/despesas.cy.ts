@@ -190,6 +190,26 @@ describe('Despesas', () => {
       .and('have.css', 'font-weight', '500');
   });
 
+  it('alinha cada acao na mesma coluna, mesmo quando a despesa nao tem todas', () => {
+    cy.viewport(DESKTOP.width, DESKTOP.height);
+    cy.visit(EXPENSES_PATH);
+
+    const left = (selector: string): Cypress.Chainable<number> =>
+      cy.get(selector).then(($button) => Math.round($button[0].getBoundingClientRect().left));
+
+    left('button[aria-label="Editar Portaria"]').then((first) => {
+      left('button[aria-label="Editar Conta de luz"]').should('eq', first);
+      left('button[aria-label="Editar Elevador"]').should('eq', first);
+    });
+    // Fixa e parcelada trocam o botão do meio, e o "Encerrar" não pode andar para a esquerda.
+    left('button[aria-label="Reajustar valor de Portaria"]').then((adjust) => {
+      left('button[aria-label="Alterar parcela de Elevador"]').should('eq', adjust);
+    });
+    left('button[aria-label="Encerrar Portaria"]').then((end) => {
+      left('button[aria-label="Encerrar Conta de luz"]').should('eq', end);
+    });
+  });
+
   it('reajusta o valor de uma despesa fixa a partir de um mes', () => {
     cy.intercept('POST', `/api/finance/expenses/${FIXED_EXPENSE.id}/amount`, {
       statusCode: 200,
