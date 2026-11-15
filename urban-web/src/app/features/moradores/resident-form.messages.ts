@@ -29,6 +29,12 @@ export const RESIDENT_FORM_MESSAGES: MessagesByCode = {
     'Escolha se a pessoa é proprietária, inquilina ou dependente',
   'condominium.occupancy.start_date_invalid':
     'Informe uma data de entrada válida, até 1 ano à frente',
+  'condominium.occupancy.start_before_birth':
+    'A data de entrada não pode ser anterior ao nascimento',
+  'condominium.resident.birth_after_occupancy':
+    'A data de nascimento não pode ser posterior à primeira entrada em uma unidade',
+  'condominium.resident.email_already_registered':
+    'Este e-mail já está cadastrado para outro morador',
   'condominium.occupancy.already_active':
     'Este morador já mora nesta unidade. Veja o vínculo atual na lista',
   'condominium.occupancy.end_date_invalid': 'A data de saída deve ficar entre a entrada e hoje',

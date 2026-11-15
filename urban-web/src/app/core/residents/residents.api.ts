@@ -57,9 +57,12 @@ export class ResidentsApi {
   }
 }
 
-/** Só vai a busca preenchida; texto com espaços nas pontas é aparado. */
+/** Só vão a busca preenchida (aparada) e o filtro de cadastro incompleto: o padrão, todos os cadastros, é o que a API assume. */
 function toParams(query: ResidentsQuery): HttpParams {
   let params = new HttpParams().set('status', query.status);
+  if (query.registration === 'incomplete') {
+    params = params.set('registration', query.registration);
+  }
   const search = query.search.trim();
   if (search !== '') {
     params = params.set('search', search);

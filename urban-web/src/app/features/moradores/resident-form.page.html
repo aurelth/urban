@@ -90,6 +90,22 @@
         </div>
       }
 
+      @if (missingText(); as missing) {
+        <div
+          class="mb-6 flex items-start gap-2 rounded-xl border border-outline-variant bg-surface-container p-4"
+          role="status"
+          data-testid="incomplete-banner"
+        >
+          <span class="text-warning"><mat-icon svgIcon="warning" aria-hidden="true" /></span>
+          <p class="m-0">
+            <span class="block font-semibold text-warning">Cadastro incompleto</span>
+            <span class="block"
+              >Falta informar: {{ missing }}. Preencha os campos abaixo e salve</span
+            >
+          </p>
+        </div>
+      }
+
       <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-6" novalidate>
         <mat-card appearance="outlined" data-testid="person-section">
           <mat-card-content class="p-6">
@@ -117,7 +133,7 @@
                 name="birthDate"
                 label="Data de nascimento"
                 [mask]="'date'"
-                [errors]="birthDateErrors"
+                [errors]="birthDateErrors()"
               />
               <urban-text-field
                 name="phone"
