@@ -366,6 +366,11 @@ namespace Urban.Condominium.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("type");
 
+                    b.PrimitiveCollection<string[]>("_parkingSpots")
+                        .IsRequired()
+                        .HasColumnType("text[]")
+                        .HasColumnName("parking_spots");
+
                     b.Property<uint>("xmin")
                         .IsConcurrencyToken()
                         .ValueGeneratedOnAddOrUpdate()

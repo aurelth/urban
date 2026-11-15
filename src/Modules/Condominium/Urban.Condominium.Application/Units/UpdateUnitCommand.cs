@@ -5,6 +5,7 @@ using Urban.SharedKernel;
 namespace Urban.Condominium.Application.Units;
 
 /// <param name="Version">A versão que a tela leu; sem ela a edição não sabe o que está substituindo.</param>
+/// <param name="ParkingSpots">Nulo mantém as vagas atuais; uma lista vazia as remove.</param>
 public sealed record UpdateUnitCommand(
     Guid ActorUserId,
     Guid UnitId,
@@ -13,4 +14,5 @@ public sealed record UpdateUnitCommand(
     string? Number,
     UnitType Type,
     decimal? IdealFraction,
-    decimal? Area) : IRequest<Result<UnitView>>;
+    decimal? Area,
+    IReadOnlyList<string?>? ParkingSpots = null) : IRequest<Result<UnitView>>;

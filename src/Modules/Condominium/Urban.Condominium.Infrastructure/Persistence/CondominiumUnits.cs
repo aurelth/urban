@@ -78,6 +78,19 @@ public sealed class CondominiumUnits(CondominiumDbContext db) : IUnits
         return existing.Select(u => new UnitIdentity(u.Block, u.Number)).Where(wanted.Contains).ToHashSet();
     }
 
+    public async Task<string?> FindTakenParkingSpotAsync(IReadOnlyCollection<string> spots, Guid? exceptUnitId, CancellationToken cancellationToken)
+    {
+        // Só as vagas, de todas as unidades (ativas e desativadas): são poucas por condomínio, e comparar em memória dispensa um índice sobre o array.
+        List<string[]> stored = await db.Units
+            .AsNoTracking()
+            .Where(u => exceptUnitId == null || u.Id != exceptUnitId)
+            .Select(u => EF.Property<string[]>(u, UnitConfiguration.ParkingSpotsField))
+            .ToListAsync(cancellationToken);
+        HashSet<string> taken = new(stored.SelectMany(s => s), StringComparer.OrdinalIgnoreCase);
+
+        return spots.FirstOrDefault(taken.Contains);
+    }
+
     public async Task<Result<string>> AddAsync(CondominiumUnit unit, ChangeLogEntry entry, CancellationToken cancellationToken) =>
         await WriteAsync(
             unit.CondominiumId,
@@ -167,12 +180,17 @@ public sealed class CondominiumUnits(CondominiumDbContext db) : IUnits
     /// <summary>Faz % e _ valerem como caracteres comuns na busca (ILIKE os trata como curingas).</summary>
     private static string EscapeLike(string text) => text.Replace("\\", "\\\\", StringComparison.Ordinal).Replace("%", "\\%", StringComparison.Ordinal).Replace("_", "\\_", StringComparison.Ordinal);
 
-    /// <summary>As duas regras que dependem das outras unidades, conferidas com a linha do condomínio travada.</summary>
+    /// <summary>As regras que dependem das outras unidades (identificador, vagas e soma das frações), conferidas com a linha do condomínio travada.</summary>
     private async Task<Result> CheckRulesAsync(CondominiumUnit unit, CancellationToken cancellationToken)
     {
         if (await IsIdentityTakenAsync(unit.Identity, unit.Id, cancellationToken))
         {
             return Result.Failure(UnitErrors.IdentifierAlreadyExists);
+        }
+
+        if (unit.ParkingSpots.Count > 0 && await FindTakenParkingSpotAsync([.. unit.ParkingSpots], unit.Id, cancellationToken) is { } spot)
+        {
+            return Result.Failure(UnitErrors.ParkingSpotTaken(spot));
         }
 
         if (!unit.IsActive || unit.IdealFraction is not { } fraction)

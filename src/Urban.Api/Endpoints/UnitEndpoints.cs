@@ -58,6 +58,7 @@ public static class UnitEndpoints
                 "Bloco (opcional, até 30 caracteres), número (até 20), tipo (apartment ou house), fração ideal (de 0 a 1, até 8 casas) e área em m² (até 2 casas) opcionais. "
                 + "O condomínio é o do token. Bloco e número, juntos, não se repetem no condomínio (sem diferenciar maiúsculas, contando as desativadas): 409. "
                 + "A soma das frações das unidades ativas não passa de 100%: 422. Dado inválido responde 400 com o código do campo. "
+                + "Vagas de garagem (opcionais): até 5, cada uma com até 20 caracteres, sem repetir (sem diferenciar maiúsculas) e sem pertencer a outra unidade do condomínio, ativa ou desativada: 409 com a vaga no campo data. "
                 + "Devolve 201 com a unidade. O registro da alteração guarda só os nomes dos campos. " + RateLimitText)
             .RequireRateLimiting(RateLimitPolicies.Units)
             .Produces<UnitResponse>(StatusCodes.Status201Created)
@@ -69,7 +70,7 @@ public static class UnitEndpoints
             .WithDescription(
                 "O corpo leva a versão lida no GET: se outra pessoa mudou a unidade no meio do caminho, responde 409 e nada é gravado; sem a versão, 400. "
                 + "Unidade desativada não se edita (409): reative primeiro. Se nada mudou, responde 200 sem gravar e sem trocar a versão. "
-                + "As mesmas regras do cadastro valem (400, 409 e 422). O registro da alteração guarda só os nomes dos campos que mudaram. " + RateLimitText)
+                + "As mesmas regras do cadastro valem (400, 409 e 422). Sem o campo parkingSpots as vagas atuais ficam como estão; uma lista vazia as remove. O registro da alteração guarda só os nomes dos campos que mudaram. " + RateLimitText)
             .RequireRateLimiting(RateLimitPolicies.Units)
             .Produces<UnitResponse>()
             .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound, StatusCodes.Status409Conflict, StatusCodes.Status422UnprocessableEntity);

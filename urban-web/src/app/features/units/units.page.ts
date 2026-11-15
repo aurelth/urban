@@ -23,7 +23,7 @@ import {
 import { MenuOption, MenuSelect } from '../../shared/ui/menu-select/menu-select';
 import { ApportionmentCard } from './apportionment.card';
 import { openUnitDialog } from './unit.dialog';
-import { formatArea, formatPercent, unitLabel } from './unit-values';
+import { formatArea, formatParkingSpots, formatPercent, unitLabel } from './unit-values';
 import { METHOD_MESSAGES, UNIT_ACTION_MESSAGES, UNIT_FORM_MESSAGES } from './units.messages';
 import { UnitsStore } from './units.store';
 
@@ -77,6 +77,7 @@ export class UnitsPage implements OnInit {
   protected readonly label = unitLabel;
   protected readonly percent = formatPercent;
   protected readonly area = formatArea;
+  protected readonly spots = formatParkingSpots;
 
   ngOnInit(): void {
     void this.load();

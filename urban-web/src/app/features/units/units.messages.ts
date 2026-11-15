@@ -1,5 +1,14 @@
+import { ApiProblem } from '../../core/http/api-problem';
 import { MessagesByCode } from '../../core/http/problem-message';
 import { AREA_MESSAGE, FRACTION_MESSAGE } from './unit-batch.rows';
+
+/** A API diz qual vaga é de outra unidade em `data.spot`; sem ela a frase fica geral. */
+function takenSpotMessage(problem: ApiProblem): string {
+  const spot = problem.data?.['spot'];
+  return typeof spot === 'string'
+    ? `A vaga ${spot} já pertence a outra unidade do condomínio`
+    : 'Uma das vagas já pertence a outra unidade do condomínio';
+}
 
 /** Texto da tela para cada código de recusa de campo que as unidades podem receber da API. */
 const FIELD_MESSAGES: MessagesByCode = {
@@ -9,6 +18,10 @@ const FIELD_MESSAGES: MessagesByCode = {
   'unit.ideal_fraction.invalid': FRACTION_MESSAGE,
   'unit.area.invalid': AREA_MESSAGE,
   'unit.identifier.already_exists': 'Já existe uma unidade com este bloco e número',
+  'unit.parking_spots.too_many': 'Informe até 5 vagas por unidade',
+  'unit.parking_spot.invalid': 'Cada vaga pode ter de 1 a 20 caracteres',
+  'unit.parking_spots.duplicate': 'A mesma vaga aparece mais de uma vez',
+  'unit.parking_spot.already_exists': takenSpotMessage,
   'unit.ideal_fraction.sum_exceeded':
     'A soma das frações ideais das unidades ativas não pode passar de 100%',
   'unit.version.required': 'Recarregue a lista antes de continuar',

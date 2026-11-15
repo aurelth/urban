@@ -11,4 +11,5 @@ public sealed record CreateUnitCommand(
     string? Number,
     UnitType Type,
     decimal? IdealFraction,
-    decimal? Area) : IRequest<Result<UnitView>>;
+    decimal? Area,
+    IReadOnlyList<string?>? ParkingSpots = null) : IRequest<Result<UnitView>>;

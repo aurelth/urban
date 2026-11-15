@@ -14,6 +14,14 @@ public static class UnitErrors
 
     public static readonly Error AreaInvalid = new("unit.area.invalid", "A área deve ser maior que 0 e no máximo 99.999,99 m², com até 2 casas decimais");
 
+    public static readonly Error ParkingSpotsTooMany = new("unit.parking_spots.too_many", "Cada unidade pode ter até 5 vagas de garagem");
+
+    public static readonly Error ParkingSpotInvalid = new("unit.parking_spot.invalid", "Cada vaga precisa de uma identificação de até 20 caracteres, como \"12\" ou \"G2 05\"");
+
+    public static readonly Error ParkingSpotsDuplicate = new("unit.parking_spots.duplicate", "A mesma vaga aparece mais de uma vez");
+
+    public static readonly Error ParkingSpotAlreadyExists = new("unit.parking_spot.already_exists", "Esta vaga já pertence a outra unidade, ativa ou desativada");
+
     public static readonly Error CondominiumRequired = new("unit.condominium_required", "A unidade precisa pertencer a um condomínio");
 
     public static readonly Error VersionRequired = new("unit.version.required", "Informe a versão dos dados que você está editando");
@@ -33,4 +41,8 @@ public static class UnitErrors
     public static readonly Error AlreadyActive = new("unit.already_active", "A unidade já está ativa");
 
     public static readonly Error FractionSumExceeded = new("unit.ideal_fraction.sum_exceeded", "A soma das frações ideais das unidades ativas não pode passar de 100%");
+
+    /// <summary>A vaga que já é de outra unidade, como a pessoa a digitou, para a tela dizer qual foi.</summary>
+    public static Error ParkingSpotTaken(string spot) =>
+        ParkingSpotAlreadyExists with { Data = new Dictionary<string, object?> { ["spot"] = spot } };
 }

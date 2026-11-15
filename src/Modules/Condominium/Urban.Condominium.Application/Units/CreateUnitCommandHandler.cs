@@ -22,14 +22,14 @@ public sealed class CreateUnitCommandHandler(IUnits units, ITenantContext tenant
             return Result.Failure<UnitView>(CondominiumErrors.NotFound);
         }
 
-        Result<CondominiumUnit> created = CondominiumUnit.Create(condominiumId, request.Block, request.Number, request.Type, request.IdealFraction, request.Area, clock.UtcNow);
+        Result<CondominiumUnit> created = CondominiumUnit.Create(condominiumId, request.Block, request.Number, request.Type, request.IdealFraction, request.Area, clock.UtcNow, request.ParkingSpots);
         if (created.IsFailure)
         {
             return Result.Failure<UnitView>(created.Error);
         }
 
         CondominiumUnit unit = created.Value;
-        List<string> fields = UnitChanges.FilledIn(new UnitData(unit.Block, unit.Number, unit.Type, unit.IdealFraction, unit.Area));
+        List<string> fields = UnitChanges.FilledIn(new UnitData(unit.Block, unit.Number, unit.Type, unit.IdealFraction, unit.Area, unit.ParkingSpots));
         ChangeLogEntry entry = UnitChanges.Entry(condominiumId, request.ActorUserId, fields, clock.UtcNow, unit.Id);
 
         return await UnitChanges.InAtomicWorkAsync(atomicWork, ct => AddAsync(unit, entry, ct), cancellationToken);
@@ -40,6 +40,12 @@ public sealed class CreateUnitCommandHandler(IUnits units, ITenantContext tenant
         if (await units.IsIdentityTakenAsync(unit.Identity, null, cancellationToken))
         {
             return Result.Failure<UnitView>(UnitErrors.IdentifierAlreadyExists);
+        }
+
+        Result spotsFree = await UnitChanges.EnsureSpotsAreFreeAsync(units, unit.ParkingSpots, null, cancellationToken);
+        if (spotsFree.IsFailure)
+        {
+            return Result.Failure<UnitView>(spotsFree.Error);
         }
 
         if (unit.IdealFraction is { } fraction)

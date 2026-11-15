@@ -42,7 +42,7 @@ public sealed class UpdateUnitCommandHandler(IUnits units, ITenantContext tenant
             return Result.Failure<UnitView>(UnitErrors.Deactivated);
         }
 
-        Result<UnitData> data = CondominiumUnit.Normalize(request.Block, request.Number, request.Type, request.IdealFraction, request.Area);
+        Result<UnitData> data = CondominiumUnit.Normalize(request.Block, request.Number, request.Type, request.IdealFraction, request.Area, request.ParkingSpots ?? record.Unit.ParkingSpots);
         if (data.IsFailure)
         {
             return Result.Failure<UnitView>(data.Error);
@@ -69,6 +69,15 @@ public sealed class UpdateUnitCommandHandler(IUnits units, ITenantContext tenant
             return Result.Failure<UnitView>(UnitErrors.IdentifierAlreadyExists);
         }
 
+        if (changed.Contains("parkingSpots"))
+        {
+            Result spotsFree = await UnitChanges.EnsureSpotsAreFreeAsync(units, data.ParkingSpots, unit.Id, cancellationToken);
+            if (spotsFree.IsFailure)
+            {
+                return Result.Failure<UnitView>(spotsFree.Error);
+            }
+        }
+
         if (changed.Contains("idealFraction") && data.IdealFraction is { } fraction)
         {
             Result fits = await UnitChanges.EnsureFractionFitsAsync(units, unit.Id, fraction, cancellationToken);
@@ -78,7 +87,7 @@ public sealed class UpdateUnitCommandHandler(IUnits units, ITenantContext tenant
             }
         }
 
-        Result updated = unit.Update(data.Block, data.Number, data.Type, data.IdealFraction, data.Area);
+        Result updated = unit.Update(data.Block, data.Number, data.Type, data.IdealFraction, data.Area, data.ParkingSpots);
         if (updated.IsFailure)
         {
             return Result.Failure<UnitView>(updated.Error);

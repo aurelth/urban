@@ -15,11 +15,13 @@ import { Unit, UnitKind, UnitPayload } from '../../core/units/units.models';
 import { TextField } from '../../shared/ui/text-field/text.field';
 import { requiredText } from '../../shared/forms/required-text.validator';
 import { AREA_MESSAGE, FRACTION_MESSAGE } from './unit-batch.rows';
-import { areaField, percentField } from './unit-field.validators';
+import { areaField, parkingSpotsField, percentField } from './unit-field.validators';
 import {
   formatAreaInput,
+  formatParkingSpotsInput,
   formatPercentInput,
   parseArea,
+  parseParkingSpots,
   parsePercent,
   percentToFraction,
 } from './unit-values';
@@ -44,6 +46,7 @@ interface UnitFormValue {
   type: UnitKind;
   idealFraction: string;
   area: string;
+  parkingSpots: string;
 }
 
 /**
@@ -79,6 +82,7 @@ export class UnitDialog {
     type: [this.initial.type],
     idealFraction: [this.initial.idealFraction, percentField],
     area: [this.initial.area, areaField],
+    parkingSpots: [this.initial.parkingSpots, parkingSpotsField],
   });
 
   protected readonly busy = signal(false);
@@ -92,6 +96,11 @@ export class UnitDialog {
   protected readonly blockErrors = { maxlength: 'O bloco pode ter até 30 caracteres' };
   protected readonly fractionErrors = { percent: FRACTION_MESSAGE };
   protected readonly areaErrors = { area: AREA_MESSAGE };
+  protected readonly parkingSpotsErrors = {
+    parkingSpotsTooMany: 'Informe até 5 vagas por unidade',
+    parkingSpotsTooLong: 'Cada vaga pode ter até 20 caracteres',
+    parkingSpotsDuplicate: 'A mesma vaga aparece mais de uma vez',
+  };
 
   constructor() {
     this.form.valueChanges.subscribe(() => {
@@ -145,6 +154,7 @@ function toFormValue(unit: Unit | null): UnitFormValue {
     type: unit?.type ?? 'apartment',
     idealFraction: formatPercentInput(unit?.idealFraction ?? null),
     area: formatAreaInput(unit?.area ?? null),
+    parkingSpots: formatParkingSpotsInput(unit?.parkingSpots ?? []),
   };
 }
 
@@ -159,7 +169,14 @@ function trimmed(value: UnitFormValue): UnitFormValue {
     type: value.type,
     idealFraction: value.idealFraction.trim(),
     area: value.area.trim(),
+    parkingSpots: canonicalSpots(value.parkingSpots),
   };
+}
+
+/** Pontuação e espaços à toa não são mudança: compara as vagas já lidas, quando dá para lê-las. */
+function canonicalSpots(text: string): string {
+  const spots = parseParkingSpots(text);
+  return spots.valid ? spots.value.join('|') : text.trim();
 }
 
 /** Só chega aqui com o formulário válido: fração e área já foram lidas pelos validadores. */
@@ -167,6 +184,7 @@ function toPayload(value: UnitFormValue): UnitPayload {
   const fraction = parsePercent(value.idealFraction);
   const area = parseArea(value.area);
   const block = value.block.trim();
+  const spots = parseParkingSpots(value.parkingSpots);
   return {
     block: block === '' ? null : block,
     number: value.number.trim(),
@@ -174,5 +192,6 @@ function toPayload(value: UnitFormValue): UnitPayload {
     idealFraction:
       fraction.valid && fraction.value !== null ? percentToFraction(fraction.value) : null,
     area: area.valid ? area.value : null,
+    parkingSpots: spots.valid ? spots.value : [],
   };
 }

@@ -14,10 +14,11 @@ public sealed record UnitView(
     decimal? Area,
     bool IsActive,
     DateTimeOffset? DeactivatedAt,
-    string Version)
+    string Version,
+    IReadOnlyList<string> ParkingSpots)
 {
     internal static UnitView From(CondominiumUnit unit, string version) =>
-        new(unit.Id, unit.Block, unit.Number, unit.Type, unit.IdealFraction, unit.Area, unit.IsActive, unit.DeactivatedAt, version);
+        new(unit.Id, unit.Block, unit.Number, unit.Type, unit.IdealFraction, unit.Area, unit.IsActive, unit.DeactivatedAt, version, unit.ParkingSpots);
 
     internal static UnitView From(UnitRecord record) => From(record.Unit, record.Version);
 }

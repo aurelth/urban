@@ -96,3 +96,42 @@ function decimalsOf(normalized: string): number {
 function toDecimalComma(value: number, decimals: number): string {
   return value.toFixed(decimals).replace(TRAILING_ZEROS, '').replace('.', ',');
 }
+
+export const PARKING_SPOTS_MAX = 5;
+export const PARKING_SPOT_MAX_LENGTH = 20;
+
+const PARKING_SPOT_SEPARATOR = /[,;\n]/;
+const WHITESPACE = /\s+/g;
+
+/** Resultado da leitura do campo de vagas: vazio é válido e significa "sem vagas". Os motivos seguem a ordem das regras da API. */
+export type ParkingSpotsInput =
+  | { readonly valid: true; readonly value: string[] }
+  | { readonly valid: false; readonly reason: 'tooMany' | 'tooLong' | 'duplicate' };
+
+/** Vagas digitadas separadas por vírgula ou ponto e vírgula: "12, G2 05". Até 5, de até 20 caracteres, sem repetir. */
+export function parseParkingSpots(text: string): ParkingSpotsInput {
+  const spots = text
+    .split(PARKING_SPOT_SEPARATOR)
+    .map((spot) => spot.trim().replace(WHITESPACE, ' '))
+    .filter((spot) => spot !== '');
+  if (spots.length > PARKING_SPOTS_MAX) {
+    return { valid: false, reason: 'tooMany' };
+  }
+  if (spots.some((spot) => spot.length > PARKING_SPOT_MAX_LENGTH)) {
+    return { valid: false, reason: 'tooLong' };
+  }
+  const distinct = new Set(spots.map((spot) => spot.toLowerCase()));
+  return distinct.size === spots.length
+    ? { valid: true, value: spots }
+    : { valid: false, reason: 'duplicate' };
+}
+
+/** Como as vagas aparecem no campo editável: "12, G2 05", ou vazio quando não há. */
+export function formatParkingSpotsInput(spots: readonly string[]): string {
+  return spots.join(', ');
+}
+
+/** Como as vagas aparecem na lista: "12, G2 05", ou "—" quando não há. */
+export function formatParkingSpots(spots: readonly string[]): string {
+  return spots.length === 0 ? '—' : formatParkingSpotsInput(spots);
+}

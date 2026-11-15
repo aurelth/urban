@@ -15,10 +15,10 @@ public static partial class UnitMapper
     // ---- Do corpo da requisição para o comando ----
 
     public static CreateUnitCommand ToCreateCommand(UnitRequest request, Guid actorUserId) =>
-        new(actorUserId, request.Block, request.Number, ParseType(request.Type), request.IdealFraction, request.Area);
+        new(actorUserId, request.Block, request.Number, ParseType(request.Type), request.IdealFraction, request.Area, request.ParkingSpots);
 
     public static UpdateUnitCommand ToUpdateCommand(UnitRequest request, Guid unitId, Guid actorUserId) =>
-        new(actorUserId, unitId, request.Version, request.Block, request.Number, ParseType(request.Type), request.IdealFraction, request.Area);
+        new(actorUserId, unitId, request.Version, request.Block, request.Number, ParseType(request.Type), request.IdealFraction, request.Area, request.ParkingSpots);
 
     public static CreateUnitsBatchCommand ToBatchCommand(UnitBatchRequest request, Guid actorUserId) =>
         new(actorUserId, [.. (request.Units ?? []).Select(item => ToInput(item ?? NoUnit))]);

@@ -220,6 +220,7 @@
                 <th scope="col" class="p-3 font-medium">Tipo</th>
                 <th scope="col" class="p-3 font-medium">Fração ideal</th>
                 <th scope="col" class="p-3 font-medium">Área</th>
+                <th scope="col" class="p-3 font-medium">Vagas</th>
                 <th scope="col" class="p-3 font-medium">Situação</th>
                 <th scope="col" class="p-3 font-medium">Ações</th>
               </tr>
@@ -231,6 +232,7 @@
                   <td class="p-3">{{ item.type === 'house' ? 'Casa' : 'Apartamento' }}</td>
                   <td class="p-3">{{ percent(item.idealFraction) }}</td>
                   <td class="p-3">{{ area(item.area) }}</td>
+                  <td class="p-3" data-testid="parking-spots">{{ spots(item.parkingSpots) }}</td>
                   <td class="p-3">
                     @if (item.isActive) {
                       <span class="inline-flex items-center gap-1 text-success">
