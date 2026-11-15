@@ -20,12 +20,12 @@ describe('entryDate', () => {
     expect(check('13/11/2027')).toBeNull();
   });
 
-  it('recusa um dia depois de 1 ano à frente', () => {
-    expect(check('14/11/2027')).toEqual({ date: true });
+  it('recusa um dia depois de 1 ano à frente, com o erro próprio da data no futuro', () => {
+    expect(check('14/11/2027')).toEqual({ future: true });
   });
 
-  it('recusa antes de 1900', () => {
-    expect(check('31/12/1899')).toEqual({ date: true });
+  it('recusa antes de 1900, com o erro próprio da data antiga', () => {
+    expect(check('31/12/1899')).toEqual({ tooOld: true });
   });
 
   it.each(['31/02/2024', '29/02/2025', '00/01/2024', '1/1/2024', '2024-03-01', '01/03/24'])(

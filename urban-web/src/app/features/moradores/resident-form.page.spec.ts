@@ -821,6 +821,42 @@ describe('ResidentFormPage, dependente menor de idade', () => {
     expect(testId(h.html, 'minor-note')).toBeNull();
   });
 
+  it('data de entrada antiga demais: o erro no campo diz o motivo e o limite', async () => {
+    const h = await openNew();
+    fillRegistration(h.html);
+    fill(h.html, 'startDate', '01011850');
+
+    await submit(h);
+
+    expect(errorTexts(h.html)).toEqual(['A data de entrada não pode ser anterior a 01/01/1900']);
+  });
+
+  it('data de entrada longe demais no futuro: o erro no campo diz o motivo e o limite', async () => {
+    const h = await openNew();
+    fillRegistration(h.html);
+    const now = new Date();
+    const [day, month] = [now.getDate(), now.getMonth() + 1].map((n) => String(n).padStart(2, '0'));
+    const limit = `${day}/${month}/${now.getFullYear() + 1}`;
+    fill(h.html, 'startDate', `${day}${month}${now.getFullYear() + 3}`);
+
+    await submit(h);
+
+    expect(errorTexts(h.html)).toEqual([
+      `A data de entrada pode ser, no máximo, ${limit} (1 ano à frente de hoje)`,
+    ]);
+  });
+
+  it('o aviso do menor de idade aparece em laranja, com ícone e texto', async () => {
+    const h = await openNew();
+    fill(h.html, 'birthDate', `1004${YEAR}`);
+    await settle(h.fixture);
+
+    const note = testId(h.html, 'minor-note')!;
+    expect(note.classList.contains('text-warning')).toBe(true);
+    expect(note.classList.contains('text-on-surface-variant')).toBe(false);
+    expect(note.querySelector('mat-icon')).not.toBeNull();
+  });
+
   it('o menor só pode ser dependente: outro vínculo mostra o erro e não envia', async () => {
     const h = await openNew();
     fillMinor(h.html);

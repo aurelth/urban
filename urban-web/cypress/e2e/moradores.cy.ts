@@ -1,3 +1,4 @@
+import { PALETTE } from '../support/layout';
 import { chooseMenu } from '../support/menu';
 import { DESKTOP, PHONE } from '../support/navegacao';
 import { MANAGER, stubSignedIn } from '../support/session';
@@ -36,6 +37,18 @@ describe('Moradores', () => {
     rows().first().should('contain.text', 'Proprietário, desde 01/03/2024');
     rows().first().should('contain.text', 'Mora');
     cy.wait('@residents').its('request.url').should('contain', 'status=active');
+  });
+
+  it('mostra "Mora" em verde e "Ex-morador" em laranja, sempre com ícone e texto', () => {
+    cy.visit(RESIDENTS_PATH);
+    rows().should('have.length', 1);
+    rows().first().find('.text-success').should('have.css', 'color', PALETTE.light.success);
+    rows().first().find('.text-success mat-icon').should('exist');
+
+    chooseMenu('[data-testid="filter-status"]', 'Ex-moradores');
+
+    rows().first().find('.text-warning').should('have.css', 'color', PALETTE.light.warning);
+    rows().first().find('.text-warning mat-icon').should('exist');
   });
 
   it('troca para ex-moradores e mostra o período em que moraram', () => {

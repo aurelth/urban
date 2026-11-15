@@ -1,3 +1,4 @@
+import { expectErrorsToStayInTheirOwnSpace } from '../support/layout';
 import { chooseMenu } from '../support/menu';
 import { DESKTOP, PHONE } from '../support/navegacao';
 import { MANAGER, stubSignedIn } from '../support/session';
@@ -159,6 +160,36 @@ describe('Formulário de morador', () => {
 
       cy.contains('mat-error', 'Informe o nome completo').should('be.visible');
       cy.contains('mat-error', 'Escolha a unidade').should('be.visible');
+      cy.get('@createResident.all').should('have.length', 0);
+    });
+
+    it('recusa a data de entrada antiga demais dizendo o motivo, sem chamar a API', () => {
+      stubResidentCreated();
+      cy.visit(NEW_RESIDENT_PATH);
+      fillResidentTexts();
+      chooseUnitAndKind();
+      typeInto('startDate', '01011850');
+
+      cy.contains('button[type="submit"]', 'Cadastrar morador').click();
+
+      cy.contains('mat-error', 'A data de entrada não pode ser anterior a 01/01/1900').should(
+        'be.visible',
+      );
+      cy.get('@createResident.all').should('have.length', 0);
+    });
+
+    it('recusa a data de entrada longe demais no futuro dizendo o limite, sem chamar a API', () => {
+      stubResidentCreated();
+      cy.visit(NEW_RESIDENT_PATH);
+      fillResidentTexts();
+      chooseUnitAndKind();
+      typeInto('startDate', '01012099');
+
+      cy.contains('button[type="submit"]', 'Cadastrar morador').click();
+
+      cy.contains('mat-error', 'A data de entrada pode ser, no máximo,')
+        .should('be.visible')
+        .and('contain.text', '(1 ano à frente de hoje)');
       cy.get('@createResident.all').should('have.length', 0);
     });
 
@@ -363,6 +394,19 @@ describe('Formulário de morador', () => {
       cy.document().should((doc) => {
         expect(doc.documentElement.scrollWidth).to.be.at.most(doc.documentElement.clientWidth);
       });
+    });
+
+    it('a mensagem da data de entrada recusada cabe na tela sem cobrir outros campos', () => {
+      cy.viewport(PHONE.width, PHONE.height);
+      cy.visit(NEW_RESIDENT_PATH);
+      fillResidentTexts();
+      chooseUnitAndKind();
+      typeInto('startDate', '01012099');
+
+      cy.contains('button[type="submit"]', 'Cadastrar morador').click();
+
+      cy.contains('mat-error', 'A data de entrada pode ser, no máximo,').should('be.visible');
+      expectErrorsToStayInTheirOwnSpace();
     });
 
     it('a edição cabe na tela, sem rolagem horizontal, com o cartão de acesso', () => {
