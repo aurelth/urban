@@ -209,53 +209,59 @@
                       </span>
                     }
                   </td>
-                  <td class="p-1 whitespace-nowrap">
-                    <button
-                      mat-icon-button
-                      type="button"
-                      [attr.aria-label]="'Editar ' + item.description"
-                      [attr.title]="'Editar ' + item.description"
-                      [disabled]="store.busy()"
-                      (click)="edit(item)"
-                    >
-                      <mat-icon svgIcon="edit" />
-                    </button>
-                    @if (canAdjust(item)) {
+                  <td class="p-1">
+                    <div class="grid grid-cols-[repeat(3,48px)] justify-start">
                       <button
                         mat-icon-button
                         type="button"
-                        [attr.aria-label]="'Reajustar valor de ' + item.description"
-                        [attr.title]="'Reajustar valor de ' + item.description"
+                        class="col-start-1"
+                        [attr.aria-label]="'Editar ' + item.description"
+                        [attr.title]="'Editar ' + item.description"
                         [disabled]="store.busy()"
-                        (click)="adjust(item)"
+                        (click)="edit(item)"
                       >
-                        <mat-icon svgIcon="trending_up" />
+                        <mat-icon svgIcon="edit" />
                       </button>
-                    }
-                    @if (canSetInstallment(item)) {
-                      <button
-                        mat-icon-button
-                        type="button"
-                        [attr.aria-label]="'Alterar parcela de ' + item.description"
-                        [attr.title]="'Alterar parcela de ' + item.description"
-                        [disabled]="store.busy()"
-                        (click)="setInstallment(item)"
-                      >
-                        <mat-icon svgIcon="payments" />
-                      </button>
-                    }
-                    @if (canEnd(item)) {
-                      <button
-                        mat-icon-button
-                        type="button"
-                        [attr.aria-label]="'Encerrar ' + item.description"
-                        [attr.title]="'Encerrar ' + item.description"
-                        [disabled]="store.busy()"
-                        (click)="end(item)"
-                      >
-                        <mat-icon svgIcon="event_busy" />
-                      </button>
-                    }
+                      @if (canAdjust(item)) {
+                        <button
+                          mat-icon-button
+                          type="button"
+                          class="col-start-2"
+                          [attr.aria-label]="'Reajustar valor de ' + item.description"
+                          [attr.title]="'Reajustar valor de ' + item.description"
+                          [disabled]="store.busy()"
+                          (click)="adjust(item)"
+                        >
+                          <mat-icon svgIcon="trending_up" />
+                        </button>
+                      }
+                      @if (canSetInstallment(item)) {
+                        <button
+                          mat-icon-button
+                          type="button"
+                          class="col-start-2"
+                          [attr.aria-label]="'Alterar parcela de ' + item.description"
+                          [attr.title]="'Alterar parcela de ' + item.description"
+                          [disabled]="store.busy()"
+                          (click)="setInstallment(item)"
+                        >
+                          <mat-icon svgIcon="payments" />
+                        </button>
+                      }
+                      @if (canEnd(item)) {
+                        <button
+                          mat-icon-button
+                          type="button"
+                          class="col-start-3"
+                          [attr.aria-label]="'Encerrar ' + item.description"
+                          [attr.title]="'Encerrar ' + item.description"
+                          [disabled]="store.busy()"
+                          (click)="end(item)"
+                        >
+                          <mat-icon svgIcon="event_busy" />
+                        </button>
+                      }
+                    </div>
                   </td>
                 </tr>
               }

@@ -9,6 +9,15 @@
         <p>Agora você já pode entrar com o seu e-mail e a senha que acabou de criar</p>
         <a mat-flat-button routerLink="/entrar">Entrar</a>
       </div>
+    } @else if (checking() && !blockedMessage()) {
+      <p class="flex items-center justify-center gap-2 text-warning" role="status">
+        <mat-icon
+          class="animate-spin motion-reduce:animate-none"
+          svgIcon="progress_activity"
+          aria-hidden="true"
+        />
+        <span>Conferindo o link</span>
+      </p>
     } @else if (blockedMessage(); as message) {
       <urban-link-problem-notice
         [heading]="linkError() ? 'Link inválido' : 'Link incompleto'"
