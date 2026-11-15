@@ -1,0 +1,15 @@
+<input
+  class="pointer-events-none absolute h-0 w-0 opacity-0"
+  tabindex="-1"
+  aria-hidden="true"
+  [matDatepicker]="picker"
+  [value]="value()"
+  (dateChange)="pick($event.value)"
+/>
+<mat-datepicker
+  #picker
+  [startAt]="startAt()"
+  [startView]="startView()"
+  [restoreFocus]="false"
+  (closed)="closed.emit()"
+/>

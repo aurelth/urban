@@ -1,9 +1,13 @@
-import { Component, input } from '@angular/core';
+import { Component, ElementRef, input, signal, viewChild } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
-import { MatError, MatFormField, MatHint, MatLabel } from '@angular/material/form-field';
+import { MatIconButton } from '@angular/material/button';
+import { MatError, MatFormField, MatHint, MatLabel, MatSuffix } from '@angular/material/form-field';
+import { MatIcon } from '@angular/material/icon';
 import { MatInput } from '@angular/material/input';
 import { MaskDirective } from '../../directives/mask.directive';
+import { dateFromText, textFromDate } from '../../forms/date-text';
 import { MaskKind } from '../../forms/masks';
+import { CalendarPopup } from '../calendar-popup/calendar.popup';
 import { FormFieldBase, USE_PARENT_FORM } from '../form-field.base';
 
 const FALLBACK_ERROR = 'Confira este campo';
@@ -22,12 +26,16 @@ const FALLBACK_ERROR = 'Confira este campo';
     MatError,
     MatHint,
     MatInput,
+    MatIconButton,
+    MatIcon,
+    MatSuffix,
     MaskDirective,
+    CalendarPopup,
   ],
   templateUrl: './text.field.html',
   viewProviders: [USE_PARENT_FORM],
   // Sem dica, a área do erro não reserva espaço (`subscriptSizing="dynamic"` no template): o espaço de baixo é do campo.
-  host: { class: 'block', '[class.mb-5]': '!hint()', '[class.mb-3]': 'hint()' },
+  host: { class: 'relative block', '[class.mb-5]': '!hint()', '[class.mb-3]': 'hint()' },
 })
 export class TextField extends FormFieldBase {
   readonly name = input.required<string>();
@@ -39,6 +47,30 @@ export class TextField extends FormFieldBase {
   readonly inputmode = input<string | null>(null);
   readonly optional = input(false);
   readonly errors = input<Readonly<Record<string, string>>>({});
+  /** Só vale com `mask="date"`: o calendário abre na lista de anos, para quem nasceu há décadas. */
+  readonly birthDate = input(false);
+
+  protected readonly calendarRequested = signal(false);
+  private readonly calendarButton = viewChild('calendarButton', { read: ElementRef });
+
+  protected calendarValue(): Date | null {
+    return dateFromText(String(this.control?.value ?? ''));
+  }
+
+  protected openCalendar(): void {
+    this.calendarRequested.set(true);
+  }
+
+  protected pickDate(date: Date): void {
+    this.control?.setValue(textFromDate(date));
+    this.control?.markAsDirty();
+    this.control?.markAsTouched();
+  }
+
+  protected closeCalendar(): void {
+    this.calendarRequested.set(false);
+    this.calendarButton()?.nativeElement.focus();
+  }
 
   protected get controlName(): string {
     return this.name();
