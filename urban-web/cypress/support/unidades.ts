@@ -11,6 +11,7 @@ export interface StubUnit {
   isActive: boolean;
   deactivatedAt: string | null;
   version: string;
+  parkingSpots: string[];
 }
 
 export function stubUnit(overrides: Partial<StubUnit> = {}): StubUnit {
@@ -24,11 +25,12 @@ export function stubUnit(overrides: Partial<StubUnit> = {}): StubUnit {
     isActive: true,
     deactivatedAt: null,
     version: '41',
+    parkingSpots: [],
     ...overrides,
   };
 }
 
-export const FIRST_UNIT = stubUnit();
+export const FIRST_UNIT = stubUnit({ parkingSpots: ['12', 'G2 05'] });
 export const SECOND_UNIT = stubUnit({
   id: '0199aaaa-0000-7000-8000-000000000002',
   number: '102',

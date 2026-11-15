@@ -85,6 +85,7 @@ describe('openUnitDialog', () => {
       expect(field('number').value).toBe('');
       expect(field('idealFraction').value).toBe('');
       expect(field('area').value).toBe('');
+      expect(field('parkingSpots').value).toBe('');
       expect(dialog()!.querySelector<HTMLInputElement>('input[value="apartment"]')!.checked).toBe(
         true,
       );
@@ -102,6 +103,8 @@ describe('openUnitDialog', () => {
       expect(text).toContain('Número');
       expect(text).toContain('Fração ideal (%)');
       expect(text).toContain('Área (m²)');
+      expect(text).toContain('Vagas de garagem');
+      expect(text).toContain('Opcional. Até 5, separadas por vírgula. Ex.: 12, G2 05');
       expect(dialog()!.querySelectorAll('mat-hint').length).toBeGreaterThan(0);
     });
 
@@ -128,6 +131,7 @@ describe('openUnitDialog', () => {
         type: 'apartment',
         idealFraction: null,
         area: null,
+        parkingSpots: [],
       });
     });
 
@@ -148,6 +152,7 @@ describe('openUnitDialog', () => {
         type: 'house',
         idealFraction: 0.0125,
         area: 52.5,
+        parkingSpots: [],
       });
     });
 
@@ -183,6 +188,33 @@ describe('openUnitDialog', () => {
 
       type('number', '101');
       type(name, value);
+      submit();
+      await settle();
+
+      expect(errors()).toContain(message);
+      expect(save).not.toHaveBeenCalled();
+    });
+
+    it('envia as vagas digitadas, aparadas e na ordem', async () => {
+      const { save } = setup();
+
+      type('number', '101');
+      type('parkingSpots', ' 12 ,G2   05 ');
+      submit();
+      await settle();
+
+      expect(save).toHaveBeenCalledWith(expect.objectContaining({ parkingSpots: ['12', 'G2 05'] }));
+    });
+
+    it.each([
+      ['1,2,3,4,5,6', 'Informe até 5 vagas por unidade'],
+      [`1,${'9'.repeat(21)}`, 'Cada vaga pode ter até 20 caracteres'],
+      ['V1, v1', 'A mesma vaga aparece mais de uma vez'],
+    ])('recusa as vagas "%s" mostrando o motivo', async (value, message) => {
+      const { save } = setup();
+
+      type('number', '101');
+      type('parkingSpots', value);
       submit();
       await settle();
 
@@ -279,6 +311,7 @@ describe('openUnitDialog', () => {
       idealFraction: 0.0125,
       area: 1250.5,
       version: '41',
+      parkingSpots: ['12', 'G2 05'],
     });
 
     it('abre preenchida, com a fracao em porcentagem e a area com virgula', () => {
@@ -289,6 +322,7 @@ describe('openUnitDialog', () => {
       expect(field('number').value).toBe('1203');
       expect(field('idealFraction').value).toBe('1,25');
       expect(field('area').value).toBe('1250,5');
+      expect(field('parkingSpots').value).toBe('12, G2 05');
       expect(dialog()!.querySelector<HTMLInputElement>('input[value="house"]')!.checked).toBe(true);
       expect(submitButton().textContent?.trim()).toBe('Salvar alterações');
     });
@@ -329,7 +363,30 @@ describe('openUnitDialog', () => {
         type: 'house',
         idealFraction: null,
         area: null,
+        parkingSpots: ['12', 'G2 05'],
       });
+    });
+
+    it('habilita o botao ao mudar as vagas, mas nao ao so mudar a pontuacao delas', () => {
+      setup(existing);
+
+      type('parkingSpots', '12,G2 05');
+      TestBed.tick();
+      expect(submitButton().disabled).toBe(true);
+
+      type('parkingSpots', '12, G2 05, V1');
+      TestBed.tick();
+      expect(submitButton().disabled).toBe(false);
+    });
+
+    it('apagar o campo das vagas remove todas: envia a lista vazia', async () => {
+      const { save } = setup(existing);
+
+      type('parkingSpots', '');
+      submit();
+      await settle();
+
+      expect(save).toHaveBeenCalledWith(expect.objectContaining({ parkingSpots: [] }));
     });
 
     it('abre uma unidade sem bloco, fracao nem area com os campos vazios', () => {

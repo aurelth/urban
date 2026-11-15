@@ -193,4 +193,71 @@ public class UpdateUnitCommandHandlerTests
         result.Error.Should().Be(CondominiumErrors.ConcurrencyConflict);
         _kit.Atomic.Outcome!.IsFailure.Should().BeTrue();
     }
+
+    [Fact]
+    public async Task Handle_ChangingTheSpots_SavesThemAndLogsTheFieldName()
+    {
+        Result<UnitView> result = await Handler().Handle(Same() with { ParkingSpots = ["V1", "V2"] }, default);
+
+        result.Value.ParkingSpots.Should().Equal("V1", "V2");
+        _kit.Logged.Single().Fields.Should().BeEquivalentTo(["parkingSpots"]);
+    }
+
+    [Fact]
+    public async Task Handle_WithoutTheSpotsInTheCommand_KeepsTheCurrentOnes_AndChangesNothingElse()
+    {
+        UnitRecord withSpots = _kit.Existing(_kit.NewUnit("202", parkingSpots: ["V1", "V2"]), version: "5");
+        UpdateUnitCommand command = new(_kit.ActorId, withSpots.Unit.Id, "5", null, "202", UnitType.Apartment, null, null);
+
+        Result<UnitView> result = await Handler().Handle(command, default);
+
+        result.Value.ParkingSpots.Should().Equal("V1", "V2");
+        _kit.Saved.Should().BeEmpty("nothing changed");
+    }
+
+    [Fact]
+    public async Task Handle_WithAnEmptyList_RemovesTheSpots()
+    {
+        UnitRecord withSpots = _kit.Existing(_kit.NewUnit("202", parkingSpots: ["V1"]), version: "5");
+        UpdateUnitCommand command = new(_kit.ActorId, withSpots.Unit.Id, "5", null, "202", UnitType.Apartment, null, null, []);
+
+        Result<UnitView> result = await Handler().Handle(command, default);
+
+        result.Value.ParkingSpots.Should().BeEmpty();
+        _kit.Logged.Single().Fields.Should().BeEquivalentTo(["parkingSpots"]);
+    }
+
+    [Fact]
+    public async Task Handle_WithASpotThatBelongsToAnotherUnit_FailsWithTheSpot_AskingTheStoreToIgnoreThisUnit()
+    {
+        _kit.Units
+            .Setup(u => u.FindTakenParkingSpotAsync(It.IsAny<IReadOnlyCollection<string>>(), _record.Unit.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("V2");
+
+        Result<UnitView> result = await Handler().Handle(Same() with { ParkingSpots = ["V2"] }, default);
+
+        result.Error.Code.Should().Be(UnitErrors.ParkingSpotAlreadyExists.Code);
+        result.Error.Data.Should().ContainKey("spot").WhoseValue.Should().Be("V2");
+        _kit.Saved.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_KeepingTheSameSpots_DoesNotAskTheStoreAboutThem()
+    {
+        UnitRecord withSpots = _kit.Existing(_kit.NewUnit("202", parkingSpots: ["V1"]), version: "5");
+        UpdateUnitCommand command = new(_kit.ActorId, withSpots.Unit.Id, "5", null, "202", UnitType.Apartment, null, 70m, ["V1"]);
+
+        await Handler().Handle(command, default);
+
+        _kit.Units.Verify(u => u.FindTakenParkingSpotAsync(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WithTooManySpots_FailsWithTheDomainError()
+    {
+        Result<UnitView> result = await Handler().Handle(Same() with { ParkingSpots = ["1", "2", "3", "4", "5", "6"] }, default);
+
+        result.Error.Should().Be(UnitErrors.ParkingSpotsTooMany);
+        _kit.Saved.Should().BeEmpty();
+    }
 }

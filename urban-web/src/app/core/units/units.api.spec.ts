@@ -23,6 +23,7 @@ const UNIT: Unit = {
   isActive: true,
   deactivatedAt: null,
   version: '41',
+  parkingSpots: ['12', 'G2 05'],
 };
 
 const PAYLOAD: UnitPayload = {
@@ -31,6 +32,7 @@ const PAYLOAD: UnitPayload = {
   type: 'apartment',
   idealFraction: 0.0125,
   area: 52.5,
+  parkingSpots: ['12', 'G2 05'],
 };
 
 describe('UnitsApi', () => {

@@ -42,6 +42,7 @@ internal sealed class UnitsTestKit
 
         Units.Setup(u => u.IsIdentityTakenAsync(It.IsAny<UnitIdentity>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
         Units.Setup(u => u.TakenAmongAsync(It.IsAny<IReadOnlyCollection<UnitIdentity>>(), It.IsAny<CancellationToken>())).ReturnsAsync(new HashSet<UnitIdentity>());
+        Units.Setup(u => u.FindTakenParkingSpotAsync(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>())).ReturnsAsync((string?)null);
         Units.Setup(u => u.ActiveFractionTotalAsync(It.IsAny<Guid?>(), It.IsAny<CancellationToken>())).ReturnsAsync(0m);
         Units.Setup(u => u.AddAsync(It.IsAny<CondominiumUnit>(), It.IsAny<ChangeLogEntry>(), It.IsAny<CancellationToken>()))
             .Callback<CondominiumUnit, ChangeLogEntry, CancellationToken>((unit, entry, _) =>
@@ -83,6 +84,11 @@ internal sealed class UnitsTestKit
         return record;
     }
 
-    public CondominiumUnit NewUnit(string number = "101", string? block = null, decimal? idealFraction = null, decimal? area = null) =>
-        UnitBuilders.Unit(CondominiumId, block, number, idealFraction: idealFraction, area: area);
+    public CondominiumUnit NewUnit(
+        string number = "101",
+        string? block = null,
+        decimal? idealFraction = null,
+        decimal? area = null,
+        IReadOnlyList<string>? parkingSpots = null) =>
+        UnitBuilders.Unit(CondominiumId, block, number, idealFraction: idealFraction, area: area, parkingSpots: parkingSpots);
 }
