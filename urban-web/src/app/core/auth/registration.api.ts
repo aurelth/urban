@@ -16,6 +16,11 @@ export class RegistrationApi {
     return this.http.post<void>('/api/auth/confirm-email', { token, password, termsVersion });
   }
 
+  /** Confere o link sem gastá-lo: 204 quando serve, 400 com o motivo quando não serve mais. */
+  checkEmailLink(token: string): Observable<void> {
+    return this.http.post<void>('/api/auth/confirm-email/check', { token });
+  }
+
   currentTerms(): Observable<CurrentTerms> {
     return this.http.get<CurrentTerms>('/api/terms/current');
   }

@@ -68,6 +68,7 @@ export class ConfirmEmailPage implements OnInit {
   protected readonly error = signal<string | null>(null);
   /** Mensagem do link que não serve mais (sem token, já usado ou vencido). */
   protected readonly linkError = signal<string | null>(null);
+  protected readonly checking = signal(false);
   protected readonly termsVersion = signal<string | null>(null);
   protected readonly termsFailed = signal(false);
   protected readonly blockedMessage = computed(
@@ -76,7 +77,27 @@ export class ConfirmEmailPage implements OnInit {
 
   ngOnInit(): void {
     if (this.token()) {
+      void this.checkLink();
       void this.loadTerms();
+    }
+  }
+
+  /** Só um link que a API recusou por ele mesmo fecha a tela; qualquer outra falha deixa a API decidir no envio. */
+  private async checkLink(): Promise<void> {
+    const token = this.token();
+    if (!token) {
+      return;
+    }
+    this.checking.set(true);
+    try {
+      await firstValueFrom(this.api.checkEmailLink(token));
+    } catch (error) {
+      const problem = toApiProblem(error);
+      if (problem.code !== null && LINK_ERROR_CODES.has(problem.code)) {
+        this.linkError.set(describeProblem(problem, CONFIRM_MESSAGES));
+      }
+    } finally {
+      this.checking.set(false);
     }
   }
 

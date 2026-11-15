@@ -44,9 +44,14 @@ async function settle(fixture: ComponentFixture<ConfirmEmailPage>): Promise<void
 async function open(version = '2026-10-26', token = 'token-1'): Promise<Harness> {
   const harness = setup(token);
   await harness.fixture.whenStable();
+  checkRequest(harness.http).flush(null, { status: 204, statusText: 'No Content' });
   harness.http.expectOne('/api/terms/current').flush({ version });
   await settle(harness.fixture);
   return harness;
+}
+
+function checkRequest(http: HttpTestingController): TestRequest {
+  return http.expectOne('/api/auth/confirm-email/check');
 }
 
 function typePassword(html: HTMLElement, value: string): void {
@@ -88,12 +93,86 @@ describe('ConfirmEmailPage', () => {
     await fixture.whenStable();
 
     http.expectNone('/api/terms/current');
+    http.expectNone('/api/auth/confirm-email/check');
     expect(html.querySelector('h1')?.textContent?.trim()).toBe('Link incompleto');
     expect(html.querySelector('form')).toBeNull();
     expect(html.querySelector('a[href="/cadastrar"]')?.textContent).toContain('novo cadastro');
     expect(html.querySelector('[role="alert"]')?.textContent).toContain(
       'peça ao síndico que reenvie o convite',
     );
+  });
+
+  describe('conferência do link ao abrir', () => {
+    it('confere o token sem gastá-lo e só mostra o formulário depois da resposta', async () => {
+      const { fixture, http, html } = setup('token-1');
+      await fixture.whenStable();
+
+      const request = checkRequest(http);
+      expect(request.request.method).toBe('POST');
+      expect(request.request.body).toEqual({ token: 'token-1' });
+      expect(html.querySelector('[role="status"]')?.textContent).toContain('Conferindo o link');
+      expect(html.querySelector('form')).toBeNull();
+
+      request.flush(null, { status: 204, statusText: 'No Content' });
+      http.expectOne('/api/terms/current').flush({ version: '2026-10-26' });
+      await settle(fixture);
+
+      expect(html.querySelector('[role="status"]')).toBeNull();
+      expect(html.querySelector('form')).not.toBeNull();
+      expect(html.querySelector('h1')?.textContent?.trim()).toBe('Criar senha');
+    });
+
+    it.each([
+      ['identity.email_verification.invalid', 'Link inválido ou já usado'],
+      ['identity.email_verification.expired', 'Link expirado'],
+    ])('avisa logo ao abrir, sem pedir senha, quando a API diz %s', async (code, message) => {
+      const { fixture, http, html } = setup('token-velho');
+      await fixture.whenStable();
+
+      checkRequest(http).flush(problem(400, code), rejected());
+      http.match('/api/terms/current').forEach((terms) => terms.flush({ version: '2026-10-26' }));
+      await settle(fixture);
+
+      expect(html.querySelector('h1')?.textContent?.trim()).toBe('Link inválido');
+      expect(html.querySelector('[role="alert"]')?.textContent).toContain(message);
+      expect(html.querySelector('form')).toBeNull();
+      expect(html.querySelector('a[href="/cadastrar"]')?.textContent).toContain('novo cadastro');
+      http.expectNone('/api/auth/confirm-email');
+    });
+
+    it.each([
+      ['erro do servidor', 500],
+      ['serviço indisponível', 503],
+      ['limite de pedidos', 429],
+    ])(
+      'se a conferência falha por %s, mostra o formulário e deixa a API decidir no envio',
+      async (_name, status) => {
+        const { fixture, http, html } = setup('token-1');
+        await fixture.whenStable();
+
+        checkRequest(http).flush(null, { status, statusText: 'Erro' });
+        http.expectOne('/api/terms/current').flush({ version: '2026-10-26' });
+        await settle(fixture);
+
+        expect(html.querySelector('form')).not.toBeNull();
+        expect(html.querySelector('h1')?.textContent?.trim()).toBe('Criar senha');
+      },
+    );
+
+    it('se a conferência falha por falta de rede, mostra o formulário e o envio segue valendo', async () => {
+      const harness = setup('token-1');
+      await harness.fixture.whenStable();
+      checkRequest(harness.http).error(new ProgressEvent('error'));
+      harness.http.expectOne('/api/terms/current').flush({ version: '2026-10-26' });
+      await settle(harness.fixture);
+      expect(harness.html.querySelector('form')).not.toBeNull();
+
+      await sendValid(harness);
+      confirmRequest(harness.http).flush(null, { status: 204, statusText: 'No Content' });
+      await settle(harness.fixture);
+
+      expect(harness.html.querySelector('h1')?.textContent?.trim()).toBe('Conta ativada');
+    });
   });
 
   it('com token, mostra o formulario e busca a versao vigente dos termos', async () => {
@@ -245,6 +324,7 @@ describe('ConfirmEmailPage', () => {
   it('avisa e deixa tentar de novo quando a versao dos termos nao carrega', async () => {
     const { fixture, http, html } = setup('token-1');
     await fixture.whenStable();
+    checkRequest(http).flush(null, { status: 204, statusText: 'No Content' });
     http.expectOne('/api/terms/current').flush(null, { status: 500, statusText: 'Server Error' });
     await settle(fixture);
 
@@ -268,6 +348,8 @@ describe('ConfirmEmailPage', () => {
   it('nao envia enquanto a versao dos termos nao chegou', async () => {
     const { fixture, http, html } = setup('token-1');
     await fixture.whenStable();
+    checkRequest(http).flush(null, { status: 204, statusText: 'No Content' });
+    await settle(fixture);
     typePassword(html, PASSWORD);
     acceptTerms(html);
 

@@ -13,6 +13,14 @@ export function stubRegister(statusCode = 202, code?: string, retryAfter?: strin
   }).as('register');
 }
 
+/** A conferência do link ao abrir a tela, que não gasta o link: 204 quando serve, ou o erro que a API daria. */
+export function stubConfirmEmailCheck(statusCode = 204, code?: string): void {
+  cy.intercept('POST', '/api/auth/confirm-email/check', {
+    statusCode,
+    body: code ? { status: statusCode, code, detail: 'Detalhe da API' } : undefined,
+  }).as('checkLink');
+}
+
 export function stubConfirmEmail(statusCode = 204, code?: string): void {
   cy.intercept('POST', '/api/auth/confirm-email', {
     statusCode,

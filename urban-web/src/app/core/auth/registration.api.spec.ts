@@ -43,6 +43,19 @@ describe('RegistrationApi', () => {
     request.flush(null, { status: 204, statusText: 'No Content' });
   });
 
+  it('confere o link do e-mail sem gastá-lo: POST /api/auth/confirm-email/check só com o token', () => {
+    const { api, http } = setup();
+    let finished = false;
+
+    api.checkEmailLink('token-1').subscribe(() => (finished = true));
+
+    const request = http.expectOne('/api/auth/confirm-email/check');
+    expect(request.request.method).toBe('POST');
+    expect(request.request.body).toEqual({ token: 'token-1' });
+    request.flush(null, { status: 204, statusText: 'No Content' });
+    expect(finished).toBe(true);
+  });
+
   it('lê a versão vigente dos termos', () => {
     const { api, http } = setup();
     let version = '';

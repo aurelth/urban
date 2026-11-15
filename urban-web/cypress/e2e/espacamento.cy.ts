@@ -5,7 +5,7 @@ import {
   stubContactMessages,
   stubContactSend,
 } from '../support/contato';
-import { stubTerms } from '../support/cadastro';
+import { stubConfirmEmailCheck, stubTerms } from '../support/cadastro';
 import { NEW_MANAGER } from '../support/condominio';
 import { expectBreathingRoom, expectDialogBreathingRoom } from '../support/espacamento';
 import {
@@ -67,6 +67,7 @@ SCREENS.forEach(([where, width, height]) => {
     it('não cola texto em container na criação de senha', () => {
       stubAnonymous();
       stubTerms();
+      stubConfirmEmailCheck();
       cy.visit('/confirmar-email?token=token-do-link');
 
       cy.get('input[autocomplete="new-password"]').should('be.visible');

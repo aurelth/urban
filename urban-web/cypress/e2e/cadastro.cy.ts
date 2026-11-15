@@ -1,5 +1,11 @@
 import { PALETTE } from '../support/layout';
-import { TERMS_VERSION, stubConfirmEmail, stubRegister, stubTerms } from '../support/cadastro';
+import {
+  TERMS_VERSION,
+  stubConfirmEmail,
+  stubConfirmEmailCheck,
+  stubRegister,
+  stubTerms,
+} from '../support/cadastro';
 import { stubAnonymous, stubSignedIn } from '../support/session';
 
 const EMAIL = 'sindica@example.com';
@@ -109,6 +115,7 @@ describe('Confirmação do e-mail', () => {
 
   it('cria a senha, aceita os termos e ativa a conta', () => {
     stubTerms();
+    stubConfirmEmailCheck();
     stubConfirmEmail();
     cy.visit('/confirmar-email?token=token-do-link');
     cy.wait('@terms');
@@ -131,6 +138,7 @@ describe('Confirmação do e-mail', () => {
 
   it('não envia sem aceitar os termos', () => {
     stubTerms();
+    stubConfirmEmailCheck();
     stubConfirmEmail();
     cy.visit('/confirmar-email?token=token-do-link');
     cy.wait('@terms');
@@ -142,8 +150,34 @@ describe('Confirmação do e-mail', () => {
     cy.get('@confirm.all').should('have.length', 0);
   });
 
-  it('manda pedir um novo cadastro quando o link venceu', () => {
+  it('manda pedir um novo cadastro quando o link venceu, avisando já ao abrir', () => {
     stubTerms();
+    stubConfirmEmailCheck(400, 'identity.email_verification.expired');
+    stubConfirmEmail();
+    cy.visit('/confirmar-email?token=token-vencido');
+    cy.wait('@checkLink').its('request.body').should('deep.equal', { token: 'token-vencido' });
+
+    cy.contains('h1', 'Link inválido').should('be.visible');
+    cy.get('[role="alert"]').should('contain.text', 'Link expirado');
+    cy.get('input[autocomplete="new-password"]').should('not.exist');
+    cy.get('@confirm.all').should('have.length', 0);
+    cy.contains('a', 'Fazer novo cadastro').click();
+    cy.location('pathname').should('eq', '/cadastrar');
+  });
+
+  it('avisa já ao abrir quando o link foi usado', () => {
+    stubTerms();
+    stubConfirmEmailCheck(400, 'identity.email_verification.invalid');
+    cy.visit('/confirmar-email?token=token-usado');
+
+    cy.contains('h1', 'Link inválido').should('be.visible');
+    cy.get('[role="alert"]').should('contain.text', 'Link inválido ou já usado');
+    cy.get('input[autocomplete="new-password"]').should('not.exist');
+  });
+
+  it('se a conferência falha por outro motivo, mostra o formulário e a API decide no envio', () => {
+    stubTerms();
+    stubConfirmEmailCheck(503);
     stubConfirmEmail(400, 'identity.email_verification.expired');
     cy.visit('/confirmar-email?token=token-vencido');
     cy.wait('@terms');
