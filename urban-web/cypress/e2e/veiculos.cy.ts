@@ -166,7 +166,7 @@ describe('Veículos', () => {
     cy.get('[data-testid="notice"]').should('contain.text', 'Veículo ABC1D23 excluído');
   });
 
-  it('os botões de excluir são vermelhos nos dois temas, e o da confirmação é preenchido', () => {
+  it('os botões de excluir são vermelhos nos dois temas, e o da confirmação é só texto, como o Cancelar', () => {
     cy.visit(VEHICLES_PATH);
 
     for (const dark of [false, true]) {
@@ -183,9 +183,20 @@ describe('Veículos', () => {
 
     cy.document().then((doc) => doc.documentElement.classList.remove('app-dark'));
     cy.get('button[aria-label="Excluir veículo ABC1D23"]').click();
-    themeErrorColor().then((error) => {
-      cy.get('[data-testid="confirm-delete"]').should('have.css', 'background-color', error);
-    });
+    for (const dark of [false, true]) {
+      cy.document().then((doc) => doc.documentElement.classList.toggle('app-dark', dark));
+      themeErrorColor().then((error) => {
+        cy.get('[data-testid="confirm-delete"]')
+          .should('have.css', 'color', error)
+          .and('have.css', 'background-color', 'rgba(0, 0, 0, 0)');
+        cy.get('[data-testid="confirm-delete"] mat-icon').should('have.css', 'color', error);
+      });
+      cy.get('[data-testid="cancel-delete"]').should(
+        'have.css',
+        'background-color',
+        'rgba(0, 0, 0, 0)',
+      );
+    }
   });
 
   it('avisa quando o veículo já não existe', () => {

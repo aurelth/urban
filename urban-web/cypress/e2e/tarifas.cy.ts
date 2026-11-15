@@ -1,5 +1,5 @@
 import { EXPENSES_PATH, TODAY, stubExpenses, stubFinanceRejected } from '../support/financeiro';
-import { PALETTE, expectErrorsToStayInTheirOwnSpace } from '../support/layout';
+import { PALETTE, expectErrorsToStayInTheirOwnSpace, themeErrorColor } from '../support/layout';
 import { chooseMenu } from '../support/menu';
 import { stubSignedIn } from '../support/session';
 import {
@@ -194,6 +194,26 @@ describe('Tarifas de consumo', () => {
 
     cy.wait('@deleteTariff');
     cy.get('[data-testid="notice"]').should('contain.text', 'Tarifa apagada');
+  });
+
+  it('o botão de apagar a tarifa é só texto vermelho, como o Cancelar', () => {
+    cy.visit(TARIFFS_PATH);
+    cy.get('button[aria-label="Apagar tarifa de março de 2026"]').click();
+
+    for (const dark of [false, true]) {
+      cy.document().then((doc) => doc.documentElement.classList.toggle('app-dark', dark));
+      themeErrorColor().then((error) => {
+        cy.get('urban-delete-tariff-dialog')
+          .contains('button', 'Apagar tarifa')
+          .should('have.css', 'color', error)
+          .and('have.css', 'background-color', 'rgba(0, 0, 0, 0)');
+      });
+      cy.get('urban-delete-tariff-dialog [data-testid="cancel"]').should(
+        'have.css',
+        'background-color',
+        'rgba(0, 0, 0, 0)',
+      );
+    }
   });
 
   it('muda o percentual do fundo de reserva', () => {
