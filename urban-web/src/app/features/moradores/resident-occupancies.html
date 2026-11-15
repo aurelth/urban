@@ -37,12 +37,12 @@
                   {{ kindName(occupancy.kind) }}, {{ period(occupancy) }}
                 </p>
                 @if (occupancy.endDate === null) {
-                  <p class="m-0 flex items-center gap-1 text-sm">
+                  <p class="m-0 flex items-center gap-1 text-sm text-success">
                     <mat-icon svgIcon="check_circle" aria-hidden="true" />
                     <span>Mora aqui</span>
                   </p>
                 } @else {
-                  <p class="m-0 flex items-center gap-1 text-sm text-on-surface-variant">
+                  <p class="m-0 flex items-center gap-1 text-sm text-warning">
                     <mat-icon svgIcon="event_busy" aria-hidden="true" />
                     <span>Já saiu</span>
                   </p>

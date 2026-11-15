@@ -41,7 +41,7 @@ import {
 import { ResidentAccess } from './resident-access';
 import { EMAIL_LOCKED_MESSAGE, RESIDENT_FORM_MESSAGES } from './resident-form.messages';
 import { ResidentFormStore } from './resident-form.store';
-import { HOUSING_ERRORS, KIND_OPTIONS } from './resident-housing.fields';
+import { HOUSING_ERRORS, KIND_OPTIONS, startDateErrors } from './resident-housing.fields';
 import { ResidentOccupancies } from './resident-occupancies';
 import { occupancyUnit } from './resident-values';
 
@@ -238,7 +238,7 @@ export class ResidentFormPage implements OnInit {
   };
   protected readonly unitErrors = HOUSING_ERRORS.unit;
   protected readonly kindErrors = HOUSING_ERRORS.kind;
-  protected readonly startDateErrors = HOUSING_ERRORS.startDate;
+  protected readonly startDateErrors = startDateErrors();
 
   ngOnInit(): void {
     if (this.isEditing()) {

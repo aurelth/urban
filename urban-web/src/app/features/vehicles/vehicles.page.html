@@ -170,6 +170,7 @@
                     <button
                       mat-icon-button
                       type="button"
+                      class="urban-danger"
                       [attr.aria-label]="'Excluir veículo ' + item.plate"
                       [attr.title]="'Excluir veículo ' + item.plate"
                       [disabled]="store.busy()"
@@ -198,6 +199,7 @@
                           <button
                             mat-flat-button
                             type="button"
+                            class="urban-danger"
                             data-testid="confirm-delete"
                             [disabled]="store.busy()"
                             (click)="remove(item)"

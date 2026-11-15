@@ -136,6 +136,26 @@ html {
   );
 }
 
+// Acao destrutiva (excluir, apagar, remover): vermelho do papel "error" nos botoes de icone e nos preenchidos, nos dois
+// temas. Quem usa so poe a classe no botao; uma varredura de templates (danger-buttons.spec.ts) exige isso.
+.urban-danger {
+  @include mat.icon-button-overrides(
+    (
+      icon-color: var(--mat-sys-error),
+      state-layer-color: var(--mat-sys-error),
+    )
+  );
+
+  @include mat.button-overrides(
+    (
+      filled-container-color: var(--mat-sys-error),
+      filled-label-text-color: var(--mat-sys-on-error),
+      filled-state-layer-color: var(--mat-sys-on-error),
+      text-label-text-color: var(--mat-sys-error),
+    )
+  );
+}
+
 // Telas de acesso (entrar, cadastrar, confirmar): sem cartao visivel.
 urban-auth-layout {
   @include mat.card-overrides(
