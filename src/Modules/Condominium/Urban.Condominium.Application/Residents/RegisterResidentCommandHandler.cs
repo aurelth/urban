@@ -12,7 +12,7 @@ namespace Urban.Condominium.Application.Residents;
 /// <summary>
 /// Cadastra um morador com o primeiro vínculo, no condomínio da requisição. Valida tudo em memória antes de falar com o
 /// banco (vale o primeiro erro, cujo código diz o campo); só então confere a unidade. O CPF repetido é decidido na gravação,
-/// pelo índice único, que resiste a dois cadastros ao mesmo tempo. Menor de 18 anos só entra como dependente. Cadastrar não cria conta nem manda e-mail: o acesso é o convite.
+/// pelo índice único, que resiste a dois cadastros ao mesmo tempo. Menor de 18 anos só entra como dependente, e a entrada nunca é antes do nascimento. Cadastrar não cria conta nem manda e-mail: o acesso é o convite.
 /// </summary>
 public sealed class RegisterResidentCommandHandler(IResidents residents, IUnits units, ITenantContext tenant, IClock clock, ResidentViews views)
     : IRequestHandler<RegisterResidentCommand, Result<ResidentView>>
@@ -72,6 +72,11 @@ public sealed class RegisterResidentCommandHandler(IResidents residents, IUnits 
         if (occupancy.IsFailure)
         {
             return Result.Failure<Registration>(occupancy.Error);
+        }
+
+        if (data.Value.BirthDate.IsAfter(occupancy.Value.StartDate))
+        {
+            return Result.Failure<Registration>(OccupancyErrors.StartBeforeBirth);
         }
 
         return ResidentData.BreaksMinorRule(data.Value.IsMinor, request.Kind)

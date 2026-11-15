@@ -89,4 +89,43 @@ public class EmailVerificationTokenTests
 
         token.WasIssuedRecently(Now.AddSeconds(seconds)).Should().Be(expected);
     }
+
+    [Fact]
+    public void Check_OnAFreshLink_IsOkAndDoesNotConsumeIt()
+    {
+        EmailVerificationToken token = EmailVerificationToken.Issue(UserId, "hash", Now);
+
+        Result result = token.Check(Now.AddHours(23));
+
+        result.IsSuccess.Should().BeTrue();
+        token.UsedAt.Should().BeNull();
+        token.Consume(Now.AddHours(23)).IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Check_OnAUsedLink_IsInvalid()
+    {
+        EmailVerificationToken token = EmailVerificationToken.Issue(UserId, "hash", Now);
+        token.Consume(Now.AddMinutes(1));
+
+        token.Check(Now.AddMinutes(2)).Error.Should().Be(EmailVerificationTokenErrors.Invalid);
+    }
+
+    [Fact]
+    public void Check_FromTheExpiryInstantOn_IsExpired()
+    {
+        EmailVerificationToken token = EmailVerificationToken.Issue(UserId, "hash", Now);
+
+        token.Check(Now.AddHours(24).AddTicks(-1)).IsSuccess.Should().BeTrue();
+        token.Check(Now.AddHours(24)).Error.Should().Be(EmailVerificationTokenErrors.Expired);
+    }
+
+    [Fact]
+    public void Check_OnAnInvitation_UsesTheLongerLifetime()
+    {
+        EmailVerificationToken invitation = EmailVerificationToken.IssueInvitation(UserId, "hash", Now);
+
+        invitation.Check(Now.AddHours(48)).IsSuccess.Should().BeTrue();
+        invitation.Check(Now.AddHours(72)).Error.Should().Be(EmailVerificationTokenErrors.Expired);
+    }
 }

@@ -4,6 +4,7 @@ using Urban.Condominium.Application.Abstractions;
 using Urban.Condominium.Application.Residents;
 using Urban.Condominium.Domain.People;
 using Urban.SharedKernel.Contracts;
+using Urban.TestSupport.Condominium;
 
 namespace Urban.UnitTests.Condominium.Application.Residents;
 
@@ -94,5 +95,32 @@ public class ResidentViewsTests
     {
         (await _kit.Views.ViewAllAsync([], default)).Should().BeEmpty();
         _kit.Access.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task View_OfACompleteAdult_HasNoMissingData()
+    {
+        ResidentView view = await _kit.Views.ViewAsync(new ResidentRecord(_kit.NewResident(), [], "1"), default);
+
+        view.MissingData.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task View_OfAnAdultWithoutProfessionAndContact_NamesWhatIsMissing_ByTodayInBrazil()
+    {
+        // 18 anos feitos em 13/11/2026 (hoje no Brasil): deixou de ser dispensado de profissão e contato de emergência.
+        Person justAdult = ResidentBuilders.Minor(_kit.CondominiumId, birthDate: new DateOnly(2008, 11, 13));
+
+        ResidentView view = await _kit.Views.ViewAsync(new ResidentRecord(justAdult, [], "1"), default);
+
+        view.MissingData.Should().Equal("profession", "emergencyContact");
+    }
+
+    [Fact]
+    public async Task View_OfAMinor_HasNoMissingData()
+    {
+        ResidentView view = await _kit.Views.ViewAsync(new ResidentRecord(ResidentBuilders.Minor(_kit.CondominiumId), [], "1"), default);
+
+        view.MissingData.Should().BeEmpty();
     }
 }

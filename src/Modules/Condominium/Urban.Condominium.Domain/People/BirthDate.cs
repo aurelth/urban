@@ -45,6 +45,9 @@ public sealed record BirthDate
     /// <summary>Verdadeiro até o dia anterior ao 18º aniversário; no aniversário a pessoa já é adulta.</summary>
     public bool IsMinorOn(DateOnly today) => TurnsAgeOn(Value, MinimumAge) > today;
 
+    /// <summary>Verdadeiro quando a pessoa nasceu depois da data dada: ninguém entra num imóvel antes de nascer.</summary>
+    public bool IsAfter(DateOnly date) => Value > date;
+
     /// <summary>Reconstitui uma data já aceita no cadastro, vinda do armazenamento. A regra de idade vale no momento do cadastro, não a cada leitura.</summary>
     public static BirthDate Restore(DateOnly value) => new(value);
 

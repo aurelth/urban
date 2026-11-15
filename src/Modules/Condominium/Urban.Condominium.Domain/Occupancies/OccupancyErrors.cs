@@ -8,6 +8,9 @@ public static class OccupancyErrors
 
     public static readonly Error StartDateInvalid = new("condominium.occupancy.start_date_invalid", "Informe uma data de entrada válida, até 1 ano à frente");
 
+    public static readonly Error StartBeforeBirth =
+        new("condominium.occupancy.start_before_birth", "A data de entrada não pode ser anterior à data de nascimento do morador");
+
     public static readonly Error CondominiumRequired = new("condominium.occupancy.condominium_required", "O vínculo precisa pertencer a um condomínio");
 
     public static readonly Error PersonRequired = new("condominium.occupancy.person_required", "O vínculo precisa apontar para uma pessoa");

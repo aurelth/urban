@@ -30,6 +30,10 @@ public sealed class EmailVerificationToken : EmailLinkToken
     public static EmailVerificationToken IssueInvitation(Guid userId, string tokenHash, DateTimeOffset now) =>
         new(Guid.CreateVersion7(), userId, tokenHash, now, InvitationLifetime);
 
+    /// <summary>Diz se o link ainda serve, sem gastá-lo.</summary>
+    public Result Check(DateTimeOffset now) =>
+        CheckAt(now, EmailVerificationTokenErrors.Invalid, EmailVerificationTokenErrors.Expired);
+
     public Result Consume(DateTimeOffset now) =>
         ConsumeAt(now, EmailVerificationTokenErrors.Invalid, EmailVerificationTokenErrors.Expired);
 }

@@ -1,5 +1,6 @@
 using Urban.Condominium.Application.Abstractions;
 using Urban.Condominium.Domain.People;
+using Urban.SharedKernel.Abstractions;
 using Urban.SharedKernel.Contracts;
 
 namespace Urban.Condominium.Application.Residents;
@@ -8,7 +9,7 @@ namespace Urban.Condominium.Application.Residents;
 /// Monta o <see cref="ResidentView"/>, que leva a situação do acesso. A situação é do Identity (dono das contas), então este é o
 /// único lugar que a pergunta, e pergunta em lote: uma consulta por página, só sobre as pessoas que já têm conta, nunca uma por morador.
 /// </summary>
-public sealed class ResidentViews(IResidentAccess access)
+public sealed class ResidentViews(IResidentAccess access, IClock clock)
 {
     public async Task<ResidentView> ViewAsync(ResidentRecord record, CancellationToken cancellationToken) =>
         (await ViewAllAsync([record], cancellationToken))[0];
@@ -25,7 +26,9 @@ public sealed class ResidentViews(IResidentAccess access)
             ? new Dictionary<Guid, ResidentAccessStatus>()
             : await access.GetStatusesAsync(records.First().Person.CondominiumId, userIds, cancellationToken);
 
-        return [.. records.Select(r => ResidentView.From(r, StatusOf(r.Person, statuses)))];
+        DateOnly today = BrazilCalendar.Today(clock.UtcNow);
+
+        return [.. records.Select(r => ResidentView.From(r, StatusOf(r.Person, statuses), today))];
     }
 
     /// <summary>Quem tem conta que o Identity não conhece (excluída, por exemplo) não entra: nunca se presume ativo.</summary>

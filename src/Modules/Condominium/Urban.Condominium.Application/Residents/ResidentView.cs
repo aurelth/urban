@@ -5,7 +5,7 @@ using Urban.SharedKernel.Contracts;
 
 namespace Urban.Condominium.Application.Residents;
 
-/// <summary>Um morador como a tela o vê. O CPF só sai mascarado; <c>AccessStatus</c> diz em que pé está o acesso (sem convite, convidado, ativo ou inativo); a versão volta na edição para detectar que outra pessoa mudou o cadastro.</summary>
+/// <summary>Um morador como a tela o vê. <c>MissingData</c> lista o que falta no cadastro de um adulto (<c>profession</c>, <c>emergencyContact</c>) e fica vazia para menores e cadastros completos. O CPF só sai mascarado; <c>AccessStatus</c> diz em que pé está o acesso (sem convite, convidado, ativo ou inativo); a versão volta na edição para detectar que outra pessoa mudou o cadastro.</summary>
 public sealed record ResidentView(
     Guid Id,
     string FullName,
@@ -16,10 +16,11 @@ public sealed record ResidentView(
     string? Profession,
     EmergencyContactView? EmergencyContact,
     IReadOnlyList<ResidentOccupancyView> Occupancies,
+    IReadOnlyList<string> MissingData,
     ResidentAccessStatus AccessStatus,
     string Version)
 {
-    internal static ResidentView From(ResidentRecord record, ResidentAccessStatus accessStatus)
+    internal static ResidentView From(ResidentRecord record, ResidentAccessStatus accessStatus, DateOnly today)
     {
         Person person = record.Person;
 
@@ -33,6 +34,7 @@ public sealed record ResidentView(
             person.Profession?.Value,
             person.EmergencyContact is { } contact ? new EmergencyContactView(contact.Name.Value, contact.Relationship, contact.Phone.Value) : null,
             [.. record.Occupancies.Select(ResidentOccupancyView.From)],
+            person.MissingAdultData(today),
             accessStatus,
             record.Version);
     }

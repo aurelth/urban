@@ -15,7 +15,7 @@ public class ResidentQueriesHandlerTests
 {
     private readonly ResidentsTestKit _kit = new();
 
-    private ListResidentsQueryHandler ListHandler() => new(_kit.Residents.Object, _kit.Tenant, _kit.Views);
+    private ListResidentsQueryHandler ListHandler() => new(_kit.Residents.Object, _kit.Tenant, _kit.Views, _kit.Clock.Object);
 
     private GetResidentQueryHandler GetHandler() => new(_kit.Residents.Object, _kit.Tenant, _kit.Views);
 
@@ -164,5 +164,25 @@ public class ResidentQueriesHandlerTests
 
         result.Error.Should().Be(CondominiumErrors.NotFound);
         _kit.Residents.Verify(r => r.FindAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task List_WithIncompleteRegistration_AsksTheStoreForAdultsMissingDataAsOfTodayInBrazil()
+    {
+        ListReturns([], 0);
+
+        await ListHandler().Handle(new ListResidentsQuery(Registration: ResidentRegistrationFilter.Incomplete), default);
+
+        _kit.Residents.Verify(r => r.ListAsync(new ResidentFilter(null, null, ResidentStatusFilter.All, new DateOnly(2026, 11, 13)), 1, 50, It.IsAny<CancellationToken>()));
+    }
+
+    [Fact]
+    public async Task List_WithoutTheRegistrationFilter_DoesNotAskForIncompleteOnes()
+    {
+        ListReturns([], 0);
+
+        await ListHandler().Handle(new ListResidentsQuery(), default);
+
+        _kit.Residents.Verify(r => r.ListAsync(It.Is<ResidentFilter>(f => f.IncompleteOn == null), 1, 50, It.IsAny<CancellationToken>()));
     }
 }

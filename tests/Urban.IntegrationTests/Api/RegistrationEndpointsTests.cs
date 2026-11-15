@@ -289,10 +289,71 @@ public sealed class RegistrationEndpointsTests(ApiFixture fixture) : IDisposable
         (await _client.LoginAsync(user.Email.Value, Password)).StatusCode.Should().Be(HttpStatusCode.OK);
     }
 
+    // ---- Conferir o link sem gastá-lo ----
+
+    [Fact]
+    public async Task Check_with_a_valid_link_answers_204_without_spending_it()
+    {
+        (_, string token) = await SeedApprovedAsync();
+
+        HttpResponseMessage first = await CheckAsync(token);
+        HttpResponseMessage second = await CheckAsync(token);
+        HttpResponseMessage confirmed = await ConfirmAsync(token, Password);
+
+        first.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        second.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        confirmed.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        first.Headers.CacheControl!.NoStore.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Check_with_an_unknown_link_or_without_a_token_answers_400_invalid()
+    {
+        HttpResponseMessage unknown = await CheckAsync("link-que-nunca-existiu");
+        HttpResponseMessage empty = await _client.PostAsJsonAsync("/api/auth/confirm-email/check", new { });
+
+        unknown.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await unknown.CodeAsync()).Should().Be(EmailVerificationTokenErrors.Invalid.Code);
+        empty.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await empty.CodeAsync()).Should().Be(EmailVerificationTokenErrors.Invalid.Code);
+    }
+
+    [Fact]
+    public async Task Check_with_an_expired_link_answers_400_expired()
+    {
+        User user = await fixture.Postgres.SeedUserAsync(AccountStatus.PendingVerification, UserRole.Manager);
+        string secret = await SeedLinkAsync(user.Id, issuedAt: DateTimeOffset.UtcNow.AddHours(-25));
+
+        HttpResponseMessage response = await CheckAsync(secret);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.CodeAsync()).Should().Be(EmailVerificationTokenErrors.Expired.Code);
+    }
+
+    [Fact]
+    public async Task Check_with_a_used_link_or_a_link_of_an_account_that_is_no_longer_pending_answers_400_invalid()
+    {
+        (_, string used) = await SeedApprovedAsync();
+        (await ConfirmAsync(used, Password)).StatusCode.Should().Be(HttpStatusCode.NoContent);
+        User suspended = await fixture.Postgres.SeedUserAsync(AccountStatus.Suspended, UserRole.Manager);
+        string suspendedLink = await SeedLinkAsync(suspended.Id, issuedAt: DateTimeOffset.UtcNow.AddMinutes(-5));
+
+        HttpResponseMessage afterUse = await CheckAsync(used);
+        HttpResponseMessage ofSuspended = await CheckAsync(suspendedLink);
+
+        afterUse.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await afterUse.CodeAsync()).Should().Be(EmailVerificationTokenErrors.Invalid.Code);
+        ofSuspended.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await ofSuspended.CodeAsync()).Should().Be(EmailVerificationTokenErrors.Invalid.Code);
+    }
+
     private static string NewAddress() => $"{Guid.NewGuid():N}@example.com";
 
     private Task<HttpResponseMessage> RegisterAsync(string email) =>
         _client.PostAsJsonAsync("/api/auth/register", new { email, name = "Ana Paula", condominiumName = "Residencial Vila Verde" });
+
+    private Task<HttpResponseMessage> CheckAsync(string token) =>
+        _client.PostAsJsonAsync("/api/auth/confirm-email/check", new { token });
 
     private Task<HttpResponseMessage> ConfirmAsync(string token, string password) =>
         ConfirmWithTermsAsync(token, password, fixture.Factory.TermsVersion);
