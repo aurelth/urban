@@ -15,7 +15,7 @@ import {
  */
 export type ResidentsStatus = 'loading' | 'ready' | 'error';
 
-type Filters = Partial<Pick<ResidentsQuery, 'status' | 'search'>>;
+type Filters = Partial<Pick<ResidentsQuery, 'status' | 'registration' | 'search'>>;
 
 interface ResidentsState {
   status: ResidentsStatus;
@@ -39,7 +39,11 @@ export const ResidentsStore = signalStore(
     pageCount: computed(() => Math.max(1, Math.ceil(store.total() / store.query().pageSize))),
     hasFilters: computed(() => {
       const query = store.query();
-      return query.status !== DEFAULT_RESIDENTS_QUERY.status || query.search.trim() !== '';
+      return (
+        query.status !== DEFAULT_RESIDENTS_QUERY.status ||
+        query.registration !== DEFAULT_RESIDENTS_QUERY.registration ||
+        query.search.trim() !== ''
+      );
     }),
   })),
   withMethods((store) => {

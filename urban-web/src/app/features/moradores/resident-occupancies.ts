@@ -20,7 +20,7 @@ import { FormSubmit } from '../../shared/ui/form-submit/form-submit';
 import { SelectField, SelectOption } from '../../shared/ui/select-field/select.field';
 import { TextField } from '../../shared/ui/text-field/text.field';
 import { unitLabel } from '../units/unit-values';
-import { entryDate, exitDate } from './resident-field.validators';
+import { entryDate, entryNotBeforeBirth, exitDate } from './resident-field.validators';
 import { minorKind } from './resident-minor';
 import { RESIDENT_FORM_MESSAGES } from './resident-form.messages';
 import { ResidentFormStore } from './resident-form.store';
@@ -77,7 +77,17 @@ export class ResidentOccupancies {
       Validators.required,
       minorKind(() => this.isMinor()),
     ]),
-    startDate: ['', [Validators.required, entryDate()]],
+    startDate: [
+      '',
+      [
+        Validators.required,
+        entryDate(),
+        entryNotBeforeBirth(() => {
+          const resident = this.store.resident();
+          return resident === null ? '' : formatDay(resident.birthDate);
+        }),
+      ],
+    ],
   });
 
   protected readonly endingId = signal<string | null>(null);

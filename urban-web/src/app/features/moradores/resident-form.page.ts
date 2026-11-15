@@ -29,7 +29,7 @@ import { FormSubmit } from '../../shared/ui/form-submit/form-submit';
 import { SelectField, SelectOption } from '../../shared/ui/select-field/select.field';
 import { TextField } from '../../shared/ui/text-field/text.field';
 import { unitLabel } from '../units/unit-values';
-import { entryDate } from './resident-field.validators';
+import { birthNotAfterEntry, entryDate, entryNotBeforeBirth } from './resident-field.validators';
 import { minorKind, unlessMinor } from './resident-minor';
 import {
   ResidentFormValue,
@@ -43,13 +43,22 @@ import { EMAIL_LOCKED_MESSAGE, RESIDENT_FORM_MESSAGES } from './resident-form.me
 import { ResidentFormStore } from './resident-form.store';
 import { HOUSING_ERRORS, KIND_OPTIONS, startDateErrors } from './resident-housing.fields';
 import { ResidentOccupancies } from './resident-occupancies';
-import { occupancyUnit } from './resident-values';
+import { describeMissingData, formatDay, occupancyUnit } from './resident-values';
 
 const CREATE_EMAIL_HINT =
   'Opcional. Sem e-mail o morador fica cadastrado, mas não pode ser convidado a acessar o sistema';
 const INVITED_EMAIL_HINT =
   'O convite já foi enviado a este endereço. Para corrigi-lo, salve e use Reenviar convite';
 const UNSAVED_MESSAGE = 'Salve ou descarte as alterações antes de convidar';
+
+/** Recusas da API que têm um campo como dono: o texto aparece nele, e some quando a pessoa o corrige. */
+const FIELD_PROBLEMS: Readonly<Record<string, { control: FieldProblemControl; error: string }>> = {
+  'condominium.resident.email_already_registered': { control: 'email', error: 'taken' },
+  'condominium.occupancy.start_before_birth': { control: 'startDate', error: 'beforeBirth' },
+  'condominium.resident.birth_after_occupancy': { control: 'birthDate', error: 'afterEntry' },
+};
+
+type FieldProblemControl = 'email' | 'startDate' | 'birthDate';
 
 const PROFESSION_LENGTH = { min: 2, max: 80 };
 const RELATIONSHIP_LENGTH = { min: 2, max: 40 };
@@ -92,11 +101,18 @@ export class ResidentFormPage implements OnInit {
   /** Quem tem menos de 18 anos é dependente e fica dispensado de profissão e de contato de emergência. */
   protected readonly isMinor = signal(false);
 
+  /** Fora do grupo para a entrada poder conferir o nascimento sem esperar o formulário existir. */
+  private readonly birthDateControl = this.builder.control('', [
+    Validators.required,
+    birthDate(undefined, { allowMinor: true }),
+    birthNotAfterEntry(() => this.firstEntry()),
+  ]);
+
   protected readonly form = this.builder.group({
     fullName: ['', [requiredText, fullName]],
     // Na edição fica desabilitado (fora da validação) até a pessoa pedir para trocar o CPF.
     cpf: ['', [Validators.required, cpfNumber]],
-    birthDate: ['', [Validators.required, birthDate(undefined, { allowMinor: true })]],
+    birthDate: this.birthDateControl,
     phone: ['', [Validators.required, brazilianPhone]],
     email: ['', [emailFormat]],
     profession: [
@@ -142,7 +158,10 @@ export class ResidentFormPage implements OnInit {
       Validators.required,
       minorKind(() => this.isMinor()),
     ]),
-    startDate: ['', [Validators.required, entryDate()]],
+    startDate: [
+      '',
+      [Validators.required, entryDate(), entryNotBeforeBirth(() => this.birthDateControl.value)],
+    ],
   });
 
   protected readonly isEditing = computed(() => this.id() !== undefined);
@@ -199,6 +218,12 @@ export class ResidentFormPage implements OnInit {
       : null;
   });
 
+  /** O que falta no cadastro gravado do adulto, em texto; nulo quando está completo (ou no cadastro novo). */
+  protected readonly missingText = computed(() => {
+    const missing = this.store.resident()?.missingData ?? [];
+    return this.isEditing() && missing.length > 0 ? describeMissingData(missing) : null;
+  });
+
   protected readonly createdUnit = computed(() => {
     const occupancy = this.store.created()?.occupancies[0];
     return occupancy === undefined ? null : occupancyUnit(occupancy);
@@ -209,15 +234,19 @@ export class ResidentFormPage implements OnInit {
     fullName: 'Informe o nome e o sobrenome',
   };
   protected readonly cpfErrors = { required: 'Informe o CPF', cpf: 'Informe um CPF válido' };
-  protected readonly birthDateErrors = {
+  protected readonly birthDateErrors = computed(() => ({
     required: 'Informe a data de nascimento',
     date: 'Informe uma data válida, como 31/01/1980',
-  };
+    afterEntry: `A data de nascimento não pode ser posterior à primeira entrada em uma unidade, em ${formatDay(this.firstEntry() ?? '')}`,
+  }));
   protected readonly phoneErrors = {
     required: 'Informe o telefone',
     phone: 'Informe um telefone com DDD',
   };
-  protected readonly emailErrors = { email: 'Informe um e-mail válido, como nome@exemplo.com' };
+  protected readonly emailErrors = {
+    email: 'Informe um e-mail válido, como nome@exemplo.com',
+    taken: 'Este e-mail já está cadastrado para outro morador',
+  };
   protected readonly professionErrors = {
     required: 'Informe a profissão',
     tooShort: `A profissão deve ter de ${PROFESSION_LENGTH.min} a ${PROFESSION_LENGTH.max} caracteres`,
@@ -332,12 +361,40 @@ export class ResidentFormPage implements OnInit {
     }
   }
 
-  /** Conflito de versão e morador ausente têm aviso próprio na tela; o resto é texto no fim do formulário. */
+  /**
+   * Conflito de versão e morador ausente têm aviso próprio na tela; a recusa que tem campo dono (e-mail repetido, datas) vai
+   * para o campo; o resto é texto no fim do formulário.
+   */
   private showProblem(problem: ApiProblem | null): void {
     const status = this.store.status();
-    if (problem !== null && status !== 'conflict' && status !== 'not-found') {
+    if (problem === null || status === 'conflict' || status === 'not-found') {
+      return;
+    }
+    if (!this.markFieldProblem(problem)) {
       this.error.set(describeProblem(problem, RESIDENT_FORM_MESSAGES));
     }
+  }
+
+  private markFieldProblem(problem: ApiProblem): boolean {
+    const target = problem.code === null ? undefined : FIELD_PROBLEMS[problem.code];
+    const control = target === undefined ? undefined : this.form.controls[target.control];
+    if (target === undefined || control === undefined || control.disabled) {
+      return false;
+    }
+    control.setErrors({ [target.error]: true });
+    control.markAsTouched();
+    // O foco procura a marca de campo inválido, que só chega ao HTML depois de a tela se atualizar.
+    this.changeDetector.detectChanges();
+    focusFirstInvalidInput(this.host.nativeElement);
+    return true;
+  }
+
+  /** A primeira entrada do morador numa unidade (AAAA-MM-DD), entre todos os vínculos, ou nulo sem vínculo lido. */
+  private firstEntry(): string | null {
+    const dates = this.store.resident()?.occupancies.map((occupancy) => occupancy.startDate) ?? [];
+    return dates.length === 0
+      ? null
+      : dates.reduce((first, date) => (date < first ? date : first), dates[0]);
   }
 
   private fill(resident: Resident): void {
@@ -382,9 +439,17 @@ export class ResidentFormPage implements OnInit {
       contactRelationship,
       contactPhone,
       kind,
+      startDate,
     } = this.form.controls;
     this.isMinor.set(isMinorBirth(born.value));
-    for (const control of [profession, contactName, contactRelationship, contactPhone, kind]) {
+    for (const control of [
+      profession,
+      contactName,
+      contactRelationship,
+      contactPhone,
+      kind,
+      startDate,
+    ]) {
       control.updateValueAndValidity({ emitEvent: false, onlySelf: true });
     }
   }

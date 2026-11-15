@@ -5,6 +5,7 @@ import { MANAGER, stubSignedIn } from '../support/session';
 import { stubUnits } from '../support/unidades';
 import {
   CURRENT_RESIDENT,
+  INCOMPLETE_RESIDENT,
   RESIDENTS_PATH,
   stubInvitation,
   stubInvitationRejected,
@@ -76,6 +77,55 @@ describe('Moradores', () => {
       const last = calls[calls.length - 1] as unknown as { request: { url: string } };
       expect(last.request.url).to.contain('search=beto');
       expect(last.request.url).to.contain('status=all');
+    });
+  });
+
+  describe('cadastro incompleto', () => {
+    beforeEach(() => {
+      stubResidents([CURRENT_RESIDENT, INCOMPLETE_RESIDENT]);
+    });
+
+    it('marca em laranja, com ícone e texto, quem está sem profissão ou contato, e diz o que falta', () => {
+      cy.visit(RESIDENTS_PATH);
+
+      rows().should('have.length', 2);
+      rows().eq(0).find('[data-testid="incomplete-tag"]').should('not.exist');
+      rows()
+        .eq(1)
+        .find('[data-testid="incomplete-tag"]')
+        .should('contain.text', 'Cadastro incompleto')
+        .and('contain.text', 'Falta: profissão e contato de emergência')
+        .and('have.css', 'color', PALETTE.light.warning)
+        .find('mat-icon')
+        .should('exist');
+    });
+
+    it('o filtro "Cadastro pendente" mostra só os incompletos e "Limpar filtros" volta a todos', () => {
+      cy.visit(RESIDENTS_PATH);
+      rows().should('have.length', 2);
+
+      chooseMenu('[data-testid="filter-registration"]', 'Cadastro pendente');
+
+      rows().should('have.length', 1);
+      rows().first().should('contain.text', 'Caio Dias');
+      cy.get('@residents.all').then((calls) => {
+        const last = calls[calls.length - 1] as unknown as { request: { url: string } };
+        expect(last.request.url).to.contain('registration=incomplete');
+      });
+
+      cy.get('[data-testid="clear-filters"]').click();
+      rows().should('have.length', 2);
+    });
+
+    it('no celular a etiqueta cabe na tela, sem rolagem horizontal', () => {
+      cy.viewport(PHONE.width, PHONE.height);
+      cy.visit(RESIDENTS_PATH);
+
+      rows().should('have.length', 2);
+      rows().eq(1).find('[data-testid="incomplete-tag"]').should('be.visible');
+      cy.document().should((doc) => {
+        expect(doc.documentElement.scrollWidth).to.be.at.most(doc.documentElement.clientWidth);
+      });
     });
   });
 

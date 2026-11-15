@@ -20,6 +20,7 @@ export interface StubResident {
   profession: string | null;
   emergencyContact: { name: string; relationship: string; phone: string } | null;
   accessStatus: 'none' | 'invited' | 'active' | 'inactive';
+  missingData: ('profession' | 'emergencyContact')[];
   occupancies: StubOccupancy[];
   version: string;
 }
@@ -35,6 +36,7 @@ export function stubResident(overrides: Partial<StubResident> = {}): StubResiden
     profession: 'Engenheira',
     emergencyContact: { name: 'Carlos Lima', relationship: 'Irmão', phone: '4733334444' },
     accessStatus: 'none',
+    missingData: [],
     occupancies: [
       {
         id: '0199cccc-0000-7000-8000-000000000001',
@@ -73,6 +75,17 @@ export const FORMER_RESIDENT = stubResident({
   version: '8',
 });
 
+/** Um adulto cadastrado como dependente que ainda não tem profissão nem contato de emergência. */
+export const INCOMPLETE_RESIDENT = stubResident({
+  id: '0199bbbb-0000-7000-8000-000000000004',
+  fullName: 'Caio Dias',
+  maskedCpf: '***.444.555-**',
+  profession: null,
+  emergencyContact: null,
+  missingData: ['profession', 'emergencyContact'],
+  version: '10',
+});
+
 const LIST_URL = /^\/api\/residents(\?.*)?$/;
 
 /**
@@ -84,11 +97,16 @@ export function stubResidents(
   alias = 'residents',
 ): void {
   cy.intercept('GET', LIST_URL, (request) => {
-    const status = new URL(request.url, 'http://localhost').searchParams.get('status');
+    const params = new URL(request.url, 'http://localhost').searchParams;
+    const status = params.get('status');
     const lives = (item: StubResident): boolean => item.occupancies.some((o) => o.endDate === null);
-    const shown = items.filter((item) =>
+    const bySituation = items.filter((item) =>
       status === 'former' ? !lives(item) : status === 'all' ? true : lives(item),
     );
+    const shown =
+      params.get('registration') === 'incomplete'
+        ? bySituation.filter((item) => item.missingData.length > 0)
+        : bySituation;
     request.reply({
       statusCode: 200,
       body: { items: shown, total: shown.length, page: 1, pageSize: 50 },

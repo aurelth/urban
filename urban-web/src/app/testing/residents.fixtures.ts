@@ -30,6 +30,7 @@ export function resident(overrides: Partial<Resident> = {}): Resident {
     profession: 'Engenheira',
     emergencyContact: { name: 'Carlos Souza', relationship: 'Irmão', phone: '4733334444' },
     accessStatus: 'none',
+    missingData: [],
     occupancies: [occupancy()],
     version: String(sequence),
     ...overrides,

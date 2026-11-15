@@ -29,7 +29,7 @@
     }
     @case ('ready') {
       <form
-        class="grid gap-x-4 sm:grid-cols-2"
+        class="grid gap-x-4 sm:grid-cols-2 lg:grid-cols-3"
         data-testid="filters"
         (submit)="$event.preventDefault()"
       >
@@ -40,6 +40,15 @@
             [options]="statusOptions"
             [value]="store.query().status"
             (valueChange)="onStatus($event)"
+          />
+        </mat-form-field>
+        <mat-form-field appearance="outline" subscriptSizing="dynamic" class="mb-4 w-full">
+          <mat-label>Cadastro</mat-label>
+          <urban-menu-select
+            data-testid="filter-registration"
+            [options]="registrationOptions"
+            [value]="store.query().registration"
+            (valueChange)="onRegistration($event)"
           />
         </mat-form-field>
         <mat-form-field appearance="outline" subscriptSizing="dynamic" class="mb-4 w-full">
@@ -201,15 +210,26 @@
 </section>
 
 <ng-template #situation let-item>
-  @if (lives(item)) {
-    <span class="inline-flex items-center gap-1 text-success">
-      <mat-icon svgIcon="check_circle" aria-hidden="true" />
-      <span>Mora</span>
-    </span>
-  } @else {
-    <span class="inline-flex items-center gap-1 text-warning">
-      <mat-icon svgIcon="event_busy" aria-hidden="true" />
-      <span>Ex-morador</span>
-    </span>
-  }
+  <span class="flex flex-col items-start gap-2">
+    @if (lives(item)) {
+      <span class="inline-flex items-center gap-1 text-success">
+        <mat-icon svgIcon="check_circle" aria-hidden="true" />
+        <span>Mora</span>
+      </span>
+    } @else {
+      <span class="inline-flex items-center gap-1 text-warning">
+        <mat-icon svgIcon="event_busy" aria-hidden="true" />
+        <span>Ex-morador</span>
+      </span>
+    }
+    @if (item.missingData.length > 0) {
+      <span class="inline-flex items-start gap-1 text-warning" data-testid="incomplete-tag">
+        <mat-icon svgIcon="warning" aria-hidden="true" />
+        <span>
+          <span class="block">Cadastro incompleto</span>
+          <span class="block text-sm">Falta: {{ missing(item.missingData) }}</span>
+        </span>
+      </span>
+    }
+  </span>
 </ng-template>

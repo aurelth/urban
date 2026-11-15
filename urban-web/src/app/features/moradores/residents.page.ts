@@ -5,9 +5,13 @@ import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatIcon } from '@angular/material/icon';
 import { MatInput } from '@angular/material/input';
 import { RouterLink } from '@angular/router';
-import { ResidentStatusFilter } from '../../core/residents/residents.models';
+import {
+  ResidentRegistrationFilter,
+  ResidentStatusFilter,
+} from '../../core/residents/residents.models';
 import { MenuOption, MenuSelect } from '../../shared/ui/menu-select/menu-select';
 import {
+  describeMissingData,
   formatPhone,
   isCurrentResident,
   kindLabel,
@@ -25,8 +29,15 @@ const STATUS_OPTIONS: readonly MenuOption[] = [
   { value: 'all', label: 'Todos' },
 ];
 
+const REGISTRATIONS: readonly ResidentRegistrationFilter[] = ['all', 'incomplete'];
+
+const REGISTRATION_OPTIONS: readonly MenuOption[] = [
+  { value: 'all', label: 'Todos os cadastros' },
+  { value: 'incomplete', label: 'Cadastro pendente' },
+];
+
 /**
- * Lista dos moradores do condomínio: busca por nome, filtro entre quem mora e quem já saiu, e uma linha por pessoa com o
+ * Lista dos moradores do condomínio: busca por nome, filtros (quem mora ou já saiu, cadastro pendente) e uma linha por pessoa com o
  * contato, a situação do acesso ao sistema (com "Convidar") e todos os vínculos (unidade, tipo e período). Daqui se abre o cadastro ("Novo morador") e a edição de cada morador.
  */
 @Component({
@@ -50,12 +61,14 @@ export class ResidentsPage implements OnInit {
   protected readonly store = inject(ResidentsStore);
 
   protected readonly statusOptions = STATUS_OPTIONS;
+  protected readonly registrationOptions = REGISTRATION_OPTIONS;
 
   protected readonly lives = isCurrentResident;
   protected readonly unit = occupancyUnit;
   protected readonly kind = kindLabel;
   protected readonly period = occupancyPeriod;
   protected readonly phone = formatPhone;
+  protected readonly missing = describeMissingData;
 
   ngOnInit(): void {
     void this.load();
@@ -70,12 +83,17 @@ export class ResidentsPage implements OnInit {
     void this.store.filter({ status });
   }
 
+  protected onRegistration(value: string): void {
+    const registration = REGISTRATIONS.find((candidate) => candidate === value) ?? 'all';
+    void this.store.filter({ registration });
+  }
+
   protected onSearch(event: Event): void {
     void this.store.filter({ search: (event.target as HTMLInputElement).value });
   }
 
   protected clearFilters(): void {
-    void this.store.filter({ status: 'active', search: '' });
+    void this.store.filter({ status: 'active', registration: 'all', search: '' });
   }
 
   protected goTo(page: number): void {

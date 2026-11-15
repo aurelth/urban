@@ -1,5 +1,10 @@
 import { FormControl } from '@angular/forms';
-import { entryDate, exitDate } from './resident-field.validators';
+import {
+  birthNotAfterEntry,
+  entryDate,
+  entryNotBeforeBirth,
+  exitDate,
+} from './resident-field.validators';
 
 const TODAY = new Date(2026, 10, 13);
 
@@ -77,4 +82,50 @@ describe('exitDate', () => {
       expect(checkExit(value)).toEqual({ date: true });
     },
   );
+});
+
+describe('entryNotBeforeBirth', () => {
+  function checkEntry(value: string, birth = '20/05/1990'): Record<string, unknown> | null {
+    return entryNotBeforeBirth(() => birth)(new FormControl(value, { nonNullable: true }));
+  }
+
+  it('aceita a entrada no dia do nascimento e depois dele', () => {
+    expect(checkEntry('20/05/1990')).toBeNull();
+    expect(checkEntry('01/03/2024')).toBeNull();
+  });
+
+  it('recusa a entrada um dia antes do nascimento', () => {
+    expect(checkEntry('19/05/1990')).toEqual({ beforeBirth: true });
+    expect(checkEntry('01/01/1980')).toEqual({ beforeBirth: true });
+  });
+
+  it('deixa o vazio, a entrada ilegível e o nascimento ainda incompleto para os outros validadores', () => {
+    expect(checkEntry('')).toBeNull();
+    expect(checkEntry('31/02/2024')).toBeNull();
+    expect(checkEntry('01/01/1980', '')).toBeNull();
+    expect(checkEntry('01/01/1980', '20/05/19')).toBeNull();
+    expect(checkEntry('01/01/1980', '31/02/1990')).toBeNull();
+  });
+});
+
+describe('birthNotAfterEntry', () => {
+  function checkBirth(value: string, firstEntry: string | null): Record<string, unknown> | null {
+    return birthNotAfterEntry(() => firstEntry)(new FormControl(value, { nonNullable: true }));
+  }
+
+  it('aceita o nascimento no dia da primeira entrada e antes dela', () => {
+    expect(checkBirth('01/03/2024', '2024-03-01')).toBeNull();
+    expect(checkBirth('20/05/1990', '2024-03-01')).toBeNull();
+  });
+
+  it('recusa o nascimento depois da primeira entrada', () => {
+    expect(checkBirth('02/03/2024', '2024-03-01')).toEqual({ afterEntry: true });
+  });
+
+  it('sem vínculo (cadastro), vazio ou data ilegível, não decide nada', () => {
+    expect(checkBirth('02/03/2024', null)).toBeNull();
+    expect(checkBirth('', '2024-03-01')).toBeNull();
+    expect(checkBirth('31/02/2024', '2024-03-01')).toBeNull();
+    expect(checkBirth('01/01/20', '2024-03-01')).toBeNull();
+  });
 });

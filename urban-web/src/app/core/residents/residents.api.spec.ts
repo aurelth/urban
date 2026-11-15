@@ -66,6 +66,16 @@ describe('ResidentsApi', () => {
       );
     });
 
+    it('só manda o filtro de cadastro quando é o de cadastros incompletos', () => {
+      expect(listParams(DEFAULT_RESIDENTS_QUERY).has('registration')).toBe(false);
+      expect(
+        listParams({ ...DEFAULT_RESIDENTS_QUERY, registration: 'all' }).has('registration'),
+      ).toBe(false);
+      expect(
+        listParams({ ...DEFAULT_RESIDENTS_QUERY, registration: 'incomplete' }).get('registration'),
+      ).toBe('incomplete');
+    });
+
     it('manda a página pedida', () => {
       const params = listParams({ ...DEFAULT_RESIDENTS_QUERY, page: 3 });
 

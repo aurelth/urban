@@ -8,6 +8,7 @@ describe('startDateErrors', () => {
       required: 'Informe a data de entrada',
       date: 'Informe uma data de entrada válida, como 01/03/2024',
       tooOld: 'A data de entrada não pode ser anterior a 01/01/1900',
+      beforeBirth: 'A data de entrada não pode ser anterior ao nascimento',
       future: 'A data de entrada pode ser, no máximo, 14/11/2027 (1 ano à frente de hoje)',
     });
   });

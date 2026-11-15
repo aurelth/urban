@@ -1,5 +1,10 @@
 import { unitLabel } from '../units/unit-values';
-import { OccupancyKind, Resident, ResidentOccupancy } from '../../core/residents/residents.models';
+import {
+  MissingResidentData,
+  OccupancyKind,
+  Resident,
+  ResidentOccupancy,
+} from '../../core/residents/residents.models';
 
 const MOBILE_DIGITS = 11;
 const LANDLINE_DIGITS = 10;
@@ -53,4 +58,14 @@ export function formatPhone(digits: string): string {
 export function formatDay(date: string): string {
   const [year, month, day] = date.split('-');
   return `${day}/${month}/${year}`;
+}
+
+const MISSING_LABELS: Readonly<Record<MissingResidentData, string>> = {
+  profession: 'profissão',
+  emergencyContact: 'contato de emergência',
+};
+
+/** O que falta no cadastro do adulto, em texto corrido: "profissão e contato de emergência"; vazio quando nada falta. */
+export function describeMissingData(missing: readonly MissingResidentData[]): string {
+  return missing.map((data) => MISSING_LABELS[data]).join(' e ');
 }

@@ -28,6 +28,7 @@ export function startDateErrors(
     required: 'Informe a data de entrada',
     date: 'Informe uma data de entrada válida, como 01/03/2024',
     tooOld: `A data de entrada não pode ser anterior a 01/01/${FIRST_ENTRY_YEAR}`,
+    beforeBirth: 'A data de entrada não pode ser anterior ao nascimento',
     future: `A data de entrada pode ser, no máximo, ${day}/${month}/${now.getFullYear() + 1} (1 ano à frente de hoje)`,
   };
 }
