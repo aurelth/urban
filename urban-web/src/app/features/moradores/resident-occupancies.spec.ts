@@ -144,6 +144,20 @@ describe('ResidentOccupancies', () => {
       expect(items[1]).toContain('Já saiu');
     });
 
+    it('"Mora aqui" aparece em verde e "Já saiu" em laranja, os dois com ícone', async () => {
+      const { html } = await open();
+
+      const status = (label: string): HTMLElement =>
+        [...html.querySelectorAll<HTMLElement>('[data-testid="occupancy"] p')].find((p) =>
+          p.textContent!.includes(label),
+        )!;
+      expect(status('Mora aqui').classList.contains('text-success')).toBe(true);
+      expect(status('Mora aqui').querySelector('mat-icon')).not.toBeNull();
+      expect(status('Já saiu').classList.contains('text-warning')).toBe(true);
+      expect(status('Já saiu').classList.contains('text-on-surface-variant')).toBe(false);
+      expect(status('Já saiu').querySelector('mat-icon')).not.toBeNull();
+    });
+
     it('só o vínculo em andamento tem "Encerrar vínculo", com o nome da unidade para o leitor de tela', async () => {
       const { html } = await open();
 
@@ -384,6 +398,18 @@ describe('ResidentOccupancies', () => {
 
       expect(errorTexts(h.html)).toEqual(['Quem tem menos de 18 anos só pode ser dependente']);
       // Nenhuma gravação saiu: o verify() do afterEach falharia.
+    });
+
+    it('data de entrada antiga demais em "Adicionar unidade": o erro no campo diz o motivo', async () => {
+      const h = await open();
+      await openAdd(h);
+      setFieldValue(field(h.html, 'unitId'), B_202.id);
+      setFieldValue(field(h.html, 'kind'), 'tenant');
+      setFieldValue(field(h.html, 'startDate'), '01011850');
+
+      await submit(h, 'add-form');
+
+      expect(errorTexts(h.html)).toEqual(['A data de entrada não pode ser anterior a 01/01/1900']);
     });
 
     it('morador menor de idade pode ganhar outra unidade como dependente', async () => {

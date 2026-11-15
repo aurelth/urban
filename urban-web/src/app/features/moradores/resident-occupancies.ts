@@ -24,7 +24,7 @@ import { entryDate, exitDate } from './resident-field.validators';
 import { minorKind } from './resident-minor';
 import { RESIDENT_FORM_MESSAGES } from './resident-form.messages';
 import { ResidentFormStore } from './resident-form.store';
-import { HOUSING_ERRORS, KIND_OPTIONS } from './resident-housing.fields';
+import { HOUSING_ERRORS, KIND_OPTIONS, startDateErrors } from './resident-housing.fields';
 import { toEndPayload, toOccupancyPayload } from './resident-occupancy.payload';
 import { formatDay, kindLabel, occupancyPeriod, occupancyUnit } from './resident-values';
 
@@ -116,7 +116,7 @@ export class ResidentOccupancies {
   }));
   protected readonly unitErrors = HOUSING_ERRORS.unit;
   protected readonly kindErrors = HOUSING_ERRORS.kind;
-  protected readonly startDateErrors = HOUSING_ERRORS.startDate;
+  protected readonly startDateErrors = startDateErrors();
   protected readonly kindOptions = KIND_OPTIONS;
 
   protected readonly unitName = occupancyUnit;

@@ -279,6 +279,17 @@ describe('ResidentsPage', () => {
       expect(row.querySelector('mat-icon')).not.toBeNull();
     });
 
+    it('"Mora" aparece em verde e "Ex-morador" em laranja', async () => {
+      const { html } = await setup();
+
+      const [lives, former] = rows(html);
+      expect(lives.querySelector('.text-success')?.textContent).toContain('Mora');
+      expect(lives.querySelector('.text-success .text-on-surface')).toBeNull();
+      expect(lives.querySelector('.text-success mat-icon')).not.toBeNull();
+      expect(former.querySelector('.text-warning')?.textContent).toContain('Ex-morador');
+      expect(former.querySelector('.text-warning mat-icon')).not.toBeNull();
+    });
+
     it('lista todos os vínculos de quem tem mais de um', async () => {
       const both = resident({
         occupancies: [
