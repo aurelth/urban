@@ -13,6 +13,10 @@ public sealed class CondominiumUnit
     public const int FractionDecimalPlaces = 8;
     public const int AreaDecimalPlaces = 2;
     public const decimal AreaMaximum = 99999.99m;
+    public const int ParkingSpotsMaximum = 5;
+    public const int ParkingSpotMaxLength = 20;
+
+    private string[] _parkingSpots = [];
 
     private CondominiumUnit(Guid condominiumId, UnitData data, DateTimeOffset createdAt)
     {
@@ -46,6 +50,9 @@ public sealed class CondominiumUnit
     /// <summary>Área privativa em m². Opcional.</summary>
     public decimal? Area { get; private set; }
 
+    /// <summary>Vagas de garagem (até 5, opcionais), cada uma pela identificação que o condomínio usa; a ordem é a que o síndico deu.</summary>
+    public IReadOnlyList<string> ParkingSpots => _parkingSpots;
+
     public DateTimeOffset CreatedAt { get; }
 
     public DateTimeOffset? DeactivatedAt { get; private set; }
@@ -61,14 +68,15 @@ public sealed class CondominiumUnit
         UnitType type,
         decimal? idealFraction,
         decimal? area,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        IReadOnlyList<string?>? parkingSpots = null)
     {
         if (condominiumId == Guid.Empty)
         {
             return Result.Failure<CondominiumUnit>(UnitErrors.CondominiumRequired);
         }
 
-        Result<UnitData> data = Normalize(block, number, type, idealFraction, area);
+        Result<UnitData> data = Normalize(block, number, type, idealFraction, area, parkingSpots);
 
         return data.IsSuccess
             ? Result.Success(new CondominiumUnit(condominiumId, data.Value, now))
@@ -79,7 +87,7 @@ public sealed class CondominiumUnit
     /// Valida e normaliza os dados sem criar nem tocar em nenhuma unidade: serve a quem precisa saber se a criação ou a
     /// edição vai passar (e o que vai ser gravado) antes de consultar o banco.
     /// </summary>
-    public static Result<UnitData> Normalize(string? block, string? number, UnitType type, decimal? idealFraction, decimal? area)
+    public static Result<UnitData> Normalize(string? block, string? number, UnitType type, decimal? idealFraction, decimal? area, IReadOnlyList<string?>? parkingSpots = null)
     {
         string normalizedNumber = TextRules.Normalize(number);
         if (normalizedNumber.Length is 0 or > NumberMaxLength || TextRules.HasControlCharacters(normalizedNumber))
@@ -108,18 +116,27 @@ public sealed class CondominiumUnit
             return Result.Failure<UnitData>(UnitErrors.AreaInvalid);
         }
 
-        return Result.Success(new UnitData(normalizedBlock.Length == 0 ? null : normalizedBlock, normalizedNumber, type, idealFraction, area));
+        Result<IReadOnlyList<string>> spots = NormalizeParkingSpots(parkingSpots);
+        if (spots.IsFailure)
+        {
+            return Result.Failure<UnitData>(spots.Error);
+        }
+
+        return Result.Success(new UnitData(normalizedBlock.Length == 0 ? null : normalizedBlock, normalizedNumber, type, idealFraction, area, spots.Value));
     }
 
-    /// <summary>Troca os dados da unidade. Se algum for inválido nada muda. Unidade desativada não se edita: reative primeiro.</summary>
-    public Result Update(string? block, string? number, UnitType type, decimal? idealFraction, decimal? area)
+    /// <summary>
+    /// Troca os dados da unidade. Se algum for inválido nada muda. Unidade desativada não se edita: reative primeiro.
+    /// <paramref name="parkingSpots"/> nulo mantém as vagas atuais; uma lista vazia as remove.
+    /// </summary>
+    public Result Update(string? block, string? number, UnitType type, decimal? idealFraction, decimal? area, IReadOnlyList<string?>? parkingSpots = null)
     {
         if (!IsActive)
         {
             return Result.Failure(UnitErrors.Deactivated);
         }
 
-        Result<UnitData> data = Normalize(block, number, type, idealFraction, area);
+        Result<UnitData> data = Normalize(block, number, type, idealFraction, area, parkingSpots ?? _parkingSpots);
         if (data.IsFailure)
         {
             return Result.Failure(data.Error);
@@ -161,6 +178,36 @@ public sealed class CondominiumUnit
         Type = data.Type;
         IdealFraction = data.IdealFraction;
         Area = data.Area;
+        _parkingSpots = [.. data.ParkingSpots];
+    }
+
+    private static Result<IReadOnlyList<string>> NormalizeParkingSpots(IReadOnlyList<string?>? spots)
+    {
+        if (spots is null or { Count: 0 })
+        {
+            return Result.Success<IReadOnlyList<string>>([]);
+        }
+
+        if (spots.Count > ParkingSpotsMaximum)
+        {
+            return Result.Failure<IReadOnlyList<string>>(UnitErrors.ParkingSpotsTooMany);
+        }
+
+        List<string> normalized = [];
+        foreach (string? spot in spots)
+        {
+            string text = TextRules.Normalize(spot);
+            if (text.Length is 0 or > ParkingSpotMaxLength || TextRules.HasControlCharacters(text))
+            {
+                return Result.Failure<IReadOnlyList<string>>(UnitErrors.ParkingSpotInvalid);
+            }
+
+            normalized.Add(text);
+        }
+
+        return normalized.Distinct(StringComparer.OrdinalIgnoreCase).Count() == normalized.Count
+            ? Result.Success<IReadOnlyList<string>>(normalized)
+            : Result.Failure<IReadOnlyList<string>>(UnitErrors.ParkingSpotsDuplicate);
     }
 
     private static bool IsValidFraction(decimal fraction) => fraction is > 0m and <= 1m && decimal.Round(fraction, FractionDecimalPlaces) == fraction;

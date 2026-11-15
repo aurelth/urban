@@ -39,6 +39,8 @@ describe('Unidades', () => {
     rows().should('have.length', 2);
     rows().first().should('contain.text', 'Bloco A · 101').and('contain.text', '1,25%');
     rows().first().should('contain.text', '52,5 m²');
+    rows().first().find('[data-testid="parking-spots"]').should('have.text', '12, G2 05');
+    rows().eq(1).find('[data-testid="parking-spots"]').should('have.text', '—');
     cy.get('[data-testid="summary-active"]').should('contain.text', '2');
     cy.get('[data-testid="summary-without-area"]').should('contain.text', '1');
     cy.get('input[type="radio"][value="idealFraction"]').should('be.checked');
@@ -63,9 +65,74 @@ describe('Unidades', () => {
       type: 'apartment',
       idealFraction: 0.015,
       area: 48.75,
+      parkingSpots: [],
     });
     cy.get('urban-unit-dialog').should('not.exist');
     cy.get('@units.all').should('have.length.at.least', 2);
+  });
+
+  it('cadastra uma unidade com vagas de garagem, separadas por virgula', () => {
+    cy.intercept('POST', '/api/units', { statusCode: 201, body: stubUnit() }).as('createUnit');
+    cy.visit(UNITS_PATH);
+
+    cy.get('[data-testid="new-unit"]').click();
+    enter('urban-unit-dialog [formControlName="number"]', '301');
+    enter('urban-unit-dialog [formControlName="parkingSpots"]', ' 12 ,G2   05 ');
+    cy.get('urban-unit-dialog').contains('button', 'Cadastrar unidade').click();
+
+    cy.wait('@createUnit').its('request.body.parkingSpots').should('deep.equal', ['12', 'G2 05']);
+    cy.get('urban-unit-dialog').should('not.exist');
+  });
+
+  it('avisa no campo quando as vagas passam de 5, repetem ou sao compridas demais, sem cobrir nada', () => {
+    cy.visit(UNITS_PATH);
+
+    cy.get('[data-testid="new-unit"]').click();
+    enter('urban-unit-dialog [formControlName="number"]', '301');
+    enter('urban-unit-dialog [formControlName="parkingSpots"]', '1,2,3,4,5,6');
+    cy.get('urban-unit-dialog').contains('button', 'Cadastrar unidade').click();
+    cy.get('urban-unit-dialog').should('contain.text', 'Informe até 5 vagas por unidade');
+    expectErrorsToStayInTheirOwnSpace();
+
+    enter('urban-unit-dialog [formControlName="parkingSpots"]', 'V1, v1');
+    cy.get('urban-unit-dialog').should('contain.text', 'A mesma vaga aparece mais de uma vez');
+    enter('urban-unit-dialog [formControlName="parkingSpots"]', '9'.repeat(21));
+    cy.get('urban-unit-dialog').should('contain.text', 'Cada vaga pode ter até 20 caracteres');
+    expectErrorsToStayInTheirOwnSpace();
+  });
+
+  it('diz no dialogo qual vaga ja e de outra unidade', () => {
+    stubUnitRejected('POST', '/api/units', 409, 'unit.parking_spot.already_exists', 'createUnit', {
+      data: { spot: 'G2 05' },
+    });
+    cy.visit(UNITS_PATH);
+
+    cy.get('[data-testid="new-unit"]').click();
+    enter('urban-unit-dialog [formControlName="number"]', '301');
+    enter('urban-unit-dialog [formControlName="parkingSpots"]', 'G2 05');
+    cy.get('urban-unit-dialog').contains('button', 'Cadastrar unidade').click();
+
+    cy.get('urban-unit-dialog [role="alert"]').should(
+      'have.text',
+      'A vaga G2 05 já pertence a outra unidade do condomínio',
+    );
+    cy.get('urban-unit-dialog [formControlName="parkingSpots"]').should('have.value', 'G2 05');
+  });
+
+  it('edita as vagas: abre com as atuais e apagar o campo remove todas', () => {
+    cy.intercept('PUT', `/api/units/${FIRST_UNIT.id}`, {
+      statusCode: 200,
+      body: { ...FIRST_UNIT, parkingSpots: [], version: '44' },
+    }).as('updateUnit');
+    cy.visit(UNITS_PATH);
+
+    cy.get('button[aria-label="Editar Bloco A · 101"]').click();
+    cy.get('urban-unit-dialog [formControlName="parkingSpots"]').should('have.value', '12, G2 05');
+    cy.get('urban-unit-dialog [formControlName="parkingSpots"]').click('right').clear();
+    cy.get('urban-unit-dialog').contains('button', 'Salvar alterações').click();
+
+    cy.wait('@updateUnit').its('request.body.parkingSpots').should('deep.equal', []);
+    cy.get('urban-unit-dialog').should('not.exist');
   });
 
   it('mostra os erros dos campos do dialogo sem cobrir nada', () => {
@@ -107,14 +174,17 @@ describe('Unidades', () => {
     enter('urban-unit-dialog [formControlName="area"]', '60');
     cy.get('urban-unit-dialog').contains('button', 'Salvar alterações').click();
 
-    cy.wait('@updateUnit').its('request.body').should('deep.equal', {
-      block: 'A',
-      number: '101',
-      type: 'apartment',
-      idealFraction: 0.0125,
-      area: 60,
-      version: '41',
-    });
+    cy.wait('@updateUnit')
+      .its('request.body')
+      .should('deep.equal', {
+        block: 'A',
+        number: '101',
+        type: 'apartment',
+        idealFraction: 0.0125,
+        area: 60,
+        parkingSpots: ['12', 'G2 05'],
+        version: '41',
+      });
     cy.get('urban-unit-dialog').should('not.exist');
   });
 
@@ -207,6 +277,24 @@ describe('Unidades', () => {
 
     rows().should('have.length', 2);
     cy.get('[data-testid="user-menu"]').should('be.visible');
+    cy.document().should((doc) => {
+      expect(doc.documentElement.scrollWidth).to.be.at.most(doc.documentElement.clientWidth);
+    });
+  });
+
+  it('mostra o dialogo com o campo das vagas inteiro numa tela de 375 px, sem rolagem horizontal', () => {
+    cy.viewport(375, 667);
+    cy.visit(UNITS_PATH);
+
+    cy.get('[data-testid="new-unit"]').click();
+    cy.get('urban-unit-dialog [formControlName="parkingSpots"]')
+      .scrollIntoView()
+      .should('be.visible');
+    cy.get('urban-unit-dialog [formControlName="parkingSpots"]').then(($input) => {
+      const { left, right } = $input.closest('mat-form-field')[0].getBoundingClientRect();
+      expect(left).to.be.at.least(0);
+      expect(right).to.be.at.most(375);
+    });
     cy.document().should((doc) => {
       expect(doc.documentElement.scrollWidth).to.be.at.most(doc.documentElement.clientWidth);
     });

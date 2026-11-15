@@ -194,6 +194,101 @@ public sealed class CondominiumUnitsTests(CondominiumPostgresFixture postgres)
         (await ChangeLogCountAsync(condominium.Id)).Should().Be(0);
     }
 
+    // ---- Vagas de garagem ----
+
+    [Fact]
+    public async Task The_parking_spots_come_back_from_the_database_in_the_order_they_went_in_and_default_to_none()
+    {
+        CondominiumEntity condominium = await SeedCondominiumAsync();
+        CondominiumUnit withSpots = UnitBuilders.Unit(condominium.Id, null, "101", parkingSpots: ["G2 05", "V1", "12"]);
+        CondominiumUnit without = UnitBuilders.Unit(condominium.Id, null, "102");
+        await AddAsync(condominium, withSpots);
+        await AddAsync(condominium, without);
+
+        (await FindAsync(condominium, withSpots.Id))!.Unit.ParkingSpots.Should().Equal("G2 05", "V1", "12");
+        (await FindAsync(condominium, without.Id))!.Unit.ParkingSpots.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task The_column_is_a_text_array_that_is_never_null_and_defaults_to_empty()
+    {
+        await using CondominiumDbContext db = postgres.CreateContext();
+
+        ColumnDetails column = await db.Database.SqlQuery<ColumnDetails>($"""
+            select data_type as data_type, is_nullable as is_nullable, column_default as column_default from information_schema.columns
+            where table_schema = 'condominium' and table_name = 'unit' and column_name = 'parking_spots'
+            """).SingleAsync(Ct);
+
+        column.DataType.Should().Be("ARRAY");
+        column.IsNullable.Should().Be("NO");
+        column.ColumnDefault.Should().NotBeNull("as unidades que já existiam ganham a lista vazia");
+    }
+
+    [Fact]
+    public async Task A_spot_that_belongs_to_another_unit_is_refused_ignoring_case_and_outer_spaces_even_when_that_unit_is_deactivated()
+    {
+        CondominiumEntity condominium = await SeedCondominiumAsync();
+        CondominiumUnit owner = UnitBuilders.Unit(condominium.Id, null, "101", parkingSpots: ["G2 05"]);
+        await AddAsync(condominium, owner);
+
+        Result<string> same = await AddAsync(condominium, UnitBuilders.Unit(condominium.Id, null, "102", parkingSpots: ["V9", " g2 05 "]));
+        UnitRecord record = (await FindAsync(condominium, owner.Id))!;
+        record.Unit.Deactivate(At);
+        await SaveAsync(condominium, record);
+        Result<string> whileDeactivated = await AddAsync(condominium, UnitBuilders.Unit(condominium.Id, null, "103", parkingSpots: ["G2 05"]));
+
+        same.Error.Code.Should().Be(UnitErrors.ParkingSpotAlreadyExists.Code);
+        same.Error.Data.Should().ContainKey("spot").WhoseValue.Should().Be("g2 05");
+        whileDeactivated.Error.Code.Should().Be(UnitErrors.ParkingSpotAlreadyExists.Code);
+    }
+
+    [Fact]
+    public async Task The_same_spot_can_exist_in_two_condominiums_and_a_unit_keeps_its_own_spots_when_saved_again()
+    {
+        CondominiumEntity first = await SeedCondominiumAsync();
+        CondominiumEntity second = await SeedCondominiumAsync();
+        CondominiumUnit mine = UnitBuilders.Unit(first.Id, null, "101", parkingSpots: ["V1"]);
+        await AddAsync(first, mine);
+
+        (await AddAsync(second, UnitBuilders.Unit(second.Id, null, "101", parkingSpots: ["V1"]))).IsSuccess.Should().BeTrue();
+
+        Result<string> edited = await UpdateAsync(first, mine.Id, unit => unit.Update(null, "101", UnitType.Apartment, null, 60m), "area");
+
+        edited.IsSuccess.Should().BeTrue();
+        (await FindAsync(first, mine.Id))!.Unit.ParkingSpots.Should().Equal("V1");
+    }
+
+    [Fact]
+    public async Task Editing_a_unit_to_take_a_spot_of_another_is_refused_and_a_freed_spot_can_be_taken()
+    {
+        CondominiumEntity condominium = await SeedCondominiumAsync();
+        CondominiumUnit one = UnitBuilders.Unit(condominium.Id, null, "101", parkingSpots: ["V1"]);
+        CondominiumUnit two = UnitBuilders.Unit(condominium.Id, null, "102", parkingSpots: ["V2"]);
+        await AddAsync(condominium, one);
+        await AddAsync(condominium, two);
+
+        Result<string> refused = await UpdateAsync(condominium, two.Id, unit => unit.Update(null, "102", UnitType.Apartment, null, null, ["V2", "V1"]), "parkingSpots");
+        refused.Error.Code.Should().Be(UnitErrors.ParkingSpotAlreadyExists.Code);
+        refused.Error.Data.Should().ContainKey("spot").WhoseValue.Should().Be("V1");
+
+        (await UpdateAsync(condominium, one.Id, unit => unit.Update(null, "101", UnitType.Apartment, null, null, []), "parkingSpots")).IsSuccess.Should().BeTrue();
+        (await AddAsync(condominium, UnitBuilders.Unit(condominium.Id, null, "103", parkingSpots: ["V1"]))).IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task FindTakenParkingSpot_answers_the_first_spot_as_asked_and_ignores_the_unit_being_edited()
+    {
+        CondominiumEntity condominium = await SeedCondominiumAsync();
+        CondominiumUnit owner = UnitBuilders.Unit(condominium.Id, null, "101", parkingSpots: ["V1", "V2"]);
+        await AddAsync(condominium, owner);
+        await using CondominiumDbContext db = postgres.CreateContext(condominium.Id);
+        CondominiumUnits units = new(db);
+
+        (await units.FindTakenParkingSpotAsync(["X9", "v2"], null, Ct)).Should().Be("v2");
+        (await units.FindTakenParkingSpotAsync(["X9"], null, Ct)).Should().BeNull();
+        (await units.FindTakenParkingSpotAsync(["V1"], owner.Id, Ct)).Should().BeNull();
+    }
+
     // ---- Tenant, versão e valores ----
 
     [Fact]
@@ -540,6 +635,16 @@ public sealed class CondominiumUnitsTests(CondominiumPostgresFixture postgres)
         (await new CondominiumUnits(db).SaveAsync(fresh, Entry(condominium, record.Unit.Id, "deactivated"), Ct)).IsSuccess.Should().BeTrue();
     }
 
+    private async Task<Result<string>> UpdateAsync(CondominiumEntity condominium, Guid unitId, Func<CondominiumUnit, Result> change, params string[] fields)
+    {
+        await using CondominiumDbContext db = postgres.CreateContext(condominium.Id);
+        CondominiumUnits units = new(db);
+        UnitRecord record = (await units.FindAsync(unitId, Ct))!;
+        change(record.Unit).IsSuccess.Should().BeTrue();
+
+        return await units.SaveAsync(record, Entry(condominium, unitId, fields), Ct);
+    }
+
     private async Task<int> ChangeLogCountAsync(Guid condominiumId)
     {
         await using CondominiumDbContext db = postgres.CreateContext();
@@ -552,6 +657,8 @@ public sealed class CondominiumUnitsTests(CondominiumPostgresFixture postgres)
             select numeric_precision as precision, numeric_scale as scale from information_schema.columns
             where table_schema = 'condominium' and table_name = 'unit' and column_name = {column}
             """).SingleAsync(Ct);
+
+    private sealed record ColumnDetails(string DataType, string IsNullable, string? ColumnDefault);
 
     private sealed record ColumnInfo(string DataType, int? Length);
 

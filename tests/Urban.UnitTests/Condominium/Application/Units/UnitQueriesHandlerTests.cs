@@ -41,6 +41,17 @@ public class UnitQueriesHandlerTests
     }
 
     [Fact]
+    public async Task List_ShowsTheParkingSpotsOfEachUnit_InTheOrderTheyWereSaved()
+    {
+        ListReturns([new UnitRecord(_kit.NewUnit("1", parkingSpots: ["V2", "G1 05"]), "1"), new UnitRecord(_kit.NewUnit("2"), "1")], total: 2);
+
+        Result<UnitListing> result = await ListHandler().Handle(new ListUnitsQuery(Page: 1, PageSize: 50), default);
+
+        result.Value.Items[0].ParkingSpots.Should().Equal("V2", "G1 05");
+        result.Value.Items[1].ParkingSpots.Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task List_PassesTheFiltersToTheStore_AndActiveUnitsAreTheDefault()
     {
         ListReturns([], 0);

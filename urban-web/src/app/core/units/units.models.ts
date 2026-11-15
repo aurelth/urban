@@ -15,6 +15,8 @@ export interface Unit {
   readonly isActive: boolean;
   readonly deactivatedAt: string | null;
   readonly version: string;
+  /** Até 5 vagas de garagem, na ordem em que o síndico as deu. */
+  readonly parkingSpots: readonly string[];
 }
 
 /** Resposta de GET /api/units. */
@@ -51,6 +53,8 @@ export interface UnitPayload {
   readonly type: UnitKind;
   readonly idealFraction: number | null;
   readonly area: number | null;
+  /** Na edição, ausente mantém as vagas e uma lista vazia as remove; o cadastro em lote não leva vagas. */
+  readonly parkingSpots?: readonly string[];
 }
 
 /** Corpo de PUT /api/units/{id}: os mesmos campos, mais a versão lida. */

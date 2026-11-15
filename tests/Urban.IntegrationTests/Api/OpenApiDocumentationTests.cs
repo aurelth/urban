@@ -213,6 +213,7 @@ public sealed class OpenApiDocumentationTests
     [InlineData("/api/finance/expenses/{id}/amount", "post")]
     [InlineData("/api/finance/expenses/{id}/installments/{number}", "put")]
     [InlineData("/api/finance/expenses/{id}/end", "post")]
+    [InlineData("/api/finance/expenses/{id}", "delete")]
     [InlineData("/api/finance/months/{month}", "get")]
     [InlineData("/api/finance/months/{month}/open", "post")]
     [InlineData("/api/finance/months/{month}/close", "post")]

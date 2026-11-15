@@ -225,6 +225,65 @@ describe('ExpensesStore', () => {
       expect(await ending).toBeNull();
     });
 
+    it('exclui uma despesa mandando a versao que a tela leu e atualiza a lista', async () => {
+      const { store, http } = setup();
+      const target = expense({ version: '11' });
+      await loaded(store, http, [target]);
+
+      const deleting = store.remove(target);
+      http
+        .expectOne({ method: 'DELETE', url: `/api/finance/expenses/${target.id}?version=11` })
+        .flush(null, { status: 204, statusText: 'No Content' });
+      await flushPromises();
+      answerRefresh(http, []);
+
+      expect(await deleting).toBeNull();
+      expect(store.expenses()).toEqual([]);
+    });
+
+    it.each([
+      [409, 'expense.delete_has_closed_months'],
+      [409, 'expense.delete_has_paid_entries'],
+    ])(
+      'devolve o problema sem atualizar quando a exclusao e recusada (%i %s)',
+      async (status, code) => {
+        const { store, http } = setup();
+        const target = expense();
+        await loaded(store, http, [target]);
+
+        const deleting = store.remove(target);
+        http
+          .expectOne({
+            method: 'DELETE',
+            url: `/api/finance/expenses/${target.id}?version=${target.version}`,
+          })
+          .flush(...fail(status, code));
+        const result = await deleting;
+
+        expect(result?.code).toBe(code);
+        expect(store.busy()).toBe(false);
+      },
+    );
+
+    it('busca a tela de novo quando a despesa ja nao existe mais', async () => {
+      const { store, http } = setup();
+      const target = expense();
+      await loaded(store, http, [target]);
+
+      const deleting = store.remove(target);
+      http
+        .expectOne({
+          method: 'DELETE',
+          url: `/api/finance/expenses/${target.id}?version=${target.version}`,
+        })
+        .flush(...fail(404, 'expense.not_found'));
+      await flushPromises();
+      answerRefresh(http, []);
+
+      expect((await deleting)?.code).toBe('expense.not_found');
+      expect(store.expenses()).toEqual([]);
+    });
+
     it('cria e renomeia grupos', async () => {
       const { store, http } = setup();
       await loaded(store, http);

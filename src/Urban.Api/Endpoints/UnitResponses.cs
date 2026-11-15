@@ -10,7 +10,8 @@ public sealed record UnitResponse(
     decimal? Area,
     bool IsActive,
     DateTimeOffset? DeactivatedAt,
-    string Version);
+    string Version,
+    IReadOnlyList<string> ParkingSpots);
 
 public sealed record UnitListResponse(IReadOnlyList<UnitResponse> Items, int Total, int Page, int PageSize);
 

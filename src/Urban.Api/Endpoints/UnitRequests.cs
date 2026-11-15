@@ -5,7 +5,8 @@ namespace Urban.Api.Endpoints;
 /// responde 400 com o código do campo. A fração vai de 0 a 1 (1,25% é 0,0125) e a área em m².
 /// </summary>
 /// <param name="Version">Só na edição: a versão lida em <c>GET /api/units/{id}</c>.</param>
-public sealed record UnitRequest(string? Version, string? Block, string? Number, string? Type, decimal? IdealFraction, decimal? Area);
+/// <param name="ParkingSpots">Até 5 vagas de garagem, cada uma com até 20 caracteres e sem repetir, nem em outra unidade do condomínio. Ausente mantém as vagas atuais na edição; uma lista vazia as remove.</param>
+public sealed record UnitRequest(string? Version, string? Block, string? Number, string? Type, decimal? IdealFraction, decimal? Area, IReadOnlyList<string?>? ParkingSpots = null);
 
 /// <summary>Uma unidade dentro do cadastro em lote.</summary>
 public sealed record UnitItemRequest(string? Block, string? Number, string? Type, decimal? IdealFraction, decimal? Area);

@@ -47,6 +47,24 @@ public sealed class FinanceExpenses(FinanceDbContext db) : IExpenses
         return await SaveChangesAsync(record.Expense, cancellationToken);
     }
 
+    public async Task<Result> RemoveAsync(ExpenseRecord record, CancellationToken cancellationToken)
+    {
+        db.Expenses.Remove(record.Expense);
+
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+
+            return Result.Success();
+        }
+        catch (Exception ex) when (ex is DbUpdateConcurrencyException || (ex is DbUpdateException update && PostgresErrors.IsReferencedRowViolation(update)))
+        {
+            db.ChangeTracker.Clear();
+
+            return Result.Failure(FinanceErrors.ConcurrencyConflict);
+        }
+    }
+
     private async Task<Result<string>> SaveChangesAsync(Expense expense, CancellationToken cancellationToken)
     {
         try

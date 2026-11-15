@@ -29,7 +29,7 @@ interface Harness {
   html: HTMLElement;
 }
 
-const FIRST = unit({ block: 'A', number: '101', version: '41' });
+const FIRST = unit({ block: 'A', number: '101', version: '41', parkingSpots: ['12', 'G2 05'] });
 const SECOND = unit({ block: 'A', number: '102', type: 'house', idealFraction: null, area: null });
 const OFF = unit({
   block: 'B',
@@ -231,13 +231,32 @@ describe('UnitsPage', () => {
       expect(rowText(second)).toContain('—');
     });
 
+    it('mostra as vagas de garagem de cada unidade, ou um traco quando nao tem', async () => {
+      const { html } = await setup();
+
+      const [first, second] = rows(html);
+      expect(first.querySelector('[data-testid="parking-spots"]')?.textContent?.trim()).toBe(
+        '12, G2 05',
+      );
+      expect(second.querySelector('[data-testid="parking-spots"]')?.textContent?.trim()).toBe('—');
+      expect(html.querySelector('th')!.parentElement!.textContent).toContain('Vagas');
+    });
+
     it('descreve a tabela para leitores de tela', async () => {
       const { html } = await setup();
 
       expect(html.querySelector('table caption')?.textContent?.trim()).toBe('Lista de unidades');
       const headers = [...html.querySelectorAll('th')].map((header) => header.textContent!.trim());
-      expect(headers).toEqual(['Unidade', 'Tipo', 'Fração ideal', 'Área', 'Situação', 'Ações']);
-      expect(html.querySelectorAll('th[scope="col"]')).toHaveLength(6);
+      expect(headers).toEqual([
+        'Unidade',
+        'Tipo',
+        'Fração ideal',
+        'Área',
+        'Vagas',
+        'Situação',
+        'Ações',
+      ]);
+      expect(html.querySelectorAll('th[scope="col"]')).toHaveLength(7);
     });
 
     it('unidade desativada so pode ser reativada e mostra a situacao em texto', async () => {
@@ -400,6 +419,7 @@ describe('UnitsPage', () => {
         type: 'apartment',
         idealFraction: null,
         area: null,
+        parkingSpots: [],
       });
       post.flush(unit());
       await settle(fixture);
@@ -425,6 +445,46 @@ describe('UnitsPage', () => {
 
       expect(dialogAlert()).toBe('Já existe uma unidade com este bloco e número');
       expect(dialog()).not.toBeNull();
+    });
+
+    it('diz qual vaga ja e de outra unidade', async () => {
+      const { http, html, fixture } = await setup();
+      testId(html, 'new-unit')!.click();
+      TestBed.tick();
+      typeInDialog('number', '301');
+      typeInDialog('parkingSpots', 'G2 05');
+
+      submitDialog();
+      await settle(fixture);
+      http
+        .expectOne('/api/units')
+        .flush(problem(409, 'unit.parking_spot.already_exists', 'x', { spot: 'G2 05' }), {
+          status: 409,
+          statusText: 'Erro',
+        });
+      await settle(fixture);
+
+      expect(dialogAlert()).toBe('A vaga G2 05 já pertence a outra unidade do condomínio');
+      expect(dialog()).not.toBeNull();
+    });
+
+    it.each([
+      ['unit.parking_spots.too_many', 'Informe até 5 vagas por unidade'],
+      ['unit.parking_spot.invalid', 'Cada vaga pode ter de 1 a 20 caracteres'],
+      ['unit.parking_spots.duplicate', 'A mesma vaga aparece mais de uma vez'],
+    ])('traduz %s no dialogo', async (code, message) => {
+      const { http, html, fixture } = await setup();
+      testId(html, 'new-unit')!.click();
+      TestBed.tick();
+      typeInDialog('number', '301');
+
+      submitDialog();
+      await settle(fixture);
+      const [body, options] = failure(400, code);
+      http.expectOne('/api/units').flush(body, options);
+      await settle(fixture);
+
+      expect(dialogAlert()).toBe(message);
     });
 
     it.each([
@@ -479,6 +539,7 @@ describe('UnitsPage', () => {
         type: 'apartment',
         idealFraction: 0.0125,
         area: 60,
+        parkingSpots: ['12', 'G2 05'],
         version: '41',
       });
       put.flush({ ...FIRST, area: 60, version: '42' });

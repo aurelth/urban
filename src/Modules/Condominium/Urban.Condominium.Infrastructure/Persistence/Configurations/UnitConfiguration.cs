@@ -13,6 +13,9 @@ internal sealed class UnitConfiguration : IEntityTypeConfiguration<CondominiumUn
     /// </summary>
     public const string IdentifierIndex = "ix_unit_identifier";
 
+    /// <summary>Nome do campo privado do Domain que guarda as vagas de garagem.</summary>
+    public const string ParkingSpotsField = "_parkingSpots";
+
     public void Configure(EntityTypeBuilder<CondominiumUnit> builder)
     {
         builder.ToTable("unit");
@@ -29,6 +32,9 @@ internal sealed class UnitConfiguration : IEntityTypeConfiguration<CondominiumUn
         // numeric(9,8): de 0 a 1 com 8 casas. numeric(7,2): até 99.999,99 m².
         builder.Property(u => u.IdealFraction).HasPrecision(9, 8);
         builder.Property(u => u.Area).HasPrecision(7, 2);
+
+        // As vagas moram num campo (o Domain as expõe só para leitura) e vão para uma coluna text[] que nunca é nula.
+        builder.Property<string[]>(ParkingSpotsField).HasColumnName("parking_spots").IsRequired();
 
         builder.Property(u => u.CreatedAt);
         builder.Property(u => u.DeactivatedAt);

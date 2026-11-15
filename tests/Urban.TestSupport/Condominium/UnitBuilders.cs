@@ -13,8 +13,9 @@ public static class UnitBuilders
         string number = "101",
         UnitType type = UnitType.Apartment,
         decimal? idealFraction = null,
-        decimal? area = null) =>
-        CondominiumUnit.Create(condominiumId ?? Guid.CreateVersion7(), block, number, type, idealFraction, area, Now).Value;
+        decimal? area = null,
+        IReadOnlyList<string>? parkingSpots = null) =>
+        CondominiumUnit.Create(condominiumId ?? Guid.CreateVersion7(), block, number, type, idealFraction, area, Now, parkingSpots).Value;
 
     /// <summary>Uma unidade já desativada.</summary>
     public static CondominiumUnit Deactivated(Guid? condominiumId = null, string number = "101", decimal? idealFraction = null)

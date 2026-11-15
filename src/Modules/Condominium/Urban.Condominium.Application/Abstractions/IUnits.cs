@@ -27,6 +27,12 @@ public interface IUnits
     /// <summary>Quais destes identificadores já existem.</summary>
     Task<IReadOnlySet<UnitIdentity>> TakenAmongAsync(IReadOnlyCollection<UnitIdentity> identities, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// A primeira destas vagas (como foi digitada) que já pertence a outra unidade do condomínio, ativa ou desativada, sem diferenciar
+    /// maiúsculas, sem contar <paramref name="exceptUnitId"/>; nulo se nenhuma está tomada.
+    /// </summary>
+    Task<string?> FindTakenParkingSpotAsync(IReadOnlyCollection<string> spots, Guid? exceptUnitId, CancellationToken cancellationToken);
+
     /// <returns>A versão da nova unidade, ou a falha: identificador repetido ou soma das frações acima de 100%.</returns>
     Task<Result<string>> AddAsync(CondominiumUnit unit, ChangeLogEntry entry, CancellationToken cancellationToken);
 

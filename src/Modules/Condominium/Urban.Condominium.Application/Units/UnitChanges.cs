@@ -17,6 +17,7 @@ internal static class UnitChanges
         fields.Add("type");
         AddIf(fields, "idealFraction", data.IdealFraction is not null);
         AddIf(fields, "area", data.Area is not null);
+        AddIf(fields, "parkingSpots", data.ParkingSpots.Count > 0);
 
         return fields;
     }
@@ -30,8 +31,22 @@ internal static class UnitChanges
         AddIf(fields, "type", data.Type != unit.Type);
         AddIf(fields, "idealFraction", data.IdealFraction != unit.IdealFraction);
         AddIf(fields, "area", data.Area != unit.Area);
+        AddIf(fields, "parkingSpots", !data.ParkingSpots.SequenceEqual(unit.ParkingSpots));
 
         return fields;
+    }
+
+    /// <summary>Recusa a lista de vagas se alguma já é de outra unidade (a <paramref name="exceptUnitId"/> é a que está sendo editada). Lista vazia não consulta nada.</summary>
+    public static async Task<Result> EnsureSpotsAreFreeAsync(IUnits units, IReadOnlyList<string> spots, Guid? exceptUnitId, CancellationToken cancellationToken)
+    {
+        if (spots.Count == 0)
+        {
+            return Result.Success();
+        }
+
+        string? taken = await units.FindTakenParkingSpotAsync(spots, exceptUnitId, cancellationToken);
+
+        return taken is null ? Result.Success() : Result.Failure(UnitErrors.ParkingSpotTaken(taken));
     }
 
     /// <summary>Confere a soma das frações com <paramref name="addedFraction"/> a mais. A consulta ignora a unidade informada (a que está sendo editada ou reativada).</summary>

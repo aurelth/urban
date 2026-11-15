@@ -25,7 +25,7 @@ public class ExpenseChangesHandlersTests
 
     private SetInstallmentAmountCommandHandler InstallmentHandler() => new(_kit.Expenses, _kit.Entries, _kit.Closings, _kit.Tenant, _kit.Atomic, _kit.Clock);
 
-    private EndExpenseCommandHandler EndHandler() => new(_kit.Expenses, _kit.Tenant, _kit.Clock);
+    private EndExpenseCommandHandler EndHandler() => new(_kit.Expenses, _kit.Entries, _kit.Closings, _kit.Tenant, _kit.Atomic, _kit.Clock);
 
     // ---- update ----
 
@@ -196,6 +196,109 @@ public class ExpenseChangesHandlersTests
         result.Value.EndMonth.Should().Be("2027-02");
         result.Value.Version.Should().Be("6");
         expense.IsDueIn(M(2027, 3)).Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task End_MarksTheExpenseAsEndedAtOnce_EvenWithTheLastMonthStillAhead()
+    {
+        Expense expense = _kit.NewFixed(_group, M(2026, 9));
+
+        Result<ExpenseView> result = await EndHandler().Handle(new EndExpenseCommand(expense.Id, "5", "2027-02"), default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.IsEnded.Should().BeTrue();
+        expense.EndedAt.Should().Be(FinanceTestKit.Now);
+    }
+
+    [Fact]
+    public async Task End_RemovesTheEntriesAfterTheLastMonthAndKeepsTheOthers()
+    {
+        Expense expense = _kit.NewFixed(_group, M(2026, 9));
+        Expense other = _kit.NewFixed(_group, M(2026, 9), description: "Jardinagem");
+        ExpenseEntry november = _kit.NewEntry(expense, M(2026, 11));
+        ExpenseEntry december = _kit.NewEntry(expense, M(2026, 12));
+        _kit.NewEntry(expense, M(2027, 1));
+        _kit.NewEntry(expense, M(2027, 2));
+        ExpenseEntry othersJanuary = _kit.NewEntry(other, M(2027, 1));
+
+        Result<ExpenseView> result = await EndHandler().Handle(new EndExpenseCommand(expense.Id, "5", "2026-12"), default);
+
+        result.IsSuccess.Should().BeTrue();
+        _kit.Entries.All.Should().BeEquivalentTo([november, december, othersJanuary]);
+        _kit.Entries.Removed.Should().HaveCount(2);
+        _kit.Atomic.Runs.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task End_WithNoEntryAfterTheLastMonth_RemovesNothing()
+    {
+        Expense expense = _kit.NewFixed(_group, M(2026, 9));
+        _kit.NewEntry(expense, M(2026, 11));
+
+        Result<ExpenseView> result = await EndHandler().Handle(new EndExpenseCommand(expense.Id, "5", "2026-12"), default);
+
+        result.IsSuccess.Should().BeTrue();
+        _kit.Entries.All.Should().HaveCount(1);
+        _kit.Entries.Removed.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task End_RefusesWhenALaterEntryIsInAClosedMonth_AndChangesNothing()
+    {
+        Expense expense = _kit.NewFixed(_group, M(2026, 9));
+        _kit.NewEntry(expense, M(2026, 11));
+        _kit.NewEntry(expense, M(2027, 1));
+        _kit.CloseMonth(M(2027, 1));
+
+        Result<ExpenseView> result = await EndHandler().Handle(new EndExpenseCommand(expense.Id, "5", "2026-12"), default);
+
+        result.Error.Should().Be(ExpenseErrors.EndHasClosedMonths);
+        expense.EndMonth.Should().BeNull();
+        expense.EndedAt.Should().BeNull();
+        _kit.Entries.All.Should().HaveCount(2);
+        _kit.Expenses.Saved.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task End_IgnoresAClosedMonthThatIsNotAfterTheLastMonth()
+    {
+        Expense expense = _kit.NewFixed(_group, M(2026, 9));
+        _kit.NewEntry(expense, M(2026, 11));
+        _kit.NewEntry(expense, M(2027, 1));
+        _kit.CloseMonth(M(2026, 11));
+
+        Result<ExpenseView> result = await EndHandler().Handle(new EndExpenseCommand(expense.Id, "5", "2026-12"), default);
+
+        result.IsSuccess.Should().BeTrue();
+        _kit.Entries.All.Should().HaveCount(1);
+    }
+
+    [Fact]
+    public async Task End_RefusesWhenALaterEntryIsAlreadyPaid_AndChangesNothing()
+    {
+        Expense expense = _kit.NewFixed(_group, M(2026, 9));
+        ExpenseEntry january = _kit.NewEntry(expense, M(2027, 1));
+        january.SetStatus(EntryStatus.Paid).IsSuccess.Should().BeTrue();
+
+        Result<ExpenseView> result = await EndHandler().Handle(new EndExpenseCommand(expense.Id, "5", "2026-12"), default);
+
+        result.Error.Should().Be(ExpenseErrors.EndHasPaidEntries);
+        expense.EndedAt.Should().BeNull();
+        _kit.Entries.All.Should().HaveCount(1);
+        _kit.Expenses.Saved.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task End_RemovesTheCanceledEntriesAfterTheLastMonthToo()
+    {
+        Expense expense = _kit.NewFixed(_group, M(2026, 9));
+        ExpenseEntry january = _kit.NewEntry(expense, M(2027, 1));
+        january.SetStatus(EntryStatus.Canceled).IsSuccess.Should().BeTrue();
+
+        Result<ExpenseView> result = await EndHandler().Handle(new EndExpenseCommand(expense.Id, "5", "2026-12"), default);
+
+        result.IsSuccess.Should().BeTrue();
+        _kit.Entries.All.Should().BeEmpty();
     }
 
     [Fact]

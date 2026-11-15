@@ -2,9 +2,12 @@ import {
   formatArea,
   formatAreaInput,
   formatPercent,
+  formatParkingSpots,
+  formatParkingSpotsInput,
   formatPercentInput,
   fractionToPercent,
   parseArea,
+  parseParkingSpots,
   parsePercent,
   percentToFraction,
   unitLabel,
@@ -162,5 +165,56 @@ describe('unitLabel', () => {
 
   it.each([null, ''])('sem bloco (%p), mostra so o numero', (block) => {
     expect(unitLabel({ block, number: '12' })).toBe('12');
+  });
+});
+
+describe('parseParkingSpots', () => {
+  it.each(['', '   ', ' , ; '])('texto vazio ("%s") e valido e significa "sem vagas"', (text) => {
+    expect(parseParkingSpots(text)).toEqual({ valid: true, value: [] });
+  });
+
+  it('separa por virgula ou ponto e virgula, apara e junta os espacos repetidos', () => {
+    expect(parseParkingSpots(' 12 ,G2   05; V1 ,')).toEqual({
+      valid: true,
+      value: ['12', 'G2 05', 'V1'],
+    });
+  });
+
+  it('aceita ate 5 vagas e recusa a sexta', () => {
+    expect(parseParkingSpots('1,2,3,4,5')).toEqual({
+      valid: true,
+      value: ['1', '2', '3', '4', '5'],
+    });
+    expect(parseParkingSpots('1,2,3,4,5,6')).toEqual({ valid: false, reason: 'tooMany' });
+  });
+
+  it('aceita 20 caracteres e recusa 21', () => {
+    expect(parseParkingSpots('9'.repeat(20)).valid).toBe(true);
+    expect(parseParkingSpots('9'.repeat(21))).toEqual({ valid: false, reason: 'tooLong' });
+  });
+
+  it('recusa a mesma vaga duas vezes, sem diferenciar maiusculas nem espacos', () => {
+    expect(parseParkingSpots('V1, v1')).toEqual({ valid: false, reason: 'duplicate' });
+    expect(parseParkingSpots('G 2,  g   2')).toEqual({ valid: false, reason: 'duplicate' });
+  });
+
+  it('diz "muitas" antes de "comprida" e "comprida" antes de "repetida", como a API', () => {
+    expect(parseParkingSpots(`1,2,3,4,5,${'9'.repeat(21)}`)).toEqual({
+      valid: false,
+      reason: 'tooMany',
+    });
+    expect(parseParkingSpots(`a,a,${'9'.repeat(21)}`)).toEqual({ valid: false, reason: 'tooLong' });
+  });
+});
+
+describe('formatParkingSpotsInput e formatParkingSpots', () => {
+  it('no campo, as vagas vao separadas por virgula; sem vagas fica vazio', () => {
+    expect(formatParkingSpotsInput(['12', 'G2 05'])).toBe('12, G2 05');
+    expect(formatParkingSpotsInput([])).toBe('');
+  });
+
+  it('na lista, mostra as vagas ou um traco', () => {
+    expect(formatParkingSpots(['12', 'G2 05'])).toBe('12, G2 05');
+    expect(formatParkingSpots([])).toBe('—');
   });
 });

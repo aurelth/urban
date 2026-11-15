@@ -15,6 +15,7 @@ export function unit(overrides: Partial<Unit> = {}): Unit {
     isActive: true,
     deactivatedAt: null,
     version: String(sequence),
+    parkingSpots: [],
     ...overrides,
   };
 }

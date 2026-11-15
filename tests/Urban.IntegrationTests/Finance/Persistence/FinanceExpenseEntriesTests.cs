@@ -178,4 +178,46 @@ public class FinanceExpenseEntriesTests(FinancePostgresFixture postgres)
         reloaded.DueDate.Should().Be(new DateOnly(2026, 11, 10));
         reloaded.Status.Should().Be(status);
     }
+    [Fact]
+    public async Task RemoveRange_DeletesOnlyThoseEntries()
+    {
+        ExpenseGroup group = await _kit.StoreGroupAsync();
+        Expense expense = await _kit.StoreFixedAsync(group, FinanceStoreKit.M(2026, 9));
+        await _kit.StoreEntryAsync(expense, FinanceStoreKit.M(2026, 11));
+        await _kit.StoreEntryAsync(expense, FinanceStoreKit.M(2026, 12));
+        await _kit.StoreEntryAsync(expense, FinanceStoreKit.M(2027, 1));
+        FinanceExpenseEntries store = _kit.Entries();
+        IReadOnlyList<ExpenseEntryRecord> later = await store.ListForExpenseFromAsync(expense.Id, FinanceStoreKit.M(2026, 12), default);
+
+        Result removed = await store.RemoveRangeAsync(later, default);
+
+        removed.IsSuccess.Should().BeTrue();
+        IReadOnlyList<ExpenseEntryRecord> left = await _kit.Entries().ListForExpenseFromAsync(expense.Id, FinanceStoreKit.M(2026, 1), default);
+        left.Select(record => record.Entry.Month).Should().Equal(FinanceStoreKit.M(2026, 11));
+    }
+
+    [Fact]
+    public async Task RemoveRange_OfAnEntryThatWasEditedMeanwhile_IsAConflictAndRemovesNothing()
+    {
+        ExpenseGroup group = await _kit.StoreGroupAsync();
+        Expense expense = await _kit.StoreFixedAsync(group, FinanceStoreKit.M(2026, 9));
+        ExpenseEntry stored = await _kit.StoreEntryAsync(expense, FinanceStoreKit.M(2026, 11));
+        FinanceExpenseEntries staleStore = _kit.Entries();
+        IReadOnlyList<ExpenseEntryRecord> stale = await staleStore.ListForExpenseFromAsync(expense.Id, FinanceStoreKit.M(2026, 11), default);
+        FinanceExpenseEntries freshStore = _kit.Entries();
+        ExpenseEntryRecord fresh = (await freshStore.FindAsync(stored.Id, default))!;
+        fresh.Entry.SetAmount(310m);
+        (await freshStore.SaveAsync(fresh, default)).IsSuccess.Should().BeTrue();
+
+        Result removed = await staleStore.RemoveRangeAsync(stale, default);
+
+        removed.Error.Should().Be(FinanceErrors.ConcurrencyConflict);
+        (await _kit.Entries().FindAsync(stored.Id, default)).Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task RemoveRange_WithNothingToRemove_Succeeds()
+    {
+        (await _kit.Entries().RemoveRangeAsync([], default)).IsSuccess.Should().BeTrue();
+    }
 }

@@ -61,6 +61,21 @@ public class ListExpensesQueryHandlerTests
     }
 
     [Fact]
+    public async Task Handle_AnExpenseTheManagerEndedWithTheLastMonthStillAhead_IsEndedAtOnce()
+    {
+        Seed();
+        Expense contract = _kit.NewFixed(_group, M(2026, 1), description: "Contrato de dedetização");
+        contract.End(M(2027, 3), FinanceTestKit.Now).IsSuccess.Should().BeTrue();
+
+        IReadOnlyList<ExpenseView> active = await ListAsync(ExpenseStatusFilter.Active);
+        IReadOnlyList<ExpenseView> ended = await ListAsync(ExpenseStatusFilter.Ended);
+
+        active.Select(expense => expense.Description).Should().NotContain("Contrato de dedetização");
+        ended.Select(expense => expense.Description).Should().Contain("Contrato de dedetização");
+        ended.Single(expense => expense.Description == "Contrato de dedetização").IsEnded.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task Handle_All_ShowsEverything()
     {
         Seed();

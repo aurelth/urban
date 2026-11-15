@@ -20,4 +20,10 @@ public interface IExpenses
     /// <summary>Grava as mudanças feitas na despesa lida por <see cref="FindAsync"/>.</summary>
     /// <returns>A nova versão, ou o conflito de versão.</returns>
     Task<Result<string>> SaveAsync(ExpenseRecord record, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Apaga a despesa lida por <see cref="FindAsync"/>, com o cronograma e o histórico de reajustes. Versão velha, ou um lançamento
+    /// que ainda aponte para a despesa, vira <see cref="Urban.Finance.Domain.FinanceErrors.ConcurrencyConflict"/>.
+    /// </summary>
+    Task<Result> RemoveAsync(ExpenseRecord record, CancellationToken cancellationToken);
 }

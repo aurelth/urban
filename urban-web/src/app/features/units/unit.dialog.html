@@ -40,6 +40,14 @@
       />
     </div>
 
+    <urban-text-field
+      name="parkingSpots"
+      label="Vagas de garagem"
+      hint="Opcional. Até 5, separadas por vírgula. Ex.: 12, G2 05"
+      [optional]="true"
+      [errors]="parkingSpotsErrors"
+    />
+
     @if (error(); as message) {
       <p role="alert" class="flex items-start gap-2 text-error">
         <mat-icon svgIcon="error" aria-hidden="true" />

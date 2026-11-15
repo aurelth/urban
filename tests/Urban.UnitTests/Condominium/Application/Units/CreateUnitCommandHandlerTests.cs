@@ -145,4 +145,51 @@ public class CreateUnitCommandHandlerTests
         _kit.Atomic.Runs.Should().Be(1);
         _kit.Atomic.Outcome!.IsSuccess.Should().BeTrue();
     }
+
+    [Fact]
+    public async Task Handle_WithParkingSpots_StoresThemReturnsThemAndLogsTheFieldName()
+    {
+        CreateUnitCommand command = Valid() with { ParkingSpots = [" V1 ", "V2"] };
+
+        Result<UnitView> result = await Handler().Handle(command, default);
+
+        result.Value.ParkingSpots.Should().Equal("V1", "V2");
+        _kit.Added.Single().ParkingSpots.Should().Equal("V1", "V2");
+        _kit.Logged.Single().Fields.Should().Contain("parkingSpots");
+        _kit.Logged.Single().Fields.Should().NotContain(["V1", "V2"]);
+    }
+
+    [Fact]
+    public async Task Handle_WithoutParkingSpots_DoesNotLogThemOrAskTheStoreAboutThem()
+    {
+        Result<UnitView> result = await Handler().Handle(Valid(), default);
+
+        result.Value.ParkingSpots.Should().BeEmpty();
+        _kit.Logged.Single().Fields.Should().NotContain("parkingSpots");
+        _kit.Units.Verify(u => u.FindTakenParkingSpotAsync(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_WithASpotThatBelongsToAnotherUnit_FailsWithTheSpot_AndSavesNothing()
+    {
+        _kit.Units
+            .Setup(u => u.FindTakenParkingSpotAsync(It.Is<IReadOnlyCollection<string>>(spots => spots.Contains("V2")), null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("V2");
+
+        Result<UnitView> result = await Handler().Handle(Valid() with { ParkingSpots = ["V1", "V2"] }, default);
+
+        result.Error.Code.Should().Be(UnitErrors.ParkingSpotAlreadyExists.Code);
+        result.Error.Data.Should().ContainKey("spot").WhoseValue.Should().Be("V2");
+        _kit.Added.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_WithInvalidSpots_FailsBeforeTalkingToTheStore()
+    {
+        Result<UnitView> result = await Handler().Handle(Valid() with { ParkingSpots = ["V1", "v1"] }, default);
+
+        result.Error.Should().Be(UnitErrors.ParkingSpotsDuplicate);
+        _kit.Units.Verify(u => u.FindTakenParkingSpotAsync(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<Guid?>(), It.IsAny<CancellationToken>()), Times.Never);
+        _kit.Added.Should().BeEmpty();
+    }
 }

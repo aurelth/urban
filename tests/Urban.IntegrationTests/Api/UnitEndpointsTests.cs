@@ -294,6 +294,147 @@ public sealed class UnitEndpointsTests(ApiFixture fixture) : IDisposable
         (await response.CodeAsync()).Should().Be("unit.deactivated");
     }
 
+    // ---- Vagas de garagem ----
+
+    [Fact]
+    public async Task Post_stores_the_parking_spots_trimmed_and_answers_them_in_order_and_get_returns_them()
+    {
+        ManagerSession manager = await ManagerSetup.RegisterAsync(fixture, _client);
+
+        HttpResponseMessage created = await _client.SendJsonAsync(HttpMethod.Post, Units, manager.AccessToken, UnitBody("101", parkingSpots: [" G2 05 ", "V1", "12"]));
+
+        created.StatusCode.Should().Be(HttpStatusCode.Created);
+        JsonElement unit = await created.Content.ReadFromJsonAsync<JsonElement>();
+        unit.GetProperty("parkingSpots").EnumerateArray().Select(spot => spot.GetString()).Should().Equal("G2 05", "V1", "12");
+        JsonElement read = await (await _client.SendJsonAsync(HttpMethod.Get, $"{Units}/{unit.GetProperty("id").GetGuid()}", manager.AccessToken)).Content.ReadFromJsonAsync<JsonElement>();
+        read.GetProperty("parkingSpots").EnumerateArray().Select(spot => spot.GetString()).Should().Equal("G2 05", "V1", "12");
+    }
+
+    [Fact]
+    public async Task A_unit_without_spots_answers_an_empty_list_in_the_get_and_in_the_list()
+    {
+        ManagerSession manager = await ManagerSetup.RegisterAsync(fixture, _client);
+        JsonElement unit = await CreateAsync(manager, "101");
+
+        unit.GetProperty("parkingSpots").GetArrayLength().Should().Be(0);
+        JsonElement list = await (await _client.SendJsonAsync(HttpMethod.Get, Units, manager.AccessToken)).Content.ReadFromJsonAsync<JsonElement>();
+        list.GetProperty("items")[0].GetProperty("parkingSpots").GetArrayLength().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task The_list_shows_the_spots_of_each_unit()
+    {
+        ManagerSession manager = await ManagerSetup.RegisterAsync(fixture, _client);
+        (await _client.SendJsonAsync(HttpMethod.Post, Units, manager.AccessToken, UnitBody("101", parkingSpots: ["V1", "V2"]))).StatusCode.Should().Be(HttpStatusCode.Created);
+
+        JsonElement list = await (await _client.SendJsonAsync(HttpMethod.Get, Units, manager.AccessToken)).Content.ReadFromJsonAsync<JsonElement>();
+
+        list.GetProperty("items")[0].GetProperty("parkingSpots").EnumerateArray().Select(spot => spot.GetString()).Should().Equal("V1", "V2");
+    }
+
+    [Fact]
+    public async Task Put_without_the_list_keeps_the_spots_with_an_empty_list_removes_them_and_with_a_list_replaces_them()
+    {
+        ManagerSession manager = await ManagerSetup.RegisterAsync(fixture, _client);
+        JsonElement unit = await (await _client.SendJsonAsync(HttpMethod.Post, Units, manager.AccessToken, UnitBody("101", parkingSpots: ["V1", "V2"]))).Content.ReadFromJsonAsync<JsonElement>();
+        string route = $"{Units}/{unit.GetProperty("id").GetGuid()}";
+
+        JsonElement kept = await PutAsync(manager, route, UnitBody("101", area: 60m, version: unit.GetProperty("version").GetString()));
+        JsonElement replaced = await PutAsync(manager, route, UnitBody("101", area: 60m, version: kept.GetProperty("version").GetString(), parkingSpots: ["V3"]));
+        JsonElement removed = await PutAsync(manager, route, UnitBody("101", area: 60m, version: replaced.GetProperty("version").GetString(), parkingSpots: []));
+
+        kept.GetProperty("parkingSpots").EnumerateArray().Select(spot => spot.GetString()).Should().Equal("V1", "V2");
+        replaced.GetProperty("parkingSpots").EnumerateArray().Select(spot => spot.GetString()).Should().Equal("V3");
+        removed.GetProperty("parkingSpots").GetArrayLength().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Changing_only_the_spots_is_a_change_and_sending_the_same_ones_is_not()
+    {
+        ManagerSession manager = await ManagerSetup.RegisterAsync(fixture, _client);
+        JsonElement unit = await (await _client.SendJsonAsync(HttpMethod.Post, Units, manager.AccessToken, UnitBody("101", parkingSpots: ["V1"]))).Content.ReadFromJsonAsync<JsonElement>();
+        string route = $"{Units}/{unit.GetProperty("id").GetGuid()}";
+        string version = unit.GetProperty("version").GetString()!;
+
+        JsonElement same = await PutAsync(manager, route, UnitBody("101", version: version, parkingSpots: ["V1"]));
+        JsonElement changed = await PutAsync(manager, route, UnitBody("101", version: version, parkingSpots: ["V1", "V2"]));
+
+        same.GetProperty("version").GetString().Should().Be(version);
+        changed.GetProperty("parkingSpots").GetArrayLength().Should().Be(2);
+    }
+
+    [Theory]
+    [InlineData("unit.parking_spots.too_many", "A", "B", "C", "D", "E", "F")]
+    [InlineData("unit.parking_spot.invalid", "A", "   ")]
+    [InlineData("unit.parking_spot.invalid", "A", "VagaComNomeLongoDemais123")]
+    [InlineData("unit.parking_spots.duplicate", "V1", " v1 ")]
+    public async Task Post_with_invalid_spots_answers_400_with_the_code(string code, params string[] spots)
+    {
+        ManagerSession manager = await ManagerSetup.RegisterAsync(fixture, _client);
+
+        HttpResponseMessage response = await _client.SendJsonAsync(HttpMethod.Post, Units, manager.AccessToken, UnitBody("101", parkingSpots: spots));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.CodeAsync()).Should().Be(code);
+    }
+
+    [Fact]
+    public async Task Post_with_a_null_spot_in_the_list_answers_400_invalid()
+    {
+        ManagerSession manager = await ManagerSetup.RegisterAsync(fixture, _client);
+
+        HttpResponseMessage response = await _client.SendJsonAsync(HttpMethod.Post, Units, manager.AccessToken, UnitBody("101", parkingSpots: ["V1", null]));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.CodeAsync()).Should().Be("unit.parking_spot.invalid");
+    }
+
+    [Fact]
+    public async Task A_spot_of_another_unit_is_409_and_the_problem_names_the_spot_even_when_that_unit_is_deactivated()
+    {
+        ManagerSession manager = await ManagerSetup.RegisterAsync(fixture, _client);
+        JsonElement owner = await (await _client.SendJsonAsync(HttpMethod.Post, Units, manager.AccessToken, UnitBody("101", parkingSpots: ["G2 05"]))).Content.ReadFromJsonAsync<JsonElement>();
+
+        HttpResponseMessage taken = await _client.SendJsonAsync(HttpMethod.Post, Units, manager.AccessToken, UnitBody("102", parkingSpots: ["g2 05"]));
+        (await _client.SendJsonAsync(HttpMethod.Post, $"{Units}/{owner.GetProperty("id").GetGuid()}/deactivate", manager.AccessToken, new JsonObject { ["version"] = owner.GetProperty("version").GetString() })).StatusCode.Should().Be(HttpStatusCode.OK);
+        HttpResponseMessage whileDeactivated = await _client.SendJsonAsync(HttpMethod.Post, Units, manager.AccessToken, UnitBody("103", parkingSpots: ["G2 05"]));
+
+        taken.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        JsonElement problem = await taken.Content.ReadFromJsonAsync<JsonElement>();
+        problem.GetProperty("code").GetString().Should().Be("unit.parking_spot.already_exists");
+        problem.GetProperty("data").GetProperty("spot").GetString().Should().Be("g2 05");
+        whileDeactivated.StatusCode.Should().Be(HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task Put_taking_a_spot_of_another_unit_is_409_and_keeping_its_own_is_fine()
+    {
+        ManagerSession manager = await ManagerSetup.RegisterAsync(fixture, _client);
+        await _client.SendJsonAsync(HttpMethod.Post, Units, manager.AccessToken, UnitBody("101", parkingSpots: ["V1"]));
+        JsonElement second = await (await _client.SendJsonAsync(HttpMethod.Post, Units, manager.AccessToken, UnitBody("102", parkingSpots: ["V2"]))).Content.ReadFromJsonAsync<JsonElement>();
+        string route = $"{Units}/{second.GetProperty("id").GetGuid()}";
+        string version = second.GetProperty("version").GetString()!;
+
+        HttpResponseMessage refused = await _client.SendJsonAsync(HttpMethod.Put, route, manager.AccessToken, UnitBody("102", version: version, parkingSpots: ["V2", "V1"]));
+        HttpResponseMessage own = await _client.SendJsonAsync(HttpMethod.Put, route, manager.AccessToken, UnitBody("102", version: version, parkingSpots: ["V2", "V3"]));
+
+        refused.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await refused.CodeAsync()).Should().Be("unit.parking_spot.already_exists");
+        own.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task The_same_spot_in_another_condominium_is_allowed()
+    {
+        ManagerSession first = await ManagerSetup.RegisterAsync(fixture, _client);
+        ManagerSession second = await ManagerSetup.RegisterAsync(fixture, _client);
+        (await _client.SendJsonAsync(HttpMethod.Post, Units, first.AccessToken, UnitBody("101", parkingSpots: ["V1"]))).StatusCode.Should().Be(HttpStatusCode.Created);
+
+        HttpResponseMessage other = await _client.SendJsonAsync(HttpMethod.Post, Units, second.AccessToken, UnitBody("101", parkingSpots: ["V1"]));
+
+        other.StatusCode.Should().Be(HttpStatusCode.Created);
+    }
+
     // ---- Lote ----
 
     [Fact]
@@ -441,15 +582,24 @@ public sealed class UnitEndpointsTests(ApiFixture fixture) : IDisposable
 
     // ---- Apoio ----
 
-    private static JsonObject UnitBody(string number, string? block = null, decimal? fraction = null, decimal? area = null, string? version = null) => new()
+    private static JsonObject UnitBody(string number, string? block = null, decimal? fraction = null, decimal? area = null, string? version = null, string?[]? parkingSpots = null)
     {
-        ["version"] = version,
-        ["block"] = block,
-        ["number"] = number,
-        ["type"] = "apartment",
-        ["idealFraction"] = fraction,
-        ["area"] = area,
-    };
+        JsonObject body = new()
+        {
+            ["version"] = version,
+            ["block"] = block,
+            ["number"] = number,
+            ["type"] = "apartment",
+            ["idealFraction"] = fraction,
+            ["area"] = area,
+        };
+        if (parkingSpots is not null)
+        {
+            body["parkingSpots"] = new JsonArray([.. parkingSpots.Select(spot => JsonValue.Create(spot))]);
+        }
+
+        return body;
+    }
 
     private static JsonObject BatchBody(params string[] numbers) => new()
     {
@@ -460,6 +610,14 @@ public sealed class UnitEndpointsTests(ApiFixture fixture) : IDisposable
     {
         HttpResponseMessage response = await _client.SendJsonAsync(HttpMethod.Post, Units, manager.AccessToken, UnitBody(number, block, fraction, area));
         response.StatusCode.Should().Be(HttpStatusCode.Created, await response.Content.ReadAsStringAsync(Ct));
+
+        return await response.Content.ReadFromJsonAsync<JsonElement>();
+    }
+
+    private async Task<JsonElement> PutAsync(ManagerSession manager, string route, JsonObject body)
+    {
+        HttpResponseMessage response = await _client.SendJsonAsync(HttpMethod.Put, route, manager.AccessToken, body);
+        response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync(Ct));
 
         return await response.Content.ReadFromJsonAsync<JsonElement>();
     }

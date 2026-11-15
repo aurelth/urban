@@ -193,7 +193,7 @@
                   <td class="p-3">
                     @if (item.isEnded) {
                       <span
-                        class="inline-flex items-center gap-1 text-on-surface-variant"
+                        class="inline-flex items-center gap-1 text-warning"
                         data-testid="expense-situation"
                       >
                         <mat-icon svgIcon="event_busy" aria-hidden="true" />
@@ -210,7 +210,7 @@
                     }
                   </td>
                   <td class="p-1">
-                    <div class="grid grid-cols-[repeat(3,48px)] justify-start">
+                    <div class="grid grid-cols-[repeat(4,48px)] justify-start">
                       <button
                         mat-icon-button
                         type="button"
@@ -261,6 +261,17 @@
                           <mat-icon svgIcon="event_busy" />
                         </button>
                       }
+                      <button
+                        mat-icon-button
+                        type="button"
+                        class="urban-danger col-start-4"
+                        [attr.aria-label]="'Excluir ' + item.description"
+                        [attr.title]="'Excluir ' + item.description"
+                        [disabled]="store.busy()"
+                        (click)="remove(item)"
+                      >
+                        <mat-icon svgIcon="delete" />
+                      </button>
                     </div>
                   </td>
                 </tr>

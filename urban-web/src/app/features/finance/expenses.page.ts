@@ -13,9 +13,10 @@ import { MatMenu, MatMenuItem, MatMenuTrigger } from '@angular/material/menu';
 import { RouterLink } from '@angular/router';
 import { NOW } from '../../core/finance/clock';
 import { Expense, ExpenseGroup, ExpenseStatusFilter } from '../../core/finance/finance.models';
-import { currentMonth } from '../../core/finance/month';
+import { currentMonth, formatMonth } from '../../core/finance/month';
 import { ApiProblem } from '../../core/http/api-problem';
 import { describeProblem } from '../../core/http/problem-message';
+import { openDeleteExpenseDialog } from './delete-expense.dialog';
 import { openEndExpenseDialog } from './end-expense.dialog';
 import { openExpenseAmountDialog } from './expense-amount.dialog';
 import {
@@ -57,9 +58,9 @@ const FILTER_CHOICES: readonly FilterChoice[] = [
     value: 'ended',
     label: 'Encerradas',
     icon: 'event_busy',
-    tone: 'text-on-surface-variant',
+    tone: 'text-warning',
     menuTone:
-      '[--mat-menu-item-icon-color:var(--mat-sys-on-surface-variant)] [--mat-menu-item-label-text-color:var(--mat-sys-on-surface-variant)]',
+      '[--mat-menu-item-icon-color:var(--urban-warning)] [--mat-menu-item-label-text-color:var(--urban-warning)]',
   },
   {
     value: 'all',
@@ -73,7 +74,7 @@ const FILTER_CHOICES: readonly FilterChoice[] = [
 
 /**
  * Despesas do condomínio: grupos, filtro por situação e a lista com as ações de cadastrar, editar, reajustar,
- * alterar parcela e encerrar. Toda gravação acontece num diálogo, que fica aberto com o erro até dar certo.
+ * alterar parcela, encerrar e excluir. Toda gravação acontece num diálogo, que fica aberto com o erro até dar certo.
  */
 @Component({
   selector: 'urban-expenses-page',
@@ -180,7 +181,19 @@ export class ExpensesPage implements OnInit {
     await openEndExpenseDialog(this.injector, {
       expense: target,
       month: this.month(),
-      save: (lastMonth) => this.saved(this.store.end(target, lastMonth), 'Despesa encerrada'),
+      save: (lastMonth) =>
+        this.saved(
+          this.store.end(target, lastMonth),
+          `Despesa encerrada em ${formatMonth(lastMonth)}. Ela passa para Encerradas`,
+        ),
+    });
+  }
+
+  protected async remove(target: Expense): Promise<void> {
+    this.notice.set(null);
+    await openDeleteExpenseDialog(this.injector, {
+      expense: target,
+      save: () => this.saved(this.store.remove(target), 'Despesa excluída'),
     });
   }
 

@@ -20,6 +20,14 @@ const FIELD_MESSAGES: MessagesByCode = {
   'expense.not_fixed': 'Só despesas fixas mensais têm reajuste de valor',
   'expense.not_installment': 'Só despesas parceladas têm parcelas',
   'expense.end_not_allowed': 'Só despesas fixas e variáveis podem ser encerradas',
+  'expense.end_has_closed_months':
+    'Há lançamentos desta despesa em meses já fechados depois do último mês escolhido. Reabra esses meses em Lançamentos do mês e tente de novo',
+  'expense.end_has_paid_entries':
+    'Há lançamentos pagos desta despesa depois do último mês escolhido. Escolha um mês final que os inclua ou desfaça o pagamento deles',
+  'expense.delete_has_closed_months':
+    'Esta despesa tem lançamentos em meses já fechados. Reabra esses meses em Lançamentos do mês ou encerre a despesa em vez de excluir',
+  'expense.delete_has_paid_entries':
+    'Esta despesa tem lançamentos pagos. Encerre a despesa em vez de excluir, ou desfaça o pagamento deles',
   'consumption.bands_invalid':
     'As faixas precisam ser de 1 a 6, com limites crescentes, a última sem limite',
   'consumption.gas_invalid': 'Informe os kg por m³ e o preço do kg, ambos maiores que zero',

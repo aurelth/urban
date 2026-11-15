@@ -175,7 +175,7 @@ public class FinanceExpensesTests(FinancePostgresFixture postgres)
         FinanceExpenses store = _kit.Expenses();
         ExpenseRecord record = (await store.FindAsync(stored.Id, default))!;
         record.Expense.Edit("Zeladoria e limpeza", null, group.Id, 10);
-        record.Expense.End(FinanceStoreKit.M(2027, 2));
+        record.Expense.End(FinanceStoreKit.M(2027, 2), FinanceStoreKit.Now);
 
         (await store.SaveAsync(record, default)).IsSuccess.Should().BeTrue();
 
@@ -183,5 +183,74 @@ public class FinanceExpensesTests(FinancePostgresFixture postgres)
         reloaded.Description.Should().Be("Zeladoria e limpeza");
         reloaded.Supplier.Should().BeNull();
         reloaded.EndMonth.Should().Be(FinanceStoreKit.M(2027, 2));
+        reloaded.EndedAt.Should().Be(FinanceStoreKit.Now);
+    }
+    [Fact]
+    public async Task Remove_DeletesTheExpenseWithItsScheduleAndHistory_AndLeavesTheOthers()
+    {
+        ExpenseGroup group = await _kit.StoreGroupAsync();
+        Expense installment = await _kit.StoreInstallmentAsync(group, FinanceStoreKit.M(2026, 9), total: 100m, count: 3, current: 1);
+        Expense fixedOne = await _kit.StoreFixedAsync(group, FinanceStoreKit.M(2026, 9));
+        FinanceExpenses adjusting = _kit.Expenses();
+        ExpenseRecord toAdjust = (await adjusting.FindAsync(fixedOne.Id, default))!;
+        toAdjust.Expense.ChangeAmountFrom(FinanceStoreKit.M(2026, 12), 330m).IsSuccess.Should().BeTrue();
+        (await adjusting.SaveAsync(toAdjust, default)).IsSuccess.Should().BeTrue();
+        FinanceExpenses store = _kit.Expenses();
+        ExpenseRecord current = (await store.FindAsync(fixedOne.Id, default))!;
+
+        Result removed = await store.RemoveAsync(current, default);
+
+        removed.IsSuccess.Should().BeTrue();
+        (await _kit.Expenses().FindAsync(fixedOne.Id, default)).Should().BeNull();
+        (await _kit.Expenses().FindAsync(installment.Id, default))!.Expense.Installments.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public async Task Remove_WithAStaleVersion_IsAConflictAndKeepsTheExpense()
+    {
+        ExpenseGroup group = await _kit.StoreGroupAsync();
+        Expense stored = await _kit.StoreFixedAsync(group, FinanceStoreKit.M(2026, 9));
+        FinanceExpenses staleStore = _kit.Expenses();
+        ExpenseRecord stale = (await staleStore.FindAsync(stored.Id, default))!;
+        FinanceExpenses freshStore = _kit.Expenses();
+        ExpenseRecord fresh = (await freshStore.FindAsync(stored.Id, default))!;
+        fresh.Expense.Edit("Zeladoria e limpeza", null, group.Id, 10);
+        (await freshStore.SaveAsync(fresh, default)).IsSuccess.Should().BeTrue();
+
+        Result removed = await staleStore.RemoveAsync(stale, default);
+
+        removed.Error.Should().Be(FinanceErrors.ConcurrencyConflict);
+        (await _kit.Expenses().FindAsync(stored.Id, default)).Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task Remove_WhileAnEntryStillPointsToTheExpense_IsAConflict()
+    {
+        ExpenseGroup group = await _kit.StoreGroupAsync();
+        Expense stored = await _kit.StoreFixedAsync(group, FinanceStoreKit.M(2026, 9));
+        FinanceExpenses store = _kit.Expenses();
+        ExpenseRecord record = (await store.FindAsync(stored.Id, default))!;
+        await _kit.StoreEntryAsync(stored, FinanceStoreKit.M(2026, 11));
+
+        Result removed = await store.RemoveAsync(record, default);
+
+        removed.Error.Should().Be(FinanceErrors.ConcurrencyConflict);
+        (await _kit.Expenses().FindAsync(stored.Id, default)).Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task Save_AfterEnding_PersistsTheEndedMarkAndTheEndedExpenseIsStillEnded()
+    {
+        ExpenseGroup group = await _kit.StoreGroupAsync();
+        Expense stored = await _kit.StoreFixedAsync(group, FinanceStoreKit.M(2026, 9));
+        FinanceExpenses store = _kit.Expenses();
+        ExpenseRecord record = (await store.FindAsync(stored.Id, default))!;
+        record.Expense.End(FinanceStoreKit.M(2027, 6), FinanceStoreKit.Now).IsSuccess.Should().BeTrue();
+        (await store.SaveAsync(record, default)).IsSuccess.Should().BeTrue();
+
+        Expense reloaded = (await _kit.Expenses().FindAsync(stored.Id, default))!.Expense;
+
+        reloaded.EndedAt.Should().Be(FinanceStoreKit.Now);
+        reloaded.IsEnded(FinanceStoreKit.M(2026, 11)).Should().BeTrue();
     }
 }
