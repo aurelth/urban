@@ -208,6 +208,12 @@ describe('Despesas', () => {
     left('button[aria-label="Encerrar Portaria"]').then((end) => {
       left('button[aria-label="Encerrar Conta de luz"]').should('eq', end);
     });
+    // O "Excluir" fica sempre na quarta coluna, também depois do "Encerrar".
+    left('button[aria-label="Excluir Portaria"]').then((remove) => {
+      left('button[aria-label="Excluir Conta de luz"]').should('eq', remove);
+      left('button[aria-label="Excluir Elevador"]').should('eq', remove);
+      left('button[aria-label="Encerrar Portaria"]').should('be.lt', remove);
+    });
   });
 
   it('reajusta o valor de uma despesa fixa a partir de um mes', () => {
@@ -265,7 +271,68 @@ describe('Despesas', () => {
     cy.wait('@endExpense')
       .its('request.body')
       .should('deep.equal', { version: '12', lastMonth: '2026-11' });
-    cy.get('[data-testid="notice"]').should('contain.text', 'Despesa encerrada');
+    cy.get('[data-testid="notice"]').should('contain.text', 'Despesa encerrada em 11/2026');
+  });
+
+  it('depois de encerrar, a despesa sai das ativas e aparece como Encerrada em laranja', () => {
+    cy.intercept('POST', `/api/finance/expenses/${VARIABLE_EXPENSE.id}/end`, {
+      statusCode: 200,
+      body: { ...VARIABLE_EXPENSE, isEnded: true, endMonth: '2027-06', lastMonth: '2027-06' },
+    }).as('endExpense');
+    cy.visit(EXPENSES_PATH);
+    rows().should('have.length', 3);
+
+    stubExpenses([FIXED_EXPENSE, INSTALLMENT_EXPENSE], 'afterEnd');
+    cy.get('button[aria-label="Encerrar Conta de luz"]').click();
+    cy.get('urban-end-expense-dialog').contains('button', 'Encerrar despesa').click();
+    cy.wait('@endExpense');
+    cy.wait('@afterEnd');
+    rows().should('have.length', 2).and('not.contain.text', 'Conta de luz');
+
+    stubExpenses(
+      [{ ...VARIABLE_EXPENSE, isEnded: true, endMonth: '2027-06', lastMonth: '2027-06' }],
+      'endedExpenses',
+    );
+    cy.get('[data-testid="filter-status"]').click();
+    cy.get('[role="menuitem"]').contains('Encerradas').click();
+    cy.wait('@endedExpenses');
+    cy.get('[data-testid="expense-situation"]')
+      .should('contain.text', 'Encerrada')
+      .and('have.css', 'color', PALETTE.light.warning)
+      .find('mat-icon')
+      .should('have.attr', 'data-mat-icon-name', 'event_busy');
+  });
+
+  it('exclui uma despesa depois de confirmar e avisa quando e recusada', () => {
+    cy.intercept('DELETE', `/api/finance/expenses/${VARIABLE_EXPENSE.id}*`, {
+      statusCode: 409,
+      body: {
+        title: 'Conflito',
+        status: 409,
+        code: 'expense.delete_has_paid_entries',
+      },
+    }).as('refused');
+    cy.visit(EXPENSES_PATH);
+
+    cy.get('button[aria-label="Excluir Conta de luz"]').click();
+    cy.get('urban-delete-expense-dialog').contains('button', 'Excluir despesa').click();
+    cy.wait('@refused').its('request.url').should('contain', 'version=12');
+    cy.get('urban-delete-expense-dialog [role="alert"]').should(
+      'contain.text',
+      'lançamentos pagos',
+    );
+
+    cy.intercept('DELETE', `/api/finance/expenses/${VARIABLE_EXPENSE.id}*`, { statusCode: 204 }).as(
+      'deleteExpense',
+    );
+    stubExpenses([FIXED_EXPENSE, INSTALLMENT_EXPENSE], 'afterDelete');
+    cy.get('urban-delete-expense-dialog').contains('button', 'Excluir despesa').click();
+    cy.wait('@deleteExpense');
+    cy.wait('@afterDelete');
+
+    cy.get('urban-delete-expense-dialog').should('not.exist');
+    cy.get('[data-testid="notice"]').should('contain.text', 'Despesa excluída');
+    rows().should('have.length', 2).and('not.contain.text', 'Conta de luz');
   });
 
   it('mostra com texto quais grupos sao a base do fundo de reserva', () => {
@@ -350,6 +417,7 @@ describe('Despesas', () => {
     cy.wait('@endedExpenses').its('request.url').should('contain', 'status=ended');
     rows().should('have.length', 1).and('contain.text', 'Encerrada');
     cy.get('button[aria-label="Editar Jardinagem"]').should('exist');
+    cy.get('button[aria-label="Excluir Jardinagem"]').should('exist');
     cy.get('button[aria-label="Encerrar Jardinagem"]').should('not.exist');
   });
 
@@ -462,6 +530,22 @@ describe('Despesas', () => {
     cy.get('urban-expense-dialog').contains('button', 'Cadastrar despesa').should('be.visible');
     cy.get('urban-expense-dialog').should(($dialog) => {
       expect($dialog[0].scrollWidth).to.be.at.most($dialog[0].clientWidth);
+    });
+  });
+
+  it('cabe numa tela de 360 px com o dialogo de excluir e o botao de excluir ao alcance da rolagem da tabela', () => {
+    cy.viewport(360, 640);
+    cy.visit(EXPENSES_PATH);
+
+    cy.get('button[aria-label="Excluir Conta de luz"]').scrollIntoView().click();
+    cy.get('urban-delete-expense-dialog')
+      .contains('button', 'Excluir despesa')
+      .should('be.visible');
+    cy.get('urban-delete-expense-dialog').should(($dialog) => {
+      expect($dialog[0].scrollWidth).to.be.at.most($dialog[0].clientWidth);
+    });
+    cy.document().should((doc) => {
+      expect(doc.documentElement.scrollWidth).to.be.at.most(doc.documentElement.clientWidth);
     });
   });
 });

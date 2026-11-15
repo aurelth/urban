@@ -119,6 +119,11 @@ describe('FinanceApi', () => {
     expectCall('POST', '/api/finance/expenses/e1/end', { version: '3', lastMonth: '2026-12' });
   });
 
+  it('deletes an expense, sending the version in the query', () => {
+    api.deleteExpense('e1', '3').subscribe();
+    expectCall('DELETE', '/api/finance/expenses/e1?version=3');
+  });
+
   it('reads a month', () => {
     api.getMonth('2026-11').subscribe();
     expectCall('GET', '/api/finance/months/2026-11');

@@ -366,7 +366,7 @@ public class ExpenseTests
     {
         Expense expense = Fixed(start: M(2026, 9));
 
-        expense.End(M(2027, 2)).IsSuccess.Should().BeTrue();
+        expense.End(M(2027, 2), Now).IsSuccess.Should().BeTrue();
 
         expense.LastMonth.Should().Be(M(2027, 2));
         expense.IsDueIn(M(2027, 2)).Should().BeTrue();
@@ -378,16 +378,67 @@ public class ExpenseTests
     {
         Expense expense = Variable(start: M(2026, 9));
 
-        expense.End(M(2026, 8)).Error.Should().Be(ExpenseErrors.EndBeforeStart);
-        expense.End(M(2026, 9)).IsSuccess.Should().BeTrue();
+        expense.End(M(2026, 8), Now).Error.Should().Be(ExpenseErrors.EndBeforeStart);
+        expense.End(M(2026, 9), Now).IsSuccess.Should().BeTrue();
         expense.IsDueIn(M(2026, 10)).Should().BeFalse();
     }
 
     [Fact]
     public void End_OnSingleOrInstallment_Fails()
     {
-        Single().End(M(2026, 9)).Error.Should().Be(ExpenseErrors.EndNotAllowed);
-        Installment().End(M(2026, 9)).Error.Should().Be(ExpenseErrors.EndNotAllowed);
+        Single().End(M(2026, 9), Now).Error.Should().Be(ExpenseErrors.EndNotAllowed);
+        Installment().End(M(2026, 9), Now).Error.Should().Be(ExpenseErrors.EndNotAllowed);
+    }
+
+    [Fact]
+    public void End_MarksTheExpenseAsEndedRightAway_EvenWhenTheLastMonthIsStillAhead()
+    {
+        Expense expense = Fixed(start: M(2026, 9));
+        expense.IsEnded(M(2026, 11)).Should().BeFalse();
+        expense.EndedAt.Should().BeNull();
+
+        expense.End(M(2027, 2), Now).IsSuccess.Should().BeTrue();
+
+        expense.EndedAt.Should().Be(Now);
+        expense.IsEnded(M(2026, 11)).Should().BeTrue();
+        expense.IsEnded(M(2027, 2)).Should().BeTrue();
+    }
+
+    [Fact]
+    public void End_OnVariable_AlsoMarksItAsEnded()
+    {
+        Expense expense = Variable(start: M(2026, 9));
+
+        expense.End(M(2026, 12), Now).IsSuccess.Should().BeTrue();
+
+        expense.IsEnded(M(2026, 11)).Should().BeTrue();
+    }
+
+    [Fact]
+    public void End_ThatFails_DoesNotMarkTheExpenseAsEnded()
+    {
+        Expense expense = Fixed(start: M(2026, 9));
+
+        expense.End(M(2026, 8), Now).IsFailure.Should().BeTrue();
+        Single().End(M(2026, 9), Now).IsFailure.Should().BeTrue();
+
+        expense.EndedAt.Should().BeNull();
+        expense.EndMonth.Should().BeNull();
+        expense.IsEnded(M(2026, 11)).Should().BeFalse();
+    }
+
+    [Fact]
+    public void ValidateEnd_AppliesTheSameRulesWithoutChangingTheExpense()
+    {
+        Expense expense = Fixed(start: M(2026, 9));
+
+        expense.ValidateEnd(M(2027, 2)).IsSuccess.Should().BeTrue();
+        expense.ValidateEnd(M(2026, 8)).Error.Should().Be(ExpenseErrors.EndBeforeStart);
+        Single().ValidateEnd(M(2026, 9)).Error.Should().Be(ExpenseErrors.EndNotAllowed);
+        Installment().ValidateEnd(M(2026, 9)).Error.Should().Be(ExpenseErrors.EndNotAllowed);
+
+        expense.EndMonth.Should().BeNull();
+        expense.EndedAt.Should().BeNull();
     }
 
     [Fact]

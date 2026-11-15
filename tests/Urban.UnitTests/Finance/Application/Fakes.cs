@@ -89,7 +89,11 @@ internal sealed class FakeExpenses : IExpenses
 
     public List<ExpenseRecord> Saved { get; } = [];
 
+    public List<ExpenseRecord> Removed { get; } = [];
+
     public Error? AddFailure { get; set; }
+
+    public Error? RemoveFailure { get; set; }
 
     public Expense Existing(Expense expense, int version = 5)
     {
@@ -126,6 +130,19 @@ internal sealed class FakeExpenses : IExpenses
         return Task.FromResult(Result.Success(current.Version.ToString()));
     }
 
+    public Task<Result> RemoveAsync(ExpenseRecord record, CancellationToken cancellationToken)
+    {
+        if (RemoveFailure is { } failure)
+        {
+            return Task.FromResult(Result.Failure(failure));
+        }
+
+        _store.Remove(record.Expense.Id);
+        Removed.Add(record);
+
+        return Task.FromResult(Result.Success());
+    }
+
     private static ExpenseRecord Record(Stored stored) => new(stored.Expense, stored.Version.ToString());
 
     private sealed class Stored(Expense expense, int version)
@@ -143,6 +160,8 @@ internal sealed class FakeExpenseEntries : IExpenseEntries
     public IReadOnlyList<ExpenseEntry> All => [.. _store.Select(stored => stored.Entry)];
 
     public List<ExpenseEntry> Added { get; } = [];
+
+    public List<ExpenseEntry> Removed { get; } = [];
 
     public Error? AddRangeFailure { get; set; }
 
@@ -192,6 +211,17 @@ internal sealed class FakeExpenseEntries : IExpenseEntries
         current.Version++;
 
         return Task.FromResult(Result.Success(current.Version.ToString()));
+    }
+
+    public Task<Result> RemoveRangeAsync(IReadOnlyList<ExpenseEntryRecord> records, CancellationToken cancellationToken)
+    {
+        foreach (ExpenseEntryRecord record in records)
+        {
+            _store.RemoveAll(stored => stored.Entry.Id == record.Entry.Id);
+            Removed.Add(record.Entry);
+        }
+
+        return Task.FromResult(Result.Success());
     }
 
     private static ExpenseEntryRecord Record(Stored stored) => new(stored.Entry, stored.Version.ToString());

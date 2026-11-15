@@ -263,10 +263,10 @@ describe('ExpensesPage', () => {
     );
 
     expect(labels).toEqual([
-      ['Editar Portaria', 'Reajustar valor de Portaria', 'Encerrar Portaria'],
-      ['Editar Conta de luz', 'Encerrar Conta de luz'],
-      ['Editar Elevador', 'Alterar parcela de Elevador'],
-      ['Editar Jardinagem'],
+      ['Editar Portaria', 'Reajustar valor de Portaria', 'Encerrar Portaria', 'Excluir Portaria'],
+      ['Editar Conta de luz', 'Encerrar Conta de luz', 'Excluir Conta de luz'],
+      ['Editar Elevador', 'Alterar parcela de Elevador', 'Excluir Elevador'],
+      ['Editar Jardinagem', 'Excluir Jardinagem'],
     ]);
     expect(rows(html)[3].textContent).toContain('Encerrada');
   });
@@ -314,9 +314,7 @@ describe('ExpensesPage', () => {
     );
     expect(tones).toHaveLength(3);
     expect(tones[0]).toContain('--mat-menu-item-label-text-color:var(--urban-success)');
-    expect(tones[1]).toContain(
-      '--mat-menu-item-label-text-color:var(--mat-sys-on-surface-variant)',
-    );
+    expect(tones[1]).toContain('--mat-menu-item-label-text-color:var(--urban-warning)');
     expect(tones[2]).toContain('--mat-menu-item-label-text-color:var(--mat-sys-primary)');
   });
 
@@ -359,7 +357,7 @@ describe('ExpensesPage', () => {
     }
   });
 
-  it('mostra Ativa em verde, como o icone, e Encerrada em cinza', async () => {
+  it('mostra Ativa em verde e Encerrada em laranja, cada uma com o seu icone', async () => {
     const { html } = await setup({ expenses: [FIXED, ENDED] });
 
     const [active, ended] = rows(html).map((row) =>
@@ -370,7 +368,28 @@ describe('ExpensesPage', () => {
     expect(active.classList.contains('text-success')).toBe(true);
     expect(active.querySelector('[class*="text-on-surface"]')).toBeNull();
     expect(plain(ended.textContent ?? '')).toBe('Encerrada');
-    expect(ended.classList.contains('text-on-surface-variant')).toBe(true);
+    expect(ended.classList.contains('text-warning')).toBe(true);
+    expect(ended.classList.contains('text-on-surface-variant')).toBe(false);
+    expect(ended.querySelector('mat-icon')?.getAttribute('data-mat-icon-name')).toBe('event_busy');
+  });
+
+  it('oferece Excluir em toda despesa, inclusive nas encerradas, e Encerrar so nas ativas', async () => {
+    const { html } = await setup({ expenses: [FIXED, ENDED] });
+
+    expect(button(html, 'Excluir Portaria')).not.toBeNull();
+    expect(button(html, 'Excluir Jardinagem')).not.toBeNull();
+    expect(button(html, 'Encerrar Portaria')).not.toBeNull();
+    expect(button(html, 'Encerrar Jardinagem')).toBeNull();
+    expect(button(html, 'Excluir Portaria')!.classList.contains('urban-danger')).toBe(true);
+  });
+
+  it('deixa o Excluir sempre na quarta coluna das acoes, para os botoes nao mudarem de lugar', async () => {
+    const { html } = await setup({ expenses: [FIXED, ENDED] });
+
+    for (const label of ['Excluir Portaria', 'Excluir Jardinagem']) {
+      expect(button(html, label)!.classList.contains('col-start-4')).toBe(true);
+    }
+    expect(html.querySelector('td .grid')!.className).toContain('grid-cols-[repeat(4,48px)]');
   });
 
   describe('grupos', () => {
@@ -687,7 +706,60 @@ describe('ExpensesPage', () => {
       answerRefresh(http, []);
       await settle(fixture);
 
-      expect(text(html, 'notice')).toBe('Despesa encerrada');
+      expect(text(html, 'notice')).toBe('Despesa encerrada em 03/2027. Ela passa para Encerradas');
+    });
+
+    it('exclui uma despesa depois de confirmar', async () => {
+      const { fixture, html, http } = await setup();
+
+      click(button(html, 'Excluir Portaria'));
+      await settle(fixture);
+      expect(dialog('urban-delete-expense-dialog')).not.toBeNull();
+      submitDialog('urban-delete-expense-dialog');
+      await flushPromises();
+      http
+        .expectOne({ method: 'DELETE', url: `/api/finance/expenses/${FIXED.id}?version=11` })
+        .flush(null, { status: 204, statusText: 'No Content' });
+      await flushPromises();
+      answerRefresh(http, []);
+      await settle(fixture);
+
+      expect(dialog('urban-delete-expense-dialog')).toBeNull();
+      expect(text(html, 'notice')).toBe('Despesa excluída');
+    });
+
+    it('nao exclui nada ao cancelar a confirmacao', async () => {
+      const { fixture, html, http } = await setup();
+
+      click(button(html, 'Excluir Portaria'));
+      await settle(fixture);
+      dialog('urban-delete-expense-dialog')!
+        .querySelector<HTMLButtonElement>('[data-testid="cancel"]')!
+        .click();
+      await settle(fixture);
+
+      http.expectNone({ method: 'DELETE' });
+      expect(testId(html, 'notice')).toBeNull();
+    });
+
+    it('explica no dialogo quando a exclusao e recusada por mes fechado', async () => {
+      const { fixture, html, http } = await setup();
+
+      click(button(html, 'Excluir Portaria'));
+      await settle(fixture);
+      submitDialog('urban-delete-expense-dialog');
+      await flushPromises();
+      http
+        .expectOne({ method: 'DELETE', url: `/api/finance/expenses/${FIXED.id}?version=11` })
+        .flush(problem(409, 'expense.delete_has_closed_months'), {
+          status: 409,
+          statusText: 'Conflito',
+        });
+      await settle(fixture);
+
+      expect(
+        dialog('urban-delete-expense-dialog')!.querySelector('[role="alert"]')?.textContent,
+      ).toContain('meses já fechados');
     });
 
     it('apaga o aviso anterior ao abrir outro dialogo', async () => {

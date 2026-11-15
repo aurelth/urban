@@ -37,6 +37,7 @@ public sealed class FinanceEndpointsTests(ApiFixture fixture) : IDisposable
         { "POST", $"{Expenses}/{Guid.Empty}/amount" },
         { "PUT", $"{Expenses}/{Guid.Empty}/installments/1" },
         { "POST", $"{Expenses}/{Guid.Empty}/end" },
+        { "DELETE", $"{Expenses}/{Guid.Empty}" },
         { "GET", $"{Months}/2026-11" },
         { "POST", $"{Months}/2026-11/open" },
         { "POST", $"{Months}/2026-11/close" },
@@ -540,6 +541,188 @@ public sealed class FinanceEndpointsTests(ApiFixture fixture) : IDisposable
         notAllowed.StatusCode.Should().Be(HttpStatusCode.UnprocessableEntity);
         (await notAllowed.CodeAsync()).Should().Be("expense.end_not_allowed");
         beforeStart.StatusCode.Should().BeOneOf(HttpStatusCode.BadRequest, HttpStatusCode.Conflict);
+    }
+
+    [Fact]
+    public async Task Ending_an_expense_marks_it_as_ended_at_once_and_lists_it_among_the_ended()
+    {
+        ManagerSession manager = await RegisterAsync();
+        Guid group = await CreateGroupAsync(manager, "Contratos");
+        JsonElement portaria = await CreateExpenseAsync(manager, ExpenseBody("fixed", group, "Portaria", Month(-1), amount: 4200m));
+        await CreateExpenseAsync(manager, ExpenseBody("fixed", group, "Jardinagem", Month(-1), amount: 300m));
+
+        HttpResponseMessage ended = await EndAsync(manager, portaria, Month(6));
+
+        ended.StatusCode.Should().Be(HttpStatusCode.OK);
+        JsonElement body = await ended.Content.ReadFromJsonAsync<JsonElement>();
+        body.GetProperty("isEnded").GetBoolean().Should().BeTrue();
+        body.GetProperty("endMonth").GetString().Should().Be(Month(6));
+        (await DescriptionsAsync(manager, Expenses)).Should().Equal("Jardinagem");
+        (await DescriptionsAsync(manager, $"{Expenses}?status=ended")).Should().Equal("Portaria");
+    }
+
+    [Fact]
+    public async Task A_fixed_expense_created_with_a_future_end_month_is_not_ended_until_that_month_passes()
+    {
+        ManagerSession manager = await RegisterAsync();
+        Guid group = await CreateGroupAsync(manager, "Contratos");
+        JsonObject planned = ExpenseBody("fixed", group, "Contrato de seis meses", Month(0), amount: 900m);
+        planned["endMonth"] = Month(5);
+        await CreateExpenseAsync(manager, planned);
+
+        (await DescriptionsAsync(manager, Expenses)).Should().Equal("Contrato de seis meses");
+        (await DescriptionsAsync(manager, $"{Expenses}?status=ended")).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Ending_an_expense_removes_the_entries_of_the_months_after_the_last_one()
+    {
+        ManagerSession manager = await RegisterAsync();
+        Guid group = await CreateGroupAsync(manager, "Contratos");
+        JsonElement expense = await CreateExpenseAsync(manager, ExpenseBody("fixed", group, "Portaria", Month(0), amount: 4200m));
+        await OpenAsync(manager, Month(1));
+        await OpenAsync(manager, Month(2));
+        await OpenAsync(manager, Month(3));
+
+        HttpResponseMessage ended = await EndAsync(manager, expense, Month(1));
+
+        ended.StatusCode.Should().Be(HttpStatusCode.OK);
+        (await ReadMonthAsync(manager, Month(0))).GetProperty("entries").GetArrayLength().Should().Be(1);
+        (await ReadMonthAsync(manager, Month(1))).GetProperty("entries").GetArrayLength().Should().Be(1);
+        (await ReadMonthAsync(manager, Month(2))).GetProperty("entries").GetArrayLength().Should().Be(0);
+        (await ReadMonthAsync(manager, Month(3))).GetProperty("entries").GetArrayLength().Should().Be(0);
+        (await OpenAsync(manager, Month(2))).GetProperty("entries").GetArrayLength().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Ending_an_expense_with_a_later_entry_in_a_closed_month_is_409_and_changes_nothing()
+    {
+        ManagerSession manager = await RegisterAsync();
+        await CreateUnitAsync(manager, "101", 1m);
+        Guid group = await CreateGroupAsync(manager, "Contratos");
+        JsonElement expense = await CreateExpenseAsync(manager, ExpenseBody("fixed", group, "Portaria", Month(0), amount: 4200m));
+        await OpenAsync(manager, Month(2));
+        (await CloseAsync(manager, Month(2), "2099-12-10")).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        HttpResponseMessage ended = await EndAsync(manager, expense, Month(1));
+
+        ended.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await ended.CodeAsync()).Should().Be("expense.end_has_closed_months");
+        (await DescriptionsAsync(manager, Expenses)).Should().Equal("Portaria");
+        (await ReadMonthAsync(manager, Month(2))).GetProperty("entries").GetArrayLength().Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Ending_an_expense_with_a_later_paid_entry_is_409()
+    {
+        ManagerSession manager = await RegisterAsync();
+        Guid group = await CreateGroupAsync(manager, "Contratos");
+        JsonElement expense = await CreateExpenseAsync(manager, ExpenseBody("fixed", group, "Portaria", Month(0), amount: 4200m));
+        JsonElement later = (await OpenAsync(manager, Month(2))).GetProperty("entries").EnumerateArray().Single();
+        await PayAsync(manager, later);
+
+        HttpResponseMessage ended = await EndAsync(manager, expense, Month(1));
+
+        ended.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await ended.CodeAsync()).Should().Be("expense.end_has_paid_entries");
+    }
+
+    [Fact]
+    public async Task Delete_removes_the_expense_and_its_entries_and_answers_204()
+    {
+        ManagerSession manager = await RegisterAsync();
+        Guid group = await CreateGroupAsync(manager, "Contratos");
+        JsonElement expense = await CreateExpenseAsync(manager, ExpenseBody("fixed", group, "Portaria", Month(0), amount: 4200m));
+        await CreateExpenseAsync(manager, ExpenseBody("fixed", group, "Jardinagem", Month(0), amount: 300m));
+        await OpenAsync(manager, Month(1));
+
+        HttpResponseMessage deleted = await DeleteAsync(manager, expense);
+
+        deleted.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await DescriptionsAsync(manager, $"{Expenses}?status=all")).Should().Equal("Jardinagem");
+        JsonElement[] entries = [.. (await ReadMonthAsync(manager, Month(0))).GetProperty("entries").EnumerateArray()];
+        entries.Should().ContainSingle().Which.GetProperty("description").GetString().Should().Be("Jardinagem");
+        (await ReadMonthAsync(manager, Month(1))).GetProperty("entries").GetArrayLength().Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Delete_works_for_an_ended_expense()
+    {
+        ManagerSession manager = await RegisterAsync();
+        Guid group = await CreateGroupAsync(manager, "Contratos");
+        JsonElement expense = await CreateExpenseAsync(manager, ExpenseBody("variable", group, "Água", Month(0)));
+        JsonElement ended = await (await EndAsync(manager, expense, Month(0))).Content.ReadFromJsonAsync<JsonElement>();
+
+        HttpResponseMessage deleted = await DeleteAsync(manager, ended);
+
+        deleted.StatusCode.Should().Be(HttpStatusCode.NoContent);
+        (await DescriptionsAsync(manager, $"{Expenses}?status=all")).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Delete_refuses_a_missing_version_a_stale_one_and_an_unknown_expense()
+    {
+        ManagerSession manager = await RegisterAsync();
+        Guid group = await CreateGroupAsync(manager, "Contratos");
+        JsonElement expense = await CreateExpenseAsync(manager, ExpenseBody("fixed", group, "Portaria", Month(0), amount: 4200m));
+        Guid id = expense.GetProperty("id").GetGuid();
+
+        HttpResponseMessage withoutVersion = await _client.SendJsonAsync(HttpMethod.Delete, $"{Expenses}/{id}", manager.AccessToken);
+        HttpResponseMessage stale = await _client.SendJsonAsync(HttpMethod.Delete, $"{Expenses}/{id}?version=1", manager.AccessToken);
+        HttpResponseMessage unknown = await _client.SendJsonAsync(HttpMethod.Delete, $"{Expenses}/{Guid.CreateVersion7()}?version=1", manager.AccessToken);
+
+        withoutVersion.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await withoutVersion.CodeAsync()).Should().Be("finance.version.required");
+        stale.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await stale.CodeAsync()).Should().Be("concurrency.conflict");
+        unknown.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await unknown.CodeAsync()).Should().Be("expense.not_found");
+        (await DescriptionsAsync(manager, Expenses)).Should().Equal("Portaria");
+    }
+
+    [Fact]
+    public async Task Delete_of_an_expense_with_an_entry_in_a_closed_month_is_409_and_keeps_everything()
+    {
+        ManagerSession manager = await RegisterAsync();
+        await CreateUnitAsync(manager, "101", 1m);
+        Guid group = await CreateGroupAsync(manager, "Contratos");
+        JsonElement expense = await CreateExpenseAsync(manager, ExpenseBody("fixed", group, "Portaria", Month(0), amount: 4200m));
+        (await CloseAsync(manager, Month(0), "2099-12-10")).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        HttpResponseMessage deleted = await DeleteAsync(manager, expense);
+
+        deleted.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await deleted.CodeAsync()).Should().Be("expense.delete_has_closed_months");
+        (await DescriptionsAsync(manager, Expenses)).Should().Equal("Portaria");
+    }
+
+    [Fact]
+    public async Task Delete_of_an_expense_with_a_paid_entry_is_409_and_keeps_everything()
+    {
+        ManagerSession manager = await RegisterAsync();
+        Guid group = await CreateGroupAsync(manager, "Contratos");
+        JsonElement expense = await CreateExpenseAsync(manager, ExpenseBody("fixed", group, "Portaria", Month(0), amount: 4200m));
+        await PayAsync(manager, (await ReadMonthAsync(manager, Month(0))).GetProperty("entries").EnumerateArray().Single());
+
+        HttpResponseMessage deleted = await DeleteAsync(manager, expense);
+
+        deleted.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await deleted.CodeAsync()).Should().Be("expense.delete_has_paid_entries");
+        (await ReadMonthAsync(manager, Month(0))).GetProperty("entries").GetArrayLength().Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Delete_never_touches_the_expense_of_another_condominium()
+    {
+        ManagerSession first = await RegisterAsync();
+        ManagerSession second = await RegisterAsync();
+        Guid group = await CreateGroupAsync(first, "Contratos");
+        JsonElement expense = await CreateExpenseAsync(first, ExpenseBody("fixed", group, "Portaria", Month(0), amount: 4200m));
+
+        HttpResponseMessage deleted = await DeleteAsync(second, expense);
+
+        deleted.StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await DescriptionsAsync(first, Expenses)).Should().Equal("Portaria");
     }
 
     // ---- Lançamentos do mês ----
@@ -1075,6 +1258,22 @@ public sealed class FinanceEndpointsTests(ApiFixture fixture) : IDisposable
             $"{Expenses}/{expense.GetProperty("id").GetGuid()}/end",
             manager.AccessToken,
             new JsonObject { ["version"] = expense.GetProperty("version").GetString(), ["lastMonth"] = lastMonth });
+
+    private Task<HttpResponseMessage> DeleteAsync(ManagerSession manager, JsonElement expense) =>
+        _client.SendJsonAsync(
+            HttpMethod.Delete,
+            $"{Expenses}/{expense.GetProperty("id").GetGuid()}?version={Uri.EscapeDataString(expense.GetProperty("version").GetString()!)}",
+            manager.AccessToken);
+
+    private async Task PayAsync(ManagerSession manager, JsonElement entry)
+    {
+        HttpResponseMessage paid = await _client.SendJsonAsync(
+            HttpMethod.Put,
+            $"{Entries}/{entry.GetProperty("id").GetGuid()}/status",
+            manager.AccessToken,
+            new JsonObject { ["version"] = entry.GetProperty("version").GetString(), ["status"] = "paid" });
+        paid.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
 
     private async Task<JsonElement> OpenAsync(ManagerSession manager, string month)
     {

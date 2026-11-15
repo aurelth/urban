@@ -290,6 +290,9 @@ SCREENS.forEach(([where, width, height]) => {
       closeDialog();
       cy.get('button[aria-label="Encerrar Conta de luz"]').click();
       expectDialogBreathingRoom();
+      closeDialog();
+      cy.get('button[aria-label="Excluir Conta de luz"]').click();
+      expectDialogBreathingRoom();
     });
 
     it('não cola texto em container no diálogo de informar o valor de um lançamento', () => {
