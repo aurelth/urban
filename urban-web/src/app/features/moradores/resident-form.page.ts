@@ -392,7 +392,9 @@ export class ResidentFormPage implements OnInit {
   /** A primeira entrada do morador numa unidade (AAAA-MM-DD), entre todos os vínculos, ou nulo sem vínculo lido. */
   private firstEntry(): string | null {
     const dates = this.store.resident()?.occupancies.map((occupancy) => occupancy.startDate) ?? [];
-    return dates.length === 0 ? null : dates.reduce((first, date) => (date < first ? date : first));
+    return dates.length === 0
+      ? null
+      : dates.reduce((first, date) => (date < first ? date : first), dates[0]);
   }
 
   private fill(resident: Resident): void {
