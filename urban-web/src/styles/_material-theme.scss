@@ -136,8 +136,9 @@ html {
   );
 }
 
-// Acao destrutiva (excluir, apagar, remover): vermelho do papel "error" nos botoes de icone e nos preenchidos, nos dois
-// temas. Quem usa so poe a classe no botao; uma varredura de templates (danger-buttons.spec.ts) exige isso.
+// Acao destrutiva (excluir, apagar, remover): vermelho do papel "error" nos botoes de icone e de texto (sem fundo,
+// como o Cancelar), nos dois temas. Quem usa so poe a classe no botao; uma varredura de templates
+// (danger-buttons.spec.ts) exige isso e proibe o botao preenchido.
 .urban-danger {
   @include mat.icon-button-overrides(
     (
@@ -148,9 +149,6 @@ html {
 
   @include mat.button-overrides(
     (
-      filled-container-color: var(--mat-sys-error),
-      filled-label-text-color: var(--mat-sys-on-error),
-      filled-state-layer-color: var(--mat-sys-on-error),
       text-label-text-color: var(--mat-sys-error),
     )
   );

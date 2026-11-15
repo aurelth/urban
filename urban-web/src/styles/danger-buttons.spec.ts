@@ -15,14 +15,27 @@ function templates(dir: string): string[] {
 }
 
 describe('botões de exclusão', () => {
-  it('o tema define o estilo urban-danger para os três tipos de botão, pelo papel error do Material', () => {
+  it('o tema define o estilo urban-danger só para botão de ícone e de texto, pelo papel error do Material', () => {
     const block = THEME.split('.urban-danger {')[1]?.split('\n}')[0] ?? '';
 
     expect(block).toContain('mat.icon-button-overrides');
     expect(block).toContain('mat.button-overrides');
     expect(block).toMatch(/icon-color:\s*var\(--mat-sys-error\)/);
-    expect(block).toMatch(/filled-container-color:\s*var\(--mat-sys-error\)/);
-    expect(block).toMatch(/filled-label-text-color:\s*var\(--mat-sys-on-error\)/);
+    expect(block).toMatch(/text-label-text-color:\s*var\(--mat-sys-error\)/);
+    expect(block).not.toContain('filled-');
+  });
+
+  it('botão de exclusão com texto é sem fundo, como o Cancelar: nenhum urban-danger usa mat-flat-button', () => {
+    const filled: string[] = [];
+    for (const file of templates(join(process.cwd(), 'src', 'app'))) {
+      for (const [button] of readFileSync(file, 'utf8').matchAll(/<button\b[^>]*>/g)) {
+        if (/\burban-danger\b/.test(button) && /\bmat-flat-button\b/.test(button)) {
+          filled.push(`${file.replace(process.cwd(), '')}: ${button.replace(/\s+/g, ' ')}`);
+        }
+      }
+    }
+
+    expect(filled).toEqual([]);
   });
 
   it('todo botão que exclui, apaga ou remove (ícone de lixeira ou texto) leva urban-danger', () => {
