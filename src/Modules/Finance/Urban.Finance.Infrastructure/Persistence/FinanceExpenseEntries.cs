@@ -70,6 +70,24 @@ public sealed class FinanceExpenseEntries(FinanceDbContext db) : IExpenseEntries
         }
     }
 
+    public async Task<Result> RemoveRangeAsync(IReadOnlyList<ExpenseEntryRecord> entries, CancellationToken cancellationToken)
+    {
+        db.ExpenseEntries.RemoveRange(entries.Select(record => record.Entry));
+
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+
+            return Result.Success();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            db.ChangeTracker.Clear();
+
+            return Result.Failure(FinanceErrors.ConcurrencyConflict);
+        }
+    }
+
     private ExpenseEntryRecord Record(ExpenseEntry entry) => new(entry, CurrentVersion(entry));
 
     private string CurrentVersion(ExpenseEntry entry) =>

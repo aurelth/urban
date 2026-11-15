@@ -120,7 +120,7 @@ public static class FinanceEndpoints
             .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound, StatusCodes.Status409Conflict);
 
         finance.MapDelete("/consumption-tariffs/{month}", (string month, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
-                DeleteTariffAsync(month, user, sender, ct))
+                DeleteAsync(new DeleteConsumptionTariffCommand(month), user, sender, ct))
             .WithName("DeleteConsumptionTariff")
             .WithSummary("Apaga a tarifa que começa em um mês")
             .WithDescription("Responde 204. Mês sem tarifa responde 404. Os meses já fechados não mudam: o fechamento guarda o que cobrou. " + RateLimitText)
@@ -200,9 +200,22 @@ public static class FinanceEndpoints
                 SendAsync(user, response, sender, FinanceMapper.ToCommand(request, id), view => FinanceMapper.ToResponse(view), ct))
             .WithName("EndExpense")
             .WithSummary("Encerra uma despesa fixa ou variável")
-            .WithDescription(VersionText + " O último mês não pode ser anterior ao início (400). Despesas únicas e parceladas terminam sozinhas (422). " + RateLimitText)
+            .WithDescription(
+                VersionText + " A despesa passa a contar como encerrada na hora e os lançamentos dos meses depois do último mês cobrado são apagados. " +
+                "O último mês não pode ser anterior ao início (400). Despesas únicas e parceladas terminam sozinhas (422). " +
+                "Lançamento depois do último mês num mês já fechado (`expense.end_has_closed_months`) ou já pago (`expense.end_has_paid_entries`) responde 409 e nada muda. " + RateLimitText)
             .Produces<ExpenseResponse>()
             .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound, StatusCodes.Status409Conflict, StatusCodes.Status422UnprocessableEntity);
+
+        finance.MapDelete("/expenses/{id:guid}", (Guid id, string? version, ClaimsPrincipal user, ISender sender, CancellationToken ct) =>
+                DeleteAsync(new DeleteExpenseCommand(id, version), user, sender, ct))
+            .WithName("DeleteExpense")
+            .WithSummary("Exclui uma despesa, com o cronograma e todos os lançamentos")
+            .WithDescription(
+                "Responde 204. A versão vai na query (`?version=`): sem ela, 400; versão velha, 409. " +
+                "Lançamento num mês já fechado (`expense.delete_has_closed_months`) ou já pago (`expense.delete_has_paid_entries`) responde 409 e nada é apagado: para guardar o histórico, encerre a despesa. " + RateLimitText)
+            .Produces(StatusCodes.Status204NoContent)
+            .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound, StatusCodes.Status409Conflict);
     }
 
     private static void MapMonths(RouteGroupBuilder finance)
@@ -289,14 +302,14 @@ public static class FinanceEndpoints
         return ApiResults.Respond(await sender.Send(FinanceMapper.ToCommand(request), cancellationToken), response, view => FinanceMapper.ToResponse(view));
     }
 
-    private static async Task<IResult> DeleteTariffAsync(string month, ClaimsPrincipal user, ISender sender, CancellationToken cancellationToken)
+    private static async Task<IResult> DeleteAsync(IRequest<Result> command, ClaimsPrincipal user, ISender sender, CancellationToken cancellationToken)
     {
         if (!ManagerAccess.TryRead(user, out _, out IResult? refusal))
         {
             return refusal;
         }
 
-        Result result = await sender.Send(new DeleteConsumptionTariffCommand(month), cancellationToken);
+        Result result = await sender.Send(command, cancellationToken);
 
         return result.IsSuccess ? Results.NoContent() : ErrorHttp.ToProblem(result.Error);
     }

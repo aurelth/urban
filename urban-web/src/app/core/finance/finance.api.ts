@@ -81,6 +81,11 @@ export class FinanceApi {
     return this.http.post<Expense>(`${BASE}/expenses/${id}/end`, { version, lastMonth });
   }
 
+  /** A versão vai na query porque o DELETE não leva corpo. */
+  deleteExpense(id: string, version: string): Observable<void> {
+    return this.http.delete<void>(`${BASE}/expenses/${id}`, { params: { version } });
+  }
+
   getMonth(month: string): Observable<MonthEntries> {
     return this.http.get<MonthEntries>(`${BASE}/months/${month}`);
   }

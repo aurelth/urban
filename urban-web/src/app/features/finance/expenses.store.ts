@@ -112,6 +112,8 @@ export const ExpensesStore = signalStore(
         act(api.setInstallment(target.id, target.version, number, amount)),
       end: (target: Expense, lastMonth: string): Promise<ApiProblem | null> =>
         act(api.endExpense(target.id, target.version, lastMonth)),
+      remove: (target: Expense): Promise<ApiProblem | null> =>
+        act(api.deleteExpense(target.id, target.version)),
       /** Cria o grupo e, se ele entra na base do fundo de reserva, marca com a versão que a API acabou de devolver. */
       createGroup: (values: ExpenseGroupValues): Promise<ApiProblem | null> =>
         act(

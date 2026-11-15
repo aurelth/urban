@@ -18,7 +18,7 @@ namespace Urban.Finance.Infrastructure.Persistence.Migrations
 #pragma warning disable 612, 618
             modelBuilder
                 .HasDefaultSchema("finance")
-                .HasAnnotation("ProductVersion", "10.0.13")
+                .HasAnnotation("ProductVersion", "10.0.14")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -318,6 +318,10 @@ namespace Urban.Finance.Infrastructure.Persistence.Migrations
                         .HasMaxLength(7)
                         .HasColumnType("character varying(7)")
                         .HasColumnName("end_month");
+
+                    b.Property<DateTimeOffset?>("EndedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ended_at");
 
                     b.Property<Guid>("GroupId")
                         .HasColumnType("uuid")

@@ -32,3 +32,5 @@ public sealed record ChangeExpenseAmountCommand(Guid ExpenseId, string? Version,
 public sealed record SetInstallmentAmountCommand(Guid ExpenseId, string? Version, int Number, decimal Amount) : IRequest<Result<ExpenseView>>;
 
 public sealed record EndExpenseCommand(Guid ExpenseId, string? Version, string? LastMonth) : IRequest<Result<ExpenseView>>;
+
+public sealed record DeleteExpenseCommand(Guid ExpenseId, string? Version) : IRequest<Result>;

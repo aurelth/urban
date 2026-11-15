@@ -30,6 +30,22 @@ public static class ExpenseErrors
 
     public static readonly Error EndNotAllowed = new("expense.end_not_allowed", "Só despesas fixas e variáveis podem ser encerradas; as demais terminam sozinhas");
 
+    public static readonly Error EndHasClosedMonths = new(
+        "expense.end_has_closed_months",
+        "Há lançamentos desta despesa em meses já fechados depois do último mês escolhido. Reabra esses meses antes de encerrar");
+
+    public static readonly Error EndHasPaidEntries = new(
+        "expense.end_has_paid_entries",
+        "Há lançamentos pagos desta despesa depois do último mês escolhido. Escolha um mês final que os inclua ou desfaça o pagamento");
+
+    public static readonly Error DeleteHasClosedMonths = new(
+        "expense.delete_has_closed_months",
+        "Esta despesa tem lançamentos em meses já fechados. Reabra esses meses antes de excluir, ou encerre a despesa");
+
+    public static readonly Error DeleteHasPaidEntries = new(
+        "expense.delete_has_paid_entries",
+        "Esta despesa tem lançamentos pagos. Encerre a despesa em vez de excluir, ou desfaça os pagamentos");
+
     public static readonly Error NotDueInMonth = new("expense.not_due_in_month", "A despesa não tem lançamento neste mês");
 
     public static readonly Error KindInvalid = new("expense.kind.invalid", "Escolha se a despesa é única, fixa mensal, variável mensal ou parcelada");

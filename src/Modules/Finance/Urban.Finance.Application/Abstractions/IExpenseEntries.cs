@@ -19,4 +19,7 @@ public interface IExpenseEntries
 
     /// <returns>A nova versão, ou o conflito de versão.</returns>
     Task<Result<string>> SaveAsync(ExpenseEntryRecord record, CancellationToken cancellationToken);
+
+    /// <summary>Apaga os lançamentos juntos. Um lançamento editado por outra pessoa desde a leitura vira <see cref="Urban.Finance.Domain.FinanceErrors.ConcurrencyConflict"/> e nada é apagado.</summary>
+    Task<Result> RemoveRangeAsync(IReadOnlyList<ExpenseEntryRecord> entries, CancellationToken cancellationToken);
 }

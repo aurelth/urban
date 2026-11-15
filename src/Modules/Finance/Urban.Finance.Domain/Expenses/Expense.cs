@@ -60,6 +60,9 @@ public sealed class Expense
 
     public YearMonth? EndMonth { get; private set; }
 
+    /// <summary>Quando o síndico encerrou a despesa. Enquanto não for nulo, ela já conta como encerrada, mesmo que o último mês cobrado ainda não tenha chegado.</summary>
+    public DateTimeOffset? EndedAt { get; private set; }
+
     public int? InstallmentCount { get; private set; }
 
     public int? CurrentInstallment { get; private set; }
@@ -277,25 +280,32 @@ public sealed class Expense
         return Result.Success();
     }
 
-    public Result End(YearMonth lastMonth)
+    public Result ValidateEnd(YearMonth lastMonth)
     {
         if (Kind is not (ExpenseKind.Fixed or ExpenseKind.Variable))
         {
             return Result.Failure(ExpenseErrors.EndNotAllowed);
         }
 
-        if (lastMonth < StartMonth)
+        return lastMonth < StartMonth ? Result.Failure(ExpenseErrors.EndBeforeStart) : Result.Success();
+    }
+
+    public Result End(YearMonth lastMonth, DateTimeOffset now)
+    {
+        Result valid = ValidateEnd(lastMonth);
+        if (valid.IsFailure)
         {
-            return Result.Failure(ExpenseErrors.EndBeforeStart);
+            return valid;
         }
 
         EndMonth = lastMonth;
+        EndedAt = now;
         return Result.Success();
     }
 
     public bool IsDueIn(YearMonth month) => month >= StartMonth && (LastMonth is not { } last || month <= last);
 
-    public bool IsEnded(YearMonth reference) => LastMonth is { } last && last < reference;
+    public bool IsEnded(YearMonth reference) => EndedAt is not null || (LastMonth is { } last && last < reference);
 
     /// <summary>Valor previsto para o mês. Nulo quando a despesa não vence no mês ou quando o valor é digitado todo mês (variável).</summary>
     public decimal? AmountFor(YearMonth month)

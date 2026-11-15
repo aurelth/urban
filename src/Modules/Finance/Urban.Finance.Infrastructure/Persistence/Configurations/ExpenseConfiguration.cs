@@ -27,6 +27,7 @@ internal sealed class ExpenseConfiguration : IEntityTypeConfiguration<Expense>
         builder.Property(expense => expense.InstallmentCount);
         builder.Property(expense => expense.CurrentInstallment);
         builder.Property(expense => expense.CreatedAt);
+        builder.Property(expense => expense.EndedAt);
 
         builder.Ignore(expense => expense.LastMonth);
         builder.Ignore(expense => expense.RemainingTotal);
