@@ -1,0 +1,114 @@
+<section class="mx-auto max-w-3xl p-6">
+  <h1 class="mb-1 text-3xl font-semibold tracking-tight">Dados para pagamento</h1>
+  <p class="mb-6 text-on-surface-variant">
+    Os moradores usam estes dados para pagar a fatura. Informe a chave Pix, a conta bancária ou as
+    duas
+  </p>
+
+  @if (store.status() === 'error') {
+    <div class="flex flex-col items-start gap-4" data-testid="load-error">
+      <p class="flex items-start gap-2 text-error">
+        <mat-icon svgIcon="error" aria-hidden="true" />
+        <span>Não foi possível carregar os dados para pagamento</span>
+      </p>
+      <button mat-stroked-button type="button" data-testid="retry" (click)="load()">
+        Tentar de novo
+      </button>
+    </div>
+  } @else if (store.instructions() !== null) {
+    <form [formGroup]="form" (ngSubmit)="submit()" class="flex flex-col gap-6" novalidate>
+      <mat-card appearance="outlined" data-testid="pix-section">
+        <mat-card-content class="p-6">
+          <h2 class="mb-2 text-xl font-semibold">Chave Pix</h2>
+          <p class="mb-6 text-on-surface-variant">
+            Escolha o tipo da chave e informe-a. Em "Não informar", a fatura não mostra Pix
+          </p>
+          <div class="grid gap-x-4 sm:grid-cols-2">
+            <urban-select-field
+              name="pixKind"
+              label="Tipo da chave"
+              emptyLabel="Não informar"
+              [options]="pixKinds"
+            />
+            @if (pixKind() !== '') {
+              <urban-text-field
+                name="pixKey"
+                label="Chave Pix"
+                [mask]="pixMask()"
+                [hint]="pixHint()"
+                [errors]="pixKeyErrors"
+              />
+            }
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card appearance="outlined" data-testid="account-section">
+        <mat-card-content class="p-6">
+          <h2 class="mb-2 text-xl font-semibold">Conta bancária</h2>
+          <p class="mb-6 text-on-surface-variant">
+            Para quem paga por transferência ou depósito. Preencha todos os campos ou deixe todos em
+            branco para não informar a conta
+          </p>
+          <div class="grid gap-x-4 sm:grid-cols-2">
+            <urban-text-field
+              class="sm:col-span-2"
+              name="bank"
+              label="Banco"
+              [optional]="true"
+              [errors]="bankErrors"
+            />
+            <urban-text-field
+              name="agency"
+              label="Agência"
+              inputmode="numeric"
+              [optional]="true"
+              [errors]="agencyErrors"
+            />
+            <urban-text-field
+              name="number"
+              label="Conta, com o dígito"
+              inputmode="numeric"
+              [optional]="true"
+              [errors]="numberErrors"
+            />
+            <urban-select-field
+              name="accountKind"
+              label="Tipo da conta"
+              emptyLabel="Não informar"
+              [options]="accountKinds"
+              [errors]="accountKindErrors"
+            />
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      @if (updatedAt(); as moment) {
+        <p class="m-0 text-sm text-on-surface-variant" data-testid="updated-at">
+          Atualizado em {{ formatDate(moment) }}
+        </p>
+      }
+
+      @if (saved()) {
+        <p role="status" class="flex items-start gap-2" data-testid="saved">
+          <span class="inline-flex text-success"
+            ><mat-icon svgIcon="check_circle" aria-hidden="true"
+          /></span>
+          <span>Dados salvos</span>
+        </p>
+      }
+
+      <urban-form-submit
+        label="Salvar alterações"
+        busyLabel="Salvando"
+        [busy]="store.status() === 'saving'"
+        [disabled]="!hasChanges()"
+        [error]="error()"
+      />
+    </form>
+  } @else {
+    <p role="status" class="text-on-surface-variant" data-testid="loading">
+      Carregando os dados para pagamento
+    </p>
+  }
+</section>

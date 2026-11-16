@@ -162,6 +162,15 @@ export const routes: Routes = [
               import('./features/finance/payments.page').then((m) => m.PaymentsPage),
           },
           {
+            path: 'financeiro/dados-de-pagamento',
+            title: 'Dados para pagamento',
+            canActivate: [managerGuard],
+            loadComponent: () =>
+              import('./features/finance/payment-instructions.page').then(
+                (m) => m.PaymentInstructionsPage,
+              ),
+          },
+          {
             path: 'dashboard',
             title: 'Painel',
             canActivate: [adminHomeGuard],
