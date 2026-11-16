@@ -17,6 +17,11 @@ internal sealed class FinanceStoreKit(FinancePostgresFixture postgres)
 
     public Guid CondominiumId { get; } = Guid.CreateVersion7();
 
+    /// <summary>As duas unidades de todo fechamento do kit, as mesmas em todos os meses: 101 pesa 0,6 e A-102 pesa 0,4.</summary>
+    public ApportionmentBasis Basis { get; } = new(
+        ApportionmentBasisKind.IdealFraction,
+        [new ApportionmentUnit(Guid.CreateVersion7(), null, "101", 0.6m), new ApportionmentUnit(Guid.CreateVersion7(), "A", "102", 0.4m)]);
+
     public static YearMonth M(int year, int month) => YearMonth.Create(year, month).Value;
 
     public FinanceExpenseGroups Groups(Guid? tenant = null) => new(postgres.CreateContext(tenant ?? CondominiumId));
@@ -34,6 +39,8 @@ internal sealed class FinanceStoreKit(FinancePostgresFixture postgres)
     public FinanceMeterReadings Readings(Guid? tenant = null) => new(postgres.CreateContext(tenant ?? CondominiumId));
 
     public FinanceMonthClosings Closings(Guid? tenant = null) => new(postgres.CreateContext(tenant ?? CondominiumId));
+
+    public FinanceCharges Charges(Guid? tenant = null) => new(postgres.CreateContext(tenant ?? CondominiumId));
 
     public FinancePayments Payments(Guid? tenant = null) => new(postgres.CreateContext(tenant ?? CondominiumId));
 
@@ -75,10 +82,7 @@ internal sealed class FinanceStoreKit(FinancePostgresFixture postgres)
         Guid tenant = condominiumId ?? CondominiumId;
         Expense expense = Expense.CreateFixed(tenant, Guid.CreateVersion7(), "Zeladoria", null, month, null, 1000m, 10, Now).Value;
         ExpenseEntry entry = expense.GenerateEntry(month, Now).Value;
-        ApportionmentBasis basis = new(
-            ApportionmentBasisKind.IdealFraction,
-            [new ApportionmentUnit(Guid.CreateVersion7(), null, "101", 0.6m), new ApportionmentUnit(Guid.CreateVersion7(), "A", "102", 0.4m)]);
-        MonthClosing closing = MonthClosing.Close(tenant, month, dueDate ?? month.AddMonths(1).FirstDay.AddDays(9), Guid.CreateVersion7(), Now, [entry], basis).Value;
+        MonthClosing closing = MonthClosing.Close(tenant, month, dueDate ?? month.AddMonths(1).FirstDay.AddDays(9), Guid.CreateVersion7(), Now, [entry], Basis).Value;
         (await Closings(tenant).AddAsync(closing, default)).IsSuccess.Should().BeTrue();
 
         return closing;

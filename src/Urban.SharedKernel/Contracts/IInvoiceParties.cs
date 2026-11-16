@@ -1,9 +1,18 @@
 namespace Urban.SharedKernel.Contracts;
 
+/// <param name="Name">Nome do síndico.</param>
+/// <param name="Phone">Celular já formatado, "(47) 99123-4567".</param>
+public sealed record InvoiceManager(string Name, string? Phone)
+{
+    // Nome e telefone são dados pessoais: um log ou uma mensagem de erro que imprima o objeto não os vaza.
+    public override string ToString() => nameof(InvoiceManager);
+}
+
 /// <param name="Name">Nome do condomínio.</param>
 /// <param name="Cnpj">CNPJ já formatado (00.000.000/0000-00).</param>
 /// <param name="Address">Endereço em uma linha, pronto para o cabeçalho da fatura.</param>
-public sealed record InvoiceCondominium(string Name, string Cnpj, string Address);
+/// <param name="Manager">Quem o morador procura para tirar dúvidas; nulo se o cadastro do síndico não foi encontrado.</param>
+public sealed record InvoiceCondominium(string Name, string Cnpj, string Address, InvoiceManager? Manager = null);
 
 /// <param name="Name">Nome de quem recebe a fatura da unidade.</param>
 /// <param name="Email">E-mail do cadastro; nulo quando a pessoa não tem (a fatura existe, mas não há para onde enviá-la).</param>

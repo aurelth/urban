@@ -1,6 +1,8 @@
 using FluentAssertions;
 using Urban.Finance.Application.Invoices;
 using Urban.Finance.Domain.Months;
+using Urban.Finance.Domain.Payments;
+using Urban.SharedKernel.Contracts;
 
 namespace Urban.UnitTests.Finance.Application;
 
@@ -80,5 +82,76 @@ public class InvoiceTextTests
         Guid chargeId = Guid.Parse("018f0000-0000-7000-8000-0000abcdef12");
 
         InvoiceText.Reference(YearMonth.Create(2026, 10).Value, chargeId).Should().Be("2026-10-ABCDEF12");
+    }
+
+    [Theory]
+    [InlineData(60, "60%")]
+    [InlineData(2.5, "2,5%")]
+    [InlineData(33.33333333, "33,3333%")]
+    [InlineData(0.00004, "0%")]
+    [InlineData(100, "100%")]
+    [InlineData(1234.5, "1.234,5%")]
+    public void Percent_ShowsUpToFourDecimalsWithoutTrailingZeros(double percent, string expected)
+    {
+        InvoiceText.Percent((decimal)percent).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(ApportionmentBasisKind.IdealFraction, "Fração ideal")]
+    [InlineData(ApportionmentBasisKind.EqualShare, "Partes iguais")]
+    [InlineData(ApportionmentBasisKind.Area, "Área")]
+    public void Method_NamesTheBasisOfTheApportionment(ApportionmentBasisKind kind, string expected)
+    {
+        InvoiceText.Method(kind).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(ChargeStatus.Open, "Em aberto")]
+    [InlineData(ChargeStatus.Partial, "Paga em parte")]
+    [InlineData(ChargeStatus.Paid, "Paga")]
+    [InlineData(ChargeStatus.Overdue, "Vencida")]
+    public void Status_UsesTheWordsOfTheScreens(ChargeStatus status, string expected)
+    {
+        InvoiceText.Status(status).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(PixKeyKind.Cnpj, "CNPJ")]
+    [InlineData(PixKeyKind.Cpf, "CPF")]
+    [InlineData(PixKeyKind.Email, "E-mail")]
+    [InlineData(PixKeyKind.Phone, "Celular")]
+    [InlineData(PixKeyKind.Random, "Chave aleatória")]
+    public void PixKind_NamesTheTypeOfTheKey(PixKeyKind kind, string expected)
+    {
+        InvoiceText.PixKind(kind).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(PixKeyKind.Cnpj, "12345678000195", "12.345.678/0001-95")]
+    [InlineData(PixKeyKind.Cnpj, "12ABC34501DE35", "12.ABC.345/01DE-35")]
+    [InlineData(PixKeyKind.Cpf, "12345678909", "123.456.789-09")]
+    [InlineData(PixKeyKind.Phone, "+5547991234567", "+55 (47) 99123-4567")]
+    [InlineData(PixKeyKind.Email, "financeiro@aurora.com.br", "financeiro@aurora.com.br")]
+    [InlineData(PixKeyKind.Random, "123e4567-e89b-12d3-a456-426614174000", "123e4567-e89b-12d3-a456-426614174000")]
+    public void PixKey_IsShownTheWayPeopleWriteIt(PixKeyKind kind, string key, string expected)
+    {
+        InvoiceText.PixKey(kind, key).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData(PixKeyKind.Cnpj, "123")]
+    [InlineData(PixKeyKind.Cpf, "123")]
+    [InlineData(PixKeyKind.Phone, "123")]
+    public void PixKey_ThatDoesNotFitTheShape_IsLeftAsItIs(PixKeyKind kind, string key)
+    {
+        InvoiceText.PixKey(kind, key).Should().Be(key);
+    }
+
+    [Theory]
+    [InlineData(BankAccountKind.Checking, "Conta corrente")]
+    [InlineData(BankAccountKind.Savings, "Conta poupança")]
+    public void AccountKind_NamesTheTypeOfTheAccount(BankAccountKind kind, string expected)
+    {
+        InvoiceText.AccountKind(kind).Should().Be(expected);
     }
 }

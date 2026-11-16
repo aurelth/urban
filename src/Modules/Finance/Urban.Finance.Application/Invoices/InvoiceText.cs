@@ -1,6 +1,8 @@
 using System.Globalization;
 using System.Text;
 using Urban.Finance.Domain.Months;
+using Urban.Finance.Domain.Payments;
+using Urban.SharedKernel.Contracts;
 
 namespace Urban.Finance.Application.Invoices;
 
@@ -33,6 +35,44 @@ public static class InvoiceText
 
     /// <summary>Consumo ou leitura em m³, com até 3 casas e sem zeros à direita.</summary>
     public static string Cubic(decimal amount) => amount.ToString("#,##0.###", Brazilian);
+
+    /// <summary>Porcentagem de 0 a 100 com até 4 casas e sem zeros à direita: "60%", "2,5%", "33,3333%".</summary>
+    public static string Percent(decimal percent) => percent.ToString("#,##0.####", Brazilian) + "%";
+
+    public static string Method(ApportionmentBasisKind kind) => kind switch
+    {
+        ApportionmentBasisKind.IdealFraction => "Fração ideal",
+        ApportionmentBasisKind.EqualShare => "Partes iguais",
+        _ => "Área",
+    };
+
+    public static string Status(ChargeStatus status) => status switch
+    {
+        ChargeStatus.Open => "Em aberto",
+        ChargeStatus.Partial => "Paga em parte",
+        ChargeStatus.Paid => "Paga",
+        _ => "Vencida",
+    };
+
+    public static string PixKind(PixKeyKind kind) => kind switch
+    {
+        PixKeyKind.Cnpj => "CNPJ",
+        PixKeyKind.Cpf => "CPF",
+        PixKeyKind.Email => "E-mail",
+        PixKeyKind.Phone => "Celular",
+        _ => "Chave aleatória",
+    };
+
+    /// <summary>A chave Pix como se escreve no dia a dia. Forma que não confere com o tipo fica como veio, sem quebrar a fatura.</summary>
+    public static string PixKey(PixKeyKind kind, string key) => kind switch
+    {
+        PixKeyKind.Cnpj when key.Length == 14 => $"{key[..2]}.{key[2..5]}.{key[5..8]}/{key[8..12]}-{key[12..]}",
+        PixKeyKind.Cpf when key.Length == 11 => $"{key[..3]}.{key[3..6]}.{key[6..9]}-{key[9..]}",
+        PixKeyKind.Phone when key.Length == 14 && key.StartsWith("+55", StringComparison.Ordinal) => $"+55 ({key[3..5]}) {key[5..10]}-{key[10..]}",
+        _ => key,
+    };
+
+    public static string AccountKind(BankAccountKind kind) => kind == BankAccountKind.Savings ? "Conta poupança" : "Conta corrente";
 
     public static string Competence(YearMonth month) => $"{MonthNames[month.Month - 1]} de {month.Year}";
 
