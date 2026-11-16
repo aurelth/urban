@@ -21,6 +21,7 @@
     <PackageVersion Include="NetArchTest.Rules" Version="1.3.2" />
     <PackageVersion Include="FluentAssertions" Version="7.2.2" />
     <PackageVersion Include="Moq" Version="4.21.0" />
+    <PackageVersion Include="PdfPig" Version="0.1.16" />
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.16.0" />
     <PackageVersion Include="Testcontainers.Redis" Version="4.16.0" />
   </ItemGroup>
@@ -44,6 +45,8 @@
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.14" />
     <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.14" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.14" />
+    <!-- Gera o PDF da fatura. Licença Community (gratuita abaixo de US$ 1 milhão de faturamento anual): reavaliar se a empresa passar disso. -->
+    <PackageVersion Include="QuestPDF" Version="2026.9.2" />
   </ItemGroup>
 
   <!-- API. -->

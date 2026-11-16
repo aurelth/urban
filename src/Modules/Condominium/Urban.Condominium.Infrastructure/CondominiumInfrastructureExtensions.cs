@@ -40,6 +40,7 @@ public static class CondominiumInfrastructureExtensions
         services.AddScoped<IApportionments, ApportionmentSettings>();
         services.AddScoped<IApportionmentBasis, ApportionmentBasisProvider>();
         services.AddScoped<ICondominiumDirectory, CondominiumDirectory>();
+        services.AddScoped<IInvoiceParties, InvoiceParties>();
 
         return services;
     }

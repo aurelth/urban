@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Urban.Finance.Application.Abstractions;
+using Urban.Finance.Infrastructure.Invoices;
 using Urban.Finance.Infrastructure.Persistence;
 using Urban.SharedKernel.Abstractions;
 using Urban.SharedKernel.Time;
@@ -30,6 +31,8 @@ public static class FinanceInfrastructureExtensions
         services.AddScoped<IConsumptionTariffs, FinanceConsumptionTariffs>();
         services.AddScoped<IMeterReadings, FinanceMeterReadings>();
         services.AddScoped<IPayments, FinancePayments>();
+        services.AddScoped<ICharges, FinanceCharges>();
+        services.AddSingleton<IInvoiceRenderer, QuestPdfInvoiceRenderer>();
 
         return services;
     }

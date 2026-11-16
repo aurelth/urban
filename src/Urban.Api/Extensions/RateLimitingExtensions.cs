@@ -37,6 +37,7 @@ public static class RateLimitingExtensions
             limiter.AddPolicy(RateLimitPolicies.Admin, http => PerClient(http, options.Admin));
             limiter.AddPolicy(RateLimitPolicies.Contact, http => PerClient(http, options.Contact));
             limiter.AddPolicy(RateLimitPolicies.ContactReply, http => PerClient(http, options.ContactReply));
+            limiter.AddPolicy(RateLimitPolicies.Invoice, http => PerClient(http, options.Invoice));
         });
 
         return services;

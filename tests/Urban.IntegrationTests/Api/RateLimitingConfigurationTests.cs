@@ -38,6 +38,7 @@ public class RateLimitingConfigurationTests
     [InlineData("Admin", 0)]
     [InlineData("Contact", -1)]
     [InlineData("ContactReply", 0)]
+    [InlineData("Invoice", -1)]
     public void Rejects_a_route_without_permits(string route, int permits)
     {
         RateLimitingOptions options = WithRule(route, new() { PermitLimit = permits, Window = TimeSpan.FromMinutes(1) });
@@ -69,6 +70,7 @@ public class RateLimitingConfigurationTests
     [InlineData("Admin")]
     [InlineData("Contact")]
     [InlineData("ContactReply")]
+    [InlineData("Invoice")]
     public void Rejects_a_route_without_a_window(string route)
     {
         RateLimitingOptions options = WithRule(route, new() { PermitLimit = 5, Window = TimeSpan.Zero });
@@ -173,5 +175,6 @@ public class RateLimitingConfigurationTests
         Admin = route == "Admin" ? rule : ValidRule,
         Contact = route == "Contact" ? rule : ValidRule,
         ContactReply = route == "ContactReply" ? rule : ValidRule,
+        Invoice = route == "Invoice" ? rule : ValidRule,
     };
 }

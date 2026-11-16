@@ -1,4 +1,5 @@
 using Urban.Finance.Application.Abstractions;
+using Urban.Finance.Application.Invoices;
 using Urban.Finance.Domain;
 using Urban.Finance.Domain.Closing;
 using Urban.Finance.Domain.Consumption;
@@ -506,5 +507,62 @@ internal sealed class FakePayments(FakeMonthClosings closings) : IPayments
         return Task.FromResult<MonthPaymentsPage?>(new MonthPaymentsPage(
             closing.DueDate, rows.Sum(row => row.Amount), rows.Sum(row => row.Paid), matching.Count,
             [.. matching.Skip((page - 1) * pageSize).Take(pageSize)]));
+    }
+}
+
+/// <summary>As cobranças vêm dos fechamentos do <see cref="FakeMonthClosings"/>, como no banco.</summary>
+internal sealed class FakeCharges(FakeMonthClosings closings) : ICharges
+{
+    public Task<ChargeDetail?> FindAsync(Guid chargeId, CancellationToken cancellationToken)
+    {
+        foreach (MonthClosing closing in closings.All)
+        {
+            UnitCharge? charge = closing.Charges.FirstOrDefault(candidate => candidate.Id == chargeId);
+
+            if (charge is not null)
+            {
+                return Task.FromResult<ChargeDetail?>(new ChargeDetail(charge, closing.Month, closing.DueDate, closing.ClosedAt));
+            }
+        }
+
+        return Task.FromResult<ChargeDetail?>(null);
+    }
+}
+
+internal sealed class FakeInvoiceParties : IInvoiceParties
+{
+    public InvoiceCondominium? Condominium { get; set; } =
+        new("Residencial Aurora", "12.345.678/0001-95", "Rua das Flores, 100 - Centro - Blumenau/SC - 89010-000");
+
+    public Dictionary<Guid, InvoiceResponsible> Responsibles { get; } = [];
+
+    public DateOnly? AskedOn { get; private set; }
+
+    public IReadOnlyCollection<Guid> AskedAbout { get; private set; } = [];
+
+    public Task<InvoiceCondominium?> GetCondominiumAsync(CancellationToken cancellationToken) => Task.FromResult(Condominium);
+
+    public Task<IReadOnlyDictionary<Guid, InvoiceResponsible>> GetResponsiblesAsync(
+        IReadOnlyCollection<Guid> unitIds, DateOnly today, CancellationToken cancellationToken)
+    {
+        AskedOn = today;
+        AskedAbout = unitIds;
+
+        return Task.FromResult<IReadOnlyDictionary<Guid, InvoiceResponsible>>(
+            unitIds.Where(Responsibles.ContainsKey).ToDictionary(id => id, id => Responsibles[id]));
+    }
+}
+
+internal sealed class FakeInvoiceRenderer : IInvoiceRenderer
+{
+    public static readonly byte[] Output = [0x25, 0x50, 0x44, 0x46, 0x2D];
+
+    public List<InvoiceDocument> Rendered { get; } = [];
+
+    public byte[] Render(InvoiceDocument document)
+    {
+        Rendered.Add(document);
+
+        return Output;
     }
 }

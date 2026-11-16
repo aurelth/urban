@@ -55,6 +55,9 @@ public sealed record Address
 
     public PostalCode PostalCode { get; }
 
+    /// <summary>O endereço em uma linha, como vai no cabeçalho da fatura: "Rua das Flores, 100, Bloco B - Centro - Blumenau/SC - 89010-000".</summary>
+    public string Formatted => $"{Street}, {Number}{(Complement is null ? string.Empty : $", {Complement}")} - {Neighborhood} - {City}/{State} - {PostalCode.Formatted}";
+
     public static Result<Address> Create(
         string? street,
         string? number,
