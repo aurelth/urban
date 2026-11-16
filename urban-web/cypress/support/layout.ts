@@ -34,13 +34,15 @@ function describeElement(element: Element): string {
 
 /**
  * Confere, com as medidas reais da tela, que cada `mat-error` visível cabe na largura da janela e não
- * cobre nenhum campo (a não ser o dele), link, botão ou caixa de seleção.
+ * cobre nenhum campo (a não ser o dele), link, botão ou caixa de seleção. Num diálogo, `scope` limita a conferência a
+ * ele (a página atrás do fundo escurecido não conta).
  */
-export function expectErrorsToStayInTheirOwnSpace(): void {
+export function expectErrorsToStayInTheirOwnSpace(scope = 'body'): void {
   cy.document().then((doc) => {
-    const errors = [...doc.querySelectorAll('mat-error')].filter(isVisible);
+    const root = doc.querySelector(scope)!;
+    const errors = [...root.querySelectorAll('mat-error')].filter(isVisible);
     expect(errors.length, 'avisos de erro na tela').to.be.greaterThan(0);
-    const targets = [...doc.querySelectorAll(COVERABLE)].filter(isVisible);
+    const targets = [...root.querySelectorAll(COVERABLE)].filter(isVisible);
     const width = doc.documentElement.clientWidth;
 
     for (const error of errors) {

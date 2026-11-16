@@ -9,6 +9,7 @@ import { stubConfirmEmailCheck, stubTerms } from '../support/cadastro';
 import { NEW_MANAGER } from '../support/condominio';
 import { MANAGER, stubAnonymous, stubSignedIn } from '../support/session';
 import { READINGS_PATH, stubReadings } from '../support/leituras';
+import { PAYMENTS_PATH, stubPayments } from '../support/pagamentos';
 import { ADMIN, REQUESTS_PATH, stubRequests } from '../support/pedidos';
 import { TARIFFS_PATH, stubTariffs } from '../support/tarifas';
 
@@ -203,6 +204,21 @@ describe('Tela de celular (375 x 667)', () => {
     cy.get('[data-testid="unit-row"]').should('have.length', 3);
     cy.get('[data-testid="unit-row"] mat-form-field').each(($field) => {
       const { left, right } = $field[0].getBoundingClientRect();
+      expect(left).to.be.at.least(0);
+      expect(right).to.be.at.most(375);
+    });
+    expectNoHorizontalScroll();
+  });
+
+  it('mostra os pagamentos do mês sem rolagem horizontal, com os botões dentro da tela', () => {
+    stubSignedIn(MANAGER);
+    stubPayments();
+    cy.visit(PAYMENTS_PATH);
+
+    cy.contains('h1', 'Pagamentos').should('be.visible');
+    cy.get('[data-testid="charge-row"]').should('have.length', 3);
+    cy.get('[data-testid="charge-row"] button').each(($button) => {
+      const { left, right } = $button[0].getBoundingClientRect();
       expect(left).to.be.at.least(0);
       expect(right).to.be.at.most(375);
     });

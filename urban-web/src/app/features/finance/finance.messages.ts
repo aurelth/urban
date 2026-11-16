@@ -53,6 +53,8 @@ const FIELD_MESSAGES: MessagesByCode = {
   'closing.readings_pending':
     'Falta a leitura de água ou gás de alguma unidade. Informe as leituras do mês antes de fechar',
   'closing.month_is_closed': 'O mês está fechado. Reabra o mês para mudar os lançamentos',
+  'closing.has_payments':
+    'Este mês já tem pagamentos registrados, inclusive estornados, e não pode ser reaberto',
   'condominium.apportionment_not_ready': describeApportionmentShortfall,
   'finance.version.required': 'Recarregue a lista antes de continuar',
   'finance.condominium_not_found': 'Cadastre o condomínio antes de usar o financeiro',

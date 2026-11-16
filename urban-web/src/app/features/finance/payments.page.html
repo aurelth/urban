@@ -1,0 +1,274 @@
+<section class="mx-auto max-w-5xl p-6">
+  <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="mb-1 text-3xl font-semibold tracking-tight">Pagamentos</h1>
+      <p class="m-0 text-on-surface-variant">
+        Registre o que cada unidade pagou e acompanhe o que falta receber
+      </p>
+    </div>
+    <a mat-stroked-button data-testid="entries-link" routerLink="/financeiro/lancamentos">
+      <mat-icon svgIcon="receipt_long" />
+      Lançamentos do mês
+    </a>
+  </div>
+
+  <nav class="mb-6 flex items-center justify-between gap-2" aria-label="Meses">
+    <button
+      mat-icon-button
+      type="button"
+      aria-label="Mês anterior"
+      title="Mês anterior"
+      [disabled]="!canGo(-1) || store.status() === 'loading' || store.busy()"
+      (click)="go(-1)"
+    >
+      <mat-icon svgIcon="chevron_left" />
+    </button>
+    <h2 class="m-0 text-xl font-medium" aria-live="polite" data-testid="month-title">
+      {{ title(month()) }}
+    </h2>
+    <button
+      mat-icon-button
+      type="button"
+      aria-label="Próximo mês"
+      title="Próximo mês"
+      [disabled]="!canGo(1) || store.status() === 'loading' || store.busy()"
+      (click)="go(1)"
+    >
+      <mat-icon svgIcon="chevron_right" />
+    </button>
+  </nav>
+
+  @switch (store.status()) {
+    @case ('loading') {
+      <p role="status" class="text-on-surface-variant" data-testid="loading">
+        Carregando os pagamentos
+      </p>
+    }
+    @case ('error') {
+      <div class="flex flex-col items-start gap-4" data-testid="load-error">
+        <p class="flex items-start gap-2 text-error">
+          <mat-icon svgIcon="error" aria-hidden="true" />
+          <span>Não foi possível carregar os pagamentos</span>
+        </p>
+        <button mat-stroked-button type="button" data-testid="retry" (click)="reload()">
+          Tentar de novo
+        </button>
+      </div>
+    }
+    @case ('not-closed') {
+      <div
+        class="rounded-xl border border-outline-variant bg-surface-container p-6 text-center"
+        data-testid="not-closed"
+      >
+        <p class="mb-1 text-lg font-medium">{{ title(month()) }} ainda não foi fechado</p>
+        <p class="mb-6 text-on-surface-variant">
+          Os pagamentos são registrados depois que o mês é fechado e as cobranças de cada unidade
+          são emitidas
+        </p>
+        <a
+          mat-flat-button
+          data-testid="close-link"
+          routerLink="/financeiro/lancamentos"
+          [queryParams]="{ mes: month() }"
+        >
+          Ir para os lançamentos do mês
+        </a>
+      </div>
+    }
+    @case ('ready') {
+      @if (store.data(); as data) {
+        @if (notice(); as message) {
+          <p role="status" class="mb-4 flex items-start gap-2" data-testid="notice">
+            <span class="inline-flex text-success"
+              ><mat-icon svgIcon="check_circle" aria-hidden="true"
+            /></span>
+            <span>{{ message }}</span>
+          </p>
+        }
+
+        <dl class="mb-4 grid gap-4 sm:grid-cols-3">
+          <div
+            class="rounded-xl border border-outline-variant bg-surface-container p-4"
+            data-testid="stat-charged"
+          >
+            <dt class="mb-1 text-sm text-on-surface-variant">Cobrado no mês</dt>
+            <dd class="m-0 text-2xl font-semibold">{{ money(data.charged) }}</dd>
+          </div>
+          <div
+            class="rounded-xl border border-outline-variant bg-surface-container p-4"
+            data-testid="stat-received"
+          >
+            <dt class="mb-1 text-sm text-on-surface-variant">Recebido</dt>
+            <dd class="m-0 text-2xl font-semibold">{{ money(data.received) }}</dd>
+          </div>
+          <div
+            class="rounded-xl border border-outline-variant bg-surface-container p-4"
+            data-testid="stat-to-receive"
+          >
+            <dt class="mb-1 text-sm text-on-surface-variant">A receber</dt>
+            <dd class="m-0 text-2xl font-semibold">{{ money(store.toReceive()) }}</dd>
+          </div>
+        </dl>
+        <p class="mb-6 text-sm text-on-surface-variant" data-testid="due-date">
+          Vencimento em {{ date(data.dueDate) }}
+        </p>
+
+        <form (submit)="$event.preventDefault()">
+          <mat-form-field
+            appearance="outline"
+            subscriptSizing="dynamic"
+            class="mb-4 w-full sm:w-72"
+          >
+            <mat-label>Situação</mat-label>
+            <urban-menu-select
+              data-testid="filter-status"
+              [options]="statusFilters"
+              [value]="store.query().status"
+              (valueChange)="onStatus($event)"
+            />
+          </mat-form-field>
+        </form>
+        @if (store.hasFilter()) {
+          <button
+            mat-button
+            type="button"
+            class="mb-4"
+            data-testid="clear-filter"
+            [disabled]="store.busy()"
+            (click)="clearFilter()"
+          >
+            Limpar filtro
+          </button>
+        }
+
+        @if (data.items.length === 0) {
+          <p
+            class="rounded-xl border border-outline-variant bg-surface-container p-6 text-center text-on-surface-variant"
+            data-testid="empty"
+          >
+            Nenhuma cobrança com esta situação neste mês
+          </p>
+        } @else {
+          <div
+            class="overflow-x-auto rounded-xl border border-outline-variant bg-surface-container"
+          >
+            <table class="w-full border-collapse text-left" data-testid="payments-table">
+              <caption class="sr-only">
+                Cobranças do mês
+              </caption>
+              <thead>
+                <tr class="border-b border-outline-variant text-sm text-on-surface-variant">
+                  <th scope="col" class="p-3 font-medium">Unidade</th>
+                  <th scope="col" class="p-3 font-medium max-sm:hidden">Valor</th>
+                  <th scope="col" class="p-3 font-medium max-sm:hidden">Pago</th>
+                  <th scope="col" class="p-3 font-medium">Saldo</th>
+                  <th scope="col" class="p-3 font-medium max-sm:hidden">Situação</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (item of data.items; track item.chargeId) {
+                  <tr
+                    class="border-b border-outline-variant align-top last:border-b-0"
+                    data-testid="charge-row"
+                  >
+                    <td class="p-3">
+                      <span class="block font-medium" data-testid="unit">{{
+                        unitLabel(item)
+                      }}</span>
+                      <span class="mt-1 block text-sm text-on-surface-variant sm:hidden">
+                        {{ money(item.amount) }} · pago {{ money(item.paid) }}
+                      </span>
+                      <span
+                        class="mt-1 inline-flex items-center gap-1 text-sm font-medium sm:hidden"
+                        [class]="statusView(item.status).tone"
+                      >
+                        <mat-icon [svgIcon]="statusView(item.status).icon" aria-hidden="true" />
+                        {{ statusView(item.status).label }}
+                      </span>
+                      <span class="mt-3 flex flex-wrap gap-x-2 gap-y-3">
+                        @if (item.balance > 0) {
+                          <button
+                            mat-flat-button
+                            type="button"
+                            data-testid="register-payment"
+                            [attr.aria-label]="'Registrar pagamento de ' + unitLabel(item)"
+                            [disabled]="store.busy()"
+                            (click)="register(item)"
+                          >
+                            Registrar pagamento
+                          </button>
+                        }
+                        <button
+                          mat-stroked-button
+                          type="button"
+                          data-testid="show-payments"
+                          [attr.aria-label]="'Ver pagamentos de ' + unitLabel(item)"
+                          [disabled]="store.busy()"
+                          (click)="showPayments(item)"
+                        >
+                          Ver pagamentos
+                        </button>
+                      </span>
+                    </td>
+                    <td class="p-3 max-sm:hidden" data-testid="amount">{{ money(item.amount) }}</td>
+                    <td class="p-3 max-sm:hidden" data-testid="paid">
+                      {{ money(item.paid) }}
+                      @if (item.lastReceivedOn; as received) {
+                        <span class="block text-sm text-on-surface-variant"
+                          >Último em {{ date(received) }}</span
+                        >
+                      }
+                    </td>
+                    <td class="p-3 font-medium" data-testid="balance">{{ money(item.balance) }}</td>
+                    <td class="p-3 max-sm:hidden">
+                      <span
+                        class="inline-flex items-center gap-1 font-medium"
+                        data-testid="status"
+                        [class]="statusView(item.status).tone"
+                      >
+                        <mat-icon [svgIcon]="statusView(item.status).icon" aria-hidden="true" />
+                        {{ statusView(item.status).label }}
+                      </span>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+
+          @if (store.pageCount() > 1) {
+            <nav
+              class="mt-4 flex items-center justify-between gap-4"
+              aria-label="Paginação"
+              data-testid="pagination"
+            >
+              <button
+                mat-stroked-button
+                type="button"
+                data-testid="previous"
+                [disabled]="store.busy() || store.query().page <= 1"
+                (click)="goTo(store.query().page - 1)"
+              >
+                <mat-icon svgIcon="chevron_left" />
+                Anterior
+              </button>
+              <span aria-live="polite" data-testid="page-status"
+                >Página {{ store.query().page }} de {{ store.pageCount() }}</span
+              >
+              <button
+                mat-stroked-button
+                type="button"
+                data-testid="next"
+                [disabled]="store.busy() || store.query().page >= store.pageCount()"
+                (click)="goTo(store.query().page + 1)"
+              >
+                Próxima
+                <mat-icon svgIcon="chevron_right" />
+              </button>
+            </nav>
+          }
+        }
+      }
+    }
+  }
+</section>

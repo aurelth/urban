@@ -13,6 +13,12 @@ import {
   UnitCharge,
   UnitReadings,
 } from '../core/finance/finance.models';
+import {
+  ChargePayments,
+  ChargeSummary,
+  MonthPayments,
+  Payment,
+} from '../core/finance/payments.models';
 
 let sequence = 0;
 
@@ -202,6 +208,65 @@ export function monthReadings(overrides: Partial<MonthReadings> = {}): MonthRead
     hasTariff: true,
     hasGas: false,
     units: [unitReadings({ number: '101' }), unitReadings({ number: '102' })],
+    ...overrides,
+  };
+}
+
+export function chargeSummary(overrides: Partial<ChargeSummary> = {}): ChargeSummary {
+  return {
+    chargeId: nextId('0020'),
+    unitId: nextId('0021'),
+    block: 'A',
+    number: '101',
+    amount: 800,
+    paid: 0,
+    balance: 800,
+    status: 'open',
+    lastReceivedOn: null,
+    ...overrides,
+  };
+}
+
+export function monthPayments(overrides: Partial<MonthPayments> = {}): MonthPayments {
+  const items = overrides.items ?? [chargeSummary()];
+  return {
+    month: '2026-11',
+    dueDate: '2026-12-10',
+    charged: 800,
+    received: 0,
+    total: items.length,
+    page: 1,
+    pageSize: 50,
+    items,
+    ...overrides,
+  };
+}
+
+export function payment(overrides: Partial<Payment> = {}): Payment {
+  return {
+    id: nextId('0022'),
+    chargeId: '0199bbbb-0020-7000-8000-000000000001',
+    amount: 500,
+    receivedOn: '2026-11-10',
+    method: 'pix',
+    note: null,
+    registeredAt: '2026-11-10T15:30:00Z',
+    reversedAt: null,
+    reversalReason: null,
+    ...overrides,
+  };
+}
+
+export function chargePayments(overrides: Partial<ChargePayments> = {}): ChargePayments {
+  return {
+    chargeId: '0199bbbb-0020-7000-8000-000000000001',
+    month: '2026-11',
+    dueDate: '2026-12-10',
+    amount: 800,
+    paid: 500,
+    balance: 300,
+    status: 'partial',
+    payments: [payment()],
     ...overrides,
   };
 }

@@ -929,5 +929,25 @@ describe('MonthPage', () => {
       expect(testId(html, 'close-month')).not.toBeNull();
       expect(button(html, 'Corrigir valor de Portaria')!.disabled).toBe(false);
     });
+
+    it('explica no dialogo que o mes ja tem pagamentos e nao pode ser reaberto', async () => {
+      const { fixture, html, http } = await setup(CLOSED);
+
+      testId(html, 'reopen-month')!.click();
+      await settle(fixture);
+      submitDialog('urban-reopen-month-dialog');
+      await flushPromises();
+      http
+        .expectOne(REOPEN_2026_11)
+        .flush(problem(409, 'closing.has_payments'), { status: 409, statusText: 'Erro' });
+      await flushPromises();
+      http.expectOne({ method: 'GET', url: '/api/finance/months/2026-11' }).flush(CLOSED);
+      await settle(fixture);
+
+      const dialog = document.querySelector<HTMLElement>('urban-reopen-month-dialog')!;
+      expect(plain(dialog.querySelector('[role="alert"]')?.textContent)).toBe(
+        'Este mês já tem pagamentos registrados, inclusive estornados, e não pode ser reaberto',
+      );
+    });
   });
 });
