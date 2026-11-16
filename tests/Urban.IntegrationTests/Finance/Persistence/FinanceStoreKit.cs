@@ -1,9 +1,12 @@
 using FluentAssertions;
 using Urban.Finance.Application.Abstractions;
+using Urban.Finance.Domain.Closing;
 using Urban.Finance.Domain.Expenses;
 using Urban.Finance.Domain.Months;
+using Urban.Finance.Domain.Payments;
 using Urban.Finance.Infrastructure.Persistence;
 using Urban.SharedKernel;
+using Urban.SharedKernel.Contracts;
 
 namespace Urban.IntegrationTests.Finance.Persistence;
 
@@ -27,6 +30,10 @@ internal sealed class FinanceStoreKit(FinancePostgresFixture postgres)
     public FinanceConsumptionTariffs Tariffs(Guid? tenant = null) => new(postgres.CreateContext(tenant ?? CondominiumId));
 
     public FinanceMeterReadings Readings(Guid? tenant = null) => new(postgres.CreateContext(tenant ?? CondominiumId));
+
+    public FinanceMonthClosings Closings(Guid? tenant = null) => new(postgres.CreateContext(tenant ?? CondominiumId));
+
+    public FinancePayments Payments(Guid? tenant = null) => new(postgres.CreateContext(tenant ?? CondominiumId));
 
     public async Task<ExpenseGroup> StoreGroupAsync(string name = "Despesas ordinárias", Guid? condominiumId = null)
     {
@@ -59,4 +66,24 @@ internal sealed class FinanceStoreKit(FinancePostgresFixture postgres)
 
         return entry;
     }
+
+    /// <summary>Fecha o mês de verdade: R$ 1.000,00 rateados em duas unidades, 600 (101) e 400 (A-102), e guarda no banco.</summary>
+    public async Task<MonthClosing> StoreClosingAsync(YearMonth month, DateOnly? dueDate = null, Guid? condominiumId = null)
+    {
+        Guid tenant = condominiumId ?? CondominiumId;
+        Expense expense = Expense.CreateFixed(tenant, Guid.CreateVersion7(), "Zeladoria", null, month, null, 1000m, 10, Now).Value;
+        ExpenseEntry entry = expense.GenerateEntry(month, Now).Value;
+        ApportionmentBasis basis = new(
+            ApportionmentBasisKind.IdealFraction,
+            [new ApportionmentUnit(Guid.CreateVersion7(), null, "101", 0.6m), new ApportionmentUnit(Guid.CreateVersion7(), "A", "102", 0.4m)]);
+        MonthClosing closing = MonthClosing.Close(tenant, month, dueDate ?? month.AddMonths(1).FirstDay.AddDays(9), Guid.CreateVersion7(), Now, [entry], basis).Value;
+        (await Closings(tenant).AddAsync(closing, default)).IsSuccess.Should().BeTrue();
+
+        return closing;
+    }
+
+    public static Payment NewPayment(UnitCharge charge, YearMonth month, decimal amount, DateOnly? receivedOn = null, DateTimeOffset? registeredAt = null) =>
+        Payment.Register(
+            charge.CondominiumId, charge.Id, month, amount, receivedOn ?? new DateOnly(2026, 11, 5), PaymentMethod.Pix, null, Guid.CreateVersion7(),
+            registeredAt ?? Now, new DateOnly(2026, 11, 7)).Value;
 }

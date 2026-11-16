@@ -4,6 +4,7 @@ using Urban.Finance.Domain.Closing;
 using Urban.Finance.Domain.Consumption;
 using Urban.Finance.Domain.Expenses;
 using Urban.Finance.Domain.Months;
+using Urban.Finance.Domain.Payments;
 using Urban.Finance.Domain.Settings;
 using Urban.SharedKernel;
 using Urban.SharedKernel.Abstractions;
@@ -271,12 +272,12 @@ internal sealed class FakeMonthClosings : IMonthClosings
         return Task.FromResult(Result.Success());
     }
 
-    public Task RemoveAsync(MonthClosing closing, CancellationToken cancellationToken)
+    public Task<Result> RemoveAsync(MonthClosing closing, CancellationToken cancellationToken)
     {
         _store.Remove(closing);
         Removed.Add(closing);
 
-        return Task.CompletedTask;
+        return Task.FromResult(Result.Success());
     }
 }
 
@@ -407,5 +408,103 @@ internal sealed class FakeMeterReadings : IMeterReadings
         Saves++;
 
         return Task.FromResult(Result.Success());
+    }
+}
+
+/// <summary>Os pagamentos em memória; as cobranças vêm dos fechamentos do <see cref="FakeMonthClosings"/>, como no banco.</summary>
+internal sealed class FakePayments(FakeMonthClosings closings) : IPayments
+{
+    private readonly List<Payment> _store = [];
+
+    public IReadOnlyList<Payment> All => _store;
+
+    public List<Payment> Reversed { get; } = [];
+
+    public Payment Existing(Payment payment)
+    {
+        _store.Add(payment);
+
+        return payment;
+    }
+
+    public Task<ChargeRef?> FindChargeAsync(Guid chargeId, CancellationToken cancellationToken)
+    {
+        foreach (MonthClosing closing in closings.All)
+        {
+            UnitCharge? charge = closing.Charges.FirstOrDefault(candidate => candidate.Id == chargeId);
+
+            if (charge is not null)
+            {
+                return Task.FromResult<ChargeRef?>(new ChargeRef(charge.Id, closing.Id, closing.Month, closing.DueDate, charge.Amount));
+            }
+        }
+
+        return Task.FromResult<ChargeRef?>(null);
+    }
+
+    public Task<IReadOnlyList<Payment>> ListForChargeAsync(Guid chargeId, CancellationToken cancellationToken) =>
+        Task.FromResult<IReadOnlyList<Payment>>([.. _store.Where(payment => payment.ChargeId == chargeId).Reverse()]);
+
+    public Task<Payment?> FindAsync(Guid paymentId, CancellationToken cancellationToken) =>
+        Task.FromResult(_store.Find(payment => payment.Id == paymentId));
+
+    public Task<Result> AddAsync(Payment payment, decimal chargeAmount, CancellationToken cancellationToken)
+    {
+        decimal paid = ChargeAccount.Paid(_store.Where(stored => stored.ChargeId == payment.ChargeId));
+        Result fits = ChargeAccount.EnsureFits(chargeAmount, paid, payment.Amount);
+
+        if (fits.IsFailure)
+        {
+            return Task.FromResult(fits);
+        }
+
+        _store.Add(payment);
+
+        return Task.FromResult(Result.Success());
+    }
+
+    public Task<Result> ReverseAsync(Payment payment, CancellationToken cancellationToken)
+    {
+        Reversed.Add(payment);
+
+        return Task.FromResult(Result.Success());
+    }
+
+    public Task<bool> AnyForClosingAsync(Guid closingId, CancellationToken cancellationToken)
+    {
+        MonthClosing? closing = closings.All.FirstOrDefault(candidate => candidate.Id == closingId);
+        HashSet<Guid> chargeIds = closing is null ? [] : [.. closing.Charges.Select(charge => charge.Id)];
+
+        return Task.FromResult(_store.Any(payment => chargeIds.Contains(payment.ChargeId)));
+    }
+
+    public Task<MonthPaymentsPage?> ListMonthAsync(
+        YearMonth month, ChargeStatus? status, DateOnly today, int page, int pageSize, CancellationToken cancellationToken)
+    {
+        MonthClosing? closing = closings.All.FirstOrDefault(candidate => candidate.Month == month);
+
+        if (closing is null)
+        {
+            return Task.FromResult<MonthPaymentsPage?>(null);
+        }
+
+        List<ChargeRow> rows =
+        [
+            .. closing.Charges.OrderBy(charge => charge.Position).Select(charge =>
+            {
+                List<Payment> counted = [.. _store.Where(payment => payment.ChargeId == charge.Id && !payment.IsReversed)];
+
+                return new ChargeRow(
+                    charge.Id, charge.UnitId, charge.Block, charge.Number, charge.Amount, ChargeAccount.Paid(counted),
+                    counted.Count == 0 ? null : counted.Max(payment => payment.ReceivedOn));
+            }),
+        ];
+
+        List<ChargeRow> matching =
+            [.. rows.Where(row => status is null || ChargeAccount.StatusOf(row.Amount, row.Paid, closing.DueDate, today) == status)];
+
+        return Task.FromResult<MonthPaymentsPage?>(new MonthPaymentsPage(
+            closing.DueDate, rows.Sum(row => row.Amount), rows.Sum(row => row.Paid), matching.Count,
+            [.. matching.Skip((page - 1) * pageSize).Take(pageSize)]));
     }
 }

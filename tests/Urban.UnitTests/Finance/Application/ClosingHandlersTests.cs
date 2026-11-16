@@ -5,6 +5,7 @@ using Urban.Finance.Domain.Closing;
 using Urban.Finance.Domain.Consumption;
 using Urban.Finance.Domain.Expenses;
 using Urban.Finance.Domain.Months;
+using Urban.Finance.Domain.Payments;
 using Urban.Finance.Domain.Settings;
 using Urban.SharedKernel;
 using Urban.SharedKernel.Contracts;
@@ -29,7 +30,7 @@ public class ClosingHandlersTests
 
     private CloseMonthCommandHandler CloseHandler() => new(_kit.Entries, _kit.Closings, _kit.Groups, _kit.Settings, _kit.Tariffs, _kit.Readings, _kit.Basis, _kit.Tenant, _kit.Atomic, _kit.Clock);
 
-    private ReopenMonthCommandHandler ReopenHandler() => new(_kit.Entries, _kit.Closings, _kit.Groups, _kit.Tenant, _kit.Atomic, _kit.Clock);
+    private ReopenMonthCommandHandler ReopenHandler() => new(_kit.Entries, _kit.Closings, _kit.Groups, _kit.Payments, _kit.Tenant, _kit.Atomic, _kit.Clock);
 
     private ExpenseEntry NovemberEntry(decimal amount, string description = "Zeladoria")
     {
@@ -296,6 +297,35 @@ public class ClosingHandlersTests
         _kit.Closings.Removed.Should().ContainSingle().Which.Should().BeSameAs(closing);
         _kit.Closings.All.Should().BeEmpty();
         _kit.Atomic.Runs.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Reopen_AMonthWithPayments_IsRefused_AndNothingIsDeleted()
+    {
+        NovemberEntry(600m);
+        MonthClosing closing = _kit.CloseMonth(M(2026, 11));
+        UnitCharge charge = closing.Charges[0];
+        _kit.Payments.Existing(Payment.Register(
+            _kit.CondominiumId, charge.Id, M(2026, 11), 100m, new DateOnly(2026, 11, 5), PaymentMethod.Pix, null, Manager, FinanceTestKit.Now, new DateOnly(2026, 11, 7)).Value);
+
+        Result<MonthView> result = await ReopenHandler().Handle(new ReopenMonthCommand("2026-11"), default);
+
+        result.Error.Should().Be(ClosingErrors.HasPayments);
+        _kit.Closings.Removed.Should().BeEmpty();
+        _kit.Closings.All.Should().ContainSingle();
+        _kit.Atomic.Runs.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Reopen_AMonthWhoseOnlyPaymentWasReversed_IsStillRefused()
+    {
+        NovemberEntry(600m);
+        MonthClosing closing = _kit.CloseMonth(M(2026, 11));
+        Payment payment = _kit.Payments.Existing(Payment.Register(
+            _kit.CondominiumId, closing.Charges[0].Id, M(2026, 11), 100m, new DateOnly(2026, 11, 5), PaymentMethod.Pix, null, Manager, FinanceTestKit.Now, new DateOnly(2026, 11, 7)).Value);
+        payment.Reverse("Erro", Manager, FinanceTestKit.Now);
+
+        (await ReopenHandler().Handle(new ReopenMonthCommand("2026-11"), default)).Error.Should().Be(ClosingErrors.HasPayments);
     }
 
     [Fact]

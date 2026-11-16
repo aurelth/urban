@@ -53,6 +53,7 @@ app.MapUnitEndpoints();
 app.MapResidentEndpoints();
 app.MapVehicleEndpoints();
 app.MapFinanceEndpoints();
+app.MapPaymentEndpoints();
 app.MapPostalCodeEndpoints();
 app.MapPasswordResetEndpoints();
 app.MapAccountEndpoints();
