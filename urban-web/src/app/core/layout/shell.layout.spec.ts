@@ -483,6 +483,142 @@ describe('ShellLayout', () => {
       });
     });
 
+    describe('seções recolhíveis', () => {
+      function header(html: HTMLElement, label: string): HTMLButtonElement {
+        const buttons = html.querySelectorAll<HTMLButtonElement>('button[data-testid="nav-group"]');
+        return [...buttons].find((button) => text(button) === label)!;
+      }
+
+      function iconOf(button: HTMLElement): string | null | undefined {
+        return button.querySelector('mat-icon')?.getAttribute('data-mat-icon-name');
+      }
+
+      async function click(
+        fixture: ComponentFixture<ShellLayout>,
+        element: HTMLElement,
+      ): Promise<void> {
+        element.click();
+        await fixture.whenStable();
+        TestBed.tick();
+      }
+
+      it('faz do título de cada seção um botão aberto, com o ícone de menos', async () => {
+        const { html } = await setup(REGISTERED_MANAGER);
+
+        for (const label of ['Condomínio', 'Financeiro']) {
+          const button = header(html, label);
+          expect(button.getAttribute('aria-expanded')).toBe('true');
+          expect(button.getAttribute('aria-controls')).not.toBeNull();
+          expect(html.querySelector(`#${button.getAttribute('aria-controls')}`)).not.toBeNull();
+          expect(iconOf(button)).toBe('remove');
+        }
+      });
+
+      it('não faz botão do grupo principal, que não tem título e fica sempre à mostra', async () => {
+        const { fixture, html } = await setup(REGISTERED_MANAGER);
+        await click(fixture, header(html, 'Condomínio'));
+        await click(fixture, header(html, 'Financeiro'));
+
+        expect(html.querySelectorAll('button[data-testid="nav-group"]')).toHaveLength(2);
+        expect(byTestId(html, 'nav-dashboard')).not.toBeNull();
+      });
+
+      it('recolhe só a seção clicada, mostrando o ícone de mais', async () => {
+        const { fixture, html } = await setup(REGISTERED_MANAGER);
+        const button = header(html, 'Condomínio');
+
+        await click(fixture, button);
+
+        expect(links(html).map((link) => link.dataset['testid'])).toEqual([
+          'nav-dashboard',
+          'nav-expenses',
+          'nav-tariffs',
+          'nav-readings',
+          'nav-entries',
+          'nav-payments',
+          'nav-payment-instructions',
+          'nav-contact',
+        ]);
+        expect(button.getAttribute('aria-expanded')).toBe('false');
+        expect(button.getAttribute('aria-controls')).toBeNull();
+        expect(iconOf(button)).toBe('add');
+        expect(header(html, 'Financeiro').getAttribute('aria-expanded')).toBe('true');
+      });
+
+      it('abre de novo ao clicar outra vez', async () => {
+        const { fixture, html } = await setup(REGISTERED_MANAGER);
+        await click(fixture, header(html, 'Financeiro'));
+
+        await click(fixture, header(html, 'Financeiro'));
+
+        expect(links(html)).toHaveLength(11);
+        expect(header(html, 'Financeiro').getAttribute('aria-expanded')).toBe('true');
+        expect(iconOf(header(html, 'Financeiro'))).toBe('remove');
+      });
+
+      it('deixa recolher todas as seções, mantendo o Painel e o Contato', async () => {
+        const { fixture, html } = await setup(REGISTERED_MANAGER);
+
+        await click(fixture, header(html, 'Condomínio'));
+        await click(fixture, header(html, 'Financeiro'));
+
+        expect(links(html).map((link) => link.dataset['testid'])).toEqual([
+          'nav-dashboard',
+          'nav-contact',
+        ]);
+      });
+
+      it('lembra as seções recolhidas na próxima visita', async () => {
+        const first = await setup(REGISTERED_MANAGER);
+        await click(first.fixture, header(first.html, 'Financeiro'));
+        TestBed.resetTestingModule();
+
+        const { html } = await setup(REGISTERED_MANAGER);
+
+        expect(byTestId(html, 'nav-expenses')).toBeNull();
+        expect(byTestId(html, 'nav-units')).not.toBeNull();
+        expect(header(html, 'Financeiro').getAttribute('aria-expanded')).toBe('false');
+      });
+
+      it('também recolhe na gaveta do celular', async () => {
+        const { fixture, html } = await setup(REGISTERED_MANAGER);
+        byTestId(html, 'menu-toggle')!.click();
+        await fixture.whenStable();
+        TestBed.tick();
+
+        await click(fixture, header(html, 'Condomínio'));
+
+        expect(byTestId(html, 'nav-units')).toBeNull();
+        expect(byTestId(html, 'nav-expenses')).not.toBeNull();
+      });
+
+      it('mostra todos os itens no menu recolhido em ícones, onde não há títulos para clicar', async () => {
+        localStorage.setItem('urban.sidebar-groups', '["condominium","finance"]');
+        useDesktopScreen();
+        const { fixture, html } = await setup(REGISTERED_MANAGER);
+
+        await click(fixture, byTestId(html, 'menu-toggle')!);
+
+        expect(links(html)).toHaveLength(11);
+        expect(html.querySelectorAll('button[data-testid="nav-group"]')).toHaveLength(0);
+
+        await click(fixture, byTestId(html, 'menu-toggle')!);
+
+        expect(links(html)).toHaveLength(2);
+      });
+
+      it('deixa também a seção Administração do administrador recolhível', async () => {
+        const { fixture, html } = await setup({ ...MANAGER, role: 'SuperAdmin' });
+
+        const button = header(html, 'Administração');
+        expect(links(html)).toHaveLength(4);
+
+        await click(fixture, button);
+
+        expect(links(html).map((link) => link.dataset['testid'])).toEqual(['nav-overview']);
+      });
+    });
+
     it('no celular ignora a escolha de recolher: a gaveta sempre mostra os nomes', async () => {
       localStorage.setItem('urban.sidebar', 'collapsed');
       const { fixture, html } = await setup(REGISTERED_MANAGER);
