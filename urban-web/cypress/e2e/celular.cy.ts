@@ -9,8 +9,9 @@ import { stubConfirmEmailCheck, stubTerms } from '../support/cadastro';
 import { NEW_MANAGER } from '../support/condominio';
 import { MANAGER, stubAnonymous, stubSignedIn } from '../support/session';
 import { READINGS_PATH, stubReadings } from '../support/leituras';
-import { INSTRUCTIONS_PATH, stubInstructions } from '../support/dados-pagamento';
+import { INSTRUCTIONS_PATH, NO_INSTRUCTIONS, stubInstructions } from '../support/dados-pagamento';
 import { PAYMENTS_PATH, stubPayments } from '../support/pagamentos';
+import { stubDashboard } from '../support/painel';
 import { ADMIN, REQUESTS_PATH, stubRequests } from '../support/pedidos';
 import { TARIFFS_PATH, stubTariffs } from '../support/tarifas';
 
@@ -69,12 +70,16 @@ describe('Tela de celular (375 x 667)', () => {
 
   it('mostra o painel em coluna única, com a saída à mão e sem rolagem horizontal', () => {
     stubSignedIn(MANAGER);
+    stubDashboard({ month: 'closed', overdueCharges: 3, instructions: NO_INSTRUCTIONS });
     cy.visit('/dashboard');
 
     cy.get('[data-testid="user-menu"]').should('be.visible');
-    cy.get('mat-card.module').should('have.length', 3).and('be.visible');
-    cy.get('mat-card.module').then(($cards) => {
-      const lefts = [...$cards].map((card) => card.getBoundingClientRect().left);
+    cy.get('[data-testid="stat-units"]').should('be.visible');
+    cy.get('[data-testid="pending"]').should('have.length.at.least', 1);
+    const cards = ['card-month', 'card-payments', 'card-condominium', 'card-pendings'];
+    cy.get(cards.map((card) => `[data-testid="${card}"]`).join(',')).then(($cards) => {
+      expect($cards).to.have.length(4);
+      const lefts = [...$cards].map((card) => Math.round(card.getBoundingClientRect().left));
       expect(new Set(lefts).size).to.eq(1);
     });
     expectNoHorizontalScroll();
