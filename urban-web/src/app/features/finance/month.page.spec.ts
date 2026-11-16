@@ -860,7 +860,7 @@ describe('MonthPage', () => {
       expect(testId(html, 'expenses-total')).toBeNull();
     });
 
-    it('detalha as linhas do recibo de cada unidade: grupos, fundo de reserva e consumo', async () => {
+    it('detalha as linhas da fatura de cada unidade: grupos, fundo de reserva e consumo', async () => {
       const { html } = await setup(CLOSED_WITH_CONSUMPTION);
 
       const groups = [...html.querySelectorAll('[data-testid="charge-group"]')];

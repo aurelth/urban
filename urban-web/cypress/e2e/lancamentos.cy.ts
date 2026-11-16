@@ -361,7 +361,7 @@ describe('Lançamentos do mês', () => {
         .should('match', /R\$\s4\.200,00/);
     });
 
-    it('detalha o recibo com fundo de reserva e agua e separa o total das despesas do das cobrancas', () => {
+    it('detalha a fatura com fundo de reserva e agua e separa o total das despesas do das cobrancas', () => {
       stubMonth(CLOSED_MONTH_WITH_CONSUMPTION);
       cy.visit(ENTRIES_PATH);
 

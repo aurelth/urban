@@ -205,7 +205,7 @@ describe('TariffsPage', () => {
       const { html } = await setup({ reserveFundPercent: 0 });
 
       expect(plain(testId(html, 'reserve-percent')?.textContent)).toBe(
-        'Sem fundo de reserva no recibo',
+        'Sem fundo de reserva na fatura',
       );
     });
 

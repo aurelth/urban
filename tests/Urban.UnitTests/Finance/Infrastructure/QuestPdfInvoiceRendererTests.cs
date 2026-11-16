@@ -5,7 +5,6 @@ using UglyToad.PdfPig.Content;
 using Urban.Finance.Application.Invoices;
 using Urban.Finance.Domain.Closing;
 using Urban.Finance.Domain.Months;
-using Urban.Finance.Domain.Payments;
 using Urban.Finance.Infrastructure.Invoices;
 using Urban.SharedKernel.Contracts;
 
@@ -16,7 +15,7 @@ public partial class QuestPdfInvoiceRendererTests
 {
     private readonly QuestPdfInvoiceRenderer _renderer = new();
 
-    /// <summary>A fatura completa, como o síndico a emite: com tudo o que a 3b acrescentou. É a base dos testes, e cabe numa página.</summary>
+    /// <summary>A fatura completa, como o síndico a emite: o pedido de pagamento, sem nada de pagamento feito. É a base dos testes, e cabe numa página.</summary>
     private static InvoiceDocument Document(
         IReadOnlyList<InvoiceLine>? lines = null,
         string? responsible = "Marina Souza",
@@ -36,15 +35,13 @@ public partial class QuestPdfInvoiceRendererTests
             IssuedOn: new DateOnly(2026, 11, 7),
             Lines: used,
             Total: used.Sum(line => line.Amount),
-            Situation: new InvoiceSituation(ChargeStatus.Partial, 200m, 1034.5m),
             Share: new InvoiceShare(ApportionmentBasisKind.IdealFraction, 2.5m),
-            Statement:
-            [
-                new InvoiceStatementLine("Limpeza", 3000m),
-                new InvoiceStatementLine("Portaria", 7000m),
-                new InvoiceStatementLine("Fundo de reserva", 700m),
-            ],
-            Earlier: [new InvoiceEarlierCharge(YearMonth.Create(2026, 9).Value, new DateOnly(2026, 10, 10), 800m, 300m)],
+            Statement: new InvoiceStatement(
+                [
+                    new InvoiceStatementGroup("Limpeza", [new InvoiceStatementItem("Faxineira", 2000m), new InvoiceStatementItem("Produtos de limpeza", 1000m)]),
+                    new InvoiceStatementGroup("Portaria", [new InvoiceStatementItem("Porteiro diurno", 4000m), new InvoiceStatementItem("Porteiro noturno", 3000m)]),
+                ],
+                700m),
             HowToPay: new InvoiceHowToPay(
                 new InvoicePix("CNPJ", "12.345.678/0001-95"),
                 new InvoiceAccount("Banco Exemplo", "1234-5", "12345-6", "Conta corrente")),
@@ -181,98 +178,95 @@ public partial class QuestPdfInvoiceRendererTests
         render.Should().NotThrow();
     }
 
-    // ---- Situação do pagamento ----
-
-    [Theory]
-    [InlineData(ChargeStatus.Open, "Em aberto")]
-    [InlineData(ChargeStatus.Partial, "Paga em parte")]
-    [InlineData(ChargeStatus.Paid, "Paga")]
-    [InlineData(ChargeStatus.Overdue, "Vencida")]
-    public void Render_ShowsTheSituationOfThePayment(ChargeStatus status, string label)
-    {
-        InvoiceDocument document = Document() with { Situation = new InvoiceSituation(status, 0m, 1234.5m) };
-
-        string text = Read(_renderer.Render(document)).Text;
-
-        text.Should().Contain("Situação do pagamento").And.Contain(label);
-    }
+    // ---- Fatura não é recibo ----
 
     [Fact]
-    public void Render_ShowsWhatWasPaidAndWhatIsLeft()
+    public void Render_ShowsNothingAboutPaymentsAlreadyMade()
     {
         string text = Read(_renderer.Render(Document())).Text;
 
-        text.Should().Contain("Pago até agora R$ 200,00");
-        text.Should().Contain("Saldo a pagar R$ 1.034,50");
+        text.Should().NotContain("Situação do pagamento");
+        text.Should().NotContain("Pago até agora");
+        text.Should().NotContain("Saldo a pagar");
+        text.Should().NotContain("Pendências anteriores");
     }
 
-    // ---- Base do rateio ----
+    // ---- Participação no rateio ----
 
     [Fact]
-    public void Render_ExplainsHowTheValueWasDivided()
+    public void Render_ShowsTheShareOfTheUnitAndTheMethodNextToTheUnit()
     {
         string text = Read(_renderer.Render(Document())).Text;
 
-        text.Should().Contain("Base do rateio");
-        text.Should().Contain("Fração ideal").And.Contain("2,5%");
+        text.Should().Contain("Participação no rateio");
+        text.Should().Contain("2,5% · Fração ideal");
     }
 
     // ---- Demonstrativo ----
 
     [Fact]
-    public void Render_ShowsTheStatementOfTheMonthWithItsTotal()
+    public void Render_ListsEveryExpenseOfTheMonthByGroupBeforeTheTotal()
     {
         string text = Read(_renderer.Render(Document())).Text;
 
         text.Should().Contain("Demonstrativo do mês");
-        text.Should().Contain("Limpeza R$ 3.000,00");
-        text.Should().Contain("Portaria R$ 7.000,00");
+        text.Should().Contain("Limpeza");
+        text.Should().Contain("Faxineira R$ 2.000,00");
+        text.Should().Contain("Produtos de limpeza R$ 1.000,00");
+        text.Should().Contain("Subtotal de Limpeza R$ 3.000,00");
+        text.Should().Contain("Porteiro diurno R$ 4.000,00");
+        text.Should().Contain("Porteiro noturno R$ 3.000,00");
+        text.Should().Contain("Subtotal de Portaria R$ 7.000,00");
         text.Should().Contain("Fundo de reserva R$ 700,00");
         text.Should().Contain("Total do condomínio R$ 10.700,00");
+        text.IndexOf("Porteiro noturno", StringComparison.Ordinal).Should().BeLessThan(text.IndexOf("Total do condomínio", StringComparison.Ordinal));
     }
 
     [Fact]
-    public void Render_WithoutStatementLines_LeavesTheSectionOut()
+    public void Render_WithoutReserveFund_LeavesTheLineOut()
     {
-        string text = Read(_renderer.Render(Document() with { Statement = [] })).Text;
+        InvoiceDocument document = Document() with { Statement = Document().Statement with { ReserveFund = null } };
+
+        string text = Read(_renderer.Render(document)).Text;
+
+        text.Should().NotContain("Fundo de reserva");
+        text.Should().Contain("Total do condomínio R$ 10.000,00");
+    }
+
+    [Fact]
+    public void Render_WithoutExpenses_LeavesTheSectionOut()
+    {
+        string text = Read(_renderer.Render(Document() with { Statement = new InvoiceStatement([], null) })).Text;
 
         text.Should().NotContain("Demonstrativo do mês");
     }
 
-    // ---- Pendências anteriores ----
-
     [Fact]
-    public void Render_ListsTheEarlierChargesStillOwed()
+    public void Render_WithManyExpenses_FlowsToMorePagesAndKeepsTheTotalAtTheEnd()
     {
-        string text = Read(_renderer.Render(Document())).Text;
-
-        text.Should().Contain("Pendências anteriores");
-        text.Should().Contain("Setembro de 2026").And.Contain("10/10/2026");
-        text.Should().Contain("R$ 800,00").And.Contain("R$ 300,00").And.Contain("R$ 500,00");
-        text.Should().Contain("Total em aberto R$ 500,00");
-    }
-
-    [Fact]
-    public void Render_WithoutEarlierCharges_LeavesTheSectionOut()
-    {
-        string text = Read(_renderer.Render(Document() with { Earlier = [] })).Text;
-
-        text.Should().NotContain("Pendências anteriores");
-    }
-
-    [Fact]
-    public void Render_WithManyEarlierCharges_FlowsToMorePagesAndKeepsTheTotal()
-    {
-        InvoiceEarlierCharge[] earlier =
+        InvoiceStatementGroup[] groups =
         [
-            .. Enumerable.Range(0, 36).Select(n => new InvoiceEarlierCharge(YearMonth.Create(2023, 10).Value.AddMonths(n), new DateOnly(2023, 11, 10).AddMonths(n), 100m, 0m)),
+            .. Enumerable.Range(1, 3).Select(g => new InvoiceStatementGroup(
+                $"Grupo {g}",
+                [.. Enumerable.Range(1, 25).Select(n => new InvoiceStatementItem($"Despesa {g}-{n}", 10m))])),
         ];
 
-        (string text, int pages) = Read(_renderer.Render(Document() with { Earlier = earlier }));
+        (string text, int pages) = Read(_renderer.Render(Document() with { Statement = new InvoiceStatement(groups, null) }));
 
         pages.Should().BeGreaterThan(1);
-        text.Should().Contain("Outubro de 2023").And.Contain("Setembro de 2026");
-        text.Should().Contain("Total em aberto R$ 3.600,00");
+        text.Should().Contain("Despesa 1-1 ").And.Contain("Despesa 3-25");
+        text.Should().Contain("Subtotal de Grupo 3 R$ 250,00");
+        text.Should().Contain("Total do condomínio R$ 750,00");
+    }
+
+    [Fact]
+    public void Render_AGroupWithMoreItemsThanAPage_DoesNotThrow()
+    {
+        InvoiceStatementGroup huge = new("Manutenção", [.. Enumerable.Range(1, 120).Select(n => new InvoiceStatementItem($"Serviço número {n}", 5m))]);
+
+        Action render = () => _renderer.Render(Document() with { Statement = new InvoiceStatement([huge], null) });
+
+        render.Should().NotThrow();
     }
 
     // ---- Como pagar ----

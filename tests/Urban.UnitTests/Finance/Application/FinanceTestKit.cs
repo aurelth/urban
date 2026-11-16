@@ -52,7 +52,7 @@ internal sealed class FinanceTestKit
     public FinanceTestKit()
     {
         Payments = new FakePayments(Closings);
-        Charges = new FakeCharges(Closings, Payments);
+        Charges = new FakeCharges(Closings);
         Tenant = new FixedTenant(CondominiumId);
     }
 

@@ -106,16 +106,6 @@ public class InvoiceTextTests
     }
 
     [Theory]
-    [InlineData(ChargeStatus.Open, "Em aberto")]
-    [InlineData(ChargeStatus.Partial, "Paga em parte")]
-    [InlineData(ChargeStatus.Paid, "Paga")]
-    [InlineData(ChargeStatus.Overdue, "Vencida")]
-    public void Status_UsesTheWordsOfTheScreens(ChargeStatus status, string expected)
-    {
-        InvoiceText.Status(status).Should().Be(expected);
-    }
-
-    [Theory]
     [InlineData(PixKeyKind.Cnpj, "CNPJ")]
     [InlineData(PixKeyKind.Cpf, "CPF")]
     [InlineData(PixKeyKind.Email, "E-mail")]
