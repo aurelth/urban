@@ -16,7 +16,7 @@ import { roleLabel } from '../auth/role-label';
 import { SessionStore } from '../auth/session.store';
 import { BrandLink } from '../../shared/ui/brand-link/brand.link';
 import { ThemeStore } from '../services/theme.store';
-import { navFooterFor, navGroupsFor, userMenuFor } from './nav-items';
+import { NavGroup, navFooterFor, navGroupsFor, userMenuFor } from './nav-items';
 import { SidebarStore } from './sidebar.store';
 
 /** Largura (breakpoint `lg` do Tailwind) a partir da qual o menu lateral fica fixo; abaixo dela vira uma gaveta. */
@@ -81,6 +81,18 @@ export class ShellLayout {
   /** Recolhido só vale no computador; a gaveta do celular sempre mostra os nomes. */
   protected readonly rail = computed(() => this.isDesktop() && this.sidebar.collapsed());
   protected readonly sidebarWidth = computed(() => (this.rail() ? RAIL_WIDTH : PINNED_WIDTH));
+
+  /**
+   * Uma seção mostra os itens, a menos que a pessoa a tenha recolhido. O menu em ícones não tem títulos para
+   * clicar, então ali todos os itens aparecem; o grupo principal não tem título e também fica sempre à mostra.
+   */
+  protected isGroupOpen(group: NavGroup): boolean {
+    return this.rail() || !group.label || !this.sidebar.isGroupCollapsed(group.id);
+  }
+
+  protected toggleGroup(id: string): void {
+    this.sidebar.toggleGroup(id);
+  }
 
   /** O mesmo botão do cabeçalho: no computador recolhe/fixa o menu, no celular abre/fecha a gaveta. */
   protected readonly menuToggleLabel = computed(() => {

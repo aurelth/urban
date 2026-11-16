@@ -38,19 +38,27 @@
                 <hr aria-hidden="true" class="mx-3 my-2 border-outline-variant" />
               }
               @if (group.label && !rail()) {
-                <p
+                <button
+                  type="button"
                   data-testid="nav-group"
-                  aria-hidden="true"
-                  class="mt-4 mb-1 px-4 text-xs font-medium tracking-wide text-on-surface-variant"
+                  class="mt-4 mb-1 flex h-9 w-full cursor-pointer items-center justify-between rounded-full px-4 text-xs font-medium tracking-wide text-on-surface-variant hover:bg-accent-fill/5 focus-visible:outline-2 focus-visible:outline-primary"
+                  [attr.aria-expanded]="isGroupOpen(group)"
+                  [attr.aria-controls]="isGroupOpen(group) ? 'nav-items-' + group.id : null"
+                  (click)="toggleGroup(group.id)"
                 >
-                  {{ group.label }}
-                </p>
+                  <span>{{ group.label }}</span>
+                  <mat-icon [svgIcon]="isGroupOpen(group) ? 'remove' : 'add'" aria-hidden="true" />
+                </button>
               }
-              @for (item of group.items; track item.id) {
-                <ng-container
-                  [ngTemplateOutlet]="navLink"
-                  [ngTemplateOutletContext]="{ $implicit: item }"
-                />
+              @if (isGroupOpen(group)) {
+                <div [id]="'nav-items-' + group.id" class="flex flex-col gap-1">
+                  @for (item of group.items; track item.id) {
+                    <ng-container
+                      [ngTemplateOutlet]="navLink"
+                      [ngTemplateOutletContext]="{ $implicit: item }"
+                    />
+                  }
+                </div>
               }
             </div>
           }

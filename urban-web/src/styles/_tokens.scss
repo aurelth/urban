@@ -21,6 +21,10 @@
   // No escuro e um indigo mais escuro que o papel "primary" (#9E9CFF), que serve de cor de texto.
   --urban-accent-fill: light-dark(#5856d6, #5e5ce6);
   --urban-on-accent-fill: #ffffff;
+
+  // Traco da barra de rolagem: cinza translucido, que some contra o fundo e aparece mais ao passar o mouse.
+  --urban-scrollbar-thumb: light-dark(rgb(60 60 67 / 28%), rgb(235 235 245 / 28%));
+  --urban-scrollbar-thumb-hover: light-dark(rgb(60 60 67 / 50%), rgb(235 235 245 / 50%));
 }
 
 // No escuro a sombra some contra o fundo grafite: troca por borda fina mais sombra forte.
