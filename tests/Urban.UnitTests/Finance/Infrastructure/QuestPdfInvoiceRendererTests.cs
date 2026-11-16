@@ -65,6 +65,25 @@ public partial class QuestPdfInvoiceRendererTests
     }
 
     [Fact]
+    public void Render_PushesTheDueDateTheIssueDateAndTheReferenceToTheRightEdge()
+    {
+        using PdfDocument pdf = PdfDocument.Open(_renderer.Render(Document()));
+        Page page = pdf.GetPage(1);
+        const double marginInPoints = 36;
+        double rightEdge = page.Width - marginInPoints;
+        Word[] words = [.. page.GetWords()];
+
+        foreach (string text in new[] { "10/11/2026", "07/11/2026", "2026-10-ABCDEF12", "Vencimento", "Referência" })
+        {
+            Word word = words.Single(candidate => candidate.Text == text);
+
+            word.BoundingBox.Right.Should().BeApproximately(rightEdge, 2, $"\"{text}\" fica rente à margem direita, como a coluna Valor");
+        }
+
+        words.Single(candidate => candidate.Text == "Responsável").BoundingBox.Left.Should().BeApproximately(marginInPoints, 2, "o bloco da unidade continua à esquerda");
+    }
+
+    [Fact]
     public void Render_ShowsTheDueDateTheIssueDateAndTheTotal()
     {
         string text = Read(_renderer.Render(Document())).Text;

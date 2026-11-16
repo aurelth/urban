@@ -139,6 +139,11 @@ function rows(html: HTMLElement): HTMLElement[] {
   return [...html.querySelectorAll<HTMLElement>('[data-testid="charge-row"]')];
 }
 
+/** O nome do ícone do Material dentro do elemento (o `mat-icon` põe o nome em `data-mat-icon-name`). */
+function iconOf(element: HTMLElement | null): string | null | undefined {
+  return element?.querySelector('mat-icon')?.getAttribute('data-mat-icon-name');
+}
+
 function click(element: HTMLElement | null): void {
   element!.click();
 }
@@ -443,7 +448,10 @@ describe('PaymentsPage', () => {
       expect(testId(rows(html)[0], 'download-invoice')!.getAttribute('aria-label')).toBe(
         'Baixar fatura de Bloco A · 101',
       );
-      expect(plain(testId(rows(html)[2], 'download-invoice')!.textContent)).toBe('Baixar fatura');
+      expect(iconOf(testId(rows(html)[2], 'download-invoice'))).toBe('download');
+      expect(testId(rows(html)[2], 'download-invoice')!.getAttribute('title')).toBe(
+        'Baixar fatura em PDF',
+      );
     });
 
     it('baixa o PDF, salva com o nome que a API sugeriu e avisa com a unidade', async () => {
@@ -462,6 +470,14 @@ describe('PaymentsPage', () => {
       expect(testId(html, 'invoice-error')).toBeNull();
     });
 
+    it('mostra so o icone de download, sem texto no botao', async () => {
+      const { html } = await setup();
+
+      const button = testId(rows(html)[0], 'download-invoice')!;
+      expect(plain(button.textContent)).toBe('');
+      expect(button.querySelector('mat-icon')!.getAttribute('aria-hidden')).toBe('true');
+    });
+
     it('trava os botoes e mostra que esta baixando enquanto o PDF nao chega', async () => {
       const { fixture, html, http } = await setup();
 
@@ -469,7 +485,8 @@ describe('PaymentsPage', () => {
       await settle(fixture);
 
       const first = testId(rows(html)[0], 'download-invoice') as HTMLButtonElement;
-      expect(plain(first.textContent)).toBe('Baixando fatura');
+      expect(iconOf(first)).toBe('progress_activity');
+      expect(first.getAttribute('aria-busy')).toBe('true');
       expect(first.disabled).toBe(true);
       expect((testId(rows(html)[1], 'download-invoice') as HTMLButtonElement).disabled).toBe(true);
       expect((testId(rows(html)[1], 'register-payment') as HTMLButtonElement).disabled).toBe(false);
@@ -477,9 +494,8 @@ describe('PaymentsPage', () => {
       await settle(fixture);
 
       expect((testId(rows(html)[1], 'download-invoice') as HTMLButtonElement).disabled).toBe(false);
-      expect(plain((testId(rows(html)[0], 'download-invoice') as HTMLElement).textContent)).toBe(
-        'Baixar fatura',
-      );
+      expect(iconOf(testId(rows(html)[0], 'download-invoice'))).toBe('download');
+      expect(testId(rows(html)[0], 'download-invoice')!.getAttribute('aria-busy')).toBe('false');
     });
 
     it('explica quando a cobranca nao existe mais, sem salvar nada', async () => {
