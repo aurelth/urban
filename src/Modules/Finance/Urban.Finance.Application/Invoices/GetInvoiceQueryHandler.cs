@@ -95,7 +95,7 @@ public sealed class GetInvoiceQueryHandler(
 
         decimal reserveFund = detail.LineTotals.Where(total => total.Kind == ChargeLineKind.ReserveFund).Sum(total => total.Amount);
 
-        return new InvoiceStatement(statementGroups, reserveFund > 0 ? reserveFund : null);
+        return new InvoiceStatement(statementGroups, reserveFund > 0 ? new InvoiceReserveFund(reserveFund, detail.ReserveFundPercent, detail.ReserveFundBase) : null);
     }
 
     private static InvoiceHowToPay? HowToPayOf(PaymentInstructions? stored)

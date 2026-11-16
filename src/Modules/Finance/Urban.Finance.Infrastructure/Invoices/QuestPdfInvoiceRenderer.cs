@@ -146,7 +146,7 @@ public sealed class QuestPdfInvoiceRenderer : IInvoiceRenderer
                     {
                         label.Item().Text(line.Label);
 
-                        if (Detail(line) is { } detail)
+                        if (Detail(line, document) is { } detail)
                         {
                             label.Item().Text(detail).FontSize(8).FontColor(Muted);
                         }
@@ -258,8 +258,16 @@ public sealed class QuestPdfInvoiceRenderer : IInvoiceRenderer
         {
             column.Item().PaddingTop(10).Row(row =>
             {
-                row.RelativeItem().Text("Fundo de reserva").Bold();
-                row.ConstantItem(110).AlignRight().Text(InvoiceText.Money(reserveFund)).Bold();
+                row.RelativeItem().Column(label =>
+                {
+                    label.Item().Text("Fundo de reserva").Bold();
+
+                    if (ReserveBasisOf(reserveFund) is { } basis)
+                    {
+                        label.Item().Text(basis).FontSize(8).FontColor(Muted);
+                    }
+                });
+                row.ConstantItem(110).AlignRight().Text(InvoiceText.Money(reserveFund.Amount)).Bold();
             });
         }
 
@@ -281,12 +289,19 @@ public sealed class QuestPdfInvoiceRenderer : IInvoiceRenderer
             }
         });
 
-    private static string? Detail(InvoiceLine line) =>
-        line.Kind is ChargeLineKind.Water or ChargeLineKind.Sewage or ChargeLineKind.Gas && line.Quantity is { } quantity
-            ? line.PreviousReading is { } previous && line.CurrentReading is { } current
-                ? $"Consumo de {InvoiceText.Cubic(quantity)} m³ (leitura de {InvoiceText.Cubic(previous)} a {InvoiceText.Cubic(current)})"
-                : $"Consumo de {InvoiceText.Cubic(quantity)} m³"
-            : null;
+    private static string? Detail(InvoiceLine line, InvoiceDocument document) =>
+        line.Kind switch
+        {
+            ChargeLineKind.ReserveFund => document.Statement.ReserveFund is { } reserveFund ? ReserveBasisOf(reserveFund) : null,
+            ChargeLineKind.Water or ChargeLineKind.Sewage or ChargeLineKind.Gas when line.Quantity is { } quantity =>
+                line.PreviousReading is { } previous && line.CurrentReading is { } current
+                    ? $"Consumo de {InvoiceText.Cubic(quantity)} m³ (leitura de {InvoiceText.Cubic(previous)} a {InvoiceText.Cubic(current)})"
+                    : $"Consumo de {InvoiceText.Cubic(quantity)} m³",
+            _ => null,
+        };
+
+    private static string? ReserveBasisOf(InvoiceReserveFund reserveFund) =>
+        reserveFund is { Percent: { } percent, BaseTotal: { } baseTotal } ? InvoiceText.ReserveBasis(percent, baseTotal) : null;
 
     private static IContainer Heading(IContainer container) =>
         container.BorderBottom(1).BorderColor(Ink).PaddingBottom(4).DefaultTextStyle(style => style.FontSize(8).FontColor(Muted).Bold());

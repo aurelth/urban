@@ -562,7 +562,15 @@ internal sealed class FakeCharges(FakeMonthClosings closings) : ICharges
                 ];
 
                 return Task.FromResult<ChargeDetail?>(new ChargeDetail(
-                    charge, closing.Month, closing.DueDate, closing.ClosedAt, closing.BasisKind, closing.Charges.Sum(candidate => candidate.Weight), lineTotals));
+                    charge,
+                    closing.Month,
+                    closing.DueDate,
+                    closing.ClosedAt,
+                    closing.BasisKind,
+                    closing.Charges.Sum(candidate => candidate.Weight),
+                    lineTotals,
+                    closing.ReserveFundPercent,
+                    closing.ReserveFundBase));
             }
         }
 

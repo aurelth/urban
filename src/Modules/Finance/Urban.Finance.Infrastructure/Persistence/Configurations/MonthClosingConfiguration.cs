@@ -21,6 +21,8 @@ internal sealed class MonthClosingConfiguration : IEntityTypeConfiguration<Month
         builder.Property(closing => closing.DueDate);
         builder.Property(closing => closing.Total).HasPrecision(9, 2);
         builder.Property(closing => closing.BasisKind).HasConversion<string>().HasMaxLength(20).IsRequired();
+        builder.Property(closing => closing.ReserveFundPercent).HasPrecision(5, 2);
+        builder.Property(closing => closing.ReserveFundBase).HasPrecision(9, 2);
         builder.Property(closing => closing.ClosedBy);
         builder.Property(closing => closing.ClosedAt);
 

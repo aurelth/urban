@@ -106,6 +106,14 @@ public class InvoiceTextTests
     }
 
     [Theory]
+    [InlineData(15, 100000, "15% sobre R$ 100.000,00 de despesas")]
+    [InlineData(2.5, 1234.5, "2,5% sobre R$ 1.234,50 de despesas")]
+    public void ReserveBasis_SaysThePercentAndWhatItWasAppliedTo(double percent, double baseTotal, string expected)
+    {
+        InvoiceText.ReserveBasis((decimal)percent, (decimal)baseTotal).Should().Be(expected);
+    }
+
+    [Theory]
     [InlineData(PixKeyKind.Cnpj, "CNPJ")]
     [InlineData(PixKeyKind.Cpf, "CPF")]
     [InlineData(PixKeyKind.Email, "E-mail")]

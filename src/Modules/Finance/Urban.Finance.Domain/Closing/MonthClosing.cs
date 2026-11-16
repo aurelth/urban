@@ -17,7 +17,15 @@ public sealed class MonthClosing
 
     private readonly List<UnitCharge> _charges = [];
 
-    private MonthClosing(Guid condominiumId, YearMonth month, DateOnly dueDate, decimal total, ApportionmentBasisKind basisKind, Guid closedBy, DateTimeOffset closedAt)
+    private MonthClosing(
+        Guid condominiumId,
+        YearMonth month,
+        DateOnly dueDate,
+        decimal total,
+        ApportionmentBasisKind basisKind,
+        (decimal Percent, decimal BaseTotal, decimal Amount)? reserve,
+        Guid closedBy,
+        DateTimeOffset closedAt)
     {
         Id = Guid.CreateVersion7();
         CondominiumId = condominiumId;
@@ -25,6 +33,8 @@ public sealed class MonthClosing
         DueDate = dueDate;
         Total = total;
         BasisKind = basisKind;
+        ReserveFundPercent = reserve?.Percent;
+        ReserveFundBase = reserve?.BaseTotal;
         ClosedBy = closedBy;
         ClosedAt = closedAt;
     }
@@ -47,6 +57,12 @@ public sealed class MonthClosing
     public decimal Total { get; }
 
     public ApportionmentBasisKind BasisKind { get; }
+
+    /// <summary>O percentual do fundo de reserva de quando o mês fechou; nulo se o mês não teve fundo (ou fechou antes de o percentual ser guardado).</summary>
+    public decimal? ReserveFundPercent { get; }
+
+    /// <summary>A soma dos lançamentos dos grupos que formavam a base do fundo de reserva quando o mês fechou; nulo quando <see cref="ReserveFundPercent"/> é nulo.</summary>
+    public decimal? ReserveFundBase { get; }
 
     public Guid ClosedBy { get; }
 
@@ -100,7 +116,8 @@ public sealed class MonthClosing
         }
 
         decimal[] weights = [.. basis.Units.Select(unit => unit.Weight)];
-        List<(ChargeLineKind Kind, string Label, decimal Total)> shared = SharedLines(counted, options);
+        (decimal Percent, decimal BaseTotal, decimal Amount)? reserve = ReserveOf(counted, options);
+        List<(ChargeLineKind Kind, string Label, decimal Total)> shared = SharedLines(counted, options, reserve);
         List<IReadOnlyList<decimal>> splits = [];
 
         foreach ((ChargeLineKind _, string _, decimal lineTotal) in shared)
@@ -115,7 +132,7 @@ public sealed class MonthClosing
             splits.Add(shares.Value);
         }
 
-        MonthClosing closing = new(condominiumId, month, dueDate, total, basis.Kind, closedBy, now);
+        MonthClosing closing = new(condominiumId, month, dueDate, total, basis.Kind, reserve, closedBy, now);
 
         for (int index = 0; index < basis.Units.Count; index++)
         {
@@ -151,7 +168,10 @@ public sealed class MonthClosing
     }
 
     /// <summary>As linhas repartidas por peso: uma por grupo de despesa e, depois, o fundo de reserva. Linhas sem valor não entram.</summary>
-    private static List<(ChargeLineKind Kind, string Label, decimal Total)> SharedLines(List<ExpenseEntry> counted, ClosingOptions? options)
+    private static List<(ChargeLineKind Kind, string Label, decimal Total)> SharedLines(
+        List<ExpenseEntry> counted,
+        ClosingOptions? options,
+        (decimal Percent, decimal BaseTotal, decimal Amount)? reserve)
     {
         List<(ChargeLineKind, string, decimal)> lines = [];
 
@@ -168,18 +188,26 @@ public sealed class MonthClosing
             }
         }
 
-        if (options is { ReserveFundPercent: > 0 })
+        if (reserve is { } fund)
         {
-            decimal baseTotal = counted.Where(entry => options.ReserveFundGroupIds.Contains(entry.GroupId)).Sum(entry => entry.Amount ?? 0m);
-            decimal reserve = ReserveFund.AmountFor(baseTotal, options.ReserveFundPercent);
-
-            if (reserve > 0)
-            {
-                lines.Add((ChargeLineKind.ReserveFund, ReserveFundLabel, reserve));
-            }
+            lines.Add((ChargeLineKind.ReserveFund, ReserveFundLabel, fund.Amount));
         }
 
         return lines;
+    }
+
+    /// <summary>O fundo de reserva do mês: o percentual sobre a soma dos grupos marcados como base, e o que foi somado. Nulo quando não há fundo (percentual 0, nenhum grupo marcado ou base zerada).</summary>
+    private static (decimal Percent, decimal BaseTotal, decimal Amount)? ReserveOf(List<ExpenseEntry> counted, ClosingOptions? options)
+    {
+        if (options is not { ReserveFundPercent: > 0 })
+        {
+            return null;
+        }
+
+        decimal baseTotal = counted.Where(entry => options.ReserveFundGroupIds.Contains(entry.GroupId)).Sum(entry => entry.Amount ?? 0m);
+        decimal amount = ReserveFund.AmountFor(baseTotal, options.ReserveFundPercent);
+
+        return amount > 0 ? (options.ReserveFundPercent, baseTotal, amount) : null;
     }
 
     private static string LabelOf(Guid groupId, ClosingOptions? options) =>
