@@ -27,6 +27,8 @@ internal sealed class FinanceStoreKit(FinancePostgresFixture postgres)
 
     public FinanceSettingsStore Settings(Guid? tenant = null) => new(postgres.CreateContext(tenant ?? CondominiumId));
 
+    public PaymentInstructionsStore Instructions(Guid? tenant = null) => new(postgres.CreateContext(tenant ?? CondominiumId));
+
     public FinanceConsumptionTariffs Tariffs(Guid? tenant = null) => new(postgres.CreateContext(tenant ?? CondominiumId));
 
     public FinanceMeterReadings Readings(Guid? tenant = null) => new(postgres.CreateContext(tenant ?? CondominiumId));

@@ -43,6 +43,8 @@ internal sealed class FinanceTestKit
 
     public FakeFinanceSettings Settings { get; } = new();
 
+    public FakePaymentInstructions Instructions { get; } = new();
+
     public FakeConsumptionTariffs Tariffs { get; } = new();
 
     public FakeMeterReadings Readings { get; } = new();
