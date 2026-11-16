@@ -10,14 +10,19 @@ import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatIcon } from '@angular/material/icon';
 import { ActivatedRoute, RouterLink } from '@angular/router';
+import { firstValueFrom } from 'rxjs';
 import { NOW } from '../../core/finance/clock';
 import { formatMoney } from '../../core/finance/money';
 import { addMonths, formatDate, isMonthInWindow, monthTitle } from '../../core/finance/month';
+import { InvoicesApi } from '../../core/finance/invoices.api';
 import { ChargeSummary, PaymentsStatusFilter } from '../../core/finance/payments.models';
+import { toApiProblem } from '../../core/http/api-problem';
 import { describeProblem } from '../../core/http/problem-message';
+import { FileSaver } from '../../shared/files/file-saver';
 import { MenuSelect } from '../../shared/ui/menu-select/menu-select';
 import { unitLabel } from '../units/unit-values';
 import { openChargePaymentsDialog } from './charge-payments.dialog';
+import { INVOICE_MESSAGES } from './invoice.messages';
 import { openRegisterPaymentDialog } from './register-payment.dialog';
 import { PaymentsStore } from './payments.store';
 import { REGISTER_PAYMENT_MESSAGES } from './payments.messages';
@@ -28,8 +33,8 @@ const FILTER_VALUES: readonly string[] = STATUS_FILTERS.map((option) => option.v
 
 /**
  * Pagamentos de um mês fechado: o resumo (cobrado, recebido, a receber), uma linha por unidade e, em cada uma, registrar um
- * pagamento (vários por cobrança, até o saldo) e ver o histórico, onde se estorna com motivo. Mês que ainda não foi
- * fechado não tem cobranças: a tela explica e leva aos lançamentos do mês.
+ * pagamento (vários por cobrança, até o saldo), ver o histórico, onde se estorna com motivo, e baixar a fatura em PDF. Mês que
+ * ainda não foi fechado não tem cobranças: a tela explica e leva aos lançamentos do mês.
  */
 @Component({
   selector: 'urban-payments-page',
@@ -43,11 +48,16 @@ export class PaymentsPage implements OnInit {
   private readonly injector = inject(Injector);
   private readonly now = inject(NOW);
   private readonly route = inject(ActivatedRoute);
+  private readonly invoices = inject(InvoicesApi);
+  private readonly files = inject(FileSaver);
 
   protected readonly month = signal(
     initialMonth(this.route.snapshot.queryParamMap.get('mes'), this.now()),
   );
   protected readonly notice = signal<string | null>(null);
+  protected readonly invoiceError = signal<string | null>(null);
+  /** A cobrança cuja fatura está sendo baixada; só uma por vez. */
+  protected readonly downloading = signal<string | null>(null);
 
   protected readonly title = monthTitle;
   protected readonly money = formatMoney;
@@ -74,18 +84,18 @@ export class PaymentsPage implements OnInit {
 
   protected onStatus(value: string): void {
     if (FILTER_VALUES.includes(value)) {
-      this.notice.set(null);
+      this.clearMessages();
       void this.store.filter(value as PaymentsStatusFilter);
     }
   }
 
   protected clearFilter(): void {
-    this.notice.set(null);
+    this.clearMessages();
     void this.store.filter('all');
   }
 
   protected goTo(page: number): void {
-    this.notice.set(null);
+    this.clearMessages();
     void this.store.goToPage(page);
   }
 
@@ -103,7 +113,7 @@ export class PaymentsPage implements OnInit {
       },
     });
     if (saved) {
-      this.notice.set(`Pagamento de ${formatMoney(registered)} registrado em ${label}`);
+      this.announce(`Pagamento de ${formatMoney(registered)} registrado em ${label}`);
     }
   }
 
@@ -114,12 +124,36 @@ export class PaymentsPage implements OnInit {
     });
     if (changed) {
       await this.store.refresh();
-      this.notice.set('Estorno registrado');
+      this.announce('Estorno registrado');
     }
   }
 
-  private async show(month: string): Promise<void> {
+  protected async downloadInvoice(charge: ChargeSummary): Promise<void> {
+    this.clearMessages();
+    this.downloading.set(charge.chargeId);
+    try {
+      const { blob, fileName } = await firstValueFrom(this.invoices.download(charge.chargeId));
+      this.files.save(blob, fileName);
+      this.announce(`Fatura de ${unitLabel(charge)} baixada`);
+    } catch (error) {
+      this.invoiceError.set(describeProblem(toApiProblem(error), INVOICE_MESSAGES));
+    } finally {
+      this.downloading.set(null);
+    }
+  }
+
+  private announce(message: string): void {
+    this.invoiceError.set(null);
+    this.notice.set(message);
+  }
+
+  private clearMessages(): void {
     this.notice.set(null);
+    this.invoiceError.set(null);
+  }
+
+  private async show(month: string): Promise<void> {
+    this.clearMessages();
     this.month.set(month);
     await this.store.show(month);
   }

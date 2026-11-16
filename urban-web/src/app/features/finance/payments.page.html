@@ -85,6 +85,14 @@
             <span>{{ message }}</span>
           </p>
         }
+        @if (invoiceError(); as message) {
+          <p role="alert" class="mb-4 flex items-start gap-2" data-testid="invoice-error">
+            <span class="inline-flex text-error"
+              ><mat-icon svgIcon="error" aria-hidden="true"
+            /></span>
+            <span class="text-error">{{ message }}</span>
+          </p>
+        }
 
         <dl class="mb-4 grid gap-4 sm:grid-cols-3">
           <div
@@ -207,6 +215,18 @@
                           (click)="showPayments(item)"
                         >
                           Ver pagamentos
+                        </button>
+                        <button
+                          mat-stroked-button
+                          type="button"
+                          data-testid="download-invoice"
+                          [attr.aria-label]="'Baixar fatura de ' + unitLabel(item)"
+                          [disabled]="store.busy() || downloading() !== null"
+                          (click)="downloadInvoice(item)"
+                        >
+                          {{
+                            downloading() === item.chargeId ? 'Baixando fatura' : 'Baixar fatura'
+                          }}
                         </button>
                       </span>
                     </td>

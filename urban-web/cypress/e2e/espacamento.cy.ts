@@ -18,6 +18,7 @@ import {
   stubFinanceRejected,
   stubMonth,
 } from '../support/financeiro';
+import { stubInvoiceRejected } from '../support/fatura';
 import { READINGS_PATH, stubReadings } from '../support/leituras';
 import {
   PAYMENTS_PATH,
@@ -371,6 +372,18 @@ SCREENS.forEach(([where, width, height]) => {
       stubPayments();
       cy.visit(PAYMENTS_PATH);
       cy.get('[data-testid="charge-row"]').should('exist');
+
+      expectBreathingRoom();
+    });
+
+    it('não cola o aviso de erro do download da fatura nos pagamentos do mês', () => {
+      stubSignedIn(MANAGER);
+      const charges = stubPayments();
+      stubInvoiceRejected(charges[0].chargeId, 404, 'finance.charge.not_found');
+      cy.visit(PAYMENTS_PATH);
+
+      cy.get('button[aria-label="Baixar fatura de Bloco A · 101"]').click();
+      cy.get('[data-testid="invoice-error"]').should('be.visible');
 
       expectBreathingRoom();
     });
