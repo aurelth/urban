@@ -20,6 +20,7 @@ const ROUTES: Routes = [
   'financeiro/tarifas',
   'financeiro/leituras',
   'financeiro/lancamentos',
+  'financeiro/pagamentos',
   'condominio/meus-dados',
   'admin/pedidos-de-cadastro',
   'admin/mensagens',
@@ -251,6 +252,7 @@ describe('ShellLayout', () => {
         'nav-tariffs',
         'nav-readings',
         'nav-entries',
+        'nav-payments',
         'nav-contact',
       ]);
       expect(links(html).map(text)).toEqual([
@@ -262,6 +264,7 @@ describe('ShellLayout', () => {
         'Tarifas',
         'Leituras',
         'Lançamentos',
+        'Pagamentos',
         'Contato',
       ]);
       expect(links(html).map((link) => link.getAttribute('href'))).toEqual([
@@ -273,6 +276,7 @@ describe('ShellLayout', () => {
         '/financeiro/tarifas',
         '/financeiro/leituras',
         '/financeiro/lancamentos',
+        '/financeiro/pagamentos',
         '/contato',
       ]);
       expect([...sideMenu(html)!.querySelectorAll('[data-testid="nav-group"]')].map(text)).toEqual([
@@ -286,7 +290,7 @@ describe('ShellLayout', () => {
 
       const footer = byTestId(html, 'nav-footer')!;
       const contact = byTestId(html, 'nav-contact')!;
-      const lastGroupLink = byTestId(html, 'nav-entries')!;
+      const lastGroupLink = byTestId(html, 'nav-payments')!;
       expect(footer.contains(contact)).toBe(true);
       expect(footer.getAttribute('aria-label')).toBe('Suporte');
       expect(sideMenu(html)!.contains(contact)).toBe(false);
@@ -418,6 +422,7 @@ describe('ShellLayout', () => {
           'Tarifas',
           'Leituras',
           'Lançamentos',
+          'Pagamentos',
           'Contato',
         ]);
         expect(labels(html).every((label) => label.classList.contains('sr-only'))).toBe(true);

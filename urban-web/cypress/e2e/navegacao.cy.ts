@@ -20,6 +20,7 @@ const LINKS = [
   ['nav-tariffs', 'Tarifas', '/financeiro/tarifas'],
   ['nav-readings', 'Leituras', '/financeiro/leituras'],
   ['nav-entries', 'Lançamentos', '/financeiro/lancamentos'],
+  ['nav-payments', 'Pagamentos', '/financeiro/pagamentos'],
 ] as const;
 
 function widthOf($element: JQuery<HTMLElement>): number {

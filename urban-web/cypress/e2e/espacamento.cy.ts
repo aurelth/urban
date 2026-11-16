@@ -19,6 +19,12 @@ import {
   stubMonth,
 } from '../support/financeiro';
 import { READINGS_PATH, stubReadings } from '../support/leituras';
+import {
+  PAYMENTS_PATH,
+  PAYMENT_ON_102,
+  stubChargePayments,
+  stubPayments,
+} from '../support/pagamentos';
 import { PROFILE_PATH, stubProfile } from '../support/perfil';
 import { ADMIN, REQUESTS_PATH, stubRequests } from '../support/pedidos';
 import { MANAGER, stubAnonymous, stubSignedIn } from '../support/session';
@@ -358,6 +364,31 @@ SCREENS.forEach(([where, width, height]) => {
       closeDialog();
       cy.get('[data-testid="edit-reserve-percent"]').click();
       expectDialogBreathingRoom();
+    });
+
+    it('não cola texto em container nos pagamentos do mês', () => {
+      stubSignedIn(MANAGER);
+      stubPayments();
+      cy.visit(PAYMENTS_PATH);
+      cy.get('[data-testid="charge-row"]').should('exist');
+
+      expectBreathingRoom();
+    });
+
+    it('não cola texto em container nos diálogos de pagamento', () => {
+      stubSignedIn(MANAGER);
+      const charges = stubPayments();
+      stubChargePayments(charges[1], [{ ...PAYMENT_ON_102 }]);
+      cy.visit(PAYMENTS_PATH);
+
+      cy.get('button[aria-label="Registrar pagamento de Bloco A · 102"]').click();
+      cy.get('urban-register-payment-dialog h2').should('be.visible');
+      expectBreathingRoom();
+      cy.get('urban-register-payment-dialog [data-testid="cancel"]').click();
+
+      cy.get('button[aria-label="Ver pagamentos de Bloco A · 102"]').click();
+      cy.get('[data-testid="reverse-payment"]').click();
+      expectBreathingRoom();
     });
 
     it('não cola texto em container nas leituras do mês', () => {
