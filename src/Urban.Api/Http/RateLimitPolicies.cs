@@ -50,6 +50,9 @@ public static class RateLimitPolicies
     /// <summary>Resposta do dono a uma mensagem: envia e-mail com anexos de até 10 MB, então o limite é menor.</summary>
     public const string ContactReply = "contact-reply";
 
+    /// <summary>Download da fatura em PDF: o PDF é montado a cada pedido, então o limite é menor que o do restante do Financeiro.</summary>
+    public const string Invoice = "invoice";
+
     /// <summary>Troca de senha, de e-mail e edição dos dados sensíveis: ações que exigem a senha, com limite menor.</summary>
     public const string SensitiveChange = "sensitive-change";
 
