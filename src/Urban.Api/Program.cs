@@ -55,6 +55,7 @@ app.MapVehicleEndpoints();
 app.MapFinanceEndpoints();
 app.MapPaymentEndpoints();
 app.MapInvoiceEndpoints();
+app.MapPaymentInstructionsEndpoints();
 app.MapPostalCodeEndpoints();
 app.MapPasswordResetEndpoints();
 app.MapAccountEndpoints();
