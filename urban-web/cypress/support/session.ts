@@ -18,6 +18,14 @@ export const MANAGER: StubUser = {
   displayName: 'Marina',
 };
 
+export const RESIDENT: StubUser = {
+  ...MANAGER,
+  id: '01a176be-52fe-7784-a4d6-ed99baca7a01',
+  email: 'morador@example.com',
+  role: 'Resident',
+  displayName: 'Joao',
+};
+
 const TOKENS = { accessToken: 'token-de-teste', accessTokenExpiresAt: '2099-01-01T00:00:00+00:00' };
 
 /** Quem abre o app sem sessão: a renovação pelo cookie é recusada. */

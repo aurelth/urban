@@ -7,7 +7,12 @@ import {
 } from '../support/contato';
 import { stubConfirmEmailCheck, stubTerms } from '../support/cadastro';
 import { NEW_MANAGER } from '../support/condominio';
-import { INSTRUCTIONS_PATH, enter, stubInstructions } from '../support/dados-pagamento';
+import {
+  INSTRUCTIONS_PATH,
+  NO_INSTRUCTIONS,
+  enter,
+  stubInstructions,
+} from '../support/dados-pagamento';
 import { expectBreathingRoom, expectDialogBreathingRoom } from '../support/espacamento';
 import {
   CLOSED_MONTH,
@@ -27,6 +32,7 @@ import {
   stubChargePayments,
   stubPayments,
 } from '../support/pagamentos';
+import { stubDashboard } from '../support/painel';
 import { PROFILE_PATH, stubProfile } from '../support/perfil';
 import { ADMIN, REQUESTS_PATH, stubRequests } from '../support/pedidos';
 import { MANAGER, stubAnonymous, stubSignedIn } from '../support/session';
@@ -85,8 +91,10 @@ SCREENS.forEach(([where, width, height]) => {
     it('não cola texto em container no painel, em minha conta e nos dados do condomínio', () => {
       stubSignedIn(MANAGER);
       stubProfile();
+      stubDashboard({ month: 'closed', overdueCharges: 3, instructions: NO_INSTRUCTIONS });
       cy.visit('/dashboard');
-      cy.get('mat-card.module').should('have.length', 3);
+      cy.get('[data-testid="pending"]').should('have.length.at.least', 1);
+      cy.get('[data-testid="received-percent"]').should('be.visible');
       expectBreathingRoom();
       cy.visit('/conta');
       cy.get('[data-testid="password-section"]').should('be.visible');
