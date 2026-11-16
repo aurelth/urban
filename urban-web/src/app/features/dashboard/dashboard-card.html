@@ -1,0 +1,39 @@
+<section
+  class="flex h-full flex-col rounded-xl border border-outline-variant bg-surface-container p-6"
+>
+  <header class="mb-4">
+    <h2 class="m-0 text-base font-medium">{{ heading() }}</h2>
+    @if (subtitle()) {
+      <p class="m-0 mt-1 text-sm text-on-surface-variant">{{ subtitle() }}</p>
+    }
+  </header>
+
+  @switch (status()) {
+    @case ('loading') {
+      <div
+        role="status"
+        aria-label="Carregando"
+        class="flex flex-col gap-3 motion-safe:animate-pulse"
+        data-testid="skeleton"
+      >
+        <div class="h-4 w-2/3 rounded bg-outline-variant"></div>
+        <div class="h-4 w-full rounded bg-outline-variant"></div>
+        <div class="h-4 w-1/2 rounded bg-outline-variant"></div>
+      </div>
+    }
+    @case ('error') {
+      <div role="alert" class="flex flex-col items-start gap-3" data-testid="card-error">
+        <p class="m-0 flex items-start gap-2 text-error">
+          <mat-icon class="shrink-0" svgIcon="error" aria-hidden="true" />
+          <span>{{ errorText() }}</span>
+        </p>
+        <button mat-stroked-button type="button" data-testid="retry" (click)="retry.emit()">
+          Tentar de novo
+        </button>
+      </div>
+    }
+    @default {
+      <ng-content />
+    }
+  }
+</section>

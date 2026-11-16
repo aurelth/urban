@@ -1,21 +1,207 @@
 <section class="mx-auto max-w-5xl p-6">
   <h1 class="sr-only">Painel</h1>
 
-  <div class="grid gap-4 md:grid-cols-3">
-    @for (module of modules; track module.title) {
-      <mat-card
-        appearance="outlined"
-        class="module"
-        urbanFadeIn
-        [urbanFadeInDelay]="0.1 + $index * 0.08"
+  @if (!isManager()) {
+    <section
+      class="rounded-xl border border-outline-variant bg-surface-container p-6"
+      data-testid="welcome"
+    >
+      <h2 class="m-0 mb-4 text-base font-medium">Bem-vindo ao Urban</h2>
+      <p class="m-0 text-on-surface-variant">
+        A área do morador, com as suas faturas e os avisos do condomínio, ainda está em construção.
+      </p>
+    </section>
+  } @else {
+    <div class="grid gap-4 md:grid-cols-3">
+      <urban-dashboard-card
+        data-testid="card-month"
+        heading="Este mês"
+        [subtitle]="monthLabel"
+        [status]="store.month().status"
+        errorText="Não foi possível carregar o mês"
+        (retry)="store.retryMonth()"
       >
-        <mat-card-header>
-          <mat-card-title>{{ module.title }}</mat-card-title>
-        </mat-card-header>
-        <mat-card-content>
-          <p class="text-on-surface-variant">{{ module.description }}</p>
-        </mat-card-content>
-      </mat-card>
-    }
-  </div>
+        @if (store.month().value; as month) {
+          @let state = monthState(month);
+          @let stateLabel = monthStateLabel(state);
+          @let total = formatMoney(month.total);
+          @let waiting = month.needsAmountCount;
+          @let overdue = month.overdueCount;
+          <dl class="m-0 mb-4 flex flex-col gap-3">
+            <div class="flex items-baseline justify-between gap-4">
+              <dt class="text-on-surface-variant">Situação</dt>
+              <dd class="m-0 font-medium" data-testid="month-state">{{ stateLabel }}</dd>
+            </div>
+            @if (state !== 'not-open') {
+              <div class="flex items-baseline justify-between gap-4">
+                <dt class="text-on-surface-variant">Despesas</dt>
+                <dd class="m-0 font-medium" data-testid="month-total">{{ total }}</dd>
+              </div>
+            }
+            @if (month.closing; as closing) {
+              @let due = formatDate(closing.dueDate);
+              <div class="flex items-baseline justify-between gap-4">
+                <dt class="text-on-surface-variant">Vencimento</dt>
+                <dd class="m-0 font-medium" data-testid="month-due">{{ due }}</dd>
+              </div>
+            }
+          </dl>
+          @if (waiting > 0) {
+            <p class="m-0 mb-2 flex items-center gap-2 text-warning">
+              <mat-icon class="shrink-0" svgIcon="warning" aria-hidden="true" />
+              <span data-testid="month-needs-amount">{{ waiting }} aguardando valor</span>
+            </p>
+          }
+          @if (overdue > 0) {
+            <p class="m-0 mb-2 flex items-center gap-2 text-warning">
+              <mat-icon class="shrink-0" svgIcon="warning" aria-hidden="true" />
+              <span data-testid="month-overdue">{{ overdue }} vencida</span>
+            </p>
+          }
+          <div class="mt-auto pt-4">
+            <a mat-stroked-button routerLink="/financeiro/lancamentos" data-testid="month-link">
+              Ver lançamentos
+              <mat-icon svgIcon="arrow_forward" aria-hidden="true" />
+            </a>
+          </div>
+        }
+      </urban-dashboard-card>
+
+      <urban-dashboard-card
+        data-testid="card-payments"
+        heading="Recebimentos"
+        [subtitle]="monthLabel"
+        [status]="store.payments().status"
+        errorText="Não foi possível carregar os recebimentos"
+        (retry)="store.retryMonth()"
+      >
+        @if (store.payments().value; as payments) {
+          @if (payments.closed) {
+            @let percent = receivedPercent(payments.charged, payments.received);
+            @let received = formatMoney(payments.received);
+            @let charged = formatMoney(payments.charged);
+            @let overdueText = overdueChargesText(payments.overdue);
+            <p class="m-0 mb-2 text-sm text-on-surface-variant">Recebido</p>
+            <p class="m-0 mb-4 text-2xl font-semibold" data-testid="received">{{ received }}</p>
+            <div
+              role="progressbar"
+              aria-label="Parte do valor cobrado que já foi recebida"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              class="mb-2 h-2 w-full overflow-hidden rounded-full bg-outline-variant"
+              [attr.aria-valuenow]="percent"
+            >
+              <div class="h-full rounded-full bg-success" [style.width.%]="percent"></div>
+            </div>
+            <p class="m-0 mb-4 text-sm text-on-surface-variant">
+              <span data-testid="received-percent">{{ percent }}% recebido</span>
+              {{ ' ' }}de
+              <span data-testid="charged">{{ charged }}</span>
+            </p>
+            @if (payments.overdue > 0) {
+              <p class="m-0 mb-2 flex items-center gap-2 text-error">
+                <mat-icon class="shrink-0" svgIcon="error" aria-hidden="true" />
+                <span data-testid="charges-overdue">{{ overdueText }}</span>
+              </p>
+            } @else {
+              <p class="m-0 mb-2 flex items-center gap-2 text-success">
+                <mat-icon svgIcon="check_circle" aria-hidden="true" />
+                <span data-testid="charges-overdue">{{ overdueText }}</span>
+              </p>
+            }
+            <div class="mt-auto pt-4">
+              <a mat-stroked-button routerLink="/financeiro/pagamentos" data-testid="payments-link">
+                Ver pagamentos
+                <mat-icon svgIcon="arrow_forward" aria-hidden="true" />
+              </a>
+            </div>
+          } @else {
+            <p class="m-0 text-on-surface-variant">
+              As cobranças aparecem depois que o mês for fechado.
+            </p>
+          }
+        }
+      </urban-dashboard-card>
+
+      <urban-dashboard-card
+        data-testid="card-condominium"
+        heading="Condomínio"
+        [status]="store.condominiumStatus()"
+        errorText="Não foi possível carregar os dados do condomínio"
+        (retry)="store.retryCondominium()"
+      >
+        @if (store.units().value; as units) {
+          @let residents = store.residents().value;
+          <div class="flex flex-col gap-3">
+            <a
+              routerLink="/unidades"
+              class="flex flex-col rounded-lg border border-outline-variant bg-surface-container p-4 text-on-surface no-underline"
+              data-testid="stat-units"
+            >
+              <span class="text-3xl font-semibold">{{ units.active }}</span>
+              <span class="text-sm text-on-surface-variant">Unidades ativas</span>
+            </a>
+            @if (residents !== null) {
+              <a
+                routerLink="/moradores"
+                class="flex flex-col rounded-lg border border-outline-variant bg-surface-container p-4 text-on-surface no-underline"
+                data-testid="stat-residents"
+              >
+                <span class="text-3xl font-semibold">{{ residents }}</span>
+                <span class="text-sm text-on-surface-variant">Moradores atuais</span>
+              </a>
+            }
+          </div>
+        }
+      </urban-dashboard-card>
+
+      <urban-dashboard-card
+        class="md:col-span-3"
+        data-testid="card-pendings"
+        heading="Pendências"
+        [status]="store.pendingsStatus() === 'loading' ? 'loading' : 'ready'"
+      >
+        @if (store.pendingsStatus() === 'error') {
+          <div
+            class="mb-4 flex flex-wrap items-center justify-between gap-3"
+            data-testid="pendings-incomplete"
+          >
+            <p class="m-0 flex items-start gap-2 text-error">
+              <mat-icon class="shrink-0" svgIcon="error" aria-hidden="true" />
+              <span>Não foi possível verificar tudo</span>
+            </p>
+            <button
+              mat-stroked-button
+              type="button"
+              data-testid="retry"
+              (click)="store.retryFailed()"
+            >
+              Tentar de novo
+            </button>
+          </div>
+        }
+        @if (store.pendings().length > 0) {
+          <ul class="m-0 flex list-none flex-col divide-y divide-outline-variant p-0">
+            @for (item of store.pendings(); track item.id) {
+              <li
+                class="flex flex-wrap items-center justify-between gap-3 py-3"
+                data-testid="pending"
+              >
+                <p class="m-0 flex items-center gap-3 text-warning">
+                  <mat-icon class="shrink-0" svgIcon="warning" aria-hidden="true" />
+                  <span class="text-on-surface" data-testid="pending-text">{{ item.text }}</span>
+                </p>
+                <a mat-button [routerLink]="item.link">{{ item.linkLabel }}</a>
+              </li>
+            }
+          </ul>
+        } @else if (store.pendingsStatus() === 'ready') {
+          <p class="m-0 flex items-center gap-2 text-success" data-testid="all-clear">
+            <mat-icon svgIcon="check_circle" aria-hidden="true" />
+            <span>Tudo em dia: nada precisa da sua atenção agora.</span>
+          </p>
+        }
+      </urban-dashboard-card>
+    </div>
+  }
 </section>
