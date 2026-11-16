@@ -489,6 +489,73 @@ namespace Urban.Finance.Infrastructure.Persistence.Migrations
                     b.ToTable("expense_group", "finance");
                 });
 
+            modelBuilder.Entity("Urban.Finance.Domain.Payments.Payment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(14, 2)
+                        .HasColumnType("numeric(14,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<Guid>("ChargeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("unit_charge_id");
+
+                    b.Property<Guid>("CondominiumId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("condominium_id");
+
+                    b.Property<string>("Method")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("method");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("note");
+
+                    b.Property<DateOnly>("ReceivedOn")
+                        .HasColumnType("date")
+                        .HasColumnName("received_on");
+
+                    b.Property<DateTimeOffset>("RegisteredAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("registered_at");
+
+                    b.Property<Guid>("RegisteredBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("registered_by");
+
+                    b.Property<string>("ReversalReason")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("reversal_reason");
+
+                    b.Property<DateTimeOffset?>("ReversedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reversed_at");
+
+                    b.Property<Guid?>("ReversedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reversed_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_payment");
+
+                    b.HasIndex("ChargeId")
+                        .HasDatabaseName("ix_payment_unit_charge_id");
+
+                    b.HasIndex("CondominiumId", "ChargeId")
+                        .HasDatabaseName("ix_payment_condominium_id_unit_charge_id");
+
+                    b.ToTable("payment", "finance");
+                });
+
             modelBuilder.Entity("Urban.Finance.Domain.Settings.FinanceSettings", b =>
                 {
                     b.Property<Guid>("CondominiumId")
@@ -627,6 +694,16 @@ namespace Urban.Finance.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_expense_entry_expense_group_group_id");
+                });
+
+            modelBuilder.Entity("Urban.Finance.Domain.Payments.Payment", b =>
+                {
+                    b.HasOne("Urban.Finance.Domain.Closing.UnitCharge", null)
+                        .WithMany()
+                        .HasForeignKey("ChargeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_payment_unit_charge_unit_charge_id");
                 });
 
             modelBuilder.Entity("Urban.Finance.Domain.Closing.MonthClosing", b =>

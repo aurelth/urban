@@ -13,6 +13,7 @@ using Urban.Finance.Domain.Expenses;
 using Urban.Finance.Domain.Closing;
 using Urban.Finance.Domain.Consumption;
 using Urban.Finance.Domain.Months;
+using Urban.Finance.Domain.Payments;
 using Urban.Identity.Application.Administration;
 using Urban.Identity.Application.Authentication;
 using Urban.Identity.Application.Authentication.Login;
@@ -224,6 +225,17 @@ public static class ErrorHttp
         [ClosingErrors.AlreadyClosed.Code] = StatusCodes.Status409Conflict,
         [ClosingErrors.NotClosed.Code] = StatusCodes.Status409Conflict,
         [ClosingErrors.MonthIsClosed.Code] = StatusCodes.Status409Conflict,
+        [ClosingErrors.HasPayments.Code] = StatusCodes.Status409Conflict,
+        [PaymentErrors.AmountInvalid.Code] = StatusCodes.Status400BadRequest,
+        [PaymentErrors.MethodInvalid.Code] = StatusCodes.Status400BadRequest,
+        [PaymentErrors.DateInvalid.Code] = StatusCodes.Status400BadRequest,
+        [PaymentErrors.NoteInvalid.Code] = StatusCodes.Status400BadRequest,
+        [PaymentErrors.ReasonInvalid.Code] = StatusCodes.Status400BadRequest,
+        [PaymentErrors.PageInvalid.Code] = StatusCodes.Status400BadRequest,
+        [PaymentErrors.ExceedsBalance(0m).Code] = StatusCodes.Status422UnprocessableEntity,
+        [PaymentErrors.AlreadyReversed.Code] = StatusCodes.Status409Conflict,
+        [PaymentErrors.NotFound.Code] = StatusCodes.Status404NotFound,
+        [PaymentErrors.ChargeNotFound.Code] = StatusCodes.Status404NotFound,
         [ClosingErrors.ReadingsPending(1, 1).Code] = StatusCodes.Status422UnprocessableEntity,
         [ConsumptionErrors.BandsInvalid.Code] = StatusCodes.Status400BadRequest,
         [ConsumptionErrors.GasInvalid.Code] = StatusCodes.Status400BadRequest,

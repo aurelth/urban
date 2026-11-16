@@ -16,6 +16,9 @@ public interface IMonthClosings
     /// <summary>Grava o fechamento e as cobranças juntos. Um segundo fechamento do mesmo mês vira <see cref="Urban.Finance.Domain.Closing.ClosingErrors.AlreadyClosed"/>.</summary>
     Task<Result> AddAsync(MonthClosing closing, CancellationToken cancellationToken);
 
-    /// <summary>Apaga o fechamento e as cobranças dele. Não confirma a transação: quem chama decide, dentro da unidade atômica dele.</summary>
-    Task RemoveAsync(MonthClosing closing, CancellationToken cancellationToken);
+    /// <summary>
+    /// Apaga o fechamento e as cobranças dele. Não confirma a transação: quem chama decide, dentro da unidade atômica dele. Cobrança
+    /// com pagamento não se apaga: falha com <see cref="Urban.Finance.Domain.Closing.ClosingErrors.HasPayments"/>.
+    /// </summary>
+    Task<Result> RemoveAsync(MonthClosing closing, CancellationToken cancellationToken);
 }

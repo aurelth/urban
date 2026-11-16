@@ -22,6 +22,8 @@ public static class ClosingErrors
 
     public static readonly Error MonthIsClosed = new("closing.month_is_closed", "O mês está fechado. Reabra o mês para mudar os lançamentos");
 
+    public static readonly Error HasPayments = new("closing.has_payments", "Este mês tem pagamentos registrados. Estorne os pagamentos antes de reabrir o mês");
+
     public static Error ReadingsPending(int waterUnits, int gasUnits)
     {
         List<string> missing = [];

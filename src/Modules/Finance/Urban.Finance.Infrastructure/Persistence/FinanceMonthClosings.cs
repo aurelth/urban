@@ -42,9 +42,22 @@ public sealed class FinanceMonthClosings(FinanceDbContext db) : IMonthClosings
         }
     }
 
-    public async Task RemoveAsync(MonthClosing closing, CancellationToken cancellationToken)
+    public async Task<Result> RemoveAsync(MonthClosing closing, CancellationToken cancellationToken)
     {
         db.MonthClosings.Remove(closing);
-        await db.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken);
+
+            return Result.Success();
+        }
+        catch (DbUpdateException ex) when (PostgresErrors.IsReferencedRowViolation(ex))
+        {
+            // O handler confere os pagamentos antes; isto cobre um pagamento registrado entre a conferência e a exclusão.
+            db.ChangeTracker.Clear();
+
+            return Result.Failure(ClosingErrors.HasPayments);
+        }
     }
 }
