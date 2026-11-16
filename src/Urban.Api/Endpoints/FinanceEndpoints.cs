@@ -263,6 +263,14 @@ public static class FinanceEndpoints
             .Produces<ExpenseEntryResponse>()
             .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound, StatusCodes.Status409Conflict);
 
+        finance.MapPut("/entries/{id:guid}/note", (Guid id, EntryNoteRequest request, ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken ct) =>
+                SendAsync(user, response, sender, FinanceMapper.ToCommand(request, id), view => FinanceMapper.ToResponse(view), ct))
+            .WithName("SetEntryNote")
+            .WithSummary("Escreve ou apaga a observação de um lançamento")
+            .WithDescription(VersionText + " A observação é uma linha de até 200 caracteres, como o número da ordem de serviço ou o período do serviço; em branco apaga. Vale só para aquele mês e aparece sob a despesa no demonstrativo da fatura, por isso só se muda com o mês aberto (mês fechado responde 409). " + RateLimitText)
+            .Produces<ExpenseEntryResponse>()
+            .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound, StatusCodes.Status409Conflict);
+
         finance.MapPut("/entries/{id:guid}/status", (Guid id, EntryStatusRequest request, ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken ct) =>
                 SendAsync(user, response, sender, FinanceMapper.ToCommand(request, id), view => FinanceMapper.ToResponse(view), ct))
             .WithName("SetEntryStatus")

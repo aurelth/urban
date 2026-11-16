@@ -12,7 +12,8 @@ public sealed record InvoiceLine(ChargeLineKind Kind, string Label, decimal Amou
 public sealed record InvoiceShare(ApportionmentBasisKind Method, decimal Percent);
 
 /// <summary>Uma despesa do mês, como o condomínio a lançou; parcela aparece no texto, como "Portão da garagem (4/6)".</summary>
-public sealed record InvoiceStatementItem(string Description, decimal Amount);
+/// <param name="Detail">O fornecedor e a observação do mês, como "Segurança Ltda · OS 4521"; nulo quando a despesa não tem nenhum dos dois.</param>
+public sealed record InvoiceStatementItem(string Description, decimal Amount, string? Detail = null);
 
 /// <summary>As despesas de um grupo, em ordem alfabética, com o subtotal.</summary>
 public sealed record InvoiceStatementGroup(string Name, IReadOnlyList<InvoiceStatementItem> Items)

@@ -234,7 +234,16 @@ public sealed class QuestPdfInvoiceRenderer : IInvoiceRenderer
 
                 foreach (InvoiceStatementItem item in group.Items)
                 {
-                    table.Cell().Element(Cell).Text(item.Description);
+                    table.Cell().Element(Cell).Column(label =>
+                    {
+                        label.Item().Text(item.Description);
+
+                        if (item.Detail is { } detail)
+                        {
+                            label.Item().Text(detail).FontSize(8).FontColor(Muted);
+                        }
+                    });
+
                     table.Cell().Element(Cell).AlignRight().Text(InvoiceText.Money(item.Amount));
                 }
             });
