@@ -5,6 +5,7 @@ import {
   provideHttpClientTesting,
 } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { jest } from '@jest/globals';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { Router, provideRouter } from '@angular/router';
 import { SessionStore } from '../../core/auth/session.store';
@@ -22,6 +23,7 @@ import {
   payment,
 } from '../../testing/finance.fixtures';
 import { chooseMenuOption, menuSelectOptions, menuSelectValue } from '../../testing/menu-select';
+import { FileSaver } from '../../shared/files/file-saver';
 import { PaymentsPage } from './payments.page';
 
 /** formatMoney usa espaço sem quebra entre "R$" e o valor; o texto lido da tela é normalizado para espaço comum. */
@@ -421,6 +423,130 @@ describe('PaymentsPage', () => {
       expect(plain(dialog.querySelector('[role="alert"]')?.textContent)).toBe(
         'Esta cobrança não existe mais. Atualizamos a lista',
       );
+    });
+  });
+
+  describe('baixar a fatura', () => {
+    const INVOICE = (chargeId: string): string => `/api/finance/charges/${chargeId}/invoice`;
+    let save: jest.SpiedFunction<FileSaver['save']>;
+
+    beforeEach(() => {
+      save = jest.spyOn(FileSaver.prototype, 'save').mockImplementation(() => undefined);
+    });
+
+    afterEach(() => save.mockRestore());
+
+    it('oferece baixar a fatura em todas as cobrancas, com o nome da unidade no rotulo', async () => {
+      const { html } = await setup();
+
+      expect(rows(html).every((row) => testId(row, 'download-invoice') !== null)).toBe(true);
+      expect(testId(rows(html)[0], 'download-invoice')!.getAttribute('aria-label')).toBe(
+        'Baixar fatura de Bloco A · 101',
+      );
+      expect(plain(testId(rows(html)[2], 'download-invoice')!.textContent)).toBe('Baixar fatura');
+    });
+
+    it('baixa o PDF, salva com o nome que a API sugeriu e avisa com a unidade', async () => {
+      const { fixture, html, http } = await setup();
+
+      click(testId(rows(html)[1], 'download-invoice'));
+      const pdf = new Blob(['%PDF-1.7'], { type: 'application/pdf' });
+      http.expectOne(INVOICE('c2')).flush(pdf, {
+        headers: { 'Content-Disposition': "attachment; filename*=UTF-8''fatura-2026-11-a-102.pdf" },
+      });
+      await settle(fixture);
+
+      expect(save).toHaveBeenCalledTimes(1);
+      expect(save).toHaveBeenCalledWith(pdf, 'fatura-2026-11-a-102.pdf');
+      expect(plain(testId(html, 'notice')?.textContent)).toBe('Fatura de Bloco A · 102 baixada');
+      expect(testId(html, 'invoice-error')).toBeNull();
+    });
+
+    it('trava os botoes e mostra que esta baixando enquanto o PDF nao chega', async () => {
+      const { fixture, html, http } = await setup();
+
+      click(testId(rows(html)[0], 'download-invoice'));
+      await settle(fixture);
+
+      const first = testId(rows(html)[0], 'download-invoice') as HTMLButtonElement;
+      expect(plain(first.textContent)).toBe('Baixando fatura');
+      expect(first.disabled).toBe(true);
+      expect((testId(rows(html)[1], 'download-invoice') as HTMLButtonElement).disabled).toBe(true);
+      expect((testId(rows(html)[1], 'register-payment') as HTMLButtonElement).disabled).toBe(false);
+      http.expectOne(INVOICE('c1')).flush(new Blob(['%PDF-1.7']));
+      await settle(fixture);
+
+      expect((testId(rows(html)[1], 'download-invoice') as HTMLButtonElement).disabled).toBe(false);
+      expect(plain((testId(rows(html)[0], 'download-invoice') as HTMLElement).textContent)).toBe(
+        'Baixar fatura',
+      );
+    });
+
+    it('explica quando a cobranca nao existe mais, sem salvar nada', async () => {
+      const { fixture, html, http } = await setup();
+
+      click(testId(rows(html)[0], 'download-invoice'));
+      http.expectOne(INVOICE('c1')).flush(
+        new Blob([JSON.stringify({ status: 404, code: 'finance.charge.not_found' })], {
+          type: 'application/problem+json',
+        }),
+        { status: 404, statusText: 'Not Found' },
+      );
+      await settle(fixture);
+
+      expect(save).not.toHaveBeenCalled();
+      expect(plain(testId(html, 'invoice-error')?.textContent)).toContain(
+        'Esta cobrança não existe mais',
+      );
+      expect(testId(html, 'notice')).toBeNull();
+    });
+
+    it('explica o limite de requisicoes e a falta de conexao', async () => {
+      const { fixture, html, http } = await setup();
+
+      click(testId(rows(html)[0], 'download-invoice'));
+      http.expectOne(INVOICE('c1')).flush(new Blob(['x']), {
+        status: 429,
+        statusText: 'Too Many Requests',
+        headers: { 'Retry-After': '20' },
+      });
+      await settle(fixture);
+      expect(plain(testId(html, 'invoice-error')?.textContent)).toContain('Aguarde 20 segundos');
+
+      click(testId(rows(html)[0], 'download-invoice'));
+      http.expectOne(INVOICE('c1')).error(new ProgressEvent('error'));
+      await settle(fixture);
+      expect(plain(testId(html, 'invoice-error')?.textContent)).toContain(
+        'Não foi possível conectar',
+      );
+    });
+
+    it('troca o aviso de erro pelo de sucesso na proxima tentativa', async () => {
+      const { fixture, html, http } = await setup();
+      click(testId(rows(html)[0], 'download-invoice'));
+      http.expectOne(INVOICE('c1')).flush(new Blob(['x']), { status: 500, statusText: 'Erro' });
+      await settle(fixture);
+      expect(testId(html, 'invoice-error')).not.toBeNull();
+
+      click(testId(rows(html)[0], 'download-invoice'));
+      http.expectOne(INVOICE('c1')).flush(new Blob(['%PDF-1.7']));
+      await settle(fixture);
+
+      expect(testId(html, 'invoice-error')).toBeNull();
+      expect(testId(html, 'notice')).not.toBeNull();
+    });
+
+    it('limpa o aviso de erro ao trocar de mes', async () => {
+      const { fixture, html, http } = await setup();
+      click(testId(rows(html)[0], 'download-invoice'));
+      http.expectOne(INVOICE('c1')).flush(new Blob(['x']), { status: 500, statusText: 'Erro' });
+      await settle(fixture);
+
+      click(html.querySelector('button[aria-label="Próximo mês"]'));
+      listRequest(http, '2026-12').flush(MONTH);
+      await settle(fixture);
+
+      expect(testId(html, 'invoice-error')).toBeNull();
     });
   });
 
