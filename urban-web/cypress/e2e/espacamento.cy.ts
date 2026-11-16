@@ -7,6 +7,7 @@ import {
 } from '../support/contato';
 import { stubConfirmEmailCheck, stubTerms } from '../support/cadastro';
 import { NEW_MANAGER } from '../support/condominio';
+import { INSTRUCTIONS_PATH, enter, stubInstructions } from '../support/dados-pagamento';
 import { expectBreathingRoom, expectDialogBreathingRoom } from '../support/espacamento';
 import {
   CLOSED_MONTH,
@@ -365,6 +366,20 @@ SCREENS.forEach(([where, width, height]) => {
       closeDialog();
       cy.get('[data-testid="edit-reserve-percent"]').click();
       expectDialogBreathingRoom();
+    });
+
+    it('não cola texto em container nos dados para pagamento, nem com os avisos de erro', () => {
+      stubSignedIn(MANAGER);
+      stubInstructions();
+      cy.visit(INSTRUCTIONS_PATH);
+      cy.get('[data-testid="pix-section"]').should('exist');
+      expectBreathingRoom();
+
+      enter('pixKey', '11222333');
+      enter('agency', 'abc');
+      cy.contains('button', 'Salvar alterações').click();
+      cy.get('mat-error').should('exist');
+      expectBreathingRoom();
     });
 
     it('não cola texto em container nos pagamentos do mês', () => {

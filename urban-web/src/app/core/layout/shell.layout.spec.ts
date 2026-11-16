@@ -253,6 +253,7 @@ describe('ShellLayout', () => {
         'nav-readings',
         'nav-entries',
         'nav-payments',
+        'nav-payment-instructions',
         'nav-contact',
       ]);
       expect(links(html).map(text)).toEqual([
@@ -265,6 +266,7 @@ describe('ShellLayout', () => {
         'Leituras',
         'Lançamentos',
         'Pagamentos',
+        'Dados de pagamento',
         'Contato',
       ]);
       expect(links(html).map((link) => link.getAttribute('href'))).toEqual([
@@ -277,6 +279,7 @@ describe('ShellLayout', () => {
         '/financeiro/leituras',
         '/financeiro/lancamentos',
         '/financeiro/pagamentos',
+        '/financeiro/dados-de-pagamento',
         '/contato',
       ]);
       expect([...sideMenu(html)!.querySelectorAll('[data-testid="nav-group"]')].map(text)).toEqual([
@@ -290,7 +293,7 @@ describe('ShellLayout', () => {
 
       const footer = byTestId(html, 'nav-footer')!;
       const contact = byTestId(html, 'nav-contact')!;
-      const lastGroupLink = byTestId(html, 'nav-payments')!;
+      const lastGroupLink = byTestId(html, 'nav-payment-instructions')!;
       expect(footer.contains(contact)).toBe(true);
       expect(footer.getAttribute('aria-label')).toBe('Suporte');
       expect(sideMenu(html)!.contains(contact)).toBe(false);
@@ -423,6 +426,7 @@ describe('ShellLayout', () => {
           'Leituras',
           'Lançamentos',
           'Pagamentos',
+          'Dados de pagamento',
           'Contato',
         ]);
         expect(labels(html).every((label) => label.classList.contains('sr-only'))).toBe(true);
