@@ -2,7 +2,7 @@ using Urban.SharedKernel;
 
 namespace Urban.Finance.Domain.Expenses;
 
-/// <summary>Uma linha do recibo do morador (por exemplo, "Despesas ordinárias" ou "Manutenção das garagens").</summary>
+/// <summary>Uma linha da fatura do morador (por exemplo, "Despesas ordinárias" ou "Manutenção das garagens").</summary>
 public sealed class ExpenseGroup
 {
     public const string DefaultName = "Despesas ordinárias";

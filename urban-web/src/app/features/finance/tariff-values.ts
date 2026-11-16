@@ -43,7 +43,7 @@ export function tariffLines(tariff: ConsumptionTariff): TariffLine[] {
 
 export function reserveFundText(percent: number): string {
   return percent === 0
-    ? 'Sem fundo de reserva no recibo'
+    ? 'Sem fundo de reserva na fatura'
     : `${formatDecimalInput(percent)}% das despesas dos grupos marcados como base`;
 }
 

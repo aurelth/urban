@@ -17,7 +17,7 @@ public sealed class FinanceExpenseGroups(FinanceDbContext db) : IExpenseGroups
     {
         List<ExpenseGroup> groups = await db.ExpenseGroups.ToListAsync(cancellationToken);
 
-        return [.. groups.OrderBy(group => group.Name, TextOrder.Comparer).Select(group => new ExpenseGroupRecord(group, CurrentVersion(group)))];
+        return [.. groups.OrderBy(group => group.Name, AlphabeticalOrder.Comparer).Select(group => new ExpenseGroupRecord(group, CurrentVersion(group)))];
     }
 
     public async Task<ExpenseGroupRecord?> FindAsync(Guid groupId, CancellationToken cancellationToken)

@@ -52,7 +52,7 @@ describe('tariffLines', () => {
 
 describe('reserveFundText', () => {
   it('explains that there is no reserve fund at zero', () => {
-    expect(reserveFundText(0)).toBe('Sem fundo de reserva no recibo');
+    expect(reserveFundText(0)).toBe('Sem fundo de reserva na fatura');
   });
 
   it('writes the percent over the base groups', () => {

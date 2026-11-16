@@ -46,13 +46,9 @@ public static class InvoiceText
         _ => "Área",
     };
 
-    public static string Status(ChargeStatus status) => status switch
-    {
-        ChargeStatus.Open => "Em aberto",
-        ChargeStatus.Partial => "Paga em parte",
-        ChargeStatus.Paid => "Paga",
-        _ => "Vencida",
-    };
+    /// <summary>A despesa como aparece no demonstrativo: o nome e, se for parcela, o número dela entre parênteses.</summary>
+    public static string ExpenseItem(string description, string? installment) =>
+        installment is null ? description : $"{description} ({installment})";
 
     public static string PixKind(PixKeyKind kind) => kind switch
     {

@@ -81,10 +81,10 @@ export interface GroupTotal {
 /** Em que o rateio do condomínio se baseia: o nome do método escolhido na tela de unidades. */
 export type ApportionmentBasis = 'idealFraction' | 'equalShare' | 'area';
 
-/** De onde vem cada linha do recibo da unidade. */
+/** De onde vem cada linha da fatura da unidade. */
 export type ChargeLineKind = 'expenses' | 'reserveFund' | 'water' | 'sewage' | 'gas';
 
-/** Uma linha do recibo, com o texto e os números de quando o mês fechou. */
+/** Uma linha da fatura, com o texto e os números de quando o mês fechou. */
 export interface ChargeLine {
   readonly kind: ChargeLineKind;
   readonly label: string;
@@ -191,7 +191,7 @@ export interface ConsumptionTariffPayload {
 }
 
 export interface FinanceSettings {
-  /** De 0 a 100. Zero é sem fundo de reserva no recibo. */
+  /** De 0 a 100. Zero é sem fundo de reserva na fatura. */
   readonly reserveFundPercent: number;
 }
 

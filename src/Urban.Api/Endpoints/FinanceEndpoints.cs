@@ -85,7 +85,7 @@ public static class FinanceEndpoints
                 SendAsync(user, response, sender, new GetFinanceSettingsQuery(), view => FinanceMapper.ToResponse(view), ct))
             .WithName("GetFinanceSettings")
             .WithSummary("Lê as configurações financeiras do condomínio")
-            .WithDescription("Devolve o percentual do fundo de reserva (0 enquanto o condomínio não configurou nada: sem fundo de reserva no recibo). A resposta nunca é guardada em cache. " + RateLimitText)
+            .WithDescription("Devolve o percentual do fundo de reserva (0 enquanto o condomínio não configurou nada: sem fundo de reserva na fatura). A resposta nunca é guardada em cache. " + RateLimitText)
             .Produces<FinanceSettingsResponse>()
             .WithErrors(StatusCodes.Status404NotFound);
 

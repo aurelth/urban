@@ -4,12 +4,11 @@ using Urban.Finance.Domain.Closing;
 using Urban.Finance.Domain.Consumption;
 using Urban.Finance.Domain.Expenses;
 using Urban.Finance.Domain.Months;
-using Urban.Finance.Domain.Payments;
 using Urban.SharedKernel.Contracts;
 
 namespace Urban.IntegrationTests.Finance.Persistence;
 
-/// <summary>O que a fatura em PDF lê de uma cobrança: o recibo, a base do rateio, o total de cada linha do mês e as cobranças antigas que ainda devem.</summary>
+/// <summary>O que a fatura em PDF lê de uma cobrança: a cobrança, a base do rateio e o total de cada linha do mês.</summary>
 [Collection(FinancePostgresCollection.Name)]
 public class FinanceChargesTests(FinancePostgresFixture postgres)
 {
@@ -20,18 +19,6 @@ public class FinanceChargesTests(FinancePostgresFixture postgres)
     private static UnitCharge Big(MonthClosing closing) => closing.Charges.Single(charge => charge.Number == "101");
 
     private static UnitCharge Small(MonthClosing closing) => closing.Charges.Single(charge => charge.Number == "102");
-
-    private async Task PayAsync(UnitCharge charge, YearMonth month, decimal amount, bool reversed = false)
-    {
-        Payment payment = FinanceStoreKit.NewPayment(charge, month, amount);
-        (await _kit.Payments().AddAsync(payment, charge.Amount, default)).IsSuccess.Should().BeTrue();
-
-        if (reversed)
-        {
-            payment.Reverse("Lançado por engano", Guid.CreateVersion7(), FinanceStoreKit.Now).IsSuccess.Should().BeTrue();
-            (await _kit.Payments().ReverseAsync(payment, default)).IsSuccess.Should().BeTrue();
-        }
-    }
 
     /// <summary>Fecha o mês com dois grupos (Portaria 700 e Limpeza 300), fundo de reserva de 10% sobre a Portaria e água nas duas unidades.</summary>
     private async Task<MonthClosing> StoreClosingWithLinesAsync(YearMonth month)
@@ -87,7 +74,7 @@ public class FinanceChargesTests(FinancePostgresFixture postgres)
     }
 
     [Fact]
-    public async Task Find_TheLineTotalsSumTheLinesOfAllTheChargesOfTheClosing_InTheOrderOfTheReceipt()
+    public async Task Find_TheLineTotalsSumTheLinesOfAllTheChargesOfTheClosing_InTheOrderOfTheCharge()
     {
         MonthClosing closing = await StoreClosingWithLinesAsync(M(2026, 10));
         decimal water = closing.Charges.SelectMany(charge => charge.Lines).Where(line => line.Kind == ChargeLineKind.Water).Sum(line => line.Amount);
@@ -111,72 +98,5 @@ public class FinanceChargesTests(FinancePostgresFixture postgres)
         ChargeDetail? found = await _kit.Charges().FindAsync(Big(october).Id, default);
 
         found!.LineTotals.Select(total => total.Amount).Should().Equal(1000m);
-    }
-
-    // ---- Cobranças antigas ----
-
-    [Fact]
-    public async Task ListEarlierOpen_ReturnsTheEarlierChargesOfTheUnitThatStillOweSomething_OldestFirst()
-    {
-        MonthClosing august = await _kit.StoreClosingAsync(M(2026, 8), new DateOnly(2026, 9, 10));
-        MonthClosing september = await _kit.StoreClosingAsync(M(2026, 9), new DateOnly(2026, 10, 10));
-        MonthClosing october = await _kit.StoreClosingAsync(M(2026, 10));
-        await PayAsync(Big(september), M(2026, 9), 250m);
-
-        IReadOnlyList<EarlierCharge> found = await _kit.Charges().ListEarlierOpenAsync(Big(october).UnitId, M(2026, 10), 36, default);
-
-        found.Select(charge => (charge.ChargeId, charge.Month, charge.DueDate, charge.Amount, charge.Paid)).Should().Equal(
-            (Big(august).Id, M(2026, 8), new DateOnly(2026, 9, 10), 600m, 0m),
-            (Big(september).Id, M(2026, 9), new DateOnly(2026, 10, 10), 600m, 250m));
-    }
-
-    [Fact]
-    public async Task ListEarlierOpen_LeavesOutWhatWasPaidInFull_AndCountsAReversedPaymentAsNotPaid()
-    {
-        MonthClosing august = await _kit.StoreClosingAsync(M(2026, 8));
-        MonthClosing september = await _kit.StoreClosingAsync(M(2026, 9));
-        await _kit.StoreClosingAsync(M(2026, 10));
-        await PayAsync(Big(august), M(2026, 8), 600m);
-        await PayAsync(Big(september), M(2026, 9), 600m, reversed: true);
-
-        IReadOnlyList<EarlierCharge> found = await _kit.Charges().ListEarlierOpenAsync(Big(august).UnitId, M(2026, 10), 36, default);
-
-        found.Select(charge => (charge.Month, charge.Paid)).Should().Equal((M(2026, 9), 0m));
-    }
-
-    [Fact]
-    public async Task ListEarlierOpen_IgnoresTheOtherUnit_TheSameMonthAndLaterMonths()
-    {
-        MonthClosing september = await _kit.StoreClosingAsync(M(2026, 9));
-        MonthClosing october = await _kit.StoreClosingAsync(M(2026, 10));
-        await _kit.StoreClosingAsync(M(2026, 11));
-
-        IReadOnlyList<EarlierCharge> found = await _kit.Charges().ListEarlierOpenAsync(Small(october).UnitId, M(2026, 10), 36, default);
-
-        found.Should().ContainSingle().Which.Should().Match<EarlierCharge>(charge => charge.ChargeId == Small(september).Id && charge.Amount == 400m);
-    }
-
-    [Fact]
-    public async Task ListEarlierOpen_TheLimitKeepsTheOldest()
-    {
-        MonthClosing august = await _kit.StoreClosingAsync(M(2026, 8));
-        MonthClosing september = await _kit.StoreClosingAsync(M(2026, 9));
-        await _kit.StoreClosingAsync(M(2026, 10));
-        MonthClosing november = await _kit.StoreClosingAsync(M(2026, 11));
-
-        IReadOnlyList<EarlierCharge> found = await _kit.Charges().ListEarlierOpenAsync(Big(november).UnitId, M(2026, 11), 2, default);
-
-        found.Select(charge => charge.ChargeId).Should().Equal(Big(august).Id, Big(september).Id);
-    }
-
-    [Fact]
-    public async Task ListEarlierOpen_NeverShowsTheChargesOfAnotherCondominium()
-    {
-        MonthClosing ours = await _kit.StoreClosingAsync(M(2026, 9));
-        await _kit.StoreClosingAsync(M(2026, 10));
-
-        IReadOnlyList<EarlierCharge> found = await _kit.Charges(Guid.CreateVersion7()).ListEarlierOpenAsync(Big(ours).UnitId, M(2026, 10), 36, default);
-
-        found.Should().BeEmpty("a unidade é do outro condomínio, e o filtro de tenant esconde o que não é dele");
     }
 }

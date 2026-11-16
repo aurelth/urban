@@ -542,10 +542,8 @@ internal sealed class FakePayments(FakeMonthClosings closings) : IPayments
 }
 
 /// <summary>As cobranças vêm dos fechamentos do <see cref="FakeMonthClosings"/>, como no banco.</summary>
-internal sealed class FakeCharges(FakeMonthClosings closings, FakePayments payments) : ICharges
+internal sealed class FakeCharges(FakeMonthClosings closings) : ICharges
 {
-    public int? AskedLimit { get; private set; }
-
     public Task<ChargeDetail?> FindAsync(Guid chargeId, CancellationToken cancellationToken)
     {
         foreach (MonthClosing closing in closings.All)
@@ -569,25 +567,6 @@ internal sealed class FakeCharges(FakeMonthClosings closings, FakePayments payme
         }
 
         return Task.FromResult<ChargeDetail?>(null);
-    }
-
-    public Task<IReadOnlyList<EarlierCharge>> ListEarlierOpenAsync(Guid unitId, YearMonth before, int limit, CancellationToken cancellationToken)
-    {
-        AskedLimit = limit;
-        IReadOnlyList<EarlierCharge> found =
-        [
-            .. closings.All
-                .Where(closing => closing.Month < before)
-                .SelectMany(closing => closing.Charges
-                    .Where(charge => charge.UnitId == unitId)
-                    .Select(charge => new EarlierCharge(
-                        charge.Id, closing.Month, closing.DueDate, charge.Amount, ChargeAccount.Paid(payments.All.Where(payment => payment.ChargeId == charge.Id)))))
-                .Where(charge => charge.Amount - charge.Paid > 0)
-                .OrderBy(charge => charge.Month)
-                .Take(limit),
-        ];
-
-        return Task.FromResult(found);
     }
 }
 

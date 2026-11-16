@@ -22,7 +22,7 @@ public sealed class FinanceExpenses(FinanceDbContext db) : IExpenses
     {
         List<Expense> expenses = await db.Expenses.ToListAsync(cancellationToken);
 
-        return [.. expenses.OrderBy(expense => expense.Description, TextOrder.Comparer).Select(expense => new ExpenseRecord(expense, CurrentVersion(expense)))];
+        return [.. expenses.OrderBy(expense => expense.Description, AlphabeticalOrder.Comparer).Select(expense => new ExpenseRecord(expense, CurrentVersion(expense)))];
     }
 
     public async Task<ExpenseRecord?> FindAsync(Guid expenseId, CancellationToken cancellationToken)

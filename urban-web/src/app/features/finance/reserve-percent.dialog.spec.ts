@@ -37,7 +37,7 @@ describe('ReservePercentDialog', () => {
       'Percentual do fundo de reserva',
     );
     expect(fieldOf(TAG, 'percent').value).toBe('2,5');
-    expect(dialogOf(TAG).textContent).toContain('0 tira o fundo de reserva do recibo');
+    expect(dialogOf(TAG).textContent).toContain('0 tira o fundo de reserva da fatura');
     expect(submitButtonOf(TAG).textContent?.trim()).toBe('Salvar alterações');
     expect(submitButtonOf(TAG).disabled).toBe(true);
 

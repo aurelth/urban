@@ -180,7 +180,7 @@ public static partial class FinanceMapper
         ChargeLineKind.Water => "water",
         ChargeLineKind.Sewage => "sewage",
         ChargeLineKind.Gas => "gas",
-        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Tipo de linha do recibo desconhecido."),
+        _ => throw new ArgumentOutOfRangeException(nameof(kind), kind, "Tipo de linha da fatura desconhecido."),
     };
 
     private static string DateText(DateOnly date) => date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);

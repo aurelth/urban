@@ -15,7 +15,7 @@ namespace Urban.Finance.Application.Months;
 /// <summary>
 /// Fecha o mês. Pede ao Condomínio as unidades ativas com o peso de cada uma (e a falha dele, se os dados ainda não bastam
 /// para o método escolhido), deixa o Domain conferir os lançamentos e repartir o total, e grava o fechamento com as cobranças
-/// numa unidade atômica. Cada grupo de despesa vira uma linha do recibo; o fundo de reserva, a água, o esgoto e o gás entram conforme
+/// numa unidade atômica. Cada grupo de despesa vira uma linha da fatura; o fundo de reserva, a água, o esgoto e o gás entram conforme
 /// a configuração do condomínio e as leituras do mês (sem leitura de uma unidade, o fechamento é recusado). O índice único (condomínio + mês) impede dois fechamentos do mesmo mês ao mesmo tempo.
 /// </summary>
 public sealed class CloseMonthCommandHandler(

@@ -60,7 +60,7 @@ public sealed record MonthView(
     MonthClosingView? Closing);
 
 /// <param name="Weight">O peso da unidade no rateio (fração ideal, área ou 1), como era quando o mês fechou.</param>
-/// <param name="Lines">As linhas do recibo (despesas por grupo, fundo de reserva, água, esgoto e gás) em ordem; a soma delas é <paramref name="Amount"/>.</param>
+/// <param name="Lines">As linhas da fatura (despesas por grupo, fundo de reserva, água, esgoto e gás) em ordem; a soma delas é <paramref name="Amount"/>.</param>
 public sealed record UnitChargeView(Guid UnitId, string? Block, string Number, decimal Weight, decimal Amount, IReadOnlyList<ChargeLineView> Lines);
 
 /// <param name="Quantity">Consumo em m³ das linhas de água, esgoto e gás; nulo nas demais.</param>

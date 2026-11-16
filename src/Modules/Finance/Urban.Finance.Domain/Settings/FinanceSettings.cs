@@ -5,7 +5,7 @@ namespace Urban.Finance.Domain.Settings;
 
 /// <summary>
 /// As escolhas do condomínio que valem para o fechamento do mês e não pertencem a um lançamento: por ora, o percentual do
-/// fundo de reserva. Há uma linha por condomínio; sem ela, o percentual é 0 e o recibo não tem fundo de reserva.
+/// fundo de reserva. Há uma linha por condomínio; sem ela, o percentual é 0 e a fatura não tem fundo de reserva.
 /// </summary>
 public sealed class FinanceSettings
 {
