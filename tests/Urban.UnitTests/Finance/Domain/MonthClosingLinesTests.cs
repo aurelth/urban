@@ -143,6 +143,44 @@ public class MonthClosingLinesTests
     }
 
     [Fact]
+    public void Close_FreezesThePercentAndTheBaseOfTheReserveFund()
+    {
+        MonthClosing closing = Close(Options(reservePercent: 15m)).Value;
+
+        closing.ReserveFundPercent.Should().Be(15m);
+        closing.ReserveFundBase.Should().Be(1000m, "só o grupo marcado (Despesas ordinárias: 700 + 300) forma a base");
+    }
+
+    [Fact]
+    public void Close_TheFrozenBaseFollowsTheMarkedGroups_AndLeavesCanceledExpensesOut()
+    {
+        ExpenseEntry canceled = Fixed(Ordinary, 500m, "Serviço cancelado");
+        canceled.SetStatus(EntryStatus.Canceled).IsSuccess.Should().BeTrue();
+        ExpenseEntry[] entries = [.. Entries(), canceled];
+
+        MonthClosing ordinaryOnly = Close(Options(reservePercent: 10m), entries).Value;
+        MonthClosing both = Close(Options(reservePercent: 10m, reserveGroups: new HashSet<Guid> { Ordinary, Garages }), entries).Value;
+
+        ordinaryOnly.ReserveFundBase.Should().Be(1000m);
+        both.ReserveFundBase.Should().Be(1300m);
+        both.ReserveFundPercent.Should().Be(10m);
+    }
+
+    [Fact]
+    public void Close_WithoutAReserveFund_FreezesNeitherPercentNorBase()
+    {
+        MonthClosing withoutOptions = Close(null).Value;
+        MonthClosing zeroPercent = Close(Options(reservePercent: 0m)).Value;
+        MonthClosing noMarkedGroup = Close(Options(reserveGroups: new HashSet<Guid>())).Value;
+
+        foreach (MonthClosing closing in new[] { withoutOptions, zeroPercent, noMarkedGroup })
+        {
+            closing.ReserveFundPercent.Should().BeNull();
+            closing.ReserveFundBase.Should().BeNull();
+        }
+    }
+
+    [Fact]
     public void Close_WithoutAReservePercentageOrMarkedGroups_HasNoReserveLine()
     {
         Close(Options(reservePercent: 0m)).Value.Charges.SelectMany(charge => charge.Lines).Should().NotContain(line => line.Kind == ChargeLineKind.ReserveFund);

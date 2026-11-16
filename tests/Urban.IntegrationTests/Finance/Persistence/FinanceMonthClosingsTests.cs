@@ -95,6 +95,31 @@ public class FinanceMonthClosingsTests(FinancePostgresFixture postgres)
     }
 
     [Fact]
+    public async Task Add_ThenFind_KeepsThePercentAndTheBaseOfTheReserveFund()
+    {
+        MonthClosing closing = NewClosingWithLines(FinanceStoreKit.M(2026, 11), new ApportionmentUnit(Guid.CreateVersion7(), "A", "101", 1m));
+        closing.ReserveFundPercent.Should().Be(15m);
+
+        await Closings().AddAsync(closing, default);
+        MonthClosing found = (await Closings().FindAsync(FinanceStoreKit.M(2026, 11), default))!;
+
+        found.ReserveFundPercent.Should().Be(15m);
+        found.ReserveFundBase.Should().Be(1000m);
+    }
+
+    [Fact]
+    public async Task Add_ThenFind_AClosingWithoutReserveFundKeepsBothNull()
+    {
+        MonthClosing closing = NewClosing(FinanceStoreKit.M(2026, 11));
+
+        await Closings().AddAsync(closing, default);
+        MonthClosing found = (await Closings().FindAsync(FinanceStoreKit.M(2026, 11), default))!;
+
+        found.ReserveFundPercent.Should().BeNull();
+        found.ReserveFundBase.Should().BeNull();
+    }
+
+    [Fact]
     public async Task Remove_AlsoDeletesTheLinesOfTheCharges()
     {
         MonthClosing closing = NewClosingWithLines(FinanceStoreKit.M(2026, 11), new ApportionmentUnit(Guid.CreateVersion7(), null, "101", 1m));

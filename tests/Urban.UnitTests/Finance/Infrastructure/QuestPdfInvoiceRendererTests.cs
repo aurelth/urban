@@ -41,7 +41,7 @@ public partial class QuestPdfInvoiceRendererTests
                     new InvoiceStatementGroup("Limpeza", [new InvoiceStatementItem("Faxineira", 2000m), new InvoiceStatementItem("Produtos de limpeza", 1000m)]),
                     new InvoiceStatementGroup("Portaria", [new InvoiceStatementItem("Porteiro diurno", 4000m), new InvoiceStatementItem("Porteiro noturno", 3000m)]),
                 ],
-                700m),
+                new InvoiceReserveFund(700m, 7m, 10000m)),
             HowToPay: new InvoiceHowToPay(
                 new InvoicePix("CNPJ", "12.345.678/0001-95"),
                 new InvoiceAccount("Banco Exemplo", "1234-5", "12345-6", "Conta corrente")),
@@ -217,9 +217,42 @@ public partial class QuestPdfInvoiceRendererTests
         text.Should().Contain("Porteiro diurno R$ 4.000,00");
         text.Should().Contain("Porteiro noturno R$ 3.000,00");
         text.Should().Contain("Subtotal de Portaria R$ 7.000,00");
-        text.Should().Contain("Fundo de reserva R$ 700,00");
+        text.Should().Contain("Fundo de reserva").And.Contain("R$ 700,00");
         text.Should().Contain("Total do condomínio R$ 10.700,00");
         text.IndexOf("Porteiro noturno", StringComparison.Ordinal).Should().BeLessThan(text.IndexOf("Total do condomínio", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Render_TheReserveFundSaysThePercentAndTheBaseItWasAppliedTo()
+    {
+        string text = Read(_renderer.Render(Document())).Text;
+
+        text.Should().Contain("7% sobre R$ 10.000,00 de despesas");
+    }
+
+    [Fact]
+    public void Render_TheReserveFundLineOfTheUnitExplainsItToo()
+    {
+        InvoiceLine[] lines =
+        [
+            new(ChargeLineKind.Expenses, "Despesas ordinárias", 600m, null, null, null),
+            new(ChargeLineKind.ReserveFund, "Fundo de reserva", 42m, null, null, null),
+        ];
+
+        string text = Read(_renderer.Render(Document(lines))).Text;
+
+        Regex.Matches(text, @"7% sobre R\$ 10\.000,00 de despesas").Count.Should().Be(2, "uma vez na linha da unidade e outra no demonstrativo");
+    }
+
+    [Fact]
+    public void Render_AClosingFromBeforeThePercentWasFrozen_ShowsOnlyTheAmount()
+    {
+        InvoiceDocument document = Document() with { Statement = Document().Statement with { ReserveFund = new InvoiceReserveFund(700m, null, null) } };
+
+        string text = Read(_renderer.Render(document)).Text;
+
+        text.Should().Contain("Fundo de reserva").And.Contain("R$ 700,00");
+        text.Should().NotContain("sobre R$");
     }
 
     [Fact]

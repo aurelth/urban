@@ -90,6 +90,28 @@ public class FinanceChargesTests(FinancePostgresFixture postgres)
     }
 
     [Fact]
+    public async Task Find_BringsThePercentAndTheBaseOfTheReserveFundOfTheClosing()
+    {
+        MonthClosing closing = await StoreClosingWithLinesAsync(M(2026, 10));
+
+        ChargeDetail? found = await _kit.Charges().FindAsync(Big(closing).Id, default);
+
+        found!.ReserveFundPercent.Should().Be(10m);
+        found.ReserveFundBase.Should().Be(700m);
+    }
+
+    [Fact]
+    public async Task Find_AClosingWithoutReserveFund_HasNoPercentNorBase()
+    {
+        MonthClosing closing = await _kit.StoreClosingAsync(M(2026, 10));
+
+        ChargeDetail? found = await _kit.Charges().FindAsync(Big(closing).Id, default);
+
+        found!.ReserveFundPercent.Should().BeNull();
+        found.ReserveFundBase.Should().BeNull();
+    }
+
+    [Fact]
     public async Task Find_TheLineTotalsOfAClosingNeverIncludeTheOtherMonths()
     {
         await _kit.StoreClosingAsync(M(2026, 9));

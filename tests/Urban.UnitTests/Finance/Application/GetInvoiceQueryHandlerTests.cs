@@ -230,7 +230,7 @@ public class GetInvoiceQueryHandlerTests
         groups[0].Subtotal.Should().Be(420m);
         groups[1].Items.Select(item => (item.Description, item.Amount)).Should().Equal(("Porteiro", 700m));
         groups[1].Subtotal.Should().Be(700m);
-        document.Statement.ReserveFund.Should().Be(70m);
+        document.Statement.ReserveFund.Should().Be(new InvoiceReserveFund(70m, 10m, 700m), "o fundo leva o percentual e a base de quando o mês fechou");
         document.Statement.Total.Should().Be(1190m);
     }
 
