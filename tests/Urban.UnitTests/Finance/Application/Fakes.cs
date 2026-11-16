@@ -333,6 +333,37 @@ internal sealed class FakeFinanceSettings : IFinanceSettings
     }
 }
 
+internal sealed class FakePaymentInstructions : IPaymentInstructionsStore
+{
+    public PaymentInstructions? Stored { get; private set; }
+
+    public int Saves { get; private set; }
+
+    public Error? SaveFailure { get; set; }
+
+    public PaymentInstructions Existing(PaymentInstructions instructions)
+    {
+        Stored = instructions;
+
+        return instructions;
+    }
+
+    public Task<PaymentInstructions?> FindAsync(CancellationToken cancellationToken) => Task.FromResult(Stored);
+
+    public Task<Result> SaveAsync(PaymentInstructions instructions, CancellationToken cancellationToken)
+    {
+        if (SaveFailure is { } failure)
+        {
+            return Task.FromResult(Result.Failure(failure));
+        }
+
+        Stored = instructions;
+        Saves++;
+
+        return Task.FromResult(Result.Success());
+    }
+}
+
 /// <summary>Tarifas em memória: guardar uma tarifa que começa no mesmo mês substitui a anterior, como o banco faz.</summary>
 internal sealed class FakeConsumptionTariffs : IConsumptionTariffs
 {
