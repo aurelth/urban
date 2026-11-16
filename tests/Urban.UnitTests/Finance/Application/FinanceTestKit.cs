@@ -52,7 +52,7 @@ internal sealed class FinanceTestKit
     public FinanceTestKit()
     {
         Payments = new FakePayments(Closings);
-        Charges = new FakeCharges(Closings);
+        Charges = new FakeCharges(Closings, Payments);
         Tenant = new FixedTenant(CondominiumId);
     }
 
@@ -85,11 +85,11 @@ internal sealed class FinanceTestKit
         Entries.Existing(expense.GenerateEntry(month, Now).Value, version);
 
     /// <summary>Deixa o mês fechado como se o síndico já tivesse fechado: o total é o dos lançamentos que existirem e o rateio é o do <see cref="Basis"/>.</summary>
-    public MonthClosing CloseMonth(YearMonth month, DateOnly? dueDate = null)
+    public MonthClosing CloseMonth(YearMonth month, DateOnly? dueDate = null, ClosingOptions? options = null)
     {
         IReadOnlyList<ExpenseEntry> entries = [.. Entries.All.Where(entry => entry.Month == month)];
         MonthClosing closing = MonthClosing.Close(
-            CondominiumId, month, dueDate ?? month.AddMonths(1).FirstDay.AddDays(9), Guid.CreateVersion7(), Now, entries, Basis.Outcome.Value).Value;
+            CondominiumId, month, dueDate ?? month.AddMonths(1).FirstDay.AddDays(9), Guid.CreateVersion7(), Now, entries, Basis.Outcome.Value, options).Value;
 
         return Closings.Existing(closing);
     }

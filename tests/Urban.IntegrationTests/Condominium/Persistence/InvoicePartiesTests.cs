@@ -27,7 +27,35 @@ public sealed class InvoicePartiesTests(CondominiumPostgresFixture postgres)
 
         InvoiceCondominium? found = await GetCondominiumAsync(condominium.Id);
 
-        found.Should().Be(new InvoiceCondominium(condominium.Name, condominium.Cnpj.Formatted, condominium.Address.Formatted));
+        found.Should().NotBeNull();
+        found!.Name.Should().Be(condominium.Name);
+        found.Cnpj.Should().Be(condominium.Cnpj.Formatted);
+        found.Address.Should().Be(condominium.Address.Formatted);
+    }
+
+    [Fact]
+    public async Task The_manager_who_registered_the_condominium_comes_with_the_name_and_the_formatted_phone()
+    {
+        CondominiumEntity condominium = await SeedCondominiumAsync();
+
+        InvoiceCondominium? found = await GetCondominiumAsync(condominium.Id);
+
+        found!.Manager.Should().Be(new InvoiceManager("Ana Maria Silva", "(47) 99123-4567"));
+    }
+
+    [Fact]
+    public async Task Without_the_person_of_the_manager_the_condominium_still_comes_but_with_no_contact()
+    {
+        CondominiumEntity condominium = await SeedCondominiumAsync();
+        await using (CondominiumDbContext db = postgres.CreateContext())
+        {
+            await db.Database.ExecuteSqlInterpolatedAsync($"delete from condominium.person where user_id = {condominium.CreatedBy}", Ct);
+        }
+
+        InvoiceCondominium? found = await GetCondominiumAsync(condominium.Id);
+
+        found.Should().NotBeNull();
+        found!.Manager.Should().BeNull();
     }
 
     [Fact]

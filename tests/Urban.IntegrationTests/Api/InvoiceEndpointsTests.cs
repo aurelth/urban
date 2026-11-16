@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using FluentAssertions;
 using UglyToad.PdfPig;
 using Urban.Finance.Infrastructure;
@@ -66,6 +67,50 @@ public sealed class InvoiceEndpointsTests(ApiFixture fixture) : IDisposable
     }
 
     [Fact]
+    public async Task The_pdf_brings_the_situation_the_share_the_statement_how_to_pay_and_the_manager_contact()
+    {
+        ManagerSession manager = await RegisterAsync();
+        await ClosedMonthKit.CloseAsync(_client, manager, Month(0), "2099-12-10");
+        await SendAsync(
+            HttpMethod.Put,
+            $"{Finance}/payment-instructions",
+            manager,
+            new JsonObject
+            {
+                ["pix"] = new JsonObject { ["kind"] = "cnpj", ["key"] = "12.345.678/0001-95" },
+                ["account"] = new JsonObject { ["bank"] = "Banco do Brasil", ["agency"] = "1234-5", ["number"] = "12345-6", ["kind"] = "checking" },
+            });
+        Guid charge = await FirstChargeAsync(manager, Month(0));
+        await SendAsync(
+            HttpMethod.Post,
+            $"{Finance}/charges/{charge}/payments",
+            manager,
+            new JsonObject { ["amount"] = 200m, ["receivedOn"] = ClosedMonthKit.Today(), ["method"] = "pix" });
+
+        string text = await InvoiceTextAsync(manager, charge);
+
+        text.Should().Contain("Situação do pagamento").And.Contain("Paga em parte");
+        text.Should().Contain("R$ 200,00").And.Contain("R$ 400,00");
+        text.Should().Contain("Base do rateio").And.Contain("Fração ideal").And.Contain("60%");
+        text.Should().Contain("Demonstrativo do mês").And.Contain("Contratos").And.Contain("Total do condomínio").And.Contain("R$ 1.000,00");
+        text.Should().Contain("Como pagar").And.Contain("12.345.678/0001-95").And.Contain("Banco do Brasil").And.Contain("Agência 1234-5");
+        text.Should().Contain("Contato do síndico");
+        text.Should().NotContain("Pendências anteriores");
+    }
+
+    [Fact]
+    public async Task Without_payment_data_the_pdf_has_no_how_to_pay_section()
+    {
+        ManagerSession manager = await RegisterAsync();
+        await ClosedMonthKit.CloseAsync(_client, manager, Month(0), "2099-12-10");
+
+        string text = await InvoiceTextAsync(manager, await FirstChargeAsync(manager, Month(0)));
+
+        text.Should().Contain("Situação do pagamento").And.Contain("Em aberto");
+        text.Should().NotContain("Como pagar");
+    }
+
+    [Fact]
     public async Task An_unknown_charge_is_404()
     {
         ManagerSession manager = await RegisterAsync();
@@ -88,6 +133,21 @@ public sealed class InvoiceEndpointsTests(ApiFixture fixture) : IDisposable
 
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
         (await response.CodeAsync()).Should().Be("finance.charge.not_found");
+    }
+
+    private async Task SendAsync(HttpMethod method, string route, ManagerSession manager, JsonObject body)
+    {
+        HttpResponseMessage response = await _client.SendJsonAsync(method, route, manager.AccessToken, body);
+        response.IsSuccessStatusCode.Should().BeTrue($"{method} {route}: {await response.Content.ReadAsStringAsync()}");
+    }
+
+    private async Task<string> InvoiceTextAsync(ManagerSession manager, Guid charge)
+    {
+        HttpResponseMessage response = await GetInvoiceAsync(manager, charge);
+        response.StatusCode.Should().Be(HttpStatusCode.OK, await response.Content.ReadAsStringAsync());
+        using PdfDocument pdf = PdfDocument.Open(await response.Content.ReadAsByteArrayAsync());
+
+        return string.Join(' ', pdf.GetPages().Select(page => page.Text));
     }
 
     private async Task MigrateAsync() => await fixture.Factory.Services.MigrateFinanceAsync();

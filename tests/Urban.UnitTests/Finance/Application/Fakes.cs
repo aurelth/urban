@@ -542,8 +542,10 @@ internal sealed class FakePayments(FakeMonthClosings closings) : IPayments
 }
 
 /// <summary>As cobranças vêm dos fechamentos do <see cref="FakeMonthClosings"/>, como no banco.</summary>
-internal sealed class FakeCharges(FakeMonthClosings closings) : ICharges
+internal sealed class FakeCharges(FakeMonthClosings closings, FakePayments payments) : ICharges
 {
+    public int? AskedLimit { get; private set; }
+
     public Task<ChargeDetail?> FindAsync(Guid chargeId, CancellationToken cancellationToken)
     {
         foreach (MonthClosing closing in closings.All)
@@ -552,18 +554,51 @@ internal sealed class FakeCharges(FakeMonthClosings closings) : ICharges
 
             if (charge is not null)
             {
-                return Task.FromResult<ChargeDetail?>(new ChargeDetail(charge, closing.Month, closing.DueDate, closing.ClosedAt));
+                IReadOnlyList<ClosingLineTotal> lineTotals =
+                [
+                    .. closing.Charges
+                        .SelectMany(candidate => candidate.Lines)
+                        .GroupBy(line => (line.Kind, line.Label))
+                        .OrderBy(group => group.Min(line => line.Position))
+                        .Select(group => new ClosingLineTotal(group.Key.Kind, group.Key.Label, group.Sum(line => line.Amount))),
+                ];
+
+                return Task.FromResult<ChargeDetail?>(new ChargeDetail(
+                    charge, closing.Month, closing.DueDate, closing.ClosedAt, closing.BasisKind, closing.Charges.Sum(candidate => candidate.Weight), lineTotals));
             }
         }
 
         return Task.FromResult<ChargeDetail?>(null);
+    }
+
+    public Task<IReadOnlyList<EarlierCharge>> ListEarlierOpenAsync(Guid unitId, YearMonth before, int limit, CancellationToken cancellationToken)
+    {
+        AskedLimit = limit;
+        IReadOnlyList<EarlierCharge> found =
+        [
+            .. closings.All
+                .Where(closing => closing.Month < before)
+                .SelectMany(closing => closing.Charges
+                    .Where(charge => charge.UnitId == unitId)
+                    .Select(charge => new EarlierCharge(
+                        charge.Id, closing.Month, closing.DueDate, charge.Amount, ChargeAccount.Paid(payments.All.Where(payment => payment.ChargeId == charge.Id)))))
+                .Where(charge => charge.Amount - charge.Paid > 0)
+                .OrderBy(charge => charge.Month)
+                .Take(limit),
+        ];
+
+        return Task.FromResult(found);
     }
 }
 
 internal sealed class FakeInvoiceParties : IInvoiceParties
 {
     public InvoiceCondominium? Condominium { get; set; } =
-        new("Residencial Aurora", "12.345.678/0001-95", "Rua das Flores, 100 - Centro - Blumenau/SC - 89010-000");
+        new(
+            "Residencial Aurora",
+            "12.345.678/0001-95",
+            "Rua das Flores, 100 - Centro - Blumenau/SC - 89010-000",
+            new InvoiceManager("Ana Maria Silva", "(47) 99123-4567"));
 
     public Dictionary<Guid, InvoiceResponsible> Responsibles { get; } = [];
 
