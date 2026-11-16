@@ -217,16 +217,24 @@
                           Ver pagamentos
                         </button>
                         <button
-                          mat-stroked-button
+                          mat-icon-button
                           type="button"
                           data-testid="download-invoice"
+                          title="Baixar fatura em PDF"
                           [attr.aria-label]="'Baixar fatura de ' + unitLabel(item)"
+                          [attr.aria-busy]="downloading() === item.chargeId"
                           [disabled]="store.busy() || downloading() !== null"
                           (click)="downloadInvoice(item)"
                         >
-                          {{
-                            downloading() === item.chargeId ? 'Baixando fatura' : 'Baixar fatura'
-                          }}
+                          @if (downloading() === item.chargeId) {
+                            <mat-icon
+                              svgIcon="progress_activity"
+                              class="animate-spin motion-reduce:animate-none"
+                              aria-hidden="true"
+                            />
+                          } @else {
+                            <mat-icon svgIcon="download" aria-hidden="true" />
+                          }
                         </button>
                       </span>
                     </td>

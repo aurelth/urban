@@ -74,19 +74,28 @@ public sealed class QuestPdfInvoiceRenderer : IInvoiceRenderer
                 }
             });
 
-            row.RelativeItem().Column(column =>
+            row.ConstantItem(190).Column(column =>
             {
-                Field(column, "Vencimento", InvoiceText.Date(document.DueDate), emphasis: true);
-                Field(column, "Emitida em", InvoiceText.Date(document.IssuedOn));
-                Field(column, "Referência", document.Reference);
+                Field(column, "Vencimento", InvoiceText.Date(document.DueDate), emphasis: true, alignRight: true);
+                Field(column, "Emitida em", InvoiceText.Date(document.IssuedOn), alignRight: true);
+                Field(column, "Referência", document.Reference, alignRight: true);
             });
         });
 
-    private static void Field(ColumnDescriptor column, string label, string value, bool emphasis = false) =>
+    private static void Field(ColumnDescriptor column, string label, string value, bool emphasis = false, bool alignRight = false) =>
         column.Item().PaddingBottom(6).Column(field =>
         {
-            field.Item().Text(label).FontSize(8).FontColor(Muted);
-            TextSpanDescriptor text = field.Item().Text(value);
+            IContainer labelBox = field.Item();
+            IContainer valueBox = field.Item();
+
+            if (alignRight)
+            {
+                labelBox = labelBox.AlignRight();
+                valueBox = valueBox.AlignRight();
+            }
+
+            labelBox.Text(label).FontSize(8).FontColor(Muted);
+            TextSpanDescriptor text = valueBox.Text(value);
 
             if (emphasis)
             {
