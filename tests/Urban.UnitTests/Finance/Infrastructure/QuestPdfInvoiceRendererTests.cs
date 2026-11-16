@@ -256,6 +256,25 @@ public partial class QuestPdfInvoiceRendererTests
     }
 
     [Fact]
+    public void Render_ShowsTheDetailOfAnExpenseUnderItsDescription()
+    {
+        InvoiceStatement statement = new(
+            [new InvoiceStatementGroup("Portaria", [new InvoiceStatementItem("Porteiro diurno", 4000m, "Segurança Ltda · OS 4521"), new InvoiceStatementItem("Porteiro noturno", 3000m)])],
+            null);
+
+        using PdfDocument pdf = PdfDocument.Open(_renderer.Render(Document() with { Statement = statement }));
+        Word[] words = [.. pdf.GetPage(1).GetWords()];
+        Word description = words.First(candidate => candidate.Text == "Porteiro");
+        Word detail = words.Single(candidate => candidate.Text == "Segurança");
+
+        string text = string.Join(' ', words.Select(word => word.Text));
+        text.Should().Contain("Segurança Ltda · OS 4521");
+        detail.BoundingBox.Top.Should().BeLessThan(description.BoundingBox.Bottom, "o detalhe fica na linha de baixo, sob a descrição");
+        detail.BoundingBox.Left.Should().BeApproximately(description.BoundingBox.Left, 2, "e alinhado à descrição");
+        text.Should().Contain("Porteiro noturno R$ 3.000,00", "a despesa sem detalhe continua em uma linha só");
+    }
+
+    [Fact]
     public void Render_WithoutReserveFund_LeavesTheLineOut()
     {
         InvoiceDocument document = Document() with { Statement = Document().Statement with { ReserveFund = null } };
