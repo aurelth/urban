@@ -1,3 +1,4 @@
+import { stubDashboard } from '../support/painel';
 import { stubSignedIn } from '../support/session';
 
 const MINUTE = 60_000;
@@ -6,6 +7,7 @@ const MINUTE = 60_000;
 function openDashboardWithFakeClock(): void {
   cy.clock(Date.now(), ['Date', 'setInterval', 'clearInterval']);
   stubSignedIn();
+  stubDashboard();
   cy.visit('/dashboard');
   cy.get('[data-testid="user-menu"]').should('be.visible');
 }
@@ -50,7 +52,10 @@ describe('Saída por inatividade', () => {
   });
 
   it('mostra o aviso inteiro no celular, sem rolagem horizontal', () => {
-    cy.viewport(375, 667);
+    // 375 px de largura e altura que comporta o painel: com a página mais alta que a janela, o Chromium do Cypress
+    // derruba o renderer ao abrir o diálogo com o Date falso (cy.clock). Só acontece no teste: no navegador de verdade e
+    // no Playwright com relógio falso o aviso abre normalmente.
+    cy.viewport(375, 1400);
     openDashboardWithFakeClock();
 
     cy.tick(59 * MINUTE);
