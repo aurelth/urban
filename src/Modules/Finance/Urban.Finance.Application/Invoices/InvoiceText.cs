@@ -39,6 +39,9 @@ public static class InvoiceText
     /// <summary>Porcentagem de 0 a 100 com até 4 casas e sem zeros à direita: "60%", "2,5%", "33,3333%".</summary>
     public static string Percent(decimal percent) => percent.ToString("#,##0.####", Brazilian) + "%";
 
+    /// <summary>De onde saiu o fundo de reserva: "15% sobre R$ 100.000,00 de despesas".</summary>
+    public static string ReserveBasis(decimal percent, decimal baseTotal) => $"{Percent(percent)} sobre {Money(baseTotal)} de despesas";
+
     public static string Method(ApportionmentBasisKind kind) => kind switch
     {
         ApportionmentBasisKind.IdealFraction => "Fração ideal",

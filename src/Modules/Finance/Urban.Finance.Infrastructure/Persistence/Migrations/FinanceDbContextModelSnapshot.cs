@@ -58,6 +58,16 @@ namespace Urban.Finance.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(7)")
                         .HasColumnName("month");
 
+                    b.Property<decimal?>("ReserveFundBase")
+                        .HasPrecision(9, 2)
+                        .HasColumnType("numeric(9,2)")
+                        .HasColumnName("reserve_fund_base");
+
+                    b.Property<decimal?>("ReserveFundPercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("reserve_fund_percent");
+
                     b.Property<decimal>("Total")
                         .HasPrecision(9, 2)
                         .HasColumnType("numeric(9,2)")

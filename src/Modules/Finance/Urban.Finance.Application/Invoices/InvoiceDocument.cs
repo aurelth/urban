@@ -20,10 +20,15 @@ public sealed record InvoiceStatementGroup(string Name, IReadOnlyList<InvoiceSta
     public decimal Subtotal => Items.Sum(item => item.Amount);
 }
 
+/// <param name="Amount">O valor do fundo de reserva do mês, em reais.</param>
+/// <param name="Percent">O percentual aplicado; nulo em mês fechado antes de ele ser guardado.</param>
+/// <param name="BaseTotal">A soma das despesas sobre a qual o percentual incidiu; nulo quando <paramref name="Percent"/> é nulo.</param>
+public sealed record InvoiceReserveFund(decimal Amount, decimal? Percent, decimal? BaseTotal);
+
 /// <summary>O que o condomínio todo gastou no mês, despesa por despesa, e o fundo de reserva (nulo quando o mês não tem).</summary>
-public sealed record InvoiceStatement(IReadOnlyList<InvoiceStatementGroup> Groups, decimal? ReserveFund)
+public sealed record InvoiceStatement(IReadOnlyList<InvoiceStatementGroup> Groups, InvoiceReserveFund? ReserveFund)
 {
-    public decimal Total => Groups.Sum(group => group.Subtotal) + (ReserveFund ?? 0m);
+    public decimal Total => Groups.Sum(group => group.Subtotal) + (ReserveFund?.Amount ?? 0m);
 }
 
 /// <param name="KindLabel">O tipo da chave por extenso: CNPJ, CPF, E-mail, Celular ou Chave aleatória.</param>

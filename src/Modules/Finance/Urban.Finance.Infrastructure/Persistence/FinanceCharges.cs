@@ -21,7 +21,7 @@ public sealed class FinanceCharges(FinanceDbContext db) : ICharges
         var closing = await db.MonthClosings
             .AsNoTracking()
             .Where(candidate => candidate.Id == charge.ClosingId)
-            .Select(candidate => new { candidate.Month, candidate.DueDate, candidate.ClosedAt, candidate.BasisKind })
+            .Select(candidate => new { candidate.Month, candidate.DueDate, candidate.ClosedAt, candidate.BasisKind, candidate.ReserveFundPercent, candidate.ReserveFundBase })
             .SingleAsync(cancellationToken);
 
         decimal totalWeight = await db.UnitCharges
@@ -44,6 +44,8 @@ public sealed class FinanceCharges(FinanceDbContext db) : ICharges
             closing.ClosedAt,
             closing.BasisKind,
             totalWeight,
-            [.. totals.OrderBy(total => total.Position).ThenBy(total => total.Kind).ThenBy(total => total.Label, StringComparer.Ordinal).Select(total => new ClosingLineTotal(total.Kind, total.Label, total.Amount))]);
+            [.. totals.OrderBy(total => total.Position).ThenBy(total => total.Kind).ThenBy(total => total.Label, StringComparer.Ordinal).Select(total => new ClosingLineTotal(total.Kind, total.Label, total.Amount))],
+            closing.ReserveFundPercent,
+            closing.ReserveFundBase);
     }
 }

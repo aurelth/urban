@@ -14,6 +14,8 @@ public sealed record ClosingLineTotal(ChargeLineKind Kind, string Label, decimal
 /// <param name="BasisKind">Em que o rateio se baseou naquele fechamento.</param>
 /// <param name="TotalWeight">A soma dos pesos de todas as cobranças do fechamento; o peso da cobrança dividido por ela é a participação da unidade.</param>
 /// <param name="LineTotals">O total de cada linha da fatura no fechamento todo (grupos, fundo de reserva e consumo), na ordem da fatura.</param>
+/// <param name="ReserveFundPercent">O percentual do fundo de reserva do fechamento; nulo se o mês não teve fundo ou fechou antes de o percentual ser guardado.</param>
+/// <param name="ReserveFundBase">A soma das despesas sobre a qual o percentual incidiu; nulo quando o percentual é nulo.</param>
 public sealed record ChargeDetail(
     UnitCharge Charge,
     YearMonth Month,
@@ -21,7 +23,9 @@ public sealed record ChargeDetail(
     DateTimeOffset ClosedAt,
     ApportionmentBasisKind BasisKind,
     decimal TotalWeight,
-    IReadOnlyList<ClosingLineTotal> LineTotals);
+    IReadOnlyList<ClosingLineTotal> LineTotals,
+    decimal? ReserveFundPercent,
+    decimal? ReserveFundBase);
 
 public interface ICharges
 {
