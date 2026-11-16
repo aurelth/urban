@@ -58,7 +58,7 @@ public sealed record MonthResponse(
     MonthClosingResponse? Closing);
 
 /// <param name="Weight">O peso da unidade no rateio (fração ideal de 0 a 1, área em m² ou 1), como era quando o mês fechou.</param>
-/// <param name="Lines">As linhas do recibo em ordem (despesas por grupo, fundo de reserva, água, esgoto e gás); a soma delas é o amount.</param>
+/// <param name="Lines">As linhas da fatura em ordem (despesas por grupo, fundo de reserva, água, esgoto e gás); a soma delas é o amount.</param>
 public sealed record UnitChargeResponse(Guid UnitId, string? Block, string Number, decimal Weight, decimal Amount, IReadOnlyList<ChargeLineResponse> Lines);
 
 /// <param name="Kind">De onde vem a linha: expenses, reserveFund, water, sewage ou gas.</param>

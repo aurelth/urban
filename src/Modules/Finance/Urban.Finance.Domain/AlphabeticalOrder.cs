@@ -1,10 +1,10 @@
 using System.Globalization;
 using System.Text;
 
-namespace Urban.Finance.Infrastructure.Persistence;
+namespace Urban.Finance.Domain;
 
-/// <summary>Ordem alfabética sem diferenciar maiúsculas nem acentos ("água" entre "A" e "B"). Feita em memória: as listas são pequenas.</summary>
-internal static class TextOrder
+/// <summary>Ordem alfabética sem diferenciar maiúsculas nem acentos ("água" entre "A" e "B"), igual em qualquer máquina: não depende da cultura do sistema. Feita em memória: as listas são pequenas.</summary>
+public static class AlphabeticalOrder
 {
     public static readonly IComparer<string> Comparer = Comparer<string>.Create(Compare);
 

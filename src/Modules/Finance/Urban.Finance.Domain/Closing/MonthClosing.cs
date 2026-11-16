@@ -55,7 +55,7 @@ public sealed class MonthClosing
     public IReadOnlyList<UnitCharge> Charges => _charges;
 
     /// <summary>
-    /// Fecha o mês: confere os lançamentos, soma o total e monta o recibo de cada unidade. Cada grupo de despesa e o fundo de reserva
+    /// Fecha o mês: confere os lançamentos, soma o total e monta a fatura de cada unidade. Cada grupo de despesa e o fundo de reserva
     /// são repartidos pelo peso das unidades; água, esgoto e gás vêm da leitura de cada uma. O total do mês continua sendo só o das despesas.
     /// </summary>
     public static Result<MonthClosing> Close(
@@ -158,7 +158,7 @@ public sealed class MonthClosing
         IEnumerable<(string Label, decimal Total)> groups = counted
             .GroupBy(entry => entry.GroupId)
             .Select(group => (Label: LabelOf(group.Key, options), Total: group.Sum(entry => entry.Amount ?? 0m)))
-            .OrderBy(group => group.Label, TextRules.Alphabetical);
+            .OrderBy(group => group.Label, AlphabeticalOrder.Comparer);
 
         foreach ((string label, decimal groupTotal) in groups)
         {

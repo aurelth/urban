@@ -4,7 +4,6 @@ using QuestPDF.Infrastructure;
 using Urban.Finance.Application.Abstractions;
 using Urban.Finance.Application.Invoices;
 using Urban.Finance.Domain.Closing;
-using Urban.Finance.Domain.Payments;
 using Urban.SharedKernel.Contracts;
 
 namespace Urban.Finance.Infrastructure.Invoices;
@@ -20,9 +19,9 @@ public sealed class QuestPdfInvoiceRenderer : IInvoiceRenderer
     private const string Muted = "#65657A";
     private const string Accent = "#5856D6";
     private const string Line = "#E6E6EF";
-    private const string Success = "#248A3D";
-    private const string Warning = "#B25000";
-    private const string Danger = "#D70015";
+
+    /// <summary>Até quantas despesas um grupo é mantido inteiro na mesma página (uma página A4 comporta uns 25 itens).</summary>
+    private const int KeepTogetherLimit = 18;
 
     static QuestPdfInvoiceRenderer()
     {
@@ -64,21 +63,15 @@ public sealed class QuestPdfInvoiceRenderer : IInvoiceRenderer
             column.Spacing(14);
             column.Item().Element(item => Details(item, document));
             column.Item().Element(item => Charges(item, document));
-            column.Item().ShowEntire().Element(item => SituationAndShare(item, document));
 
             if (document.HowToPay is { } howToPay)
             {
                 column.Item().ShowEntire().Element(item => HowToPay(item, document, howToPay));
             }
 
-            if (document.Statement.Count > 0)
+            if (document.Statement.Groups.Count > 0)
             {
-                column.Item().Element(item => Statement(item, document));
-            }
-
-            if (document.Earlier.Count > 0)
-            {
-                column.Item().Element(item => Earlier(item, document));
+                column.Item().Element(item => Statement(item, document.Statement));
             }
         });
 
@@ -88,6 +81,7 @@ public sealed class QuestPdfInvoiceRenderer : IInvoiceRenderer
             row.RelativeItem().Column(column =>
             {
                 Field(column, "Unidade", document.UnitLabel);
+                Field(column, "Participação no rateio", $"{InvoiceText.Percent(document.Share.Percent)} · {InvoiceText.Method(document.Share.Method)}");
 
                 if (document.ResponsibleName is not null)
                 {
@@ -169,26 +163,6 @@ public sealed class QuestPdfInvoiceRenderer : IInvoiceRenderer
             });
         });
 
-    private static void SituationAndShare(IContainer container, InvoiceDocument document) =>
-        container.Row(row =>
-        {
-            row.Spacing(16);
-            row.RelativeItem().Column(column =>
-            {
-                column.Item().Element(item => Section(item, "Situação do pagamento"));
-                Pair(column, "Situação", InvoiceText.Status(document.Situation.Status), StatusColor(document.Situation.Status));
-                Pair(column, "Pago até agora", InvoiceText.Money(document.Situation.Paid));
-                Pair(column, "Saldo a pagar", InvoiceText.Money(document.Situation.Balance));
-            });
-
-            row.RelativeItem().Column(column =>
-            {
-                column.Item().Element(item => Section(item, "Base do rateio"));
-                Pair(column, "Método", InvoiceText.Method(document.Share.Method));
-                Pair(column, "Participação da unidade", InvoiceText.Percent(document.Share.Percent));
-            });
-        });
-
     private static void HowToPay(IContainer container, InvoiceDocument document, InvoiceHowToPay howToPay) =>
         container.Column(column =>
         {
@@ -221,11 +195,30 @@ public sealed class QuestPdfInvoiceRenderer : IInvoiceRenderer
             column.Item().PaddingTop(4).Text($"Favorecido: {document.CondominiumName} · CNPJ {document.CondominiumCnpj}").FontSize(8).FontColor(Muted);
         });
 
-    private static void Statement(IContainer container, InvoiceDocument document) =>
+    private static void Statement(IContainer container, InvoiceStatement statement) =>
         container.Column(column =>
         {
-            column.Item().EnsureSpace(110).Element(item => Section(item, "Demonstrativo do mês", "Quanto o condomínio todo gastou, sem o consumo individual de cada unidade"));
-            column.Item().Table(table =>
+            column.Item().EnsureSpace(110).Element(item => Section(item, "Demonstrativo do mês", "Quanto o condomínio todo gastou, despesa por despesa, sem o consumo individual de cada unidade"));
+
+            for (int index = 0; index < statement.Groups.Count; index++)
+            {
+                InvoiceStatementGroup group = statement.Groups[index];
+                InvoiceStatement? closing = index == statement.Groups.Count - 1 ? statement : null;
+                column.Item().PaddingTop(8).Element(item => StatementGroup(item, group, closing));
+            }
+        });
+
+    /// <summary>
+    /// Um grupo de despesas com o subtotal. O último leva junto o fundo de reserva e o total, para o total nunca ficar sozinho numa
+    /// página. Grupo que cabe numa página não é partido; o que não cabe (muitas despesas) flui e repete o título do grupo.
+    /// </summary>
+    private static void StatementGroup(IContainer container, InvoiceStatementGroup group, InvoiceStatement? closing)
+    {
+        IContainer box = group.Items.Count <= KeepTogetherLimit ? container.ShowEntire() : container;
+
+        box.Column(column =>
+        {
+            column.Item().EnsureSpace(80).Table(table =>
             {
                 table.ColumnsDefinition(columns =>
                 {
@@ -233,58 +226,49 @@ public sealed class QuestPdfInvoiceRenderer : IInvoiceRenderer
                     columns.ConstantColumn(110);
                 });
 
-                foreach (InvoiceStatementLine line in document.Statement)
-                {
-                    table.Cell().Element(Cell).Text(line.Label);
-                    table.Cell().Element(Cell).AlignRight().Text(InvoiceText.Money(line.Amount));
-                }
-            });
-            column.Item().PaddingTop(6).Row(total =>
-            {
-                total.RelativeItem().Text("Total do condomínio").Bold();
-                total.ConstantItem(110).AlignRight().Text(InvoiceText.Money(document.StatementTotal)).Bold();
-            });
-        });
-
-    private static void Earlier(IContainer container, InvoiceDocument document) =>
-        container.Column(column =>
-        {
-            column.Item().EnsureSpace(110).Element(item => Section(item, "Pendências anteriores", "Cobranças de meses anteriores desta unidade que ainda têm saldo"));
-            column.Item().Table(table =>
-            {
-                table.ColumnsDefinition(columns =>
-                {
-                    columns.RelativeColumn();
-                    columns.ConstantColumn(70);
-                    columns.ConstantColumn(70);
-                    columns.ConstantColumn(70);
-                    columns.ConstantColumn(70);
-                });
-
                 table.Header(header =>
                 {
-                    header.Cell().Element(Heading).Text("Competência");
-                    header.Cell().Element(Heading).AlignRight().Text("Vence em");
-                    header.Cell().Element(Heading).AlignRight().Text("Valor");
-                    header.Cell().Element(Heading).AlignRight().Text("Pago");
-                    header.Cell().Element(Heading).AlignRight().Text("Saldo");
+                    header.Cell().Element(GroupHeading).Text(group.Name);
+                    header.Cell().Element(GroupHeading).Text(string.Empty);
                 });
 
-                foreach (InvoiceEarlierCharge charge in document.Earlier)
+                foreach (InvoiceStatementItem item in group.Items)
                 {
-                    table.Cell().Element(Cell).Text(InvoiceText.Competence(charge.Month));
-                    table.Cell().Element(Cell).AlignRight().Text(InvoiceText.Date(charge.DueDate));
-                    table.Cell().Element(Cell).AlignRight().Text(InvoiceText.Money(charge.Amount));
-                    table.Cell().Element(Cell).AlignRight().Text(InvoiceText.Money(charge.Paid));
-                    table.Cell().Element(Cell).AlignRight().Text(InvoiceText.Money(charge.Balance)).Bold();
+                    table.Cell().Element(Cell).Text(item.Description);
+                    table.Cell().Element(Cell).AlignRight().Text(InvoiceText.Money(item.Amount));
                 }
             });
-            column.Item().PaddingTop(6).Row(total =>
+
+            column.Item().PaddingTop(4).Row(row =>
             {
-                total.RelativeItem().Text("Total em aberto").Bold();
-                total.ConstantItem(110).AlignRight().Text(InvoiceText.Money(document.EarlierBalance)).Bold().FontColor(Warning);
+                row.RelativeItem().Text($"Subtotal de {group.Name}").FontColor(Muted);
+                row.ConstantItem(110).AlignRight().Text(InvoiceText.Money(group.Subtotal)).Bold();
             });
+
+            if (closing is not null)
+            {
+                StatementClosing(column, closing);
+            }
         });
+    }
+
+    private static void StatementClosing(ColumnDescriptor column, InvoiceStatement statement)
+    {
+        if (statement.ReserveFund is { } reserveFund)
+        {
+            column.Item().PaddingTop(10).Row(row =>
+            {
+                row.RelativeItem().Text("Fundo de reserva").Bold();
+                row.ConstantItem(110).AlignRight().Text(InvoiceText.Money(reserveFund)).Bold();
+            });
+        }
+
+        column.Item().PaddingTop(10).BorderTop(1).BorderColor(Ink).PaddingTop(6).Row(total =>
+        {
+            total.RelativeItem().Text("Total do condomínio").Bold();
+            total.ConstantItem(110).AlignRight().Text(InvoiceText.Money(statement.Total)).Bold();
+        });
+    }
 
     private static void Section(IContainer container, string title, string? subtitle = null) =>
         container.PaddingBottom(4).Column(column =>
@@ -297,26 +281,6 @@ public sealed class QuestPdfInvoiceRenderer : IInvoiceRenderer
             }
         });
 
-    private static void Pair(ColumnDescriptor column, string label, string value, string? color = null) =>
-        column.Item().PaddingBottom(2).Row(row =>
-        {
-            row.RelativeItem().Text(label).FontColor(Muted);
-            TextSpanDescriptor text = row.AutoItem().AlignRight().Text(value);
-
-            if (color is not null)
-            {
-                text.Bold().FontColor(color);
-            }
-        });
-
-    private static string StatusColor(ChargeStatus status) => status switch
-    {
-        ChargeStatus.Paid => Success,
-        ChargeStatus.Overdue => Danger,
-        ChargeStatus.Partial => Warning,
-        _ => Ink,
-    };
-
     private static string? Detail(InvoiceLine line) =>
         line.Kind is ChargeLineKind.Water or ChargeLineKind.Sewage or ChargeLineKind.Gas && line.Quantity is { } quantity
             ? line.PreviousReading is { } previous && line.CurrentReading is { } current
@@ -326,6 +290,9 @@ public sealed class QuestPdfInvoiceRenderer : IInvoiceRenderer
 
     private static IContainer Heading(IContainer container) =>
         container.BorderBottom(1).BorderColor(Ink).PaddingBottom(4).DefaultTextStyle(style => style.FontSize(8).FontColor(Muted).Bold());
+
+    private static IContainer GroupHeading(IContainer container) =>
+        container.BorderBottom(1).BorderColor(Ink).PaddingBottom(4).DefaultTextStyle(style => style.Bold());
 
     private static IContainer Cell(IContainer container) =>
         container.BorderBottom(1).BorderColor(Line).PaddingVertical(6);

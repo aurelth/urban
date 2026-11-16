@@ -1,6 +1,6 @@
 namespace Urban.Finance.Domain.Closing;
 
-/// <summary>De onde vem cada linha do recibo da unidade.</summary>
+/// <summary>De onde vem cada linha da fatura da unidade.</summary>
 public enum ChargeLineKind
 {
     Expenses,

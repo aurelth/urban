@@ -1,7 +1,7 @@
 namespace Urban.Finance.Domain.Closing;
 
 /// <summary>
-/// Uma linha do recibo de uma unidade (por exemplo, "Água" ou "Fundo de reserva"). O texto, a quantidade e as leituras são
+/// Uma linha da fatura de uma unidade (por exemplo, "Água" ou "Fundo de reserva"). O texto, a quantidade e as leituras são
 /// cópias de quando o mês fechou, como no resto da cobrança.
 /// </summary>
 public sealed class UnitChargeLine

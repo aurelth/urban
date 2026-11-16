@@ -2,6 +2,7 @@ using MediatR;
 using Urban.Finance.Application.Abstractions;
 using Urban.Finance.Domain;
 using Urban.Finance.Domain.Closing;
+using Urban.Finance.Domain.Expenses;
 using Urban.Finance.Domain.Payments;
 using Urban.SharedKernel;
 using Urban.SharedKernel.Abstractions;
@@ -11,7 +12,8 @@ namespace Urban.Finance.Application.Invoices;
 
 public sealed class GetInvoiceQueryHandler(
     ICharges charges,
-    IPayments payments,
+    IExpenseEntries entries,
+    IExpenseGroups groups,
     IPaymentInstructionsStore instructions,
     IInvoiceParties parties,
     IInvoiceRenderer renderer,
@@ -19,8 +21,7 @@ public sealed class GetInvoiceQueryHandler(
     IClock clock)
     : IRequestHandler<GetInvoiceQuery, Result<InvoiceFile>>
 {
-    /// <summary>Quantas cobranças antigas a fatura lista, no máximo; a unidade que deve mais que três anos tem um problema maior que o PDF.</summary>
-    public const int EarlierChargesLimit = 36;
+    private const string FallbackGroupName = "Despesas";
 
     public async Task<Result<InvoiceFile>> Handle(GetInvoiceQuery request, CancellationToken cancellationToken)
     {
@@ -42,8 +43,7 @@ public sealed class GetInvoiceQueryHandler(
         UnitCharge charge = detail.Charge;
         DateOnly today = FinanceCalendar.Today(clock.UtcNow);
         IReadOnlyDictionary<Guid, InvoiceResponsible> responsibles = await parties.GetResponsiblesAsync([charge.UnitId], today, cancellationToken);
-        decimal paid = ChargeAccount.Paid(await payments.ListForChargeAsync(charge.Id, cancellationToken));
-        IReadOnlyList<EarlierCharge> earlier = await charges.ListEarlierOpenAsync(charge.UnitId, detail.Month, EarlierChargesLimit, cancellationToken);
+        InvoiceStatement statement = await StatementOfAsync(detail, cancellationToken);
         PaymentInstructions? howToPay = await instructions.FindAsync(cancellationToken);
 
         InvoiceDocument document = new(
@@ -58,10 +58,8 @@ public sealed class GetInvoiceQueryHandler(
             FinanceCalendar.Today(detail.ClosedAt),
             [.. charge.Lines.OrderBy(line => line.Position).Select(line => new InvoiceLine(line.Kind, line.Label, line.Amount, line.Quantity, line.PreviousReading, line.CurrentReading))],
             charge.Amount,
-            new InvoiceSituation(ChargeAccount.StatusOf(charge.Amount, paid, detail.DueDate, today), paid, ChargeAccount.Balance(charge.Amount, paid)),
             new InvoiceShare(detail.BasisKind, ShareOf(charge, detail)),
-            StatementOf(detail),
-            [.. earlier.Select(item => new InvoiceEarlierCharge(item.Month, item.DueDate, item.Amount, item.Paid))],
+            statement,
             HowToPayOf(howToPay),
             condominium.Manager);
 
@@ -71,11 +69,34 @@ public sealed class GetInvoiceQueryHandler(
     private static decimal ShareOf(UnitCharge charge, ChargeDetail detail) =>
         detail.TotalWeight > 0 ? Math.Round(charge.Weight / detail.TotalWeight * 100m, 6, MidpointRounding.AwayFromZero) : 0m;
 
-    /// <summary>O que o condomínio gastou no mês: os grupos e o fundo de reserva. Água, esgoto e gás são consumo de cada unidade e ficam só no recibo dela.</summary>
-    private static List<InvoiceStatementLine> StatementOf(ChargeDetail detail) =>
-        [.. detail.LineTotals
-            .Where(total => total.Kind is ChargeLineKind.Expenses or ChargeLineKind.ReserveFund)
-            .Select(total => new InvoiceStatementLine(total.Label, total.Amount))];
+    /// <summary>
+    /// O que o condomínio gastou no mês, despesa por despesa. Mês fechado não aceita mudança de lançamento, então ler os lançamentos
+    /// dá o mesmo que no fechamento. Água, esgoto e gás são consumo de cada unidade e ficam só na cobrança dela.
+    /// </summary>
+    private async Task<InvoiceStatement> StatementOfAsync(ChargeDetail detail, CancellationToken cancellationToken)
+    {
+        IReadOnlyList<ExpenseEntryRecord> records = await entries.ListAsync(detail.Month, cancellationToken);
+        Dictionary<Guid, string> names = (await groups.ListAsync(cancellationToken)).ToDictionary(record => record.Group.Id, record => record.Group.Name);
+
+        List<InvoiceStatementGroup> statementGroups =
+        [
+            .. records
+                .Select(record => record.Entry)
+                .Where(entry => entry.Status != EntryStatus.Canceled && entry.Amount is > 0)
+                .GroupBy(entry => entry.GroupId)
+                .Select(group => new InvoiceStatementGroup(
+                    names.GetValueOrDefault(group.Key, FallbackGroupName),
+                    [.. group
+                        .OrderBy(entry => entry.Description, AlphabeticalOrder.Comparer)
+                        .ThenBy(entry => entry.Label, StringComparer.Ordinal)
+                        .Select(entry => new InvoiceStatementItem(InvoiceText.ExpenseItem(entry.Description, entry.Label), entry.Amount!.Value))]))
+                .OrderBy(group => group.Name, AlphabeticalOrder.Comparer),
+        ];
+
+        decimal reserveFund = detail.LineTotals.Where(total => total.Kind == ChargeLineKind.ReserveFund).Sum(total => total.Amount);
+
+        return new InvoiceStatement(statementGroups, reserveFund > 0 ? reserveFund : null);
+    }
 
     private static InvoiceHowToPay? HowToPayOf(PaymentInstructions? stored)
     {
