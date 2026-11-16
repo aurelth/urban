@@ -1,0 +1,49 @@
+<h2 mat-dialog-title>Registrar pagamento de {{ config.label }}</h2>
+<form [formGroup]="form" (ngSubmit)="confirm()" novalidate>
+  <mat-dialog-content>
+    <div class="grid gap-y-3">
+      <urban-text-field
+        name="amount"
+        label="Valor (R$)"
+        inputmode="decimal"
+        [hint]="balanceHint"
+        [errors]="amountErrors"
+      />
+      <urban-text-field
+        name="receivedOn"
+        label="Data do recebimento"
+        mask="date"
+        inputmode="numeric"
+        hint="Ex.: 10/11/2026"
+        [errors]="dateErrors"
+      />
+      <urban-select-field name="method" label="Forma de pagamento" [options]="methods" />
+      <urban-text-field name="note" label="Observação" [optional]="true" [errors]="noteErrors" />
+    </div>
+
+    @if (error(); as message) {
+      <p role="alert" class="flex items-start gap-2 text-error">
+        <mat-icon svgIcon="error" aria-hidden="true" />
+        <span>{{ message }}</span>
+      </p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button
+      mat-button
+      type="button"
+      data-testid="cancel"
+      [disabled]="busy()"
+      (click)="ref.close(false)"
+    >
+      Cancelar
+    </button>
+    <button mat-flat-button type="submit" [disabled]="busy()">
+      @if (busy()) {
+        Registrando
+      } @else {
+        Registrar pagamento
+      }
+    </button>
+  </mat-dialog-actions>
+</form>

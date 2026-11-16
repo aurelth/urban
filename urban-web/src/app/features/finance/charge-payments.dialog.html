@@ -1,0 +1,173 @@
+<h2 mat-dialog-title>Pagamentos de {{ config.label }}</h2>
+<mat-dialog-content>
+  @switch (store.status()) {
+    @case ('loading') {
+      <p role="status" class="text-on-surface-variant" data-testid="loading">
+        Carregando os pagamentos
+      </p>
+    }
+    @case ('error') {
+      <div class="flex flex-col items-start gap-4" data-testid="load-error">
+        <p class="flex items-start gap-2 text-error">
+          <mat-icon svgIcon="error" aria-hidden="true" />
+          <span>Não foi possível carregar os pagamentos</span>
+        </p>
+        <button mat-stroked-button type="button" data-testid="retry" (click)="reload()">
+          Tentar de novo
+        </button>
+      </div>
+    }
+    @case ('not-found') {
+      <p class="flex items-start gap-2 text-error" data-testid="not-found">
+        <mat-icon svgIcon="error" aria-hidden="true" />
+        <span>Esta cobrança não existe mais. Feche esta janela e confira a tela</span>
+      </p>
+    }
+    @case ('ready') {
+      @if (store.data(); as data) {
+        @if (notice(); as message) {
+          <p role="status" class="mb-4 flex items-start gap-2" data-testid="reverse-notice">
+            <span class="inline-flex text-success"
+              ><mat-icon svgIcon="check_circle" aria-hidden="true"
+            /></span>
+            <span>{{ message }}</span>
+          </p>
+        }
+
+        <dl class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div data-testid="summary-amount">
+            <dt class="text-sm text-on-surface-variant">Valor</dt>
+            <dd class="m-0 font-medium">{{ money(data.amount) }}</dd>
+          </div>
+          <div data-testid="summary-paid">
+            <dt class="text-sm text-on-surface-variant">Pago</dt>
+            <dd class="m-0 font-medium">{{ money(data.paid) }}</dd>
+          </div>
+          <div data-testid="summary-balance">
+            <dt class="text-sm text-on-surface-variant">Saldo</dt>
+            <dd class="m-0 font-medium">{{ money(data.balance) }}</dd>
+          </div>
+          <div class="flex items-end">
+            <span
+              class="inline-flex items-center gap-1 font-medium"
+              data-testid="summary-status"
+              [class]="statusView(data.status).tone"
+            >
+              <mat-icon [svgIcon]="statusView(data.status).icon" aria-hidden="true" />
+              {{ statusView(data.status).label }}
+            </span>
+          </div>
+        </dl>
+
+        @if (data.payments.length === 0) {
+          <p class="text-on-surface-variant" data-testid="empty">Nenhum pagamento registrado</p>
+        } @else {
+          <ul class="m-0 mb-4 list-none p-0">
+            @for (payment of data.payments; track payment.id) {
+              <li
+                class="mb-3 rounded-xl border border-outline-variant bg-surface-container p-4 last:mb-0"
+                data-testid="payment-item"
+              >
+                <div class="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <span
+                      class="block font-medium"
+                      data-testid="payment-amount"
+                      [class.line-through]="payment.reversedAt !== null"
+                      >{{ money(payment.amount) }}</span
+                    >
+                    <span
+                      class="block text-sm text-on-surface-variant"
+                      data-testid="payment-info"
+                      >{{ info(payment) }}</span
+                    >
+                  </div>
+                  @if (payment.reversedAt === null && reversing() !== payment.id) {
+                    <button
+                      mat-stroked-button
+                      type="button"
+                      data-testid="reverse-payment"
+                      [attr.aria-label]="'Estornar pagamento de ' + money(payment.amount)"
+                      [disabled]="store.busy()"
+                      (click)="startReversal(payment)"
+                    >
+                      Estornar
+                    </button>
+                  }
+                </div>
+
+                @if (payment.reversedAt !== null) {
+                  <p class="mt-3 mb-0 flex items-start gap-2 text-sm" data-testid="reversed">
+                    <mat-icon svgIcon="block" aria-hidden="true" />
+                    <span>Estornado em {{ reversedAt(payment.reversedAt) }}</span>
+                  </p>
+                  <p
+                    class="mt-1 mb-0 text-sm text-on-surface-variant"
+                    data-testid="reversal-reason"
+                  >
+                    Motivo: {{ payment.reversalReason }}
+                  </p>
+                }
+
+                @if (reversing() === payment.id) {
+                  <form
+                    class="mt-6"
+                    data-testid="reverse-form"
+                    [formGroup]="form"
+                    (ngSubmit)="confirmReversal()"
+                    novalidate
+                  >
+                    <urban-text-field
+                      name="reason"
+                      label="Motivo do estorno"
+                      hint="O pagamento continua na lista, como estornado"
+                      [errors]="reasonErrors"
+                    />
+                    @if (reverseError(); as message) {
+                      <p
+                        role="alert"
+                        class="mb-4 flex items-start gap-2 text-error"
+                        data-testid="reverse-error"
+                      >
+                        <mat-icon svgIcon="error" aria-hidden="true" />
+                        <span>{{ message }}</span>
+                      </p>
+                    }
+                    <div class="flex flex-wrap gap-3">
+                      <button
+                        mat-flat-button
+                        type="submit"
+                        data-testid="confirm-reverse"
+                        [disabled]="store.busy()"
+                      >
+                        @if (store.busy()) {
+                          Estornando
+                        } @else {
+                          Confirmar estorno
+                        }
+                      </button>
+                      <button
+                        mat-button
+                        type="button"
+                        data-testid="cancel-reverse"
+                        [disabled]="store.busy()"
+                        (click)="cancelReversal()"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </form>
+                }
+              </li>
+            }
+          </ul>
+        }
+      }
+    }
+  }
+</mat-dialog-content>
+<mat-dialog-actions align="end">
+  <button mat-button type="button" data-testid="close" (click)="ref.close(changed())">
+    Fechar
+  </button>
+</mat-dialog-actions>

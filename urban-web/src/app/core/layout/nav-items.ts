@@ -50,6 +50,7 @@ const MANAGER_GROUPS: readonly NavGroup[] = [
         icon: 'calendar_month',
         path: '/financeiro/lancamentos',
       },
+      { id: 'payments', label: 'Pagamentos', icon: 'payments', path: '/financeiro/pagamentos' },
     ],
   },
 ];
