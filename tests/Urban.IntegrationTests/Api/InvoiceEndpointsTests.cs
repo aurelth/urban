@@ -67,7 +67,7 @@ public sealed class InvoiceEndpointsTests(ApiFixture fixture) : IDisposable
     }
 
     [Fact]
-    public async Task The_pdf_brings_the_situation_the_share_the_statement_how_to_pay_and_the_manager_contact()
+    public async Task The_pdf_brings_the_share_the_statement_how_to_pay_and_the_manager_contact_and_nothing_about_payments()
     {
         ManagerSession manager = await RegisterAsync();
         await ClosedMonthKit.CloseAsync(_client, manager, Month(0), "2099-12-10");
@@ -89,10 +89,10 @@ public sealed class InvoiceEndpointsTests(ApiFixture fixture) : IDisposable
 
         string text = await InvoiceTextAsync(manager, charge);
 
-        text.Should().Contain("Situação do pagamento").And.Contain("Paga em parte");
-        text.Should().Contain("R$ 200,00").And.Contain("R$ 400,00");
-        text.Should().Contain("Base do rateio").And.Contain("Fração ideal").And.Contain("60%");
-        text.Should().Contain("Demonstrativo do mês").And.Contain("Contratos").And.Contain("Total do condomínio").And.Contain("R$ 1.000,00");
+        text.Should().NotContain("Situação do pagamento").And.NotContain("Paga em parte").And.NotContain("Pago até agora").And.NotContain("Saldo a pagar");
+        text.Should().NotContain("R$ 200,00", "a fatura é o pedido de pagamento: um pagamento já registrado não aparece nela");
+        text.Should().Contain("Participação no rateio").And.Contain("60%").And.Contain("Fração ideal");
+        text.Should().Contain("Demonstrativo do mês").And.Contain("Contratos").And.Contain("Portaria").And.Contain("Subtotal de Contratos").And.Contain("Total do condomínio").And.Contain("R$ 1.000,00");
         text.Should().Contain("Como pagar").And.Contain("12.345.678/0001-95").And.Contain("Banco do Brasil").And.Contain("Agência 1234-5");
         text.Should().Contain("Contato do síndico");
         text.Should().NotContain("Pendências anteriores");
@@ -106,7 +106,7 @@ public sealed class InvoiceEndpointsTests(ApiFixture fixture) : IDisposable
 
         string text = await InvoiceTextAsync(manager, await FirstChargeAsync(manager, Month(0)));
 
-        text.Should().Contain("Situação do pagamento").And.Contain("Em aberto");
+        text.Should().NotContain("Situação do pagamento");
         text.Should().NotContain("Como pagar");
     }
 
