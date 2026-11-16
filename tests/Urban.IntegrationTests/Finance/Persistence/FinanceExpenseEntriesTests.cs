@@ -48,10 +48,11 @@ public class FinanceExpenseEntriesTests(FinancePostgresFixture postgres)
         ExpenseGroup group = await _kit.StoreGroupAsync();
         Expense zeladoria = await _kit.StoreFixedAsync(group, FinanceStoreKit.M(2026, 9));
         ExpenseEntry stored = await _kit.StoreEntryAsync(zeladoria, FinanceStoreKit.M(2026, 11));
-        ExpenseEntryRecord record = (await _kit.Entries().FindAsync(stored.Id, default))!;
+        FinanceExpenseEntries store = _kit.Entries();
+        ExpenseEntryRecord record = (await store.FindAsync(stored.Id, default))!;
 
         record.Entry.SetNote("OS 77").IsSuccess.Should().BeTrue();
-        (await _kit.Entries().SaveAsync(record, default)).IsSuccess.Should().BeTrue();
+        (await store.SaveAsync(record, default)).IsSuccess.Should().BeTrue();
         ExpenseEntry reread = (await _kit.Entries().FindAsync(stored.Id, default))!.Entry;
 
         reread.Note.Should().Be("OS 77");
