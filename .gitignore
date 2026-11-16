@@ -41,9 +41,9 @@ npm-debug.log*
 yarn-error.log*
 *.tsbuildinfo
 # Jest e Cypress
-cypress/videos/
-cypress/screenshots/
-cypress/downloads/
+**/cypress/videos/
+**/cypress/screenshots/
+**/cypress/downloads/
 
 # ===== Docker (dados dos volumes locais) =====
 infra/data/
