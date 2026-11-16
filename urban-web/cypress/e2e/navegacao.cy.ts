@@ -28,6 +28,31 @@ function widthOf($element: JQuery<HTMLElement>): number {
   return Math.round($element[0].getBoundingClientRect().width);
 }
 
+/** Espessura da barra de rolagem de um elemento: o que sobra entre a largura total e a útil. */
+function scrollbarOf(element: HTMLElement): number {
+  return element.offsetWidth - element.clientWidth;
+}
+
+/** Quanto falta de espaço no menu lateral: só passa de zero quando os itens não cabem e a barra aparece. */
+function menuScroller(): Cypress.Chainable<JQuery<HTMLElement>> {
+  return cy.get('mat-sidenav .mat-drawer-inner-container');
+}
+
+function expectMenuScrolls(scrolls: boolean): void {
+  menuScroller().should(($menu) => {
+    const element = $menu[0];
+    if (scrolls) {
+      expect(element.scrollHeight, 'itens maiores que o menu').to.be.greaterThan(
+        element.clientHeight,
+      );
+      expect(scrollbarOf(element), 'barra visível').to.be.greaterThan(0);
+    } else {
+      expect(element.scrollHeight, 'itens cabem no menu').to.be.at.most(element.clientHeight);
+      expect(scrollbarOf(element), 'sem barra').to.eq(0);
+    }
+  });
+}
+
 function expectNoHorizontalScroll(): void {
   cy.document().should((doc) => {
     expect(doc.documentElement.scrollWidth).to.be.at.most(doc.documentElement.clientWidth);
@@ -311,6 +336,114 @@ describe('Navegação', () => {
       cy.get('[data-testid="menu-account"]').should('be.visible');
     });
 
+    it('usa uma barra de rolagem fina e discreta na página', () => {
+      cy.viewport(DESKTOP.width, 300);
+      cy.visit('/unidades');
+      cy.contains('h1', 'Unidades').should('be.visible');
+
+      cy.document().should((doc) => {
+        const thickness = doc.defaultView!.innerWidth - doc.documentElement.clientWidth;
+        expect(thickness, 'barra da página').to.be.greaterThan(0).and.at.most(10);
+      });
+    });
+
+    describe('seções recolhíveis do menu lateral', () => {
+      const SHORT = { width: DESKTOP.width, height: 600 } as const;
+
+      beforeEach(() => {
+        cy.viewport(SHORT.width, SHORT.height);
+      });
+
+      function section(label: string): Cypress.Chainable<JQuery<HTMLElement>> {
+        return cy.contains('button[data-testid="nav-group"]', label);
+      }
+
+      it('mostra o título de cada seção como botão aberto, com o ícone de menos', () => {
+        cy.visit('/dashboard');
+
+        for (const label of ['Condomínio', 'Financeiro']) {
+          section(label)
+            .should('have.attr', 'aria-expanded', 'true')
+            .find('mat-icon')
+            .should('have.attr', 'data-mat-icon-name', 'remove');
+        }
+      });
+
+      it('recolhe a seção ao clicar e abre de novo ao clicar outra vez', () => {
+        cy.visit('/dashboard');
+
+        section('Financeiro').click();
+
+        section('Financeiro')
+          .should('have.attr', 'aria-expanded', 'false')
+          .find('mat-icon')
+          .should('have.attr', 'data-mat-icon-name', 'add');
+        cy.get('[data-testid="nav-expenses"]').should('not.exist');
+        cy.get('[data-testid="nav-payment-instructions"]').should('not.exist');
+        cy.get('[data-testid="nav-units"]').should('be.visible');
+
+        section('Financeiro').click();
+
+        cy.get('[data-testid="nav-expenses"]').should('be.visible');
+        section('Financeiro').should('have.attr', 'aria-expanded', 'true');
+      });
+
+      it('funciona pelo teclado', () => {
+        cy.visit('/dashboard');
+
+        section('Condomínio').focus().type('{enter}');
+
+        cy.get('[data-testid="nav-units"]').should('not.exist');
+        section('Condomínio').type(' ');
+        cy.get('[data-testid="nav-units"]').should('be.visible');
+      });
+
+      it('só mostra a barra do menu quando os itens não cabem, e a tira quando passam a caber', () => {
+        cy.visit('/dashboard');
+        expectMenuScrolls(true);
+
+        section('Condomínio').click();
+        section('Financeiro').click();
+        expectMenuScrolls(false);
+
+        section('Condomínio').click();
+        expectMenuScrolls(false);
+
+        section('Financeiro').click();
+        expectMenuScrolls(true);
+      });
+
+      it('deixa a barra do menu fina', () => {
+        cy.visit('/dashboard');
+
+        menuScroller().should(($menu) => {
+          expect(scrollbarOf($menu[0])).to.be.greaterThan(0).and.at.most(10);
+        });
+      });
+
+      it('lembra as seções recolhidas depois de recarregar a página', () => {
+        cy.visit('/dashboard');
+        section('Financeiro').click();
+
+        cy.reload();
+
+        section('Financeiro').should('have.attr', 'aria-expanded', 'false');
+        cy.get('[data-testid="nav-expenses"]').should('not.exist');
+        cy.get('[data-testid="nav-units"]').should('be.visible');
+      });
+
+      it('mostra todos os itens, sem títulos, quando o menu está recolhido em ícones', () => {
+        cy.visit('/dashboard');
+        section('Financeiro').click();
+
+        cy.get('[data-testid="menu-toggle"]').click();
+
+        cy.get('button[data-testid="nav-group"]').should('not.exist');
+        cy.get('[data-testid="nav-expenses"]').should('exist');
+        cy.get('[data-testid="nav-payment-instructions"]').should('exist');
+      });
+    });
+
     it('mantém a rolagem na própria página, sem prender o conteúdo numa área com barra', () => {
       cy.viewport(DESKTOP.width, 300);
       cy.visit('/unidades');
@@ -351,6 +484,17 @@ describe('Navegação', () => {
       for (const [id, label] of LINKS) {
         cy.get(`[data-testid="${id}"]`).should('be.visible').and('contain.text', label);
       }
+      expectNoHorizontalScroll();
+    });
+
+    it('recolhe uma seção na gaveta, sem rolagem horizontal, e a escolha continua ao reabrir', () => {
+      cy.visit('/dashboard');
+      openDrawer();
+
+      cy.contains('button[data-testid="nav-group"]', 'Financeiro').click();
+
+      cy.get('[data-testid="nav-expenses"]').should('not.exist');
+      cy.get('[data-testid="nav-units"]').should('be.visible');
       expectNoHorizontalScroll();
     });
 
