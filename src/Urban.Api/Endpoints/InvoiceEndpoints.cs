@@ -17,7 +17,7 @@ public static class InvoiceEndpoints
             .WithName("DownloadInvoice")
             .WithSummary("Baixa a fatura em PDF de uma cobrança")
             .WithDescription(
-                "Devolve o PDF (application/pdf) da cobrança de uma unidade de um mês fechado, com o condomínio, a unidade, o responsável, a competência, o vencimento, as linhas e o total. "
+                "Devolve o PDF (application/pdf) da cobrança de uma unidade de um mês fechado, com o condomínio, a unidade, o responsável, o contato do síndico, a competência, o vencimento, as linhas e o total, e ainda a situação do pagamento (na data do pedido), a base do rateio, o demonstrativo dos gastos do mês, as pendências anteriores da unidade e como pagar (Pix e conta, quando cadastrados). "
                 + "O arquivo é montado a cada pedido e nunca é guardado; a resposta não vai para cache, e o nome sugerido é fatura-AAAA-MM-<unidade>.pdf. Cobrança de outro condomínio responde 404. O mesmo IP tem um limite de requisições por minuto; ao exceder, recebe 429 com Retry-After.")
             .Produces(StatusCodes.Status200OK, contentType: "application/pdf")
             .WithErrors(StatusCodes.Status404NotFound);

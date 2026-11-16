@@ -21,7 +21,22 @@ public sealed class InvoiceParties(CondominiumDbContext db, ITenantContext tenan
 
         CondominiumEntity? condominium = await db.Condominiums.AsNoTracking().SingleOrDefaultAsync(candidate => candidate.Id == condominiumId, cancellationToken);
 
-        return condominium is null ? null : new InvoiceCondominium(condominium.Name, condominium.Cnpj.Formatted, condominium.Address.Formatted);
+        if (condominium is null)
+        {
+            return null;
+        }
+
+        var manager = await db.People
+            .AsNoTracking()
+            .Where(person => person.CondominiumId == condominiumId && person.UserId == condominium.CreatedBy)
+            .Select(person => new { person.FullName, person.Phone })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return new InvoiceCondominium(
+            condominium.Name,
+            condominium.Cnpj.Formatted,
+            condominium.Address.Formatted,
+            manager is null ? null : new InvoiceManager(manager.FullName.Value, manager.Phone.Formatted));
     }
 
     public async Task<IReadOnlyDictionary<Guid, InvoiceResponsible>> GetResponsiblesAsync(
