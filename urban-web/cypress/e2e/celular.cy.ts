@@ -9,6 +9,7 @@ import { stubConfirmEmailCheck, stubTerms } from '../support/cadastro';
 import { NEW_MANAGER } from '../support/condominio';
 import { MANAGER, stubAnonymous, stubSignedIn } from '../support/session';
 import { READINGS_PATH, stubReadings } from '../support/leituras';
+import { INSTRUCTIONS_PATH, stubInstructions } from '../support/dados-pagamento';
 import { PAYMENTS_PATH, stubPayments } from '../support/pagamentos';
 import { ADMIN, REQUESTS_PATH, stubRequests } from '../support/pedidos';
 import { TARIFFS_PATH, stubTariffs } from '../support/tarifas';
@@ -192,6 +193,22 @@ describe('Tela de celular (375 x 667)', () => {
     cy.contains('h1', 'Tarifas de consumo').should('be.visible');
     cy.get('[data-testid="tariff-item"]').should('have.length', 2);
     cy.get('[data-testid="new-tariff"]').should('be.visible');
+    expectNoHorizontalScroll();
+  });
+
+  it('mostra os dados para pagamento em coluna única, sem rolagem horizontal', () => {
+    stubSignedIn(MANAGER);
+    stubInstructions();
+    cy.visit(INSTRUCTIONS_PATH);
+
+    cy.contains('h1', 'Dados para pagamento').should('be.visible');
+    cy.get('[data-testid="pix-section"]').should('be.visible');
+    cy.get('[data-testid="account-section"]').should('be.visible');
+    cy.get('input[formControlName="pixKey"]').then(($field) => {
+      const { left, right } = $field[0].getBoundingClientRect();
+      expect(left).to.be.at.least(0);
+      expect(right).to.be.at.most(375);
+    });
     expectNoHorizontalScroll();
   });
 

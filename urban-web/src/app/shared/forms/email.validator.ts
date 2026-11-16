@@ -8,5 +8,9 @@ const EMAIL = /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/;
  */
 export function emailFormat(control: AbstractControl<string>): ValidationErrors | null {
   const value = control.value;
-  return value === '' || EMAIL.test(value) ? null : { email: true };
+  return value === '' || isEmailFormat(value) ? null : { email: true };
+}
+
+export function isEmailFormat(value: string): boolean {
+  return EMAIL.test(value);
 }
