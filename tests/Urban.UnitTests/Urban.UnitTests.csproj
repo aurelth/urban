@@ -7,6 +7,7 @@
     <PackageReference Include="coverlet.collector" />
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Moq" />
+    <PackageReference Include="PdfPig" />
   </ItemGroup>
 
   <ItemGroup>
@@ -18,6 +19,7 @@
     <ProjectReference Include="..\..\src\Modules\Condominium\Urban.Condominium.Infrastructure\Urban.Condominium.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Modules\Finance\Urban.Finance.Domain\Urban.Finance.Domain.csproj" />
     <ProjectReference Include="..\..\src\Modules\Finance\Urban.Finance.Application\Urban.Finance.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Finance\Urban.Finance.Infrastructure\Urban.Finance.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Modules\Operations\Urban.Operations.Domain\Urban.Operations.Domain.csproj" />
     <ProjectReference Include="..\..\src\Modules\Operations\Urban.Operations.Application\Urban.Operations.Application.csproj" />
     <ProjectReference Include="..\..\src\Urban.BackgroundJobs\Urban.BackgroundJobs.csproj" />

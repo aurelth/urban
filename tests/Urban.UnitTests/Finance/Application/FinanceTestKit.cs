@@ -33,6 +33,12 @@ internal sealed class FinanceTestKit
 
     public FakePayments Payments { get; }
 
+    public FakeCharges Charges { get; }
+
+    public FakeInvoiceParties Parties { get; } = new();
+
+    public FakeInvoiceRenderer Renderer { get; } = new();
+
     public FakeApportionmentBasis Basis { get; } = new();
 
     public FakeFinanceSettings Settings { get; } = new();
@@ -44,6 +50,7 @@ internal sealed class FinanceTestKit
     public FinanceTestKit()
     {
         Payments = new FakePayments(Closings);
+        Charges = new FakeCharges(Closings);
         Tenant = new FixedTenant(CondominiumId);
     }
 
