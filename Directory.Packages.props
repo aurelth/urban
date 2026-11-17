@@ -43,8 +43,8 @@
     <PackageVersion Include="StackExchange.Redis" Version="3.4.31" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.Binder" Version="10.0.14" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.14" />
-    <PackageVersion Include="Microsoft.Extensions.Http" Version="10.0.14" />
-    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.14" />
+    <PackageVersion Include="Microsoft.Extensions.Http" Version="11.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="11.0.0" />
     <!-- Gera o PDF da fatura. Licença Community (gratuita abaixo de US$ 1 milhão de faturamento anual): reavaliar se a empresa passar disso. -->
     <PackageVersion Include="QuestPDF" Version="2026.9.2" />
   </ItemGroup>
