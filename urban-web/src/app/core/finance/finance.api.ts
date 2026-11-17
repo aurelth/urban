@@ -106,6 +106,11 @@ export class FinanceApi {
     return this.http.put<ExpenseEntry>(`${BASE}/entries/${id}/amount`, { version, amount });
   }
 
+  /** `null` remove a observação. */
+  setEntryNote(id: string, version: string, note: string | null): Observable<ExpenseEntry> {
+    return this.http.put<ExpenseEntry>(`${BASE}/entries/${id}/note`, { version, note });
+  }
+
   setEntryStatus(
     id: string,
     version: string,

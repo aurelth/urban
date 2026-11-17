@@ -121,6 +121,8 @@ export const MonthStore = signalStore(
       reopen: (): Promise<ApiProblem | null> => change(api.reopenMonth(store.month())),
       setAmount: (target: ExpenseEntry, amount: number): Promise<ApiProblem | null> =>
         act(api.setEntryAmount(target.id, target.version, amount)),
+      setNote: (target: ExpenseEntry, note: string | null): Promise<ApiProblem | null> =>
+        act(api.setEntryNote(target.id, target.version, note)),
       setStatus: (target: ExpenseEntry, status: SettableEntryStatus): Promise<ApiProblem | null> =>
         act(api.setEntryStatus(target.id, target.version, status)),
     };

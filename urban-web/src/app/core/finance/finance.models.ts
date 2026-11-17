@@ -60,6 +60,10 @@ export interface ExpenseEntry {
   readonly groupId: string;
   readonly month: string;
   readonly description: string;
+  /** Copiado da despesa quando o lançamento nasceu; não muda se a despesa for editada depois. */
+  readonly supplier: string | null;
+  /** Texto de uma linha que o síndico escreve para este mês; vai à fatura junto com o fornecedor. */
+  readonly note: string | null;
   readonly amount: number | null;
   readonly label: string | null;
   /** "AAAA-MM-DD". Fica como foi calculado quando o lançamento nasceu. */
