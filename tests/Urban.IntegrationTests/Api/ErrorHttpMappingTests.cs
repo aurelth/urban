@@ -13,6 +13,7 @@ using Urban.Finance.Domain;
 using Urban.Finance.Domain.Closing;
 using Urban.Finance.Domain.Consumption;
 using Urban.Finance.Domain.Expenses;
+using Urban.Finance.Domain.Invoices;
 using Urban.Finance.Domain.Months;
 using Urban.Identity.Application.Administration;
 using Urban.Identity.Application.Authentication;
@@ -187,6 +188,9 @@ public sealed class ErrorHttpMappingTests
         { ClosingErrors.NotClosed.Code, 409 },
         { ClosingErrors.MonthIsClosed.Code, 409 },
         { ClosingErrors.ReadingsPending(1, 1).Code, 422 },
+        { InvoiceDeliveryErrors.NoRecipient.Code, 422 },
+        { InvoiceDeliveryErrors.AlreadyQueued.Code, 409 },
+        { InvoiceDeliveryErrors.PageInvalid.Code, 400 },
         { ConsumptionErrors.BandsInvalid.Code, 400 },
         { ConsumptionErrors.GasInvalid.Code, 400 },
         { ConsumptionErrors.SewagePercentInvalid.Code, 400 },

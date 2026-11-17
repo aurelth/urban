@@ -10,6 +10,7 @@ using Urban.Condominium.Domain.Units;
 using Urban.Condominium.Domain.Vehicles;
 using Urban.Finance.Domain;
 using Urban.Finance.Domain.Expenses;
+using Urban.Finance.Domain.Invoices;
 using Urban.Finance.Domain.Closing;
 using Urban.Finance.Domain.Consumption;
 using Urban.Finance.Domain.Months;
@@ -243,6 +244,9 @@ public static class ErrorHttp
         [PaymentInstructionsErrors.NumberInvalid.Code] = StatusCodes.Status400BadRequest,
         [PaymentInstructionsErrors.AccountKindInvalid.Code] = StatusCodes.Status400BadRequest,
         [PaymentErrors.ChargeNotFound.Code] = StatusCodes.Status404NotFound,
+        [InvoiceDeliveryErrors.NoRecipient.Code] = StatusCodes.Status422UnprocessableEntity,
+        [InvoiceDeliveryErrors.AlreadyQueued.Code] = StatusCodes.Status409Conflict,
+        [InvoiceDeliveryErrors.PageInvalid.Code] = StatusCodes.Status400BadRequest,
         [ClosingErrors.ReadingsPending(1, 1).Code] = StatusCodes.Status422UnprocessableEntity,
         [ConsumptionErrors.BandsInvalid.Code] = StatusCodes.Status400BadRequest,
         [ConsumptionErrors.GasInvalid.Code] = StatusCodes.Status400BadRequest,

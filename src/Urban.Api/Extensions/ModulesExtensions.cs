@@ -16,7 +16,9 @@ public static class ModulesExtensions
             Urban.Condominium.Application.AssemblyReference.Assembly,
             Urban.Finance.Application.AssemblyReference.Assembly));
         services.AddHttpContextAccessor();
-        services.AddScoped<ITenantContext, HttpTenantContext>();
+        services.AddScoped<HttpTenantContext>();
+        services.AddScoped<ITenantContext>(provider => provider.GetRequiredService<HttpTenantContext>());
+        services.AddScoped<ITenantScope>(provider => provider.GetRequiredService<HttpTenantContext>());
         services.AddIdentityInfrastructure(configuration);
         services.AddCondominiumInfrastructure(configuration);
         services.AddFinanceInfrastructure(configuration);
