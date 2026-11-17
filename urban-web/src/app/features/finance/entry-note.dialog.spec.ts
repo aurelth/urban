@@ -51,6 +51,15 @@ describe('EntryNoteDialog', () => {
       expect(submitButtonOf(TAG).disabled).toBe(false);
     });
 
+    it('deixa 24 px entre a explicacao e o campo, como o dialogo de fechar o mes', () => {
+      setup(entry());
+
+      const explanation = Array.from(dialogOf(TAG).querySelectorAll('p')).find((p) =>
+        p.textContent?.includes('aparece na fatura'),
+      );
+      expect(explanation!.classList.contains('mb-6')).toBe(true);
+    });
+
     it('grava o texto sem os espacos das pontas e fecha', async () => {
       const { save, result } = setup(entry());
 
