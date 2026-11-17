@@ -14,7 +14,10 @@ public static class FinanceInfrastructureExtensions
 {
     private const string PostgresConnectionName = "Postgres";
 
-    /// <remarks>Quem hospeda o módulo precisa registrar o <see cref="ITenantContext"/> da sua origem de requisições (a API lê do token).</remarks>
+    /// <remarks>
+    /// Quem hospeda o módulo precisa registrar o <see cref="ITenantContext"/> da sua origem de requisições (a API lê do token) e o
+    /// <see cref="ITenantScope"/>, com que as tarefas em segundo plano escolhem o condomínio, e o <c>IBackgroundJobClient</c> do Hangfire.
+    /// </remarks>
     public static IServiceCollection AddFinanceInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         string postgres = configuration.GetConnectionString(PostgresConnectionName) is { Length: > 0 } value && !string.IsNullOrWhiteSpace(value)
@@ -34,6 +37,8 @@ public static class FinanceInfrastructureExtensions
         services.AddScoped<IPayments, FinancePayments>();
         services.AddScoped<ICharges, FinanceCharges>();
         services.AddSingleton<IInvoiceRenderer, QuestPdfInvoiceRenderer>();
+        services.AddScoped<IInvoiceDeliveries, FinanceInvoiceDeliveries>();
+        services.AddScoped<IInvoiceDeliveryDispatcher, HangfireInvoiceDeliveryDispatcher>();
 
         return services;
     }

@@ -510,6 +510,64 @@ namespace Urban.Finance.Infrastructure.Persistence.Migrations
                     b.ToTable("expense_group", "finance");
                 });
 
+            modelBuilder.Entity("Urban.Finance.Domain.Invoices.InvoiceDelivery", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempts");
+
+                    b.Property<Guid>("ChargeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("unit_charge_id");
+
+                    b.Property<Guid>("CondominiumId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("condominium_id");
+
+                    b.Property<string>("FailureReason")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("failure_reason");
+
+                    b.Property<DateTimeOffset?>("LastAttemptAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_attempt_at");
+
+                    b.Property<DateTimeOffset>("RequestedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("requested_at");
+
+                    b.Property<Guid>("RequestedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("requested_by");
+
+                    b.Property<DateTimeOffset?>("SentAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sent_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_invoice_delivery");
+
+                    b.HasIndex("ChargeId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_invoice_delivery_unit_charge_id");
+
+                    b.HasIndex("CondominiumId")
+                        .HasDatabaseName("ix_invoice_delivery_condominium_id");
+
+                    b.ToTable("invoice_delivery", "finance");
+                });
+
             modelBuilder.Entity("Urban.Finance.Domain.Payments.Payment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -773,6 +831,16 @@ namespace Urban.Finance.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_expense_entry_expense_group_group_id");
+                });
+
+            modelBuilder.Entity("Urban.Finance.Domain.Invoices.InvoiceDelivery", b =>
+                {
+                    b.HasOne("Urban.Finance.Domain.Closing.UnitCharge", null)
+                        .WithMany()
+                        .HasForeignKey("ChargeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_invoice_delivery_unit_charge_unit_charge_id");
                 });
 
             modelBuilder.Entity("Urban.Finance.Domain.Payments.Payment", b =>

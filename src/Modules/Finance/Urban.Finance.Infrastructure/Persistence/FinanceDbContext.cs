@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Urban.Finance.Domain.Closing;
 using Urban.Finance.Domain.Consumption;
 using Urban.Finance.Domain.Expenses;
+using Urban.Finance.Domain.Invoices;
 using Urban.Finance.Domain.Payments;
 using Urban.Finance.Domain.Settings;
 using Urban.SharedKernel.Abstractions;
@@ -38,6 +39,8 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options,
 
     public DbSet<PaymentInstructions> PaymentInstructions => Set<PaymentInstructions>();
 
+    public DbSet<InvoiceDelivery> InvoiceDeliveries => Set<InvoiceDelivery>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(Schema);
@@ -52,6 +55,7 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options,
         modelBuilder.ApplyConfiguration(new Configurations.MeterReadingConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.PaymentConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.PaymentInstructionsConfiguration());
+        modelBuilder.ApplyConfiguration(new Configurations.InvoiceDeliveryConfiguration());
 
         // Sem tenant a comparação com nulo não casa com nenhuma linha: o padrão é não ver nada.
         modelBuilder.Entity<ExpenseGroup>().HasQueryFilter(group => group.CondominiumId == tenant.CondominiumId);
@@ -65,5 +69,6 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options,
         modelBuilder.Entity<MeterReading>().HasQueryFilter(reading => reading.CondominiumId == tenant.CondominiumId);
         modelBuilder.Entity<Payment>().HasQueryFilter(payment => payment.CondominiumId == tenant.CondominiumId);
         modelBuilder.Entity<PaymentInstructions>().HasQueryFilter(instructions => instructions.CondominiumId == tenant.CondominiumId);
+        modelBuilder.Entity<InvoiceDelivery>().HasQueryFilter(delivery => delivery.CondominiumId == tenant.CondominiumId);
     }
 }
