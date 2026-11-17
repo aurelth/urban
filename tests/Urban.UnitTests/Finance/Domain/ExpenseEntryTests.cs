@@ -164,4 +164,84 @@ public class ExpenseEntryTests
 
         entry.Status.Should().Be(EntryStatus.Paid);
     }
+
+    // ---- fornecedor e observação do lançamento ----
+
+    [Fact]
+    public void GenerateEntry_CarriesTheSupplierOfTheExpense_AndStartsWithoutANote()
+    {
+        ExpenseEntry entry = PendingEntry();
+
+        entry.Supplier.Should().Be("Enel");
+        entry.Note.Should().BeNull();
+    }
+
+    [Fact]
+    public void GenerateEntry_OfAnExpenseWithoutSupplier_HasNone()
+    {
+        Expense expense = Expense.CreateFixed(CondominiumId, GroupId, "Zeladoria", null, M(2026, 9), null, 300m, 10, Now).Value;
+
+        expense.GenerateEntry(M(2026, 9), Now).Value.Supplier.Should().BeNull();
+    }
+
+    [Fact]
+    public void TheEntryKeepsTheSupplierItWasBornWith_WhenTheExpenseChangesLater()
+    {
+        Expense expense = Expense.CreateFixed(CondominiumId, GroupId, "Zeladoria", "Limpa Tudo", M(2026, 9), null, 300m, 10, Now).Value;
+        ExpenseEntry september = expense.GenerateEntry(M(2026, 9), Now).Value;
+
+        expense.Edit("Zeladoria", "Brilho Total", GroupId, 10).IsSuccess.Should().BeTrue();
+        ExpenseEntry october = expense.GenerateEntry(M(2026, 10), Now).Value;
+
+        september.Supplier.Should().Be("Limpa Tudo");
+        october.Supplier.Should().Be("Brilho Total");
+    }
+
+    [Fact]
+    public void SetNote_KeepsTheTrimmedText()
+    {
+        ExpenseEntry entry = PendingEntry();
+
+        entry.SetNote("  OS 4521, período de 01 a 15/10  ").IsSuccess.Should().BeTrue();
+
+        entry.Note.Should().Be("OS 4521, período de 01 a 15/10");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void SetNote_Blank_ClearsTheNote(string? blank)
+    {
+        ExpenseEntry entry = PendingEntry();
+        entry.SetNote("OS 1");
+
+        entry.SetNote(blank).IsSuccess.Should().BeTrue();
+
+        entry.Note.Should().BeNull();
+    }
+
+    [Fact]
+    public void SetNote_AcceptsTwoHundredCharacters_AndRefusesTwoHundredAndOne()
+    {
+        ExpenseEntry entry = PendingEntry();
+
+        entry.SetNote(new string('a', 200)).IsSuccess.Should().BeTrue();
+        entry.SetNote(new string('b', 201)).Error.Should().Be(ExpenseErrors.NoteInvalid);
+
+        entry.Note.Should().Be(new string('a', 200));
+    }
+
+    [Theory]
+    [InlineData("linha 1\nlinha 2")]
+    [InlineData("com\ttabulação")]
+    public void SetNote_WithControlCharacters_FailsAndKeepsTheOldNote(string text)
+    {
+        ExpenseEntry entry = PendingEntry();
+        entry.SetNote("OS 1");
+
+        entry.SetNote(text).Error.Should().Be(ExpenseErrors.NoteInvalid);
+
+        entry.Note.Should().Be("OS 1");
+    }
 }

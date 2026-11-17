@@ -44,6 +44,7 @@ public sealed class FinanceEndpointsTests(ApiFixture fixture) : IDisposable
         { "POST", $"{Months}/2026-11/reopen" },
         { "PUT", $"{Entries}/{Guid.Empty}/amount" },
         { "PUT", $"{Entries}/{Guid.Empty}/status" },
+        { "PUT", $"{Entries}/{Guid.Empty}/note" },
     };
 
     // ---- Acesso ----
@@ -947,6 +948,72 @@ public sealed class FinanceEndpointsTests(ApiFixture fixture) : IDisposable
     }
 
     [Fact]
+    public async Task The_entries_of_the_month_bring_the_supplier_of_the_expense()
+    {
+        ManagerSession manager = await RegisterAsync();
+        Guid group = await CreateGroupAsync(manager, "Contratos");
+        await CreateExpenseAsync(manager, ExpenseBody("fixed", group, "Portaria", Month(0), amount: 900m, supplier: "Segurança Ltda"));
+
+        JsonElement entry = (await OpenAsync(manager, Month(0))).GetProperty("entries").EnumerateArray().Single();
+
+        entry.GetProperty("supplier").GetString().Should().Be("Segurança Ltda");
+        entry.GetProperty("note").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task Put_note_saves_it_rotates_the_version_and_a_blank_text_clears_it()
+    {
+        ManagerSession manager = await RegisterAsync();
+        Guid group = await CreateGroupAsync(manager, "Contratos");
+        await CreateExpenseAsync(manager, ExpenseBody("fixed", group, "Portaria", Month(0), amount: 900m, supplier: "Segurança Ltda"));
+        JsonElement entry = (await OpenAsync(manager, Month(0))).GetProperty("entries").EnumerateArray().Single();
+        string route = $"{Entries}/{entry.GetProperty("id").GetGuid()}/note";
+        string version = entry.GetProperty("version").GetString()!;
+
+        HttpResponseMessage saved = await _client.SendJsonAsync(HttpMethod.Put, route, manager.AccessToken, new JsonObject { ["version"] = version, ["note"] = "  OS 4521  " });
+        JsonElement body = await saved.Content.ReadFromJsonAsync<JsonElement>();
+        string newVersion = body.GetProperty("version").GetString()!;
+        JsonElement reread = (await OpenAsync(manager, Month(0))).GetProperty("entries").EnumerateArray().Single();
+        HttpResponseMessage cleared = await _client.SendJsonAsync(HttpMethod.Put, route, manager.AccessToken, new JsonObject { ["version"] = newVersion, ["note"] = "" });
+        JsonElement clearedBody = await cleared.Content.ReadFromJsonAsync<JsonElement>();
+
+        saved.StatusCode.Should().Be(HttpStatusCode.OK);
+        body.GetProperty("note").GetString().Should().Be("OS 4521");
+        body.GetProperty("supplier").GetString().Should().Be("Segurança Ltda");
+        newVersion.Should().NotBe(version);
+        reread.GetProperty("note").GetString().Should().Be("OS 4521");
+        cleared.StatusCode.Should().Be(HttpStatusCode.OK);
+        clearedBody.GetProperty("note").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task Put_note_refuses_a_missing_or_stale_version_a_bad_text_and_an_unknown_entry()
+    {
+        ManagerSession manager = await RegisterAsync();
+        Guid group = await CreateGroupAsync(manager, "Contratos");
+        await CreateExpenseAsync(manager, ExpenseBody("fixed", group, "Portaria", Month(0), amount: 900m));
+        JsonElement entry = (await OpenAsync(manager, Month(0))).GetProperty("entries").EnumerateArray().Single();
+        string route = $"{Entries}/{entry.GetProperty("id").GetGuid()}/note";
+        string version = entry.GetProperty("version").GetString()!;
+
+        HttpResponseMessage missing = await _client.SendJsonAsync(HttpMethod.Put, route, manager.AccessToken, new JsonObject { ["note"] = "x" });
+        HttpResponseMessage stale = await _client.SendJsonAsync(HttpMethod.Put, route, manager.AccessToken, new JsonObject { ["version"] = "0", ["note"] = "x" });
+        HttpResponseMessage tooLong = await _client.SendJsonAsync(HttpMethod.Put, route, manager.AccessToken, new JsonObject { ["version"] = version, ["note"] = new string('a', 201) });
+        HttpResponseMessage twoLines = await _client.SendJsonAsync(HttpMethod.Put, route, manager.AccessToken, new JsonObject { ["version"] = version, ["note"] = "a\nb" });
+        HttpResponseMessage unknown = await _client.SendJsonAsync(HttpMethod.Put, $"{Entries}/{Guid.NewGuid()}/note", manager.AccessToken, new JsonObject { ["version"] = version, ["note"] = "x" });
+
+        missing.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await missing.CodeAsync()).Should().Be("finance.version.required");
+        stale.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await stale.CodeAsync()).Should().Be("concurrency.conflict");
+        tooLong.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await tooLong.CodeAsync()).Should().Be("expense_entry.note.invalid");
+        twoLines.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await twoLines.CodeAsync()).Should().Be("expense_entry.note.invalid");
+        unknown.StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
     public async Task Put_of_an_entry_refuses_a_stale_version_a_bad_amount_and_an_unknown_entry()
     {
         ManagerSession manager = await RegisterAsync();
@@ -1057,6 +1124,24 @@ public sealed class FinanceEndpointsTests(ApiFixture fixture) : IDisposable
         charges.Select(charge => charge.GetProperty("amount").GetDecimal()).Should().Equal(600m, 400m);
         charges[0].GetProperty("number").GetString().Should().Be("101");
         (await ReadMonthAsync(manager, Month(0))).GetProperty("closing").GetProperty("charges").GetArrayLength().Should().Be(2);
+    }
+
+    [Fact]
+    public async Task A_closed_month_refuses_a_new_note_because_the_invoice_is_already_issued()
+    {
+        ManagerSession manager = await RegisterAsync();
+        await CreateUnitAsync(manager, "101", 1m);
+        JsonElement entry = (await OpenMonthWithAFixedExpenseAsync(manager, 1000m)).GetProperty("entries")[0];
+        await CloseAsync(manager, Month(0), "2099-12-10");
+
+        HttpResponseMessage note = await _client.SendJsonAsync(
+            HttpMethod.Put,
+            $"{Entries}/{entry.GetProperty("id").GetGuid()}/note",
+            manager.AccessToken,
+            new JsonObject { ["version"] = entry.GetProperty("version").GetString(), ["note"] = "OS 4521" });
+
+        note.StatusCode.Should().Be(HttpStatusCode.Conflict);
+        (await note.CodeAsync()).Should().Be("closing.month_is_closed");
     }
 
     [Fact]

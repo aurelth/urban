@@ -22,6 +22,8 @@ internal sealed class ExpenseEntryConfiguration : IEntityTypeConfiguration<Expen
 
         builder.Property(entry => entry.Month).HasConversion<YearMonthConverter>().HasMaxLength(YearMonthConverter.Length).IsRequired();
         builder.Property(entry => entry.Description).HasMaxLength(Expense.TextMaxLength).IsRequired();
+        builder.Property(entry => entry.Supplier).HasMaxLength(Expense.TextMaxLength);
+        builder.Property(entry => entry.Note).HasMaxLength(ExpenseEntry.NoteMaxLength);
         builder.Property(entry => entry.Amount).HasPrecision(9, 2);
         builder.Property(entry => entry.Label).HasMaxLength(10);
         builder.Property(entry => entry.DueDate);

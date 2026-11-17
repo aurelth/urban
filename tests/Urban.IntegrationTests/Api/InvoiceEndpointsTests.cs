@@ -99,6 +99,17 @@ public sealed class InvoiceEndpointsTests(ApiFixture fixture) : IDisposable
     }
 
     [Fact]
+    public async Task The_statement_shows_the_supplier_and_the_note_of_each_expense()
+    {
+        ManagerSession manager = await RegisterAsync();
+        await ClosedMonthKit.CloseAsync(_client, manager, Month(0), "2099-12-10", supplier: "Segurança Ltda", note: "OS 4521");
+
+        string text = await InvoiceTextAsync(manager, await FirstChargeAsync(manager, Month(0)));
+
+        text.Should().Contain("Portaria").And.Contain("Segurança Ltda · OS 4521");
+    }
+
+    [Fact]
     public async Task Without_payment_data_the_pdf_has_no_how_to_pay_section()
     {
         ManagerSession manager = await RegisterAsync();

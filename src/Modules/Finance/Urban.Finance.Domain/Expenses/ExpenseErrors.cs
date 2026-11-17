@@ -58,5 +58,7 @@ public static class ExpenseErrors
 
     public static readonly Error AmountRequiredToPay = new("expense_entry.amount_required", "Informe o valor do lançamento antes de marcá-lo como pago");
 
+    public static readonly Error NoteInvalid = new("expense_entry.note.invalid", "A observação pode ter até 200 caracteres, em uma linha só");
+
     public static readonly Error EntryNotFound = new("expense_entry.not_found", "Lançamento não encontrado");
 }

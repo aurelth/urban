@@ -114,6 +114,17 @@ public class InvoiceTextTests
     }
 
     [Theory]
+    [InlineData("Segurança Ltda", "OS 4521", "Segurança Ltda · OS 4521")]
+    [InlineData("Segurança Ltda", null, "Segurança Ltda")]
+    [InlineData(null, "OS 4521", "OS 4521")]
+    [InlineData("  ", "", null)]
+    [InlineData(null, null, null)]
+    public void ExpenseDetail_JoinsTheSupplierAndTheNote_LeavingOutWhatIsBlank(string? supplier, string? note, string? expected)
+    {
+        InvoiceText.ExpenseDetail(supplier, note).Should().Be(expected);
+    }
+
+    [Theory]
     [InlineData(PixKeyKind.Cnpj, "CNPJ")]
     [InlineData(PixKeyKind.Cpf, "CPF")]
     [InlineData(PixKeyKind.Email, "E-mail")]

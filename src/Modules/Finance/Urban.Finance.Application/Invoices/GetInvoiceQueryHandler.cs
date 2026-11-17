@@ -89,7 +89,7 @@ public sealed class GetInvoiceQueryHandler(
                     [.. group
                         .OrderBy(entry => entry.Description, AlphabeticalOrder.Comparer)
                         .ThenBy(entry => entry.Label, StringComparer.Ordinal)
-                        .Select(entry => new InvoiceStatementItem(InvoiceText.ExpenseItem(entry.Description, entry.Label), entry.Amount!.Value))]))
+                        .Select(entry => new InvoiceStatementItem(InvoiceText.ExpenseItem(entry.Description, entry.Label), entry.Amount!.Value, InvoiceText.ExpenseDetail(entry.Supplier, entry.Note)))]))
                 .OrderBy(group => group.Name, AlphabeticalOrder.Comparer),
         ];
 

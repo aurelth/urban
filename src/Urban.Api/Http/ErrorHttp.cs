@@ -194,6 +194,7 @@ public static class ErrorHttp
         [ExpenseGroupErrors.NameAlreadyExists.Code] = StatusCodes.Status409Conflict,
         [ExpenseErrors.DescriptionInvalid.Code] = StatusCodes.Status400BadRequest,
         [ExpenseErrors.SupplierInvalid.Code] = StatusCodes.Status400BadRequest,
+        [ExpenseErrors.NoteInvalid.Code] = StatusCodes.Status400BadRequest,
         [ExpenseErrors.AmountInvalid.Code] = StatusCodes.Status400BadRequest,
         [ExpenseErrors.InstallmentCountInvalid.Code] = StatusCodes.Status400BadRequest,
         [ExpenseErrors.CurrentInstallmentInvalid.Code] = StatusCodes.Status400BadRequest,

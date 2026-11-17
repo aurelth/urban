@@ -175,6 +175,7 @@ public sealed class ErrorHttpMappingTests
         { ExpenseErrors.EntryNotFound.Code, 404 },
         { ExpenseErrors.DueDayInvalid.Code, 400 },
         { ExpenseErrors.StatusInvalid.Code, 400 },
+        { ExpenseErrors.NoteInvalid.Code, 400 },
         { ExpenseErrors.AmountRequiredToPay.Code, 422 },
         { ClosingErrors.TotalInvalid.Code, 422 },
         { ClosingErrors.NoWeights.Code, 422 },

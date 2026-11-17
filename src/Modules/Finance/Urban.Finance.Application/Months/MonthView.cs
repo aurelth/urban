@@ -5,6 +5,8 @@ using Urban.SharedKernel.Contracts;
 
 namespace Urban.Finance.Application.Months;
 
+/// <param name="Supplier">O fornecedor da despesa de quando o lançamento nasceu; nulo se a despesa não tem.</param>
+/// <param name="Note">A observação do síndico sobre este mês; nulo se não há.</param>
 /// <param name="Status">Situação em "hoje": Pending, Paid, Overdue (pendente depois do vencimento) ou Canceled.</param>
 /// <param name="NeedsAmount">Verdadeiro enquanto o valor de uma despesa variável não foi informado.</param>
 /// <param name="SuggestedAmount">Só nos lançamentos que precisam de valor: o valor do mês anterior da mesma despesa, para a tela sugerir.</param>
@@ -14,6 +16,8 @@ public sealed record ExpenseEntryView(
     Guid GroupId,
     string Month,
     string Description,
+    string? Supplier,
+    string? Note,
     decimal? Amount,
     string? Label,
     DateOnly DueDate,
@@ -32,6 +36,8 @@ public sealed record ExpenseEntryView(
             entry.GroupId,
             entry.Month.ToString(),
             entry.Description,
+            entry.Supplier,
+            entry.Note,
             entry.Amount,
             entry.Label,
             entry.DueDate,

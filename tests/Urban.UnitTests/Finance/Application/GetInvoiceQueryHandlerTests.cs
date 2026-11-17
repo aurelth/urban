@@ -265,6 +265,27 @@ public class GetInvoiceQueryHandlerTests
     }
 
     [Fact]
+    public async Task Handle_EachItemCarriesTheSupplierAndTheNoteOfItsEntry()
+    {
+        FinanceTestKit kit = new();
+        YearMonth month = FinanceTestKit.M(2026, 10);
+        ExpenseGroup group = kit.NewGroup("Manutenção");
+        kit.NewEntry(kit.NewFixed(group, month, 100m, "Portaria", supplier: "Segurança Ltda"), month).SetNote("OS 4521");
+        kit.NewEntry(kit.NewFixed(group, month, 100m, "Jardinagem", supplier: "Verde Vida"), month);
+        kit.NewEntry(kit.NewFixed(group, month, 100m, "Água"), month).SetNote("leitura de 01 a 30/10");
+        kit.NewEntry(kit.NewFixed(group, month, 100m, "Zeladoria"), month);
+        UnitCharge charge = kit.CloseMonth(month, options: OptionsOf(kit, [group], [], 0m)).Charges.Single(candidate => candidate.Number == "101");
+
+        InvoiceDocument document = await RenderedAsync(charge, kit);
+
+        document.Statement.Groups.Single().Items.Select(item => (item.Description, item.Detail)).Should().Equal(
+            ("Água", "leitura de 01 a 30/10"),
+            ("Jardinagem", "Verde Vida"),
+            ("Portaria", "Segurança Ltda · OS 4521"),
+            ("Zeladoria", null));
+    }
+
+    [Fact]
     public async Task Handle_ACanceledExpenseAndTheExpensesOfOtherMonthsAreNotListed()
     {
         FinanceTestKit kit = new();

@@ -32,6 +32,8 @@ public sealed record EndExpenseRequest(string? Version, string? LastMonth);
 
 public sealed record EntryAmountRequest(string? Version, decimal? Amount);
 
+public sealed record EntryNoteRequest(string? Version, string? Note);
+
 /// <param name="Status">"pending", "paid" ou "canceled". "Vencido" não se envia: é calculado pela data.</param>
 public sealed record EntryStatusRequest(string? Version, string? Status);
 

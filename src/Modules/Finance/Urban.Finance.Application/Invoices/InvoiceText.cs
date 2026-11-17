@@ -53,6 +53,14 @@ public static class InvoiceText
     public static string ExpenseItem(string description, string? installment) =>
         installment is null ? description : $"{description} ({installment})";
 
+    /// <summary>O que vai em letra pequena sob a despesa: o fornecedor e a observação, separados por "·". Nulo quando os dois estão em branco.</summary>
+    public static string? ExpenseDetail(string? supplier, string? note)
+    {
+        string[] parts = [.. new[] { supplier, note }.Where(text => !string.IsNullOrWhiteSpace(text)).Select(text => text!.Trim())];
+
+        return parts.Length == 0 ? null : string.Join(" · ", parts);
+    }
+
     public static string PixKind(PixKeyKind kind) => kind switch
     {
         PixKeyKind.Cnpj => "CNPJ",

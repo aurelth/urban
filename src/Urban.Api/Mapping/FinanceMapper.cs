@@ -49,6 +49,9 @@ public static partial class FinanceMapper
     public static SetEntryAmountCommand ToCommand(EntryAmountRequest request, Guid entryId) =>
         new(entryId, request.Version, request.Amount ?? 0m);
 
+    public static SetEntryNoteCommand ToCommand(EntryNoteRequest request, Guid entryId) =>
+        new(entryId, request.Version, request.Note);
+
     public static SetEntryStatusCommand ToCommand(EntryStatusRequest request, Guid entryId) =>
         new(entryId, request.Version, ParseEntryStatus(request.Status));
 

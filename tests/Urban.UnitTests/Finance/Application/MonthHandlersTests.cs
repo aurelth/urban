@@ -28,6 +28,8 @@ public class MonthHandlersTests
 
     private SetEntryAmountCommandHandler SetHandler() => new(_kit.Entries, _kit.Closings, _kit.Tenant, _kit.Clock);
 
+    private SetEntryNoteCommandHandler NoteHandler() => new(_kit.Entries, _kit.Closings, _kit.Tenant, _kit.Clock);
+
     private SetEntryStatusCommandHandler StatusHandler() => new(_kit.Entries, _kit.Closings, _kit.Tenant, _kit.Clock);
 
     // ---- open ----
@@ -337,6 +339,87 @@ public class MonthHandlersTests
 
         _kit.WithoutATenant();
         (await SetHandler().Handle(new SetEntryAmountCommand(entry.Id, "5", 10m), default)).Error.Should().Be(FinanceErrors.CondominiumNotFound);
+    }
+
+    // ---- set the note of one entry ----
+
+    [Fact]
+    public async Task SetNote_SavesTheNote_AndReturnsItWithTheSupplierAndTheNewVersion()
+    {
+        Expense energy = _kit.NewFixed(_ordinary, M(2026, 9), 300m, "Elevador", supplier: "Elevadores Sul");
+        ExpenseEntry entry = _kit.NewEntry(energy, M(2026, 11));
+
+        Result<ExpenseEntryView> result = await NoteHandler().Handle(new SetEntryNoteCommand(entry.Id, "5", "OS 4521"), default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Note.Should().Be("OS 4521");
+        result.Value.Supplier.Should().Be("Elevadores Sul");
+        result.Value.Version.Should().Be("6");
+        entry.Note.Should().Be("OS 4521");
+    }
+
+    [Fact]
+    public async Task SetNote_Blank_ClearsTheNote()
+    {
+        ExpenseEntry entry = _kit.NewEntry(_kit.NewFixed(_ordinary, M(2026, 9), 300m), M(2026, 11));
+        entry.SetNote("OS 4521");
+
+        Result<ExpenseEntryView> result = await NoteHandler().Handle(new SetEntryNoteCommand(entry.Id, "5", "  "), default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Note.Should().BeNull();
+        entry.Note.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task SetNote_ChangesOnlyThatMonth()
+    {
+        Expense fixedExpense = _kit.NewFixed(_ordinary, M(2026, 9), 300m);
+        ExpenseEntry november = _kit.NewEntry(fixedExpense, M(2026, 11));
+        ExpenseEntry december = _kit.NewEntry(fixedExpense, M(2026, 12));
+
+        await NoteHandler().Handle(new SetEntryNoteCommand(november.Id, "5", "Reajuste de novembro"), default);
+
+        november.Note.Should().Be("Reajuste de novembro");
+        december.Note.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task SetNote_Failures()
+    {
+        ExpenseEntry entry = _kit.NewEntry(_kit.NewFixed(_ordinary, M(2026, 9), 300m), M(2026, 11));
+
+        (await NoteHandler().Handle(new SetEntryNoteCommand(entry.Id, null, "x"), default)).Error.Should().Be(FinanceErrors.VersionRequired);
+        (await NoteHandler().Handle(new SetEntryNoteCommand(entry.Id, "4", "x"), default)).Error.Should().Be(FinanceErrors.ConcurrencyConflict);
+        (await NoteHandler().Handle(new SetEntryNoteCommand(Guid.CreateVersion7(), "5", "x"), default)).Error.Should().Be(ExpenseErrors.EntryNotFound);
+        (await NoteHandler().Handle(new SetEntryNoteCommand(entry.Id, "5", new string('a', 201)), default)).Error.Should().Be(ExpenseErrors.NoteInvalid);
+        entry.Note.Should().BeNull();
+
+        _kit.WithoutATenant();
+        (await NoteHandler().Handle(new SetEntryNoteCommand(entry.Id, "5", "x"), default)).Error.Should().Be(FinanceErrors.CondominiumNotFound);
+    }
+
+    [Fact]
+    public async Task SetNote_InAClosedMonth_Fails_BecauseTheInvoiceIsAlreadyIssued()
+    {
+        ExpenseEntry entry = _kit.NewEntry(_kit.NewFixed(_ordinary, M(2026, 9), 600m), M(2026, 11));
+        _kit.CloseMonth(M(2026, 11));
+
+        (await NoteHandler().Handle(new SetEntryNoteCommand(entry.Id, "5", "OS 1"), default)).Error.Should().Be(ClosingErrors.MonthIsClosed);
+        entry.Note.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetMonth_ShowsTheSupplierAndTheNoteOfEachEntry()
+    {
+        ExpenseEntry entry = _kit.NewEntry(_kit.NewFixed(_ordinary, M(2026, 9), 300m, "Elevador", supplier: "Elevadores Sul"), M(2026, 11));
+        entry.SetNote("OS 4521");
+
+        Result<MonthView> result = await GetHandler().Handle(new GetMonthQuery("2026-11"), default);
+
+        ExpenseEntryView view = result.Value.Entries.Single();
+        view.Supplier.Should().Be("Elevadores Sul");
+        view.Note.Should().Be("OS 4521");
     }
 
     // ---- set the payment status of one entry ----

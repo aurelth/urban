@@ -6,6 +6,8 @@ namespace Urban.Finance.Domain.Expenses;
 /// <summary>A despesa em um mês. Editar o valor aqui muda só este mês; a regra da despesa continua a mesma.</summary>
 public sealed class ExpenseEntry
 {
+    public const int NoteMaxLength = 200;
+
     private ExpenseEntry(Expense expense, YearMonth month, decimal? amount, string? label, DateOnly dueDate, DateTimeOffset createdAt)
     {
         Id = Guid.CreateVersion7();
@@ -14,6 +16,7 @@ public sealed class ExpenseEntry
         GroupId = expense.GroupId;
         Month = month;
         Description = expense.Description;
+        Supplier = expense.Supplier;
         Amount = amount;
         Label = label;
         DueDate = dueDate;
@@ -38,6 +41,12 @@ public sealed class ExpenseEntry
     public YearMonth Month { get; }
 
     public string Description { get; private set; }
+
+    /// <summary>O fornecedor que a despesa tinha quando o lançamento nasceu; mudar o fornecedor na despesa não altera lançamentos já gerados.</summary>
+    public string? Supplier { get; private set; }
+
+    /// <summary>Texto livre do síndico sobre este mês, como o número da ordem de serviço ou o período do serviço. Nulo quando não há.</summary>
+    public string? Note { get; private set; }
 
     /// <summary>Nulo enquanto o valor de uma despesa variável não foi informado.</summary>
     public decimal? Amount { get; private set; }
@@ -77,6 +86,20 @@ public sealed class ExpenseEntry
         }
 
         Status = status;
+        return Result.Success();
+    }
+
+    /// <summary>Guarda a observação do mês: uma linha de até <see cref="NoteMaxLength"/> caracteres. Em branco apaga.</summary>
+    public Result SetNote(string? note)
+    {
+        string normalized = TextRules.Normalize(note);
+
+        if (normalized.Length > NoteMaxLength || TextRules.HasControlCharacters(note))
+        {
+            return Result.Failure(ExpenseErrors.NoteInvalid);
+        }
+
+        Note = normalized.Length == 0 ? null : normalized;
         return Result.Success();
     }
 

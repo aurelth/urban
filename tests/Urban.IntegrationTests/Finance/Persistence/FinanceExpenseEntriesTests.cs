@@ -43,6 +43,23 @@ public class FinanceExpenseEntriesTests(FinancePostgresFixture postgres)
     }
 
     [Fact]
+    public async Task Save_KeepsTheSupplierOfTheEntryAndTheNoteTheManagerWrote()
+    {
+        ExpenseGroup group = await _kit.StoreGroupAsync();
+        Expense zeladoria = await _kit.StoreFixedAsync(group, FinanceStoreKit.M(2026, 9));
+        ExpenseEntry stored = await _kit.StoreEntryAsync(zeladoria, FinanceStoreKit.M(2026, 11));
+        FinanceExpenseEntries store = _kit.Entries();
+        ExpenseEntryRecord record = (await store.FindAsync(stored.Id, default))!;
+
+        record.Entry.SetNote("OS 77").IsSuccess.Should().BeTrue();
+        (await store.SaveAsync(record, default)).IsSuccess.Should().BeTrue();
+        ExpenseEntry reread = (await _kit.Entries().FindAsync(stored.Id, default))!.Entry;
+
+        reread.Note.Should().Be("OS 77");
+        reread.Supplier.Should().Be("Limpa Tudo");
+    }
+
+    [Fact]
     public async Task AddRange_WithAnEntryThatAlreadyExists_FailsAndStoresNothingOfTheBatch()
     {
         ExpenseGroup group = await _kit.StoreGroupAsync();

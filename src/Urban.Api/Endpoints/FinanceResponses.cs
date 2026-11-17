@@ -27,6 +27,8 @@ public sealed record ExpenseResponse(
     string Version);
 
 /// <param name="Amount">Nulo enquanto o valor de uma despesa variável não foi informado.</param>
+/// <param name="Supplier">O fornecedor da despesa de quando o lançamento nasceu; nulo se a despesa não tem.</param>
+/// <param name="Note">A observação do síndico sobre este mês (ordem de serviço, período); nulo se não há.</param>
 /// <param name="Label">A parcela, como "4/6"; nulo nas outras despesas.</param>
 /// <param name="DueDate">O vencimento, como "AAAA-MM-DD".</param>
 /// <param name="Status">"pending", "paid", "overdue" (pendente depois do vencimento) ou "canceled".</param>
@@ -38,6 +40,8 @@ public sealed record ExpenseEntryResponse(
     Guid GroupId,
     string Month,
     string Description,
+    string? Supplier,
+    string? Note,
     decimal? Amount,
     string? Label,
     string DueDate,

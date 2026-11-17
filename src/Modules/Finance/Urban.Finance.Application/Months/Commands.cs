@@ -20,6 +20,9 @@ public sealed record SetEntryAmountCommand(Guid EntryId, string? Version, decima
 /// Marca o lançamento como pendente, pago ou cancelado. Pago exige o valor informado. "Vencido" não se marca: é a situação de um
 /// pendente depois da data de vencimento, calculada a cada leitura.
 /// </summary>
+/// <param name="Note">Uma linha de até 200 caracteres; em branco apaga a observação.</param>
+public sealed record SetEntryNoteCommand(Guid EntryId, string? Version, string? Note) : IRequest<Result<ExpenseEntryView>>;
+
 public sealed record SetEntryStatusCommand(Guid EntryId, string? Version, EntryStatus Status) : IRequest<Result<ExpenseEntryView>>;
 
 /// <summary>
