@@ -320,6 +320,15 @@ SCREENS.forEach(([where, width, height]) => {
       expectDialogBreathingRoom();
     });
 
+    it('não cola texto em container no diálogo da observação de um lançamento', () => {
+      stubSignedIn(MANAGER);
+      stubMonth(OPENED_MONTH);
+      cy.visit(ENTRIES_PATH);
+      cy.get('button[aria-label="Adicionar observação a Portaria"]').click();
+
+      expectDialogBreathingRoom();
+    });
+
     it('não cola texto em container no diálogo de alterar o e-mail', () => {
       stubSignedIn(MANAGER);
       cy.visit('/conta');

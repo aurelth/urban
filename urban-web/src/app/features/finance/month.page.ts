@@ -30,6 +30,7 @@ import { basisLabel, chargeShare, chargesTotal, lineDetail } from './closing';
 import { closeFailureOf } from './close-failure';
 import { openCloseMonthDialog } from './close-month.dialog';
 import { openEntryAmountDialog } from './entry-amount.dialog';
+import { openEntryNoteDialog } from './entry-note.dialog';
 import {
   STATUS_CHOICES,
   isChoiceDisabled,
@@ -115,6 +116,25 @@ export class MonthPage implements OnInit {
           return describeProblem(problem, FINANCE_FORM_MESSAGES);
         }
         this.notice.set(target.needsAmount ? 'Valor informado' : 'Valor corrigido');
+        return null;
+      },
+    });
+  }
+
+  protected noteActionLabel(target: ExpenseEntry): string {
+    return (target.note ? 'Editar observação de ' : 'Adicionar observação a ') + target.description;
+  }
+
+  protected async setNote(target: ExpenseEntry): Promise<void> {
+    this.clearMessages();
+    await openEntryNoteDialog(this.injector, {
+      entry: target,
+      save: async (note) => {
+        const problem = await this.store.setNote(target, note);
+        if (problem !== null) {
+          return describeProblem(problem, FINANCE_FORM_MESSAGES);
+        }
+        this.notice.set(note === null ? 'Observação removida' : 'Observação salva');
         return null;
       },
     });

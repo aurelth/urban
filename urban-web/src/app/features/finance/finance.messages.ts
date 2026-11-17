@@ -1,6 +1,9 @@
 import { MessagesByCode } from '../../core/http/problem-message';
 import { describeApportionmentShortfall } from './apportionment-shortfall';
 
+/** Também é o texto do campo da observação, que confere o tamanho antes de chamar a API. */
+export const NOTE_INVALID_MESSAGE = 'A observação pode ter até 200 caracteres, em uma linha só';
+
 const FIELD_MESSAGES: MessagesByCode = {
   'expense_group.name.invalid': 'Informe o nome do grupo, com até 60 caracteres',
   'expense_group.name.already_exists': 'Já existe um grupo com este nome',
@@ -41,6 +44,7 @@ const FIELD_MESSAGES: MessagesByCode = {
   'month.too_far_ahead': 'Só é possível abrir meses até 5 anos à frente',
   'expense_entry.amount_required': 'Informe o valor do lançamento antes de marcá-lo como pago',
   'expense_entry.status.invalid': 'Escolha pendente, pago ou cancelado',
+  'expense_entry.note.invalid': NOTE_INVALID_MESSAGE,
   'closing.due_date_invalid':
     'Informe uma data de vencimento válida, a partir do primeiro dia do mês',
   'closing.month_not_open': 'Este mês ainda não tem lançamentos para fechar',

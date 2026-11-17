@@ -58,6 +58,36 @@ const JARDINAGEM = entry({
   status: 'canceled',
 });
 
+const SEGURANCA = entry({
+  description: 'Segurança',
+  supplier: 'Segurança Ltda',
+  note: 'OS 4521',
+  amount: 1500,
+  version: '24',
+  dueDate: '2026-11-10',
+});
+const LIMPEZA = entry({
+  description: 'Limpeza',
+  supplier: 'Limpa Bem',
+  amount: 800,
+  version: '25',
+  dueDate: '2026-11-12',
+});
+const JARDIM = entry({
+  description: 'Jardim',
+  note: 'Poda trimestral',
+  amount: 300,
+  version: '26',
+  dueDate: '2026-11-14',
+});
+
+/** Lançamentos com fornecedor e observação, só com fornecedor, só com observação e sem nenhum dos dois. */
+const WITH_DETAILS = monthEntries({
+  entries: [PORTARIA, SEGURANCA, LIMPEZA, JARDIM],
+  groups: [groupTotal({ groupId: ORDINARY, total: 6800 })],
+  total: 6800,
+});
+
 const OPENED = monthEntries({
   entries: [PORTARIA, LUZ, ELEVADOR],
   groups: [
@@ -352,6 +382,63 @@ describe('MonthPage', () => {
       'Conta de luz Vence em 10/11/2026 Valor a informar · sugestão R$ 812,40 Vencido',
       'Elevador Parcela 4/6 Vence em 20/11/2026 R$ 166,66 Pendente',
     ]);
+  });
+
+  it('mostra o fornecedor e a observacao sob a despesa, so o que existe', async () => {
+    const { html } = await setup(WITH_DETAILS);
+
+    expect(rowsOf(html)).toEqual([
+      'Portaria Vence em 10/11/2026 R$ 4.200,00 Pago',
+      'Segurança Vence em 10/11/2026 Fornecedor: Segurança Ltda Observação: OS 4521 R$ 1.500,00 Pendente',
+      'Limpeza Vence em 12/11/2026 Fornecedor: Limpa Bem R$ 800,00 Pendente',
+      'Jardim Vence em 14/11/2026 Observação: Poda trimestral R$ 300,00 Pendente',
+    ]);
+  });
+
+  it('guarda o fornecedor e a observacao em linhas proprias, em letra pequena e cinza', async () => {
+    const { html } = await setup(WITH_DETAILS);
+
+    expect(text(html, 'entry-supplier')).toBe('Fornecedor: Segurança Ltda');
+    expect(text(html, 'entry-note')).toBe('Observação: OS 4521');
+    for (const id of ['entry-supplier', 'entry-note']) {
+      const line = testId(html, id)!;
+      expect(line.classList.contains('block')).toBe(true);
+      expect(line.classList.contains('text-sm')).toBe(true);
+      expect(line.classList.contains('text-on-surface-variant')).toBe(true);
+    }
+  });
+
+  it('nao desenha linha de fornecedor nem de observacao quando o lancamento nao tem', async () => {
+    const { html } = await setup();
+
+    expect(testId(html, 'entry-supplier')).toBeNull();
+    expect(testId(html, 'entry-note')).toBeNull();
+  });
+
+  it('quebra o fornecedor e a observacao longos em vez de alargar a tabela', async () => {
+    const long = 'Associação de Moradores e Prestadores de Serviços Gerais do Residencial';
+    const { html } = await setup(
+      monthEntries({
+        entries: [entry({ supplier: long, note: long })],
+        groups: [groupTotal({ groupId: ORDINARY })],
+      }),
+    );
+
+    for (const id of ['entry-supplier', 'entry-note']) {
+      expect(testId(html, id)!.classList.contains('wrap-anywhere')).toBe(true);
+    }
+  });
+
+  it('reserva uma largura minima para a despesa, para o texto longo nao ficar espremido', async () => {
+    const { html } = await setup(
+      monthEntries({
+        entries: [entry({ supplier: 'Segurança Ltda', note: 'OS 4521' })],
+        groups: [groupTotal({ groupId: ORDINARY })],
+      }),
+    );
+
+    const cell = html.querySelector('[data-testid="entry-row"] td');
+    expect(cell!.classList.contains('min-w-48')).toBe(true);
   });
 
   it('diz que nao ha valores a informar nem vencidos quando esta tudo em dia', async () => {
@@ -736,6 +823,127 @@ describe('MonthPage', () => {
     });
   });
 
+  describe('observacao', () => {
+    const NOTE_2026_11 = (id: string) => ({
+      method: 'PUT',
+      url: `/api/finance/entries/${id}/note`,
+    });
+
+    it('rotula o botao pelo que ele faz: adicionar quando nao ha observacao, editar quando ha', async () => {
+      const { html } = await setup(WITH_DETAILS);
+
+      expect(button(html, 'Adicionar observação a Portaria')).not.toBeNull();
+      expect(button(html, 'Editar observação de Segurança')).not.toBeNull();
+      expect(button(html, 'Adicionar observação a Segurança')).toBeNull();
+    });
+
+    it('adiciona a observacao de um lancamento que nao tinha', async () => {
+      const { fixture, html, http } = await setup();
+
+      button(html, 'Adicionar observação a Portaria')!.click();
+      await settle(fixture);
+      expect(plain(document.querySelector('urban-entry-note-dialog h2')?.textContent)).toBe(
+        'Observação de Portaria',
+      );
+      typeIn('urban-entry-note-dialog', 'note', 'OS 4521');
+      submitDialog('urban-entry-note-dialog');
+      await flushPromises();
+      const save = http.expectOne(NOTE_2026_11(PORTARIA.id));
+      expect(save.request.body).toEqual({ version: '21', note: 'OS 4521' });
+      save.flush(PORTARIA);
+      await flushPromises();
+      http.expectOne({ method: 'GET', url: '/api/finance/months/2026-11' }).flush(WITH_DETAILS);
+      await settle(fixture);
+
+      expect(document.querySelector('urban-entry-note-dialog')).toBeNull();
+      expect(text(html, 'notice')).toBe('Observação salva');
+    });
+
+    it('corrige a observacao que ja existia, partindo do texto atual', async () => {
+      const { fixture, html, http } = await setup(WITH_DETAILS);
+
+      button(html, 'Editar observação de Segurança')!.click();
+      await settle(fixture);
+      const field = document.querySelector<HTMLInputElement>('[formControlName="note"]')!;
+      expect(field.value).toBe('OS 4521');
+      typeIn('urban-entry-note-dialog', 'note', 'OS 4522');
+      submitDialog('urban-entry-note-dialog');
+      await flushPromises();
+      const save = http.expectOne(NOTE_2026_11(SEGURANCA.id));
+      expect(save.request.body).toEqual({ version: '24', note: 'OS 4522' });
+      save.flush(SEGURANCA);
+      await flushPromises();
+      http.expectOne({ method: 'GET', url: '/api/finance/months/2026-11' }).flush(WITH_DETAILS);
+      await settle(fixture);
+
+      expect(text(html, 'notice')).toBe('Observação salva');
+    });
+
+    it('remove a observacao quando o texto e apagado', async () => {
+      const { fixture, html, http } = await setup(WITH_DETAILS);
+
+      button(html, 'Editar observação de Segurança')!.click();
+      await settle(fixture);
+      typeIn('urban-entry-note-dialog', 'note', '');
+      submitDialog('urban-entry-note-dialog');
+      await flushPromises();
+      const save = http.expectOne(NOTE_2026_11(SEGURANCA.id));
+      expect(save.request.body).toEqual({ version: '24', note: null });
+      save.flush(SEGURANCA);
+      await flushPromises();
+      http.expectOne({ method: 'GET', url: '/api/finance/months/2026-11' }).flush(WITH_DETAILS);
+      await settle(fixture);
+
+      expect(text(html, 'notice')).toBe('Observação removida');
+    });
+
+    it('mantem o dialogo aberto com o erro quando a API recusa a observacao', async () => {
+      const { fixture, html, http } = await setup();
+
+      button(html, 'Adicionar observação a Portaria')!.click();
+      await settle(fixture);
+      typeIn('urban-entry-note-dialog', 'note', 'OS 4521');
+      submitDialog('urban-entry-note-dialog');
+      await flushPromises();
+      http
+        .expectOne(NOTE_2026_11(PORTARIA.id))
+        .flush(problem(400, 'expense_entry.note.invalid'), { status: 400, statusText: 'Inválido' });
+      await settle(fixture);
+
+      expect(
+        document.querySelector('urban-entry-note-dialog [role="alert"]')?.textContent,
+      ).toContain('A observação pode ter até 200 caracteres, em uma linha só');
+      expect(testId(html, 'notice')).toBeNull();
+    });
+
+    it('explica no dialogo que o mes ja foi fechado em outro lugar', async () => {
+      const { fixture, html, http } = await setup();
+
+      button(html, 'Adicionar observação a Portaria')!.click();
+      await settle(fixture);
+      typeIn('urban-entry-note-dialog', 'note', 'OS 4521');
+      submitDialog('urban-entry-note-dialog');
+      await flushPromises();
+      http
+        .expectOne(NOTE_2026_11(PORTARIA.id))
+        .flush(problem(409, 'closing.month_is_closed'), { status: 409, statusText: 'Conflito' });
+      await settle(fixture);
+
+      expect(
+        document.querySelector('urban-entry-note-dialog [role="alert"]')?.textContent,
+      ).toContain('O mês está fechado. Reabra o mês para mudar os lançamentos');
+    });
+
+    it('com o mes fechado trava a edicao, mas continua mostrando o fornecedor e a observacao', async () => {
+      const { html } = await setup(monthEntries({ ...WITH_DETAILS, closing: CLOSED.closing }));
+
+      expect(button(html, 'Adicionar observação a Portaria')!.disabled).toBe(true);
+      expect(button(html, 'Editar observação de Segurança')!.disabled).toBe(true);
+      expect(text(html, 'entry-supplier')).toBe('Fornecedor: Segurança Ltda');
+      expect(text(html, 'entry-note')).toBe('Observação: OS 4521');
+    });
+  });
+
   describe('fechamento', () => {
     const CLOSE_2026_11 = { method: 'POST', url: '/api/finance/months/2026-11/close' };
     const REOPEN_2026_11 = { method: 'POST', url: '/api/finance/months/2026-11/reopen' };
@@ -892,6 +1100,7 @@ describe('MonthPage', () => {
 
       expect(button(html, 'Corrigir valor de Portaria')!.disabled).toBe(true);
       expect(button(html, 'Corrigir valor de Elevador')!.disabled).toBe(true);
+      expect(button(html, 'Adicionar observação a Portaria')!.disabled).toBe(true);
       await openStatusMenu(fixture, html, 'Elevador');
 
       expect(menuItems()).toEqual([
@@ -905,6 +1114,7 @@ describe('MonthPage', () => {
       const { fixture, html } = await setup(FILLED);
 
       expect(button(html, 'Corrigir valor de Portaria')!.disabled).toBe(false);
+      expect(button(html, 'Adicionar observação a Portaria')!.disabled).toBe(false);
       await openStatusMenu(fixture, html, 'Elevador');
       expect(menuItems()[2]).toEqual({ label: 'Cancelado', disabled: false });
     });
@@ -928,6 +1138,7 @@ describe('MonthPage', () => {
       expect(testId(html, 'closing-card')).toBeNull();
       expect(testId(html, 'close-month')).not.toBeNull();
       expect(button(html, 'Corrigir valor de Portaria')!.disabled).toBe(false);
+      expect(button(html, 'Adicionar observação a Portaria')!.disabled).toBe(false);
     });
 
     it('explica no dialogo que o mes ja tem pagamentos e nao pode ser reaberto', async () => {

@@ -129,6 +129,8 @@ export interface StubEntry {
   groupId: string;
   month: string;
   description: string;
+  supplier: string | null;
+  note: string | null;
   amount: number | null;
   label: string | null;
   dueDate: string;
@@ -145,6 +147,8 @@ export function stubEntry(overrides: Partial<StubEntry> = {}): StubEntry {
     groupId: ORDINARY_GROUP.id,
     month: '2026-11',
     description: 'Portaria',
+    supplier: null,
+    note: null,
     amount: 4200,
     label: null,
     dueDate: '2026-11-10',
@@ -166,6 +170,16 @@ export const PENDING_ENTRY = stubEntry({
   dueDate: '2026-11-12',
   suggestedAmount: 812.4,
   version: '22',
+});
+
+/** Lançamento com fornecedor e observação, que a tela mostra sob a despesa e deixa editar no mês aberto. */
+export const DETAILED_ENTRY = stubEntry({
+  id: '0199bbbb-0003-7000-8000-000000000004',
+  description: 'Segurança',
+  supplier: 'Segurança Ltda',
+  note: 'OS 4521',
+  amount: 1500,
+  version: '24',
 });
 
 export const OPENED_MONTH = {

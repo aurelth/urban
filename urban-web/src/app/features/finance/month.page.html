@@ -286,7 +286,7 @@
                       class="border-b border-outline-variant last:border-b-0"
                       data-testid="entry-row"
                     >
-                      <td class="p-3">
+                      <td class="min-w-48 p-3">
                         <span
                           class="font-medium"
                           [class.text-on-surface-variant]="item.status === 'canceled'"
@@ -300,6 +300,20 @@
                         <span class="block text-sm text-on-surface-variant"
                           >Vence em {{ date(item.dueDate) }}</span
                         >
+                        @if (item.supplier) {
+                          <span
+                            class="block text-sm wrap-anywhere text-on-surface-variant"
+                            data-testid="entry-supplier"
+                            >Fornecedor: {{ item.supplier }}</span
+                          >
+                        }
+                        @if (item.note) {
+                          <span
+                            class="block text-sm wrap-anywhere text-on-surface-variant"
+                            data-testid="entry-note"
+                            >Observação: {{ item.note }}</span
+                          >
+                        }
                       </td>
                       <td class="p-3 whitespace-nowrap">
                         @if (item.needsAmount) {
@@ -382,6 +396,16 @@
                           (click)="setAmount(item)"
                         >
                           <mat-icon svgIcon="edit" />
+                        </button>
+                        <button
+                          mat-icon-button
+                          type="button"
+                          [attr.aria-label]="noteActionLabel(item)"
+                          [attr.title]="noteActionLabel(item)"
+                          [disabled]="store.busy() || store.isClosed()"
+                          (click)="setNote(item)"
+                        >
+                          <mat-icon svgIcon="edit_note" />
                         </button>
                       </td>
                     </tr>
