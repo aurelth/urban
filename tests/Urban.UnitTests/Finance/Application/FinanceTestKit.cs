@@ -39,6 +39,12 @@ internal sealed class FinanceTestKit
 
     public FakeInvoiceRenderer Renderer { get; } = new();
 
+    public FakeInvoiceDeliveries Deliveries { get; }
+
+    public FakeInvoiceDeliveryDispatcher Dispatcher { get; } = new();
+
+    public FakeEmailSender Emails { get; } = new();
+
     public FakeApportionmentBasis Basis { get; } = new();
 
     public FakeFinanceSettings Settings { get; } = new();
@@ -53,6 +59,7 @@ internal sealed class FinanceTestKit
     {
         Payments = new FakePayments(Closings);
         Charges = new FakeCharges(Closings);
+        Deliveries = new FakeInvoiceDeliveries(Closings);
         Tenant = new FixedTenant(CondominiumId);
     }
 

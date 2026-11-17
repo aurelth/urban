@@ -59,6 +59,39 @@ public sealed class HttpTenantContextTests
         tenant.CondominiumId.Should().Be(second);
     }
 
+    [Fact]
+    public void A_background_job_chooses_its_condominium_without_any_request()
+    {
+        Guid condominiumId = Guid.CreateVersion7();
+        HttpTenantContext tenant = new(new HttpContextAccessor());
+
+        ((ITenantScope)tenant).Enter(condominiumId);
+
+        ((ITenantContext)tenant).CondominiumId.Should().Be(condominiumId);
+    }
+
+    [Fact]
+    public void The_condominium_a_job_chose_wins_over_the_token_of_the_request()
+    {
+        Guid chosen = Guid.CreateVersion7();
+        HttpTenantContext tenant = ContextWith(new Claim("condominium_id", Guid.CreateVersion7().ToString()));
+
+        tenant.Enter(chosen);
+
+        tenant.CondominiumId.Should().Be(chosen);
+    }
+
+    [Fact]
+    public void A_job_cannot_choose_the_empty_condominium()
+    {
+        HttpTenantContext tenant = new(new HttpContextAccessor());
+
+        Action enter = () => tenant.Enter(Guid.Empty);
+
+        enter.Should().Throw<ArgumentOutOfRangeException>();
+        tenant.CondominiumId.Should().BeNull();
+    }
+
     private static HttpTenantContext ContextWith(params Claim[] claims) =>
         new(new HttpContextAccessor { HttpContext = RequestWith(claims) });
 
