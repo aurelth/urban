@@ -19,6 +19,7 @@ public sealed class QuestPdfInvoiceRenderer : IInvoiceRenderer
     private const string Muted = "#65657A";
     private const string Accent = "#5856D6";
     private const string Line = "#E6E6EF";
+    private const string NoReading = "—";
 
     /// <summary>Até quantas despesas um grupo é mantido inteiro na mesma página (uma página A4 comporta uns 25 itens).</summary>
     private const int KeepTogetherLimit = 18;
@@ -63,6 +64,11 @@ public sealed class QuestPdfInvoiceRenderer : IInvoiceRenderer
             column.Spacing(14);
             column.Item().Element(item => Details(item, document));
             column.Item().Element(item => Charges(item, document));
+
+            if (Measured(document) is { Count: > 0 } measured)
+            {
+                column.Item().ShowEntire().Element(item => Measurement(item, measured));
+            }
 
             if (document.HowToPay is { } howToPay)
             {
@@ -162,6 +168,46 @@ public sealed class QuestPdfInvoiceRenderer : IInvoiceRenderer
                 total.ConstantItem(110).AlignRight().Text(InvoiceText.Money(document.Total)).FontSize(12).Bold().FontColor(Accent);
             });
         });
+
+    private static List<InvoiceLine> Measured(InvoiceDocument document) =>
+        [.. document.Lines.Where(line => line.Kind is ChargeLineKind.Water or ChargeLineKind.Sewage or ChargeLineKind.Gas && line.Quantity is not null)];
+
+    private static void Measurement(IContainer container, IReadOnlyList<InvoiceLine> lines) =>
+        container.Column(column =>
+        {
+            column.Item().Element(item => Section(item, "Dados de medição", "O consumo da sua unidade no mês, já incluído no total da fatura"));
+            column.Item().Table(table =>
+            {
+                table.ColumnsDefinition(columns =>
+                {
+                    columns.RelativeColumn();
+                    columns.ConstantColumn(85);
+                    columns.ConstantColumn(85);
+                    columns.ConstantColumn(80);
+                    columns.ConstantColumn(80);
+                });
+
+                table.Header(header =>
+                {
+                    header.Cell().Element(Heading).Text("Serviço");
+                    header.Cell().Element(Heading).AlignRight().Text("Leitura anterior");
+                    header.Cell().Element(Heading).AlignRight().Text("Leitura atual");
+                    header.Cell().Element(Heading).AlignRight().Text("Consumo (m³)");
+                    header.Cell().Element(Heading).AlignRight().Text("Valor");
+                });
+
+                foreach (InvoiceLine line in lines)
+                {
+                    table.Cell().Element(Cell).Text(line.Label);
+                    table.Cell().Element(Cell).AlignRight().Text(Reading(line.PreviousReading));
+                    table.Cell().Element(Cell).AlignRight().Text(Reading(line.CurrentReading));
+                    table.Cell().Element(Cell).AlignRight().Text(Reading(line.Quantity));
+                    table.Cell().Element(Cell).AlignRight().Text(InvoiceText.Money(line.Amount));
+                }
+            });
+        });
+
+    private static string Reading(decimal? value) => value is { } cubicMeters ? InvoiceText.Cubic(cubicMeters) : NoReading;
 
     private static void HowToPay(IContainer container, InvoiceDocument document, InvoiceHowToPay howToPay) =>
         container.Column(column =>
@@ -299,15 +345,7 @@ public sealed class QuestPdfInvoiceRenderer : IInvoiceRenderer
         });
 
     private static string? Detail(InvoiceLine line, InvoiceDocument document) =>
-        line.Kind switch
-        {
-            ChargeLineKind.ReserveFund => document.Statement.ReserveFund is { } reserveFund ? ReserveBasisOf(reserveFund) : null,
-            ChargeLineKind.Water or ChargeLineKind.Sewage or ChargeLineKind.Gas when line.Quantity is { } quantity =>
-                line.PreviousReading is { } previous && line.CurrentReading is { } current
-                    ? $"Consumo de {InvoiceText.Cubic(quantity)} m³ (leitura de {InvoiceText.Cubic(previous)} a {InvoiceText.Cubic(current)})"
-                    : $"Consumo de {InvoiceText.Cubic(quantity)} m³",
-            _ => null,
-        };
+        line.Kind == ChargeLineKind.ReserveFund && document.Statement.ReserveFund is { } reserveFund ? ReserveBasisOf(reserveFund) : null;
 
     private static string? ReserveBasisOf(InvoiceReserveFund reserveFund) =>
         reserveFund is { Percent: { } percent, BaseTotal: { } baseTotal } ? InvoiceText.ReserveBasis(percent, baseTotal) : null;

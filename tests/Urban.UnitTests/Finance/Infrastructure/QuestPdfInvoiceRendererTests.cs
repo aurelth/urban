@@ -128,8 +128,10 @@ public partial class QuestPdfInvoiceRendererTests
         text.Should().Contain("R$ 672,34");
     }
 
+    // ---- Dados de medição ----
+
     [Fact]
-    public void Render_ShowsTheConsumptionAndTheReadingsOfWaterAndGas()
+    public void Render_ShowsAMeasurementTableWithTheReadingsTheConsumptionAndTheAmountOfEachService()
     {
         InvoiceLine[] lines =
         [
@@ -139,8 +141,87 @@ public partial class QuestPdfInvoiceRendererTests
 
         string text = Read(_renderer.Render(Document(lines))).Text;
 
-        text.Should().Contain("12,5 m³").And.Contain("100").And.Contain("112,5");
-        text.Should().Contain("2,25 m³").And.Contain("12,25");
+        text.Should().Contain("Dados de medição");
+        text.Should().Contain("Leitura anterior").And.Contain("Leitura atual").And.Contain("Consumo (m³)");
+        text.Should().Contain("Água 100 112,5 12,5 R$ 85,40");
+        text.Should().Contain("Gás 10 12,25 2,25 R$ 40,00");
+    }
+
+    [Fact]
+    public void Render_TheMeasurementTableComesRightAfterTheChargesAndBeforeHowToPay()
+    {
+        InvoiceLine[] lines = [new(ChargeLineKind.Water, "Água", 85.4m, 12.5m, 100m, 112.5m)];
+
+        string text = Read(_renderer.Render(Document(lines))).Text;
+
+        text.IndexOf("Total da fatura", StringComparison.Ordinal).Should().BeLessThan(text.IndexOf("Dados de medição", StringComparison.Ordinal));
+        text.IndexOf("Dados de medição", StringComparison.Ordinal).Should().BeLessThan(text.IndexOf("Como pagar", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Render_TheSewageShowsTheReadingOfTheWaterItIsBasedOn()
+    {
+        InvoiceLine[] lines =
+        [
+            new(ChargeLineKind.Water, "Água", 85.4m, 12.5m, 100m, 112.5m),
+            new(ChargeLineKind.Sewage, "Esgoto", 68.32m, 12.5m, 100m, 112.5m),
+        ];
+
+        string text = Read(_renderer.Render(Document(lines))).Text;
+
+        text.Should().Contain("Esgoto 100 112,5 12,5 R$ 68,32");
+    }
+
+    [Fact]
+    public void Render_AServiceWithoutReadings_ShowsTheConsumptionAndADashInsteadOfTheReadings()
+    {
+        InvoiceLine[] lines = [new(ChargeLineKind.Gas, "Gás", 40m, 2.25m, null, null)];
+
+        string text = Read(_renderer.Render(Document(lines))).Text;
+
+        text.Should().Contain("Gás — — 2,25 R$ 40,00");
+    }
+
+    [Fact]
+    public void Render_TheConsumptionLinesOfTheChargesNoLongerCarryTheReadingsAsGrayText()
+    {
+        InvoiceLine[] lines = [new(ChargeLineKind.Water, "Água", 85.4m, 12.5m, 100m, 112.5m)];
+
+        string text = Read(_renderer.Render(Document(lines))).Text;
+
+        text.Should().NotContain("Consumo de");
+        text.Should().NotContain("leitura de");
+    }
+
+    [Fact]
+    public void Render_WithoutAnyConsumption_LeavesTheMeasurementTableOut()
+    {
+        InvoiceLine[] lines =
+        [
+            new(ChargeLineKind.Expenses, "Despesas ordinárias", 600m, null, null, null),
+            new(ChargeLineKind.ReserveFund, "Fundo de reserva", 60m, null, null, null),
+            new(ChargeLineKind.Sewage, "Esgoto", 12.34m, null, null, null),
+        ];
+
+        string text = Read(_renderer.Render(Document(lines))).Text;
+
+        text.Should().NotContain("Dados de medição");
+        text.Should().NotContain("Leitura anterior");
+    }
+
+    [Fact]
+    public void Render_TheMeasurementTableDoesNotChangeTheTotal()
+    {
+        InvoiceLine[] lines =
+        [
+            new(ChargeLineKind.Expenses, "Despesas ordinárias", 600m, null, null, null),
+            new(ChargeLineKind.Water, "Água", 85.4m, 12.5m, 100m, 112.5m),
+        ];
+
+        string text = Read(_renderer.Render(Document(lines))).Text;
+
+        text.Should().Contain("Total da fatura R$ 685,40");
+        Regex.Matches(text, @"R\$ 85,40").Count.Should().Be(2, "uma vez na linha da fatura e outra na tabela de medição");
     }
 
     [Fact]
