@@ -89,6 +89,8 @@ export function entry(overrides: Partial<ExpenseEntry> = {}): ExpenseEntry {
     groupId: '0199bbbb-0001-7000-8000-000000000001',
     month: '2026-11',
     description: 'Portaria',
+    supplier: null,
+    note: null,
     amount: 4200,
     label: null,
     dueDate: '2026-11-10',

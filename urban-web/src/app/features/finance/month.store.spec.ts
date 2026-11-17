@@ -221,6 +221,88 @@ describe('MonthStore', () => {
     });
   });
 
+  describe('setNote', () => {
+    it('grava a observacao e le o mes de novo', async () => {
+      const { store, http } = setup();
+      const target = entry({ version: '30' });
+      const showing = store.show('2026-11');
+      http.expectOne(OPEN_2026_11).flush(monthEntries({ entries: [target] }));
+      await showing;
+
+      const saving = store.setNote(target, 'OS 4521');
+      const put = http.expectOne({ method: 'PUT', url: `/api/finance/entries/${target.id}/note` });
+      expect(put.request.body).toEqual({ version: '30', note: 'OS 4521' });
+      put.flush(entry({ note: 'OS 4521' }));
+      await flushPromises();
+      http
+        .expectOne('/api/finance/months/2026-11')
+        .flush(monthEntries({ entries: [entry({ note: 'OS 4521' })] }));
+
+      expect(await saving).toBeNull();
+      expect(store.data()?.entries[0].note).toBe('OS 4521');
+    });
+
+    it.each([
+      [409, 'concurrency.conflict'],
+      [404, 'expense_entry.not_found'],
+    ])(
+      'devolve o problema e le o mes de novo quando esta desatualizado (%i)',
+      async (status, code) => {
+        const { store, http } = setup();
+        const target = entry();
+        const showing = store.show('2026-11');
+        http.expectOne(OPEN_2026_11).flush(monthEntries({ entries: [target] }));
+        await showing;
+
+        const saving = store.setNote(target, 'OS 4521');
+        http
+          .expectOne({ method: 'PUT', url: `/api/finance/entries/${target.id}/note` })
+          .flush(...fail(status, code));
+        await flushPromises();
+        http.expectOne('/api/finance/months/2026-11').flush(monthEntries());
+
+        expect((await saving)?.code).toBe(code);
+        expect(store.data()?.entries).toEqual([]);
+      },
+    );
+
+    it.each([
+      [400, 'expense_entry.note.invalid'],
+      [409, 'closing.month_is_closed'],
+    ])('devolve o problema sem reler o mes quando o dado e recusado (%i)', async (status, code) => {
+      const { store, http } = setup();
+      const target = entry();
+      const showing = store.show('2026-11');
+      http.expectOne(OPEN_2026_11).flush(monthEntries({ entries: [target] }));
+      await showing;
+
+      const saving = store.setNote(target, 'a');
+      http
+        .expectOne({ method: 'PUT', url: `/api/finance/entries/${target.id}/note` })
+        .flush(...fail(status, code));
+
+      expect((await saving)?.code).toBe(code);
+      expect(store.busy()).toBe(false);
+    });
+
+    it('aceita remover a observacao enviando nulo', async () => {
+      const { store, http } = setup();
+      const target = entry({ note: 'OS 4521', version: '31' });
+      const showing = store.show('2026-11');
+      http.expectOne(OPEN_2026_11).flush(monthEntries({ entries: [target] }));
+      await showing;
+
+      const saving = store.setNote(target, null);
+      const put = http.expectOne({ method: 'PUT', url: `/api/finance/entries/${target.id}/note` });
+      expect(put.request.body).toEqual({ version: '31', note: null });
+      put.flush(entry());
+      await flushPromises();
+      http.expectOne('/api/finance/months/2026-11').flush(monthEntries({ entries: [entry()] }));
+
+      expect(await saving).toBeNull();
+    });
+  });
+
   describe('setStatus', () => {
     it('grava a situacao e le o mes de novo para refazer os totais e os vencidos', async () => {
       const { store, http } = setup();

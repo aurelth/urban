@@ -149,6 +149,16 @@ describe('FinanceApi', () => {
     expectCall('PUT', '/api/finance/entries/n1/amount', { version: '9', amount: 812.34 });
   });
 
+  it('sets the note of an entry', () => {
+    api.setEntryNote('n1', '9', 'OS 4521').subscribe();
+    expectCall('PUT', '/api/finance/entries/n1/note', { version: '9', note: 'OS 4521' });
+  });
+
+  it('clears the note of an entry with null', () => {
+    api.setEntryNote('n1', '9', null).subscribe();
+    expectCall('PUT', '/api/finance/entries/n1/note', { version: '9', note: null });
+  });
+
   it('sets the status of an entry', () => {
     api.setEntryStatus('n1', '9', 'paid').subscribe();
     expectCall('PUT', '/api/finance/entries/n1/status', { version: '9', status: 'paid' });

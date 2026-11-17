@@ -1,6 +1,7 @@
 import {
   CLOSED_MONTH,
   CLOSED_MONTH_WITH_CONSUMPTION,
+  DETAILED_ENTRY,
   EMPTY_MONTH,
   FILLED_MONTH,
   ENTRIES_PATH,
@@ -289,6 +290,114 @@ describe('Lançamentos do mês', () => {
       .should('deep.equal', { version: '22', amount: 830.1 });
     cy.get('urban-entry-amount-dialog').should('not.exist');
     cy.get('[data-testid="notice"]').should('contain.text', 'Valor informado');
+  });
+
+  describe('fornecedor e observacao', () => {
+    const DETAILED_MONTH = {
+      ...FILLED_MONTH,
+      entries: [FIXED_ENTRY, DETAILED_ENTRY],
+      total: 5700,
+    };
+
+    it('mostra o fornecedor e a observacao sob a despesa, so no lancamento que tem', () => {
+      stubMonth(DETAILED_MONTH);
+      cy.visit(ENTRIES_PATH);
+
+      cy.get('[data-testid="entry-row"]')
+        .eq(1)
+        .should('contain.text', 'Segurança')
+        .and('contain.text', 'Fornecedor: Segurança Ltda')
+        .and('contain.text', 'Observação: OS 4521');
+      cy.get('[data-testid="entry-row"]')
+        .first()
+        .find('[data-testid="entry-supplier"], [data-testid="entry-note"]')
+        .should('not.exist');
+    });
+
+    it('adiciona a observacao de um lancamento e avisa', () => {
+      stubMonth(DETAILED_MONTH);
+      cy.intercept('PUT', `/api/finance/entries/${FIXED_ENTRY.id}/note`, {
+        statusCode: 200,
+        body: { ...FIXED_ENTRY, note: 'Contrato renovado' },
+      }).as('setNote');
+      cy.visit(ENTRIES_PATH);
+
+      cy.get('button[aria-label="Adicionar observação a Portaria"]').click();
+      cy.get('urban-entry-note-dialog [formControlName="note"]')
+        .click('right')
+        .type('Contrato renovado');
+      cy.get('urban-entry-note-dialog').contains('button', 'Salvar observação').click();
+
+      cy.wait('@setNote')
+        .its('request.body')
+        .should('deep.equal', { version: '21', note: 'Contrato renovado' });
+      cy.get('urban-entry-note-dialog').should('not.exist');
+      cy.get('[data-testid="notice"]').should('contain.text', 'Observação salva');
+    });
+
+    it('remove a observacao apagando o texto', () => {
+      stubMonth(DETAILED_MONTH);
+      cy.intercept('PUT', `/api/finance/entries/${DETAILED_ENTRY.id}/note`, {
+        statusCode: 200,
+        body: { ...DETAILED_ENTRY, note: null },
+      }).as('setNote');
+      cy.visit(ENTRIES_PATH);
+
+      cy.get('button[aria-label="Editar observação de Segurança"]').click();
+      cy.get('urban-entry-note-dialog [formControlName="note"]')
+        .should('have.value', 'OS 4521')
+        .click('right')
+        .type('{selectall}{backspace}');
+      cy.get('urban-entry-note-dialog').contains('button', 'Salvar observação').click();
+
+      cy.wait('@setNote').its('request.body').should('deep.equal', { version: '24', note: null });
+      cy.get('[data-testid="notice"]').should('contain.text', 'Observação removida');
+    });
+
+    it('explica no dialogo quando a API recusa a observacao', () => {
+      stubMonth(DETAILED_MONTH);
+      stubFinanceRejected(
+        'PUT',
+        `/api/finance/entries/${FIXED_ENTRY.id}/note`,
+        400,
+        'expense_entry.note.invalid',
+        'setNote',
+      );
+      cy.visit(ENTRIES_PATH);
+
+      cy.get('button[aria-label="Adicionar observação a Portaria"]').click();
+      cy.get('urban-entry-note-dialog [formControlName="note"]').click('right').type('OS 4521');
+      cy.get('urban-entry-note-dialog').contains('button', 'Salvar observação').click();
+
+      cy.get('urban-entry-note-dialog [role="alert"]').should(
+        'contain.text',
+        'A observação pode ter até 200 caracteres, em uma linha só',
+      );
+    });
+
+    it('com o mes fechado mostra a observacao, mas nao deixa editar', () => {
+      stubMonth({ ...CLOSED_MONTH, entries: [FIXED_ENTRY, DETAILED_ENTRY], total: 5700 });
+      cy.visit(ENTRIES_PATH);
+
+      cy.get('[data-testid="entry-note"]').should('contain.text', 'Observação: OS 4521');
+      cy.get('button[aria-label="Editar observação de Segurança"]').should('be.disabled');
+      cy.get('button[aria-label="Adicionar observação a Portaria"]').should('be.disabled');
+    });
+
+    it('cabe numa tela de 375 px com fornecedor e observacao longos, sem rolagem horizontal', () => {
+      const long = 'Associação de Moradores e Prestadores de Serviços Gerais do Residencial Aurora';
+      cy.viewport(375, 667);
+      stubMonth({
+        ...DETAILED_MONTH,
+        entries: [FIXED_ENTRY, { ...DETAILED_ENTRY, supplier: long, note: `${long} ${long}` }],
+      });
+      cy.visit(ENTRIES_PATH);
+
+      cy.get('[data-testid="entry-note"]').should('be.visible');
+      cy.document().should((doc) => {
+        expect(doc.documentElement.scrollWidth).to.be.at.most(doc.documentElement.clientWidth);
+      });
+    });
   });
 
   it('navega entre os meses, gerando os lancamentos de cada um', () => {
