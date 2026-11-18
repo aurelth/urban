@@ -443,6 +443,23 @@ describe('Navegação', () => {
         cy.get('[data-testid="nav-expenses"]').should('exist');
         cy.get('[data-testid="nav-payment-instructions"]').should('exist');
       });
+
+      it('tem uma só barra de rolagem no menu recolhido em ícones, a da própria coluna', () => {
+        cy.visit('/dashboard');
+
+        cy.get('[data-testid="menu-toggle"]').click();
+
+        cy.get('[data-testid="nav-label"]').first().should('have.class', 'sr-only');
+        menuScroller().should(($menu) => {
+          expect(scrollbarOf($menu[0]), 'barra da coluna de ícones').to.be.greaterThan(0);
+        });
+        // Os nomes escondidos (`sr-only`) são posicionados; se a coluna não for a referência deles, a gaveta ganha uma segunda barra.
+        cy.get('mat-sidenav').should(($drawer) => {
+          expect($drawer[0].scrollHeight, 'área rolável da gaveta').to.be.at.most(
+            $drawer[0].clientHeight,
+          );
+        });
+      });
     });
 
     it('mantém a rolagem na própria página, sem prender o conteúdo numa área com barra', () => {
