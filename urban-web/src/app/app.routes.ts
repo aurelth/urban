@@ -155,6 +155,15 @@ export const routes: Routes = [
             loadComponent: () => import('./features/finance/month.page').then((m) => m.MonthPage),
           },
           {
+            path: 'financeiro/enviar-faturas',
+            title: 'Enviar faturas',
+            canActivate: [managerGuard],
+            loadComponent: () =>
+              import('./features/finance/invoice-deliveries.page').then(
+                (m) => m.InvoiceDeliveriesPage,
+              ),
+          },
+          {
             path: 'financeiro/pagamentos',
             title: 'Pagamentos',
             canActivate: [managerGuard],
