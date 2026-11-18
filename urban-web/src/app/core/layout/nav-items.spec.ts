@@ -18,7 +18,15 @@ describe('navGroupsFor', () => {
     expect(groups.map((group) => group.items.map((item) => item.id))).toEqual([
       ['dashboard'],
       ['units', 'residents', 'vehicles'],
-      ['expenses', 'tariffs', 'readings', 'entries', 'payments', 'payment-instructions'],
+      [
+        'expenses',
+        'tariffs',
+        'readings',
+        'entries',
+        'invoice-deliveries',
+        'payments',
+        'payment-instructions',
+      ],
     ]);
   });
 
@@ -34,6 +42,7 @@ describe('navGroupsFor', () => {
       ['Tarifas', '/financeiro/tarifas', 'price_change'],
       ['Leituras', '/financeiro/leituras', 'water_drop'],
       ['Lançamentos', '/financeiro/lancamentos', 'calendar_month'],
+      ['Enviar faturas', '/financeiro/enviar-faturas', 'forward_to_inbox'],
       ['Pagamentos', '/financeiro/pagamentos', 'payments'],
       ['Dados de pagamento', '/financeiro/dados-de-pagamento', 'account_balance'],
     ]);

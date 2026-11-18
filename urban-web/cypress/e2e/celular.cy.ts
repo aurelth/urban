@@ -10,6 +10,7 @@ import { NEW_MANAGER } from '../support/condominio';
 import { MANAGER, stubAnonymous, stubSignedIn } from '../support/session';
 import { READINGS_PATH, stubReadings } from '../support/leituras';
 import { INSTRUCTIONS_PATH, NO_INSTRUCTIONS, stubInstructions } from '../support/dados-pagamento';
+import { INVOICE_DELIVERIES_PATH, stubInvoiceDeliveries } from '../support/enviar-faturas';
 import { PAYMENTS_PATH, stubPayments } from '../support/pagamentos';
 import { stubDashboard } from '../support/painel';
 import { ADMIN, REQUESTS_PATH, stubRequests } from '../support/pedidos';
@@ -244,6 +245,25 @@ describe('Tela de celular (375 x 667)', () => {
       expect(left).to.be.at.least(0);
       expect(right).to.be.at.most(375);
     });
+    expectNoHorizontalScroll();
+  });
+
+  it('mostra o envio de faturas do mês sem rolagem horizontal, com os botões dentro da tela', () => {
+    stubSignedIn(MANAGER);
+    stubInvoiceDeliveries();
+    cy.visit(INVOICE_DELIVERIES_PATH);
+
+    cy.contains('h1', 'Enviar faturas').should('be.visible');
+    cy.get('[data-testid="delivery-row"]').should('have.length', 4);
+    cy.get('[data-testid="send-month"]').click();
+    cy.get('[data-testid="send-confirm"]').should('be.visible');
+    cy.get('[data-testid="delivery-row"] button, [data-testid="send-confirm"] button').each(
+      ($button) => {
+        const { left, right } = $button[0].getBoundingClientRect();
+        expect(left).to.be.at.least(0);
+        expect(right).to.be.at.most(375);
+      },
+    );
     expectNoHorizontalScroll();
   });
 
