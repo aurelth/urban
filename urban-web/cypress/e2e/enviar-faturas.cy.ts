@@ -11,11 +11,16 @@ import { RESIDENTS_PATH, stubResidents } from '../support/moradores';
 import { DESKTOP } from '../support/navegacao';
 import { stubSignedIn } from '../support/session';
 
-/** A entrega simulada leva duas leituras da lista, e a tela lê de 5 em 5 segundos. */
+/**
+ * A entrega simulada acontece na leitura seguinte ao envio, e a tela lê de 5 em 5 segundos. O prazo vai no `cy.get` (o
+ * `should` não aceita opções de tempo: o terceiro argumento dele é do chai e o prazo ficaria nos 4 segundos de sempre).
+ */
 const DELIVERY_WAIT = { timeout: 20_000 } as const;
 
-function rows(): Cypress.Chainable<JQuery<HTMLElement>> {
-  return cy.get('[data-testid="delivery-row"]');
+function rows(
+  options: Partial<Cypress.Loggable & Cypress.Timeoutable> = {},
+): Cypress.Chainable<JQuery<HTMLElement>> {
+  return cy.get('[data-testid="delivery-row"]', options);
 }
 
 describe('Enviar faturas', () => {
@@ -95,7 +100,7 @@ describe('Enviar faturas', () => {
       rows().first().should('contain.text', 'Na fila');
       cy.get('[data-testid="send-confirm"]').should('not.exist');
 
-      rows().first().should('contain.text', 'Enviada', DELIVERY_WAIT);
+      rows(DELIVERY_WAIT).first().should('contain.text', 'Enviada');
       rows().eq(1).should('contain.text', 'Enviada');
       cy.get('[data-testid="count-queued"]').should('contain.text', '0');
       cy.get('[data-testid="pending"]').should('contain.text', 'Nenhuma fatura a enviar');

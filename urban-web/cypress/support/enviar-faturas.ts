@@ -67,7 +67,7 @@ const DELIVERED_AT = '2026-11-15T15:00:00Z';
 
 /**
  * Os envios do mês (GET), com as contagens e a paginação que a API faz. Devolve a lista viva: o envio do mês e o reenvio
- * (`stubSendMonth`, `stubResend`) põem as faturas na fila, e cada leitura seguinte aproxima a entrega, como o Hangfire faria.
+ * (`stubSendMonth`, `stubResend`) põem as faturas na fila, e a leitura seguinte à entrada na fila já a mostra entregue, como o Hangfire faria.
  */
 export function stubInvoiceDeliveries(
   initial: readonly StubDelivery[] = [DELIVERY_101, DELIVERY_102, DELIVERY_201, DELIVERY_301],
@@ -115,7 +115,7 @@ export function stubInvoiceDeliveriesNotClosed(month = '2026-11'): void {
 
 /**
  * O envio das faturas do mês (POST): põe na fila as não enviadas e as que falharam (menos as sem e-mail) e responde com o
- * resumo. A entrega vem duas leituras depois, para a tela mostrar "Na fila" e então "Enviada" sozinha.
+ * resumo. A entrega vem na leitura seguinte, para a tela mostrar "Na fila" e então "Enviada" sozinha.
  */
 export function stubSendMonth(deliveries: StubDelivery[], month = '2026-11'): void {
   cy.intercept({ method: 'POST', pathname: invoiceDeliveriesApi(month) }, (request) => {
@@ -124,7 +124,7 @@ export function stubSendMonth(deliveries: StubDelivery[], month = '2026-11'): vo
       if (delivery.state === 'notSent' || delivery.state === 'failed') {
         delivery.state = 'queued';
         delivery.failureReason = null;
-        delivery.readsUntilSent = 2;
+        delivery.readsUntilSent = 1;
         summary.queued += 1;
       } else if (delivery.state === 'sent') {
         summary.alreadySent += 1;
@@ -145,7 +145,7 @@ export function stubResend(deliveries: StubDelivery[]): void {
     const delivery = deliveries.find((candidate) => candidate.chargeId === chargeId)!;
     delivery.state = 'queued';
     delivery.failureReason = null;
-    delivery.readsUntilSent = 2;
+    delivery.readsUntilSent = 1;
     request.reply({ statusCode: 202 });
   }).as('resend');
 }
