@@ -24,7 +24,7 @@
       [disableClose]="isDesktop()"
       (closedStart)="opened.set(false)"
     >
-      <div class="flex min-h-full flex-col">
+      <div class="relative flex min-h-full flex-col">
         <div
           class="flex h-16 items-center text-xl font-bold tracking-tight"
           [class]="rail() ? 'justify-center' : 'px-7'"
