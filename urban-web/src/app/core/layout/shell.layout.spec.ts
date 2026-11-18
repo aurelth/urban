@@ -20,6 +20,7 @@ const ROUTES: Routes = [
   'financeiro/tarifas',
   'financeiro/leituras',
   'financeiro/lancamentos',
+  'financeiro/enviar-faturas',
   'financeiro/pagamentos',
   'condominio/meus-dados',
   'admin/pedidos-de-cadastro',
@@ -252,6 +253,7 @@ describe('ShellLayout', () => {
         'nav-tariffs',
         'nav-readings',
         'nav-entries',
+        'nav-invoice-deliveries',
         'nav-payments',
         'nav-payment-instructions',
         'nav-contact',
@@ -265,6 +267,7 @@ describe('ShellLayout', () => {
         'Tarifas',
         'Leituras',
         'Lançamentos',
+        'Enviar faturas',
         'Pagamentos',
         'Dados de pagamento',
         'Contato',
@@ -278,6 +281,7 @@ describe('ShellLayout', () => {
         '/financeiro/tarifas',
         '/financeiro/leituras',
         '/financeiro/lancamentos',
+        '/financeiro/enviar-faturas',
         '/financeiro/pagamentos',
         '/financeiro/dados-de-pagamento',
         '/contato',
@@ -425,6 +429,7 @@ describe('ShellLayout', () => {
           'Tarifas',
           'Leituras',
           'Lançamentos',
+          'Enviar faturas',
           'Pagamentos',
           'Dados de pagamento',
           'Contato',
@@ -535,6 +540,7 @@ describe('ShellLayout', () => {
           'nav-tariffs',
           'nav-readings',
           'nav-entries',
+          'nav-invoice-deliveries',
           'nav-payments',
           'nav-payment-instructions',
           'nav-contact',
@@ -551,7 +557,7 @@ describe('ShellLayout', () => {
 
         await click(fixture, header(html, 'Financeiro'));
 
-        expect(links(html)).toHaveLength(11);
+        expect(links(html)).toHaveLength(12);
         expect(header(html, 'Financeiro').getAttribute('aria-expanded')).toBe('true');
         expect(iconOf(header(html, 'Financeiro'))).toBe('remove');
       });
@@ -599,7 +605,7 @@ describe('ShellLayout', () => {
 
         await click(fixture, byTestId(html, 'menu-toggle')!);
 
-        expect(links(html)).toHaveLength(11);
+        expect(links(html)).toHaveLength(12);
         expect(html.querySelectorAll('button[data-testid="nav-group"]')).toHaveLength(0);
 
         await click(fixture, byTestId(html, 'menu-toggle')!);

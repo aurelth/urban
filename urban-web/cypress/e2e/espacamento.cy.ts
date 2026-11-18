@@ -24,6 +24,11 @@ import {
   stubFinanceRejected,
   stubMonth,
 } from '../support/financeiro';
+import {
+  INVOICE_DELIVERIES_PATH,
+  stubInvoiceDeliveries,
+  stubResendRejected,
+} from '../support/enviar-faturas';
 import { stubInvoiceRejected } from '../support/fatura';
 import { READINGS_PATH, stubReadings } from '../support/leituras';
 import {
@@ -404,6 +409,30 @@ SCREENS.forEach(([where, width, height]) => {
       stubPayments();
       cy.visit(PAYMENTS_PATH);
       cy.get('[data-testid="charge-row"]').should('exist');
+
+      expectBreathingRoom();
+    });
+
+    it('não cola texto em container no envio de faturas do mês, nem com a confirmação aberta', () => {
+      stubSignedIn(MANAGER);
+      stubInvoiceDeliveries();
+      cy.visit(INVOICE_DELIVERIES_PATH);
+      cy.get('[data-testid="delivery-row"]').should('exist');
+      expectBreathingRoom();
+
+      cy.get('[data-testid="send-month"]').click();
+      cy.get('[data-testid="send-confirm"]').should('be.visible');
+      expectBreathingRoom();
+    });
+
+    it('não cola o aviso de erro do reenvio nas faturas do mês', () => {
+      stubSignedIn(MANAGER);
+      stubInvoiceDeliveries();
+      stubResendRejected(422, 'finance.invoice_delivery.no_recipient');
+      cy.visit(INVOICE_DELIVERIES_PATH);
+
+      cy.get('button[aria-label="Enviar fatura de Bloco A · 101"]').click();
+      cy.get('[data-testid="action-error"]').should('be.visible');
 
       expectBreathingRoom();
     });

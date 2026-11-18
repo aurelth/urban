@@ -20,6 +20,7 @@ const LINKS = [
   ['nav-tariffs', 'Tarifas', '/financeiro/tarifas'],
   ['nav-readings', 'Leituras', '/financeiro/leituras'],
   ['nav-entries', 'Lançamentos', '/financeiro/lancamentos'],
+  ['nav-invoice-deliveries', 'Enviar faturas', '/financeiro/enviar-faturas'],
   ['nav-payments', 'Pagamentos', '/financeiro/pagamentos'],
   ['nav-payment-instructions', 'Dados de pagamento', '/financeiro/dados-de-pagamento'],
 ] as const;

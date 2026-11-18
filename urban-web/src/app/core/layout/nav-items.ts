@@ -50,6 +50,12 @@ const MANAGER_GROUPS: readonly NavGroup[] = [
         icon: 'calendar_month',
         path: '/financeiro/lancamentos',
       },
+      {
+        id: 'invoice-deliveries',
+        label: 'Enviar faturas',
+        icon: 'forward_to_inbox',
+        path: '/financeiro/enviar-faturas',
+      },
       { id: 'payments', label: 'Pagamentos', icon: 'payments', path: '/financeiro/pagamentos' },
       {
         id: 'payment-instructions',
