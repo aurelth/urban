@@ -44,6 +44,8 @@ internal sealed class FinanceStoreKit(FinancePostgresFixture postgres)
 
     public FinancePayments Payments(Guid? tenant = null) => new(postgres.CreateContext(tenant ?? CondominiumId));
 
+    public FinanceOverdueCharges Overdue(Guid? tenant = null) => new(postgres.CreateContext(tenant ?? CondominiumId));
+
     public FinanceInvoiceDeliveries InvoiceDeliveries(Guid? tenant = null) => new(postgres.CreateContext(tenant ?? CondominiumId));
 
     public async Task<ExpenseGroup> StoreGroupAsync(string name = "Despesas ordinárias", Guid? condominiumId = null)
