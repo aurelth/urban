@@ -1,13 +1,16 @@
 import { Debtor } from '../../core/finance/delinquency.models';
+import { formatDate } from '../../core/finance/month';
 
 export function daysText(days: number): string {
-  throw new Error(`Não implementado: ${String(days)}`);
+  return `${String(days)} ${days === 1 ? 'dia' : 'dias'}`;
 }
 
 export function overdueChargesText(count: number): string {
-  throw new Error(`Não implementado: ${String(count)}`);
+  return `${String(count)} ${count === 1 ? 'cobrança' : 'cobranças'} em atraso`;
 }
 
+/** Quantas cobranças a unidade tem em atraso e desde quando: com mais de uma, conta a mais antiga. */
 export function debtorSummary(debtor: Debtor): string {
-  throw new Error(`Não implementado: ${debtor.unitId}`);
+  const oldest = debtor.overdueCharges === 1 ? 'venceu' : 'a mais antiga venceu';
+  return `${overdueChargesText(debtor.overdueCharges)} · ${oldest} em ${formatDate(debtor.oldestDueDate)}, há ${daysText(debtor.daysOverdue)}`;
 }

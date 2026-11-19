@@ -171,6 +171,13 @@ export const routes: Routes = [
               import('./features/finance/payments.page').then((m) => m.PaymentsPage),
           },
           {
+            path: 'financeiro/inadimplencia',
+            title: 'Inadimplência',
+            canActivate: [managerGuard],
+            loadComponent: () =>
+              import('./features/finance/delinquency.page').then((m) => m.DelinquencyPage),
+          },
+          {
             path: 'financeiro/dados-de-pagamento',
             title: 'Dados para pagamento',
             canActivate: [managerGuard],
