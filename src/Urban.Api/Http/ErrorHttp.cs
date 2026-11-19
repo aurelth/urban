@@ -234,6 +234,7 @@ public static class ErrorHttp
         [PaymentErrors.NoteInvalid.Code] = StatusCodes.Status400BadRequest,
         [PaymentErrors.ReasonInvalid.Code] = StatusCodes.Status400BadRequest,
         [PaymentErrors.PageInvalid.Code] = StatusCodes.Status400BadRequest,
+        [DelinquencyErrors.PageInvalid.Code] = StatusCodes.Status400BadRequest,
         [PaymentErrors.ExceedsBalance(0m).Code] = StatusCodes.Status422UnprocessableEntity,
         [PaymentErrors.AlreadyReversed.Code] = StatusCodes.Status409Conflict,
         [PaymentErrors.NotFound.Code] = StatusCodes.Status404NotFound,

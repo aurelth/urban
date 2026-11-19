@@ -54,6 +54,7 @@ app.MapResidentEndpoints();
 app.MapVehicleEndpoints();
 app.MapFinanceEndpoints();
 app.MapPaymentEndpoints();
+app.MapDelinquencyEndpoints();
 app.MapInvoiceEndpoints();
 app.MapInvoiceDeliveryEndpoints();
 app.MapPaymentInstructionsEndpoints();

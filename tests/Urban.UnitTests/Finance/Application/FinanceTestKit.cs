@@ -35,6 +35,8 @@ internal sealed class FinanceTestKit
 
     public FakeCharges Charges { get; }
 
+    public FakeOverdueCharges Overdue { get; }
+
     public FakeInvoiceParties Parties { get; } = new();
 
     public FakeInvoiceRenderer Renderer { get; } = new();
@@ -59,6 +61,7 @@ internal sealed class FinanceTestKit
     {
         Payments = new FakePayments(Closings);
         Charges = new FakeCharges(Closings);
+        Overdue = new FakeOverdueCharges(Closings, Payments);
         Deliveries = new FakeInvoiceDeliveries(Closings);
         Tenant = new FixedTenant(CondominiumId);
     }
