@@ -1,0 +1,235 @@
+<section class="mx-auto max-w-5xl p-6">
+  <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="mb-1 text-3xl font-semibold tracking-tight">Inadimplência</h1>
+      <p class="m-0 text-on-surface-variant">Unidades com cobrança vencida e ainda não paga</p>
+    </div>
+    <a mat-stroked-button data-testid="payments-link" routerLink="/financeiro/pagamentos">
+      <mat-icon svgIcon="payments" />
+      Registrar pagamentos
+    </a>
+  </div>
+
+  @switch (store.status()) {
+    @case ('loading') {
+      <p role="status" class="text-on-surface-variant" data-testid="loading">
+        Carregando a inadimplência
+      </p>
+    }
+    @case ('error') {
+      <div class="flex flex-col items-start gap-4" data-testid="load-error">
+        <p class="flex items-start gap-2 text-error">
+          <mat-icon svgIcon="error" aria-hidden="true" />
+          <span>Não foi possível carregar a inadimplência</span>
+        </p>
+        <button mat-stroked-button type="button" data-testid="retry" (click)="reload()">
+          Tentar de novo
+        </button>
+      </div>
+    }
+    @case ('ready') {
+      @if (store.data(); as data) {
+        @if (notice(); as message) {
+          <p role="status" class="mb-4 flex items-start gap-2" data-testid="notice">
+            <span class="inline-flex text-success"
+              ><mat-icon svgIcon="check_circle" aria-hidden="true"
+            /></span>
+            <span>{{ message }}</span>
+          </p>
+        }
+        @if (actionError(); as message) {
+          <p role="alert" class="mb-4 flex items-start gap-2" data-testid="action-error">
+            <span class="inline-flex text-error"
+              ><mat-icon svgIcon="error" aria-hidden="true"
+            /></span>
+            <span class="text-error">{{ message }}</span>
+          </p>
+        }
+
+        <dl class="mb-4 grid gap-4 sm:grid-cols-2">
+          <div
+            class="rounded-xl border border-outline-variant bg-surface-container p-4"
+            data-testid="stat-total"
+          >
+            <dt class="mb-1 text-sm text-on-surface-variant">Total em atraso</dt>
+            <dd class="m-0 text-2xl font-semibold">{{ money(data.totalOverdue) }}</dd>
+          </div>
+          <div
+            class="rounded-xl border border-outline-variant bg-surface-container p-4"
+            data-testid="stat-units"
+          >
+            <dt class="mb-1 text-sm text-on-surface-variant">Unidades devedoras</dt>
+            <dd class="m-0 text-2xl font-semibold">{{ data.units }}</dd>
+          </div>
+        </dl>
+        <p class="mb-6 text-sm text-on-surface-variant" data-testid="as-of">
+          Situação em {{ date(data.asOf) }}
+        </p>
+
+        @if (data.items.length === 0) {
+          <div
+            class="rounded-xl border border-outline-variant bg-surface-container p-6 text-center"
+            data-testid="empty"
+          >
+            <p class="mb-1 flex items-center justify-center gap-2 text-lg font-medium text-success">
+              <mat-icon svgIcon="check_circle" aria-hidden="true" />
+              <span>Nenhuma unidade em atraso</span>
+            </p>
+            <p class="m-0 text-on-surface-variant">
+              Todas as cobranças que já venceram foram pagas
+            </p>
+          </div>
+        } @else {
+          <ul class="m-0 flex list-none flex-col gap-4 p-0">
+            @for (item of data.items; track item.unitId) {
+              <li
+                class="rounded-xl border border-outline-variant bg-surface-container"
+                data-testid="debtor"
+              >
+                <div class="flex flex-wrap items-start justify-between gap-x-4 gap-y-2 p-4">
+                  <div>
+                    <h2 class="m-0 text-lg font-medium" data-testid="unit">
+                      {{ unitLabel(item) }}
+                    </h2>
+                    <p
+                      class="m-0 mt-1 text-sm text-on-surface-variant"
+                      data-testid="debtor-summary"
+                    >
+                      {{ summary(item) }}
+                    </p>
+                  </div>
+                  <div class="sm:text-right">
+                    <p class="m-0 text-sm text-on-surface-variant">Deve</p>
+                    <p class="m-0 text-xl font-semibold" data-testid="debtor-balance">
+                      {{ money(item.balance) }}
+                    </p>
+                  </div>
+                </div>
+
+                <div class="overflow-x-auto border-t border-outline-variant">
+                  <table class="w-full border-collapse text-left">
+                    <caption class="sr-only">
+                      Cobranças em atraso de
+                      {{
+                        unitLabel(item)
+                      }}
+                    </caption>
+                    <thead>
+                      <tr class="border-b border-outline-variant text-sm text-on-surface-variant">
+                        <th scope="col" class="p-3 font-medium">Competência</th>
+                        <th scope="col" class="p-3 font-medium max-sm:hidden">Vencimento</th>
+                        <th scope="col" class="p-3 font-medium max-sm:hidden">Valor</th>
+                        <th scope="col" class="p-3 font-medium max-sm:hidden">Pago</th>
+                        <th scope="col" class="p-3 font-medium">Saldo</th>
+                        <th scope="col" class="p-3 font-medium max-sm:hidden">Atraso</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (charge of item.charges; track charge.chargeId) {
+                        <tr
+                          class="border-b border-outline-variant align-top last:border-b-0"
+                          data-testid="charge-row"
+                        >
+                          <td class="p-3">
+                            <span class="block font-medium" data-testid="month">{{
+                              title(charge.month)
+                            }}</span>
+                            <span class="mt-1 block text-sm text-on-surface-variant sm:hidden">
+                              Venceu em {{ date(charge.dueDate) }} · {{ money(charge.amount) }} ·
+                              pago {{ money(charge.paid) }}
+                            </span>
+                            <span
+                              class="mt-1 inline-flex items-center gap-1 text-sm font-medium text-error sm:hidden"
+                            >
+                              <mat-icon svgIcon="error" aria-hidden="true" />
+                              {{ days(charge.daysOverdue) }} de atraso
+                            </span>
+                            <span class="mt-3 flex">
+                              <button
+                                mat-stroked-button
+                                type="button"
+                                data-testid="resend-invoice"
+                                [attr.aria-label]="
+                                  'Reenviar fatura de ' +
+                                  title(charge.month) +
+                                  ' de ' +
+                                  unitLabel(item)
+                                "
+                                [attr.aria-busy]="sending() === charge.chargeId"
+                                [disabled]="store.busy()"
+                                (click)="resend(item, charge)"
+                              >
+                                @if (sending() === charge.chargeId) {
+                                  Enviando
+                                } @else {
+                                  Reenviar fatura
+                                }
+                              </button>
+                            </span>
+                          </td>
+                          <td class="p-3 max-sm:hidden" data-testid="due-date">
+                            {{ date(charge.dueDate) }}
+                          </td>
+                          <td class="p-3 max-sm:hidden" data-testid="amount">
+                            {{ money(charge.amount) }}
+                          </td>
+                          <td class="p-3 max-sm:hidden" data-testid="paid">
+                            {{ money(charge.paid) }}
+                          </td>
+                          <td class="p-3 font-medium" data-testid="charge-balance">
+                            {{ money(charge.balance) }}
+                          </td>
+                          <td class="p-3 max-sm:hidden">
+                            <span
+                              class="inline-flex items-center gap-1 font-medium text-error"
+                              data-testid="days"
+                            >
+                              <mat-icon svgIcon="error" aria-hidden="true" />
+                              {{ days(charge.daysOverdue) }}
+                            </span>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+              </li>
+            }
+          </ul>
+
+          @if (store.pageCount() > 1) {
+            <nav
+              class="mt-4 flex items-center justify-between gap-4"
+              aria-label="Paginação"
+              data-testid="pagination"
+            >
+              <button
+                mat-stroked-button
+                type="button"
+                data-testid="previous"
+                [disabled]="store.busy() || store.query().page <= 1"
+                (click)="goTo(store.query().page - 1)"
+              >
+                <mat-icon svgIcon="chevron_left" />
+                Anterior
+              </button>
+              <span aria-live="polite" data-testid="page-status"
+                >Página {{ store.query().page }} de {{ store.pageCount() }}</span
+              >
+              <button
+                mat-stroked-button
+                type="button"
+                data-testid="next"
+                [disabled]="store.busy() || store.query().page >= store.pageCount()"
+                (click)="goTo(store.query().page + 1)"
+              >
+                Próxima
+                <mat-icon svgIcon="chevron_right" />
+              </button>
+            </nav>
+          }
+        }
+      }
+    }
+  }
+</section>

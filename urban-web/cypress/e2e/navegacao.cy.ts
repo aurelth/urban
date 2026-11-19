@@ -22,6 +22,7 @@ const LINKS = [
   ['nav-entries', 'Lançamentos', '/financeiro/lancamentos'],
   ['nav-invoice-deliveries', 'Enviar faturas', '/financeiro/enviar-faturas'],
   ['nav-payments', 'Pagamentos', '/financeiro/pagamentos'],
+  ['nav-delinquency', 'Inadimplência', '/financeiro/inadimplencia'],
   ['nav-payment-instructions', 'Dados de pagamento', '/financeiro/dados-de-pagamento'],
 ] as const;
 

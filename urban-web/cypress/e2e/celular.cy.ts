@@ -11,6 +11,7 @@ import { MANAGER, stubAnonymous, stubSignedIn } from '../support/session';
 import { READINGS_PATH, stubReadings } from '../support/leituras';
 import { INSTRUCTIONS_PATH, NO_INSTRUCTIONS, stubInstructions } from '../support/dados-pagamento';
 import { INVOICE_DELIVERIES_PATH, stubInvoiceDeliveries } from '../support/enviar-faturas';
+import { DELINQUENCY_PATH, stubDelinquency } from '../support/inadimplencia';
 import { PAYMENTS_PATH, stubPayments } from '../support/pagamentos';
 import { stubDashboard } from '../support/painel';
 import { ADMIN, REQUESTS_PATH, stubRequests } from '../support/pedidos';
@@ -241,6 +242,22 @@ describe('Tela de celular (375 x 667)', () => {
     cy.contains('h1', 'Pagamentos').should('be.visible');
     cy.get('[data-testid="charge-row"]').should('have.length', 3);
     cy.get('[data-testid="charge-row"] button').each(($button) => {
+      const { left, right } = $button[0].getBoundingClientRect();
+      expect(left).to.be.at.least(0);
+      expect(right).to.be.at.most(375);
+    });
+    expectNoHorizontalScroll();
+  });
+
+  it('mostra a inadimplência sem rolagem horizontal, com os botões dentro da tela', () => {
+    stubSignedIn(MANAGER);
+    stubDelinquency();
+    cy.visit(DELINQUENCY_PATH);
+
+    cy.contains('h1', 'Inadimplência').should('be.visible');
+    cy.get('[data-testid="debtor"]').should('have.length', 3);
+    cy.get('[data-testid="debtor"] button').should('have.length', 4);
+    cy.get('[data-testid="debtor"] button').each(($button) => {
       const { left, right } = $button[0].getBoundingClientRect();
       expect(left).to.be.at.least(0);
       expect(right).to.be.at.most(375);

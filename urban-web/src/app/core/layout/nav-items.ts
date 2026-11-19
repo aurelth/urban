@@ -58,6 +58,12 @@ const MANAGER_GROUPS: readonly NavGroup[] = [
       },
       { id: 'payments', label: 'Pagamentos', icon: 'payments', path: '/financeiro/pagamentos' },
       {
+        id: 'delinquency',
+        label: 'Inadimplência',
+        icon: 'money_off',
+        path: '/financeiro/inadimplencia',
+      },
+      {
         id: 'payment-instructions',
         label: 'Dados de pagamento',
         icon: 'account_balance',

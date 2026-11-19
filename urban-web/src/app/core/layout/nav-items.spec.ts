@@ -25,6 +25,7 @@ describe('navGroupsFor', () => {
         'entries',
         'invoice-deliveries',
         'payments',
+        'delinquency',
         'payment-instructions',
       ],
     ]);
@@ -44,6 +45,7 @@ describe('navGroupsFor', () => {
       ['Lançamentos', '/financeiro/lancamentos', 'calendar_month'],
       ['Enviar faturas', '/financeiro/enviar-faturas', 'forward_to_inbox'],
       ['Pagamentos', '/financeiro/pagamentos', 'payments'],
+      ['Inadimplência', '/financeiro/inadimplencia', 'money_off'],
       ['Dados de pagamento', '/financeiro/dados-de-pagamento', 'account_balance'],
     ]);
   });

@@ -30,6 +30,7 @@ import {
   stubResendRejected,
 } from '../support/enviar-faturas';
 import { stubInvoiceRejected } from '../support/fatura';
+import { DELINQUENCY_PATH, stubDelinquency } from '../support/inadimplencia';
 import { READINGS_PATH, stubReadings } from '../support/leituras';
 import {
   PAYMENTS_PATH,
@@ -401,6 +402,19 @@ SCREENS.forEach(([where, width, height]) => {
       enter('agency', 'abc');
       cy.contains('button', 'Salvar alterações').click();
       cy.get('mat-error').should('exist');
+      expectBreathingRoom();
+    });
+
+    it('não cola texto em container na inadimplência, nem com o aviso de erro do reenvio', () => {
+      stubSignedIn(MANAGER);
+      stubDelinquency();
+      stubResendRejected(422, 'finance.invoice_delivery.no_recipient');
+      cy.visit(DELINQUENCY_PATH);
+      cy.get('[data-testid="debtor"]').should('exist');
+      expectBreathingRoom();
+
+      cy.get('button[aria-label="Reenviar fatura de Outubro de 2026 de 201"]').click();
+      cy.get('[data-testid="action-error"]').should('be.visible');
       expectBreathingRoom();
     });
 
