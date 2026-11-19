@@ -35,6 +35,7 @@ public static class FinanceInfrastructureExtensions
         services.AddScoped<IConsumptionTariffs, FinanceConsumptionTariffs>();
         services.AddScoped<IMeterReadings, FinanceMeterReadings>();
         services.AddScoped<IPayments, FinancePayments>();
+        services.AddScoped<IOverdueCharges, FinanceOverdueCharges>();
         services.AddScoped<ICharges, FinanceCharges>();
         services.AddSingleton<IInvoiceRenderer, QuestPdfInvoiceRenderer>();
         services.AddScoped<IInvoiceDeliveries, FinanceInvoiceDeliveries>();
