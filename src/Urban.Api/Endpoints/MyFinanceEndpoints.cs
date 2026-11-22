@@ -34,6 +34,17 @@ public static class MyFinanceEndpoints
             .Produces<MyMonthResponse>()
             .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound);
 
+        me.MapGet("/access", GetAccessAsync)
+            .RequireRateLimiting(RateLimitPolicies.Finance)
+            .WithName("GetMyAccess")
+            .WithSummary("Diz como a conta mora no condomínio hoje")
+            .WithDescription(
+                "Responde só access: unit (mora hoje como proprietária ou inquilina de ao menos uma unidade), dependent (só como dependente) ou none (sem unidade; é o caso do síndico que não mora no condomínio). "
+                + "É a mesma regra do campo access do mês financeiro, sem ler mês nem cobrança: serve ao menu, que só mostra \"Minha fatura\" ao síndico que mora no condomínio. "
+                + "A conta vem do token, nunca da rota, e a resposta nunca é guardada em cache. " + RateLimitText)
+            .Produces<MyAccessResponse>()
+            .WithErrors(StatusCodes.Status404NotFound);
+
         me.MapGet("/charges/{chargeId:guid}/invoice", DownloadInvoiceAsync)
             .RequireRateLimiting(RateLimitPolicies.Invoice)
             .WithName("DownloadMyInvoice")
@@ -56,6 +67,18 @@ public static class MyFinanceEndpoints
         }
 
         Result<MyMonthView> result = await sender.Send(new GetMyMonthQuery(userId, month), cancellationToken);
+
+        return ApiResults.Respond(result, response, MyFinanceMapper.ToResponse);
+    }
+
+    private static async Task<IResult> GetAccessAsync(ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken cancellationToken)
+    {
+        if (!MemberAccess.TryRead(user, out Guid userId, out IResult? refusal))
+        {
+            return refusal;
+        }
+
+        Result<MyMonthAccess> result = await sender.Send(new GetMyAccessQuery(userId), cancellationToken);
 
         return ApiResults.Respond(result, response, MyFinanceMapper.ToResponse);
     }

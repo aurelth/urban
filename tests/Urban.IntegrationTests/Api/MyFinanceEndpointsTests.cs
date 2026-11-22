@@ -4,6 +4,11 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Urban.Condominium.Domain.Occupancies;
+using Urban.Condominium.Domain.People;
+using Urban.Condominium.Infrastructure.Persistence;
 using Urban.Finance.Infrastructure;
 using Urban.Identity.Domain.Access;
 using Urban.Identity.Domain.Users;
@@ -20,6 +25,7 @@ public sealed class MyFinanceEndpointsTests(ApiFixture fixture) : IDisposable
 {
     private const string Finance = "/api/finance/me";
     private const string Residents = "/api/residents";
+    private const string AccessRoute = Finance + "/access";
 
     private static readonly CancellationToken Ct = CancellationToken.None;
 
@@ -70,6 +76,89 @@ public sealed class MyFinanceEndpointsTests(ApiFixture fixture) : IDisposable
         HttpResponseMessage response = await _client.SendJsonAsync(HttpMethod.Get, MonthRoute(month), manager.AccessToken);
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    // ---- Como a conta mora (o que o menu do síndico pergunta) ----
+
+    [Fact]
+    public async Task The_access_route_requires_a_token()
+    {
+        HttpResponseMessage response = await _client.SendJsonAsync(HttpMethod.Get, AccessRoute, null);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task The_access_route_refuses_the_super_admin()
+    {
+        await MigrateAsync();
+        User user = await fixture.Postgres.SeedUserWithPasswordAsync(ManagerSetup.Password, role: UserRole.SuperAdmin);
+        string token = await _client.SignInAsync(user);
+
+        HttpResponseMessage response = await _client.SendJsonAsync(HttpMethod.Get, AccessRoute, token);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await response.CodeAsync()).Should().Be("identity.user.not_condominium_member");
+    }
+
+    [Fact]
+    public async Task A_resident_who_lives_in_a_unit_has_unit_access_and_the_answer_is_never_cached()
+    {
+        ManagerSession manager = await RegisterAsync();
+        Guid unitId = await CreateUnitAsync(manager, "101");
+        string owner = await ResidentTokenAsync(manager, unitId);
+
+        HttpResponseMessage response = await _client.SendJsonAsync(HttpMethod.Get, AccessRoute, owner);
+
+        (await ReadAsync(response)).GetProperty("access").GetString().Should().Be("unit");
+        response.Headers.CacheControl!.NoStore.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task A_dependent_only_has_dependent_access()
+    {
+        ManagerSession manager = await RegisterAsync();
+        Guid unitId = await CreateUnitAsync(manager, "101");
+        string dependent = await ResidentTokenAsync(manager, unitId, "dependent");
+
+        JsonElement body = await ReadAsync(await _client.SendJsonAsync(HttpMethod.Get, AccessRoute, dependent));
+
+        body.GetProperty("access").GetString().Should().Be("dependent");
+    }
+
+    [Fact]
+    public async Task A_manager_who_does_not_live_in_the_building_has_no_access()
+    {
+        ManagerSession manager = await RegisterAsync();
+        await CreateUnitAsync(manager, "101");
+
+        JsonElement body = await ReadAsync(await _client.SendJsonAsync(HttpMethod.Get, AccessRoute, manager.AccessToken));
+
+        body.GetProperty("access").GetString().Should().Be("none");
+    }
+
+    [Fact]
+    public async Task A_manager_who_lives_in_a_unit_has_unit_access()
+    {
+        ManagerSession manager = await RegisterAsync();
+        Guid unitId = await CreateUnitAsync(manager, "101");
+        await MakeManagerLiveInAsync(manager, unitId, endDate: null);
+
+        JsonElement body = await ReadAsync(await _client.SendJsonAsync(HttpMethod.Get, AccessRoute, manager.AccessToken));
+
+        body.GetProperty("access").GetString().Should().Be("unit");
+    }
+
+    [Fact]
+    public async Task A_manager_who_already_moved_out_has_no_access()
+    {
+        ManagerSession manager = await RegisterAsync();
+        Guid unitId = await CreateUnitAsync(manager, "101");
+        await MakeManagerLiveInAsync(manager, unitId, endDate: new DateOnly(2024, 6, 30));
+
+        JsonElement body = await ReadAsync(await _client.SendJsonAsync(HttpMethod.Get, AccessRoute, manager.AccessToken));
+
+        body.GetProperty("access").GetString().Should().Be("none");
     }
 
     // ---- A cobrança e as despesas do mês ----
@@ -352,6 +441,24 @@ public sealed class MyFinanceEndpointsTests(ApiFixture fixture) : IDisposable
         confirmed.StatusCode.Should().Be(HttpStatusCode.NoContent, await confirmed.Content.ReadAsStringAsync(Ct));
 
         return await (await _client.LoginAsync(email, ManagerSetup.Password)).AccessTokenAsync();
+    }
+
+    /// <summary>A API ainda não deixa o síndico morar numa unidade (a unidade dele no cadastro é uma fatia futura), então o vínculo é gravado direto no banco.</summary>
+    private async Task MakeManagerLiveInAsync(ManagerSession manager, Guid unitId, DateOnly? endDate)
+    {
+        await using AsyncServiceScope scope = fixture.Factory.Services.CreateAsyncScope();
+        CondominiumDbContext db = scope.ServiceProvider.GetRequiredService<CondominiumDbContext>();
+        Person person = await db.People.IgnoreQueryFilters().SingleAsync(p => p.UserId == manager.User.Id, Ct);
+        DateOnly start = new(2024, 3, 1);
+        Occupancy occupancy = Occupancy.Start(manager.CondominiumId, person.Id, unitId, OccupancyKind.Owner, start, new DateOnly(2026, 11, 7), DateTimeOffset.UtcNow).Value;
+
+        if (endDate is { } end)
+        {
+            occupancy.MoveOut(end, new DateOnly(2026, 11, 7)).IsSuccess.Should().BeTrue();
+        }
+
+        db.Occupancies.Add(occupancy);
+        await db.SaveChangesAsync(Ct);
     }
 
     private async Task<Guid> ChargeOfAsync(ManagerSession manager, string month, Guid unitId)

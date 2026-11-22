@@ -25,3 +25,6 @@ public sealed record MyExpensesResponse(decimal Total, IReadOnlyList<MyExpenseGr
 /// <param name="Units">As unidades da conta, cada uma com a sua cobrança; vazio para dependent e none.</param>
 /// <param name="Expenses">Só de mês fechado e só para quem mora em unidade; nulo nos demais casos.</param>
 public sealed record MyMonthResponse(string Month, string AsOf, string Access, bool Closed, IReadOnlyList<MyUnitResponse> Units, MyExpensesResponse? Expenses);
+
+/// <param name="Access">unit (mora numa ou mais unidades), dependent (só como dependente, sem cobrança própria) ou none (sem vínculo com unidade).</param>
+public sealed record MyAccessResponse(string Access);

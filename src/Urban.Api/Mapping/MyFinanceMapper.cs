@@ -19,6 +19,8 @@ public static class MyFinanceMapper
             ? null
             : new MyExpensesResponse(view.Expenses.Total, [.. view.Expenses.Groups.Select(group => new MyExpenseGroupResponse(group.GroupId, group.GroupName, group.Total))]));
 
+    public static MyAccessResponse ToResponse(MyMonthAccess access) => new(AccessName(access));
+
     private static MyChargeResponse ToResponse(MyChargeView charge) => new(
         charge.ChargeId,
         Format(charge.DueDate),
