@@ -19,6 +19,13 @@ public sealed class ManagerProfile(IUserAccounts accounts) : IManagerProfile
         return user?.DisplayName?.Value;
     }
 
+    public Task<string?> GetEmailAsync(Guid userId, Guid condominiumId, CancellationToken cancellationToken)
+    {
+        _ = (userId, condominiumId, cancellationToken, accounts);
+
+        return Task.FromResult<string?>(null);
+    }
+
     public async Task<Result<string>> UpdateDisplayNameAsync(Guid userId, string? displayName, CancellationToken cancellationToken)
     {
         Result<DisplayName> name = DisplayName.Create(displayName);

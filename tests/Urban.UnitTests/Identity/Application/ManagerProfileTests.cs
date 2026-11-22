@@ -41,6 +41,43 @@ public class ManagerProfileTests
     }
 
     [Fact]
+    public async Task GetEmail_ReturnsTheLoginEmailOfTheManagerOfThatCondominium()
+    {
+        Guid condominiumId = Guid.CreateVersion7();
+        User manager = Given(UserBuilder.InStatus(AccountStatus.Active, UserRole.Manager, "sindica@example.com", condominiumId));
+
+        string? email = await _profile.GetEmailAsync(manager.Id, condominiumId, default);
+
+        email.Should().Be("sindica@example.com");
+    }
+
+    [Fact]
+    public async Task GetEmail_ForAnUnknownUser_ReturnsNull()
+    {
+        Guid userId = Guid.CreateVersion7();
+        _accounts.Setup(a => a.FindByIdAsync(userId, It.IsAny<CancellationToken>())).ReturnsAsync((User?)null);
+
+        (await _profile.GetEmailAsync(userId, Guid.CreateVersion7(), default)).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetEmail_ForAManagerOfAnotherCondominium_ReturnsNull()
+    {
+        User manager = Given(UserBuilder.InStatus(AccountStatus.Active, UserRole.Manager, "sindica@example.com", Guid.CreateVersion7()));
+
+        (await _profile.GetEmailAsync(manager.Id, Guid.CreateVersion7(), default)).Should().BeNull();
+    }
+
+    [Fact]
+    public async Task GetEmail_ForAnAccountThatIsNotAManager_ReturnsNull()
+    {
+        Guid condominiumId = Guid.CreateVersion7();
+        User resident = Given(UserBuilder.InStatus(AccountStatus.Active, UserRole.Resident, "morador@example.com", condominiumId));
+
+        (await _profile.GetEmailAsync(resident.Id, condominiumId, default)).Should().BeNull();
+    }
+
+    [Fact]
     public async Task UpdateDisplayName_ChangesTheNameAndSavesTheUser_ReturningTheNormalizedName()
     {
         User manager = Given(UserBuilder.EnrolledManager("Ana"));

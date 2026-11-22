@@ -5,6 +5,7 @@ using Urban.Condominium.Domain.People;
 using Urban.Condominium.Domain.Units;
 using Urban.Condominium.Infrastructure.Persistence;
 using Urban.Condominium.Application.Abstractions;
+using Urban.SharedKernel;
 using Urban.SharedKernel.Contracts;
 using Urban.TestSupport.Condominium;
 using CondominiumEntity = Urban.Condominium.Domain.Condominiums.Condominium;
@@ -129,6 +130,80 @@ public sealed class InvoicePartiesTests(CondominiumPostgresFixture postgres)
     }
 
     [Fact]
+    public async Task A_manager_who_lives_in_a_unit_is_its_responsible_at_the_email_of_his_account()
+    {
+        CondominiumEntity condominium = await SeedCondominiumAsync();
+        CondominiumUnit unit = await SeedUnitAsync(condominium);
+        await LiveInAsync(condominium, unit);
+        FakeManagerProfile managers = new();
+        managers.Has(condominium.CreatedBy, condominium.Id, "sindica@exemplo.com");
+
+        IReadOnlyDictionary<Guid, InvoiceResponsible> responsibles = await GetResponsiblesAsync(condominium.Id, [unit.Id], managers);
+
+        responsibles[unit.Id].Should().Match<InvoiceResponsible>(found => found.Name == "Ana Maria Silva" && found.Email == "sindica@exemplo.com");
+    }
+
+    [Fact]
+    public async Task A_manager_living_in_several_units_has_his_account_asked_once()
+    {
+        CondominiumEntity condominium = await SeedCondominiumAsync();
+        CondominiumUnit first = await SeedUnitAsync(condominium);
+        CondominiumUnit second = await SeedUnitAsync(condominium);
+        await LiveInAsync(condominium, first);
+        await LiveInAsync(condominium, second);
+        FakeManagerProfile managers = new();
+        managers.Has(condominium.CreatedBy, condominium.Id, "sindica@exemplo.com");
+
+        IReadOnlyDictionary<Guid, InvoiceResponsible> responsibles = await GetResponsiblesAsync(condominium.Id, [first.Id, second.Id], managers);
+
+        responsibles.Values.Should().OnlyContain(found => found.Email == "sindica@exemplo.com");
+        managers.Asked.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task A_manager_whose_account_gives_no_email_stays_a_responsible_without_one()
+    {
+        CondominiumEntity condominium = await SeedCondominiumAsync();
+        CondominiumUnit unit = await SeedUnitAsync(condominium);
+        await LiveInAsync(condominium, unit);
+        FakeManagerProfile managers = new();
+
+        IReadOnlyDictionary<Guid, InvoiceResponsible> responsibles = await GetResponsiblesAsync(condominium.Id, [unit.Id], managers);
+
+        responsibles[unit.Id].Should().Match<InvoiceResponsible>(found => found.Name == "Ana Maria Silva" && found.Email == null);
+        managers.Asked.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task A_responsible_with_an_email_on_the_record_never_has_the_account_asked()
+    {
+        CondominiumEntity condominium = await SeedCondominiumAsync();
+        CondominiumUnit unit = await SeedUnitAsync(condominium);
+        Person owner = await AddAsync(condominium, unit, "Carlos Proprietario", OccupancyKind.Owner);
+        FakeManagerProfile managers = new();
+
+        IReadOnlyDictionary<Guid, InvoiceResponsible> responsibles = await GetResponsiblesAsync(condominium.Id, [unit.Id], managers);
+
+        responsibles[unit.Id].Email.Should().Be(owner.Email!.Value);
+        managers.Asked.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task A_responsible_without_an_email_and_without_an_account_has_no_account_to_ask()
+    {
+        CondominiumEntity condominium = await SeedCondominiumAsync();
+        CondominiumUnit unit = await SeedUnitAsync(condominium);
+        Person person = ResidentBuilders.Resident(condominium.Id, "Sem Email", email: null);
+        await AddAsync(condominium, person, ResidentBuilders.Occupancy(person, unit.Id, OccupancyKind.Owner));
+        FakeManagerProfile managers = new();
+
+        IReadOnlyDictionary<Guid, InvoiceResponsible> responsibles = await GetResponsiblesAsync(condominium.Id, [unit.Id], managers);
+
+        responsibles[unit.Id].Email.Should().BeNull();
+        managers.Asked.Should().Be(0);
+    }
+
+    [Fact]
     public async Task A_unit_without_anyone_and_units_of_another_condominium_are_left_out()
     {
         CondominiumEntity ours = await SeedCondominiumAsync();
@@ -200,13 +275,43 @@ public sealed class InvoicePartiesTests(CondominiumPostgresFixture postgres)
     {
         await using CondominiumDbContext db = postgres.CreateContext(tenant);
 
-        return await new InvoiceParties(db, new FixedTenant(tenant)).GetCondominiumAsync(Ct);
+        return await new InvoiceParties(db, new FixedTenant(tenant), new FakeManagerProfile()).GetCondominiumAsync(Ct);
     }
 
-    private async Task<IReadOnlyDictionary<Guid, InvoiceResponsible>> GetResponsiblesAsync(Guid tenant, IReadOnlyCollection<Guid> unitIds)
+    private async Task<IReadOnlyDictionary<Guid, InvoiceResponsible>> GetResponsiblesAsync(Guid tenant, IReadOnlyCollection<Guid> unitIds, FakeManagerProfile? managers = null)
     {
         await using CondominiumDbContext db = postgres.CreateContext(tenant);
 
-        return await new InvoiceParties(db, new FixedTenant(tenant)).GetResponsiblesAsync(unitIds, Today, Ct);
+        return await new InvoiceParties(db, new FixedTenant(tenant), managers ?? new FakeManagerProfile()).GetResponsiblesAsync(unitIds, Today, Ct);
+    }
+
+    /// <summary>O síndico do condomínio passa a morar na unidade: a pessoa dele (a que tem a conta) ganha o vínculo de proprietário.</summary>
+    private async Task LiveInAsync(CondominiumEntity condominium, CondominiumUnit unit)
+    {
+        await using CondominiumDbContext db = postgres.CreateContext(condominium.Id);
+        Person manager = await db.People.AsNoTracking().SingleAsync(person => person.UserId == condominium.CreatedBy, Ct);
+        ChangeLogEntry entry = new(condominium.Id, Guid.CreateVersion7(), ChangeKind.Resident, ["occupancy"], ResidentBuilders.Now, manager.Id);
+        (await new CondominiumResidents(db).AddOccupancyAsync(ResidentBuilders.Occupancy(manager, unit.Id, OccupancyKind.Owner), entry, Ct)).IsSuccess.Should().BeTrue();
+    }
+
+    /// <summary>A conta do síndico, como o Identity a entrega: só responde por (conta, condomínio) cadastrados, e conta quantas vezes foi perguntada.</summary>
+    private sealed class FakeManagerProfile : IManagerProfile
+    {
+        private readonly Dictionary<(Guid UserId, Guid CondominiumId), string> _emails = [];
+
+        public int Asked { get; private set; }
+
+        public void Has(Guid userId, Guid condominiumId, string email) => _emails[(userId, condominiumId)] = email;
+
+        public Task<string?> GetEmailAsync(Guid userId, Guid condominiumId, CancellationToken cancellationToken)
+        {
+            Asked++;
+
+            return Task.FromResult(_emails.GetValueOrDefault((userId, condominiumId)));
+        }
+
+        public Task<string?> GetDisplayNameAsync(Guid userId, CancellationToken cancellationToken) => throw new NotSupportedException();
+
+        public Task<Result<string>> UpdateDisplayNameAsync(Guid userId, string? displayName, CancellationToken cancellationToken) => throw new NotSupportedException();
     }
 }

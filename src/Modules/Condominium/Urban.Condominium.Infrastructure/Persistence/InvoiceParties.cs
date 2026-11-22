@@ -10,7 +10,7 @@ namespace Urban.Condominium.Infrastructure.Persistence;
 /// O lado do Condomínio do contrato da fatura. O condomínio e os vínculos são sempre os do tenant da requisição (ou da tarefa em
 /// segundo plano que carrega o tenant), conferido aqui de novo além do filtro global.
 /// </summary>
-public sealed class InvoiceParties(CondominiumDbContext db, ITenantContext tenant) : IInvoiceParties
+public sealed class InvoiceParties(CondominiumDbContext db, ITenantContext tenant, IManagerProfile managers) : IInvoiceParties
 {
     public async Task<InvoiceCondominium?> GetCondominiumAsync(CancellationToken cancellationToken)
     {
@@ -47,6 +47,7 @@ public sealed class InvoiceParties(CondominiumDbContext db, ITenantContext tenan
             return new Dictionary<Guid, InvoiceResponsible>();
         }
 
+        _ = managers;
         Guid[] ids = [.. unitIds];
 
         // Uma consulta só para todas as unidades; quem escolhe entre os vínculos é a regra pura do Domain, em memória.
