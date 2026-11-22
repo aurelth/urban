@@ -1,4 +1,8 @@
-import { Announcement, AnnouncementCategory } from '../../core/announcements/announcements.models';
+import {
+  Announcement,
+  AnnouncementCategory,
+  AnnouncementScope,
+} from '../../core/announcements/announcements.models';
 import { Unit } from '../../core/units/units.models';
 
 export const CATEGORY_OPTIONS: readonly { value: AnnouncementCategory; label: string }[] = [
@@ -38,6 +42,21 @@ export function scopeLabel(item: Announcement, units: readonly Unit[]): string {
     default:
       return 'Condomínio inteiro';
   }
+}
+
+/** Cor do grau (etiqueta colorida): ainda por fazer. */
+export function categoryClasses(_category: AnnouncementCategory): string {
+  return '';
+}
+
+/** Cor do público: ainda por fazer. */
+export function scopeClasses(_scope: AnnouncementScope): string {
+  return '';
+}
+
+/** Cor de quantos leram: ainda por fazer. */
+export function readersClasses(_item: Pick<Announcement, 'recipients'>): string {
+  return '';
 }
 
 /** "3 de 10 leram". Sem ninguém morando no alcance, não há quem leia. */
