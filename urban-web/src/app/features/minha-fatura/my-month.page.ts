@@ -6,14 +6,14 @@ import { firstValueFrom } from 'rxjs';
 import { NOW } from '../../core/finance/clock';
 import { InvoicesApi } from '../../core/finance/invoices.api';
 import { formatMoney } from '../../core/finance/money';
-import { addMonths, formatDate, isMonthInWindow, monthTitle } from '../../core/finance/month';
+import { formatDate, monthTitle } from '../../core/finance/month';
 import { MyUnit } from '../../core/finance/my-month.models';
 import { toApiProblem } from '../../core/http/api-problem';
 import { describeProblem } from '../../core/http/problem-message';
 import { FileSaver } from '../../shared/files/file-saver';
 import { groupShare } from '../finance/month-dashboard-values';
 import { chargeStatusView } from '../finance/payments-values';
-import { initialMonth } from '../finance/readings-values';
+import { MonthNavigation } from '../finance/month-navigation';
 import { MY_INVOICE_MESSAGES, unitHeading } from './my-month-values';
 import { MyMonthStore } from './my-month.store';
 
@@ -36,9 +36,12 @@ export class MyMonthPage implements OnInit {
   private readonly invoices = inject(InvoicesApi);
   private readonly files = inject(FileSaver);
 
-  protected readonly month = signal(
-    initialMonth(this.route.snapshot.queryParamMap.get('mes'), this.now()),
+  protected readonly nav = new MonthNavigation(
+    this.route.snapshot.queryParamMap.get('mes'),
+    this.now,
+    (month) => this.show(month),
   );
+  protected readonly month = this.nav.month;
   protected readonly notice = signal<string | null>(null);
   protected readonly invoiceError = signal<string | null>(null);
   /** A cobrança cujo PDF está sendo baixado. */
@@ -52,19 +55,7 @@ export class MyMonthPage implements OnInit {
   protected readonly statusView = chargeStatusView;
 
   ngOnInit(): void {
-    void this.store.show(this.month());
-  }
-
-  protected canGo(delta: number): boolean {
-    return isMonthInWindow(addMonths(this.month(), delta), this.now());
-  }
-
-  protected go(delta: number): Promise<void> {
-    return this.show(addMonths(this.month(), delta));
-  }
-
-  protected reload(): Promise<void> {
-    return this.show(this.month());
+    void this.nav.start();
   }
 
   protected async downloadInvoice(unit: MyUnit): Promise<void> {
@@ -88,7 +79,6 @@ export class MyMonthPage implements OnInit {
 
   private show(month: string): Promise<void> {
     this.clearMessages();
-    this.month.set(month);
     return this.store.show(month);
   }
 

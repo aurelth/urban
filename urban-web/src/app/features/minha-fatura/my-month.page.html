@@ -13,8 +13,8 @@
       aria-label="Mês anterior"
       title="Mês anterior"
       data-testid="previous-month"
-      [disabled]="!canGo(-1) || store.status() === 'loading'"
-      (click)="go(-1)"
+      [disabled]="!nav.canGo(-1) || store.status() === 'loading'"
+      (click)="nav.go(-1)"
     >
       <mat-icon svgIcon="chevron_left" />
     </button>
@@ -27,8 +27,8 @@
       aria-label="Próximo mês"
       title="Próximo mês"
       data-testid="next-month"
-      [disabled]="!canGo(1) || store.status() === 'loading'"
-      (click)="go(1)"
+      [disabled]="!nav.canGo(1) || store.status() === 'loading'"
+      (click)="nav.go(1)"
     >
       <mat-icon svgIcon="chevron_right" />
     </button>
@@ -46,7 +46,7 @@
           <mat-icon svgIcon="error" aria-hidden="true" />
           <span>Não foi possível carregar a sua fatura</span>
         </p>
-        <button mat-stroked-button type="button" data-testid="retry" (click)="reload()">
+        <button mat-stroked-button type="button" data-testid="retry" (click)="nav.reload()">
           Tentar de novo
         </button>
       </div>

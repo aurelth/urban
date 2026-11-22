@@ -80,6 +80,7 @@ describe('InvoicesApi', () => {
       const result = firstValueFrom(api.downloadMine('c1'));
 
       const request = http.expectOne(MINE);
+      expect(request.request.url).not.toBe(URL);
       expect(request.request.method).toBe('GET');
       expect(request.request.responseType).toBe('blob');
       const pdf = new Blob(['%PDF-1.7'], { type: 'application/pdf' });
@@ -98,14 +99,6 @@ describe('InvoicesApi', () => {
       http.expectOne(MINE).flush(new Blob(['%PDF-1.7']));
 
       expect((await result).fileName).toBe('fatura.pdf');
-    });
-
-    it('nao usa a rota do sindico', async () => {
-      const result = firstValueFrom(api.downloadMine('c1'));
-
-      http.expectNone(URL);
-      http.expectOne(MINE).flush(new Blob(['%PDF-1.7']));
-      await result;
     });
 
     it('devolve o codigo da API mesmo com a falha chegando como arquivo', async () => {

@@ -1,10 +1,10 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
 import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { NOW } from '../../core/finance/clock';
 import { formatMoney } from '../../core/finance/money';
-import { addMonths, formatDate, isMonthInWindow, monthTitle } from '../../core/finance/month';
+import { formatDate, monthTitle } from '../../core/finance/month';
 import { receivedPercent } from '../dashboard/dashboard-values';
 import {
   dashboardMonthState,
@@ -14,7 +14,7 @@ import {
   unitSituations,
 } from './month-dashboard-values';
 import { MonthDashboardStore } from './month-dashboard.store';
-import { initialMonth } from './readings-values';
+import { MonthNavigation } from './month-navigation';
 
 /**
  * O painel financeiro de um mês: as despesas por grupo e os avisos (sem valor, vencidas) e, com o mês fechado, as cobranças:
@@ -33,9 +33,12 @@ export class MonthDashboardPage implements OnInit {
   private readonly now = inject(NOW);
   private readonly route = inject(ActivatedRoute);
 
-  protected readonly month = signal(
-    initialMonth(this.route.snapshot.queryParamMap.get('mes'), this.now()),
+  protected readonly nav = new MonthNavigation(
+    this.route.snapshot.queryParamMap.get('mes'),
+    this.now,
+    (month) => this.store.show(month),
   );
+  protected readonly month = this.nav.month;
 
   protected readonly title = monthTitle;
   protected readonly money = formatMoney;
@@ -48,28 +51,11 @@ export class MonthDashboardPage implements OnInit {
   protected readonly percent = receivedPercent;
 
   ngOnInit(): void {
-    void this.store.show(this.month());
-  }
-
-  protected canGo(delta: number): boolean {
-    return isMonthInWindow(addMonths(this.month(), delta), this.now());
-  }
-
-  protected go(delta: number): Promise<void> {
-    return this.show(addMonths(this.month(), delta));
-  }
-
-  protected reload(): Promise<void> {
-    return this.show(this.month());
+    void this.nav.start();
   }
 
   /** A quantia que falta receber no mês, em centavos exatos. */
   protected toReceive(charged: number, received: number): number {
     return Math.round((charged - received) * 100) / 100;
-  }
-
-  private show(month: string): Promise<void> {
-    this.month.set(month);
-    return this.store.show(month);
   }
 }
