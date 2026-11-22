@@ -19,6 +19,7 @@ const LINKS = [
   ['nav-units', 'Unidades', '/unidades'],
   ['nav-residents', 'Moradores', '/moradores'],
   ['nav-vehicles', 'Veículos', '/veiculos'],
+  ['nav-announcements', 'Comunicados', '/comunicados'],
   ['nav-month-dashboard', 'Painel financeiro', '/financeiro/painel'],
   ['nav-expenses', 'Despesas', '/financeiro/despesas'],
   ['nav-tariffs', 'Tarifas', '/financeiro/tarifas'],

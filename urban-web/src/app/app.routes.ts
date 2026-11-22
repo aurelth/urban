@@ -128,6 +128,13 @@ export const routes: Routes = [
               import('./features/vehicles/vehicles.page').then((m) => m.VehiclesPage),
           },
           {
+            path: 'comunicados',
+            title: 'Comunicados',
+            canActivate: [managerGuard],
+            loadComponent: () =>
+              import('./features/comunicados/announcements.page').then((m) => m.AnnouncementsPage),
+          },
+          {
             path: 'minha-fatura',
             title: 'Minha fatura',
             canActivate: [memberGuard],

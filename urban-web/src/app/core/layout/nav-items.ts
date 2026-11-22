@@ -46,6 +46,7 @@ const MANAGER_GROUPS: readonly NavGroup[] = [
       { id: 'units', label: 'Unidades', icon: 'home_work', path: '/unidades' },
       { id: 'residents', label: 'Moradores', icon: 'groups', path: '/moradores' },
       { id: 'vehicles', label: 'Veículos', icon: 'directions_car', path: '/veiculos' },
+      { id: 'announcements', label: 'Comunicados', icon: 'campaign', path: '/comunicados' },
     ],
   },
   {
