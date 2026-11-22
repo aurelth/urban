@@ -78,7 +78,7 @@ public static class PaymentMapper
         _ => "other",
     };
 
-    private static string StatusText(ChargeStatus status) => status switch
+    public static string StatusText(ChargeStatus status) => status switch
     {
         ChargeStatus.Open => "open",
         ChargeStatus.Partial => "partial",

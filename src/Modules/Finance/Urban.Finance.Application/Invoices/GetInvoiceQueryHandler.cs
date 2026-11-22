@@ -31,9 +31,16 @@ public sealed class GetInvoiceQueryHandler(
             return Result.Failure<InvoiceFile>(FinanceErrors.CondominiumNotFound);
         }
 
-        _ = housing;
+        DateOnly today = FinanceCalendar.Today(clock.UtcNow);
 
         if (await charges.FindAsync(request.ChargeId, cancellationToken) is not { } detail)
+        {
+            return Result.Failure<InvoiceFile>(PaymentErrors.ChargeNotFound);
+        }
+
+        // O morador só baixa a fatura da unidade em que mora hoje; de outra unidade a resposta é a mesma de uma cobrança que não existe,
+        // para o pedido não servir para descobrir cobranças alheias.
+        if (request.ResidentUserId is { } userId && !await LivesInAsync(userId, detail.Charge.UnitId, today, cancellationToken))
         {
             return Result.Failure<InvoiceFile>(PaymentErrors.ChargeNotFound);
         }
@@ -44,7 +51,6 @@ public sealed class GetInvoiceQueryHandler(
         }
 
         UnitCharge charge = detail.Charge;
-        DateOnly today = FinanceCalendar.Today(clock.UtcNow);
         IReadOnlyDictionary<Guid, InvoiceResponsible> responsibles = await parties.GetResponsiblesAsync([charge.UnitId], today, cancellationToken);
         InvoiceStatement statement = await StatementOfAsync(detail, cancellationToken);
         PaymentInstructions? howToPay = await instructions.FindAsync(cancellationToken);
@@ -68,6 +74,9 @@ public sealed class GetInvoiceQueryHandler(
 
         return Result.Success(new InvoiceFile(InvoiceText.FileName(detail.Month, charge.Block, charge.Number), renderer.Render(document)));
     }
+
+    private async Task<bool> LivesInAsync(Guid userId, Guid unitId, DateOnly today, CancellationToken cancellationToken) =>
+        (await housing.GetAsync(userId, today, cancellationToken)).Units.Any(unit => unit.UnitId == unitId);
 
     private static decimal ShareOf(UnitCharge charge, ChargeDetail detail) =>
         detail.TotalWeight > 0 ? Math.Round(charge.Weight / detail.TotalWeight * 100m, 6, MidpointRounding.AwayFromZero) : 0m;
