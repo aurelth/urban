@@ -39,6 +39,8 @@ public sealed class RateLimitingOptions
 
     public RateLimitRule Vehicles { get; init; } = new();
 
+    public RateLimitRule Announcements { get; init; } = new();
+
     public RateLimitRule Finance { get; init; } = new();
 
     public RateLimitRule Admin { get; init; } = new();
