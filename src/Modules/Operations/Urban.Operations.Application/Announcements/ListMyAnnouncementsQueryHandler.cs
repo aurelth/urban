@@ -30,6 +30,13 @@ public sealed class ListMyAnnouncementsQueryHandler(
             return Result.Failure<MyAnnouncementPageView>(AnnouncementErrors.PageInvalid);
         }
 
+        Result<AnnouncementCategory?> category = AnnouncementRules.ParseCategoryFilter(request.Category);
+
+        if (category.IsFailure)
+        {
+            return Result.Failure<MyAnnouncementPageView>(category.Error);
+        }
+
         IReadOnlyList<ResidentUnit> units = await directory.GetUnitsAsync(request.UserId, OperationsCalendar.Today(clock.UtcNow), cancellationToken);
 
         if (units.Count == 0)
@@ -38,7 +45,7 @@ public sealed class ListMyAnnouncementsQueryHandler(
         }
 
         AnnouncementViewer viewer = AnnouncementRules.ViewerOf(request.UserId, units);
-        PagedAnnouncements page = await announcements.ListVisibleAsync(viewer, new MuralFilter(request.UnreadOnly), request.Page, request.PageSize, cancellationToken);
+        PagedAnnouncements page = await announcements.ListVisibleAsync(viewer, new MuralFilter(request.UnreadOnly, category.Value), request.Page, request.PageSize, cancellationToken);
         UnreadCounts unread = await announcements.CountUnreadAsync(viewer, cancellationToken);
         IReadOnlyDictionary<Guid, DateTimeOffset> readAt = page.Items.Count == 0
             ? new Dictionary<Guid, DateTimeOffset>()

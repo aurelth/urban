@@ -13,6 +13,19 @@ internal static class AnnouncementRules
 
     public static bool IsValidPage(int page, int pageSize) => page >= 1 && pageSize is >= 1 and <= MaxPageSize;
 
+    /// <summary>A categoria do filtro do mural: em branco é "todas" (sem filtro) e um nome que não é categoria falha.</summary>
+    public static Result<AnnouncementCategory?> ParseCategoryFilter(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return Result.Success<AnnouncementCategory?>(null);
+        }
+
+        Result<AnnouncementCategory> parsed = AnnouncementCategories.Parse(name);
+
+        return parsed.IsSuccess ? Result.Success<AnnouncementCategory?>(parsed.Value) : Result.Failure<AnnouncementCategory?>(parsed.Error);
+    }
+
     /// <summary>O alcance já montado, conferido com o condomínio: o bloco precisa ter unidades e a unidade precisa existir nele.</summary>
     public static async Task<Result<AnnouncementAudience>> CheckAudienceAsync(AnnouncementAudience audience, IAnnouncementAudience directory, CancellationToken cancellationToken)
     {

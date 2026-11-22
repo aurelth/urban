@@ -18,16 +18,29 @@ public sealed record AnnouncementResponse(
 
 public sealed record AnnouncementPageResponse(IReadOnlyList<AnnouncementResponse> Items, int Total, int Page, int PageSize);
 
+/// <param name="Block">O bloco de um comunicado de alcance de bloco; nos outros alcances, nulo.</param>
+/// <param name="Unit">A unidade de um comunicado de alcance de unidade; nos outros alcances, nulo.</param>
 public sealed record MyAnnouncementResponse(
     Guid Id,
     string Title,
     string Body,
     string Category,
     string Scope,
+    string? Block,
+    MyAnnouncementUnitResponse? Unit,
     DateTimeOffset CreatedAt,
     DateTimeOffset? UpdatedAt,
     bool Read,
     DateTimeOffset? ReadAt);
 
+public sealed record MyAnnouncementUnitResponse(Guid Id, string? Block, string Number);
+
 /// <param name="Unread">Quantos do mural a conta ainda não leu, no mural inteiro e não só nesta página.</param>
-public sealed record MyAnnouncementPageResponse(IReadOnlyList<MyAnnouncementResponse> Items, int Total, int Unread, int Page, int PageSize);
+/// <param name="UnreadByCategory">O mesmo número separado por categoria; a soma é <paramref name="Unread"/>.</param>
+public sealed record MyAnnouncementPageResponse(
+    IReadOnlyList<MyAnnouncementResponse> Items, int Total, int Unread, UnreadByCategoryResponse UnreadByCategory, int Page, int PageSize);
+
+public sealed record UnreadByCategoryResponse(int General, int Maintenance, int Important);
+
+/// <param name="Marked">Quantos comunicados foram marcados agora; os que a conta já tinha lido não entram.</param>
+public sealed record MarkedReadResponse(int Marked);

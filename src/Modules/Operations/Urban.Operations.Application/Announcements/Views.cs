@@ -46,12 +46,18 @@ public sealed record MyAnnouncementView(
         announcement.Body,
         AnnouncementCategories.NameOf(announcement.Category),
         AnnouncementCategories.NameOf(announcement.Scope),
-        null,
-        null,
+        announcement.Scope == AnnouncementScope.Block ? announcement.Block : null,
+        UnitOf(announcement, units),
         announcement.CreatedAt,
         announcement.UpdatedAt,
         readAt is not null,
         readAt);
+
+    /// <summary>A unidade vem de onde a conta mora (quem lê só vê comunicado de unidade que é dela), sem consultar o condomínio de novo.</summary>
+    private static MyAnnouncementUnitView? UnitOf(Announcement announcement, IReadOnlyList<ResidentUnit> units) =>
+        announcement.Scope == AnnouncementScope.Unit && units.FirstOrDefault(unit => unit.UnitId == announcement.UnitId) is { } found
+            ? new MyAnnouncementUnitView(found.UnitId, found.Block, found.Number)
+            : null;
 }
 
 /// <param name="UnreadByCategory">Quantos do mural a conta ainda não leu em cada categoria, no mural inteiro: nem a página nem os filtros mudam a conta.</param>
