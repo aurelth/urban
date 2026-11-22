@@ -14,9 +14,21 @@ public sealed class ListAnnouncementsQueryHandler(
     ITenantContext tenant,
     IClock clock) : IRequestHandler<ListAnnouncementsQuery, Result<AnnouncementPageView>>
 {
-    public Task<Result<AnnouncementPageView>> Handle(ListAnnouncementsQuery request, CancellationToken cancellationToken)
+    public async Task<Result<AnnouncementPageView>> Handle(ListAnnouncementsQuery request, CancellationToken cancellationToken)
     {
-        _ = (announcements, directory, tenant, clock);
-        throw new NotImplementedException();
+        if (tenant.CondominiumId is null)
+        {
+            return Result.Failure<AnnouncementPageView>(OperationsErrors.CondominiumNotFound);
+        }
+
+        if (!AnnouncementRules.IsValidPage(request.Page, request.PageSize))
+        {
+            return Result.Failure<AnnouncementPageView>(AnnouncementErrors.PageInvalid);
+        }
+
+        PagedAnnouncements page = await announcements.ListAsync(request.Page, request.PageSize, cancellationToken);
+        IReadOnlyList<AnnouncementView> views = await AnnouncementRules.ViewsAsync(page.Items, announcements, directory, OperationsCalendar.Today(clock.UtcNow), cancellationToken);
+
+        return Result.Success(new AnnouncementPageView(views, page.Total, request.Page, request.PageSize));
     }
 }

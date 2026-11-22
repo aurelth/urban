@@ -18,9 +18,37 @@ public sealed class ListMyAnnouncementsQueryHandler(
     ITenantContext tenant,
     IClock clock) : IRequestHandler<ListMyAnnouncementsQuery, Result<MyAnnouncementPageView>>
 {
-    public Task<Result<MyAnnouncementPageView>> Handle(ListMyAnnouncementsQuery request, CancellationToken cancellationToken)
+    public async Task<Result<MyAnnouncementPageView>> Handle(ListMyAnnouncementsQuery request, CancellationToken cancellationToken)
     {
-        _ = (announcements, directory, tenant, clock);
-        throw new NotImplementedException();
+        if (tenant.CondominiumId is null)
+        {
+            return Result.Failure<MyAnnouncementPageView>(OperationsErrors.CondominiumNotFound);
+        }
+
+        if (!AnnouncementRules.IsValidPage(request.Page, request.PageSize))
+        {
+            return Result.Failure<MyAnnouncementPageView>(AnnouncementErrors.PageInvalid);
+        }
+
+        IReadOnlyList<ResidentUnit> units = await directory.GetUnitsAsync(request.UserId, OperationsCalendar.Today(clock.UtcNow), cancellationToken);
+
+        if (units.Count == 0)
+        {
+            return Result.Success(new MyAnnouncementPageView([], 0, 0, request.Page, request.PageSize));
+        }
+
+        AnnouncementViewer viewer = AnnouncementRules.ViewerOf(request.UserId, units);
+        PagedAnnouncements page = await announcements.ListVisibleAsync(viewer, request.UnreadOnly, request.Page, request.PageSize, cancellationToken);
+        int unread = await announcements.CountUnreadAsync(viewer, cancellationToken);
+        IReadOnlyDictionary<Guid, DateTimeOffset> readAt = page.Items.Count == 0
+            ? new Dictionary<Guid, DateTimeOffset>()
+            : await announcements.ListReadAtAsync(request.UserId, [.. page.Items.Select(record => record.Announcement.Id)], cancellationToken);
+
+        return Result.Success(new MyAnnouncementPageView(
+            [.. page.Items.Select(record => MyAnnouncementView.From(record.Announcement, readAt.TryGetValue(record.Announcement.Id, out DateTimeOffset at) ? at : null))],
+            page.Total,
+            unread,
+            request.Page,
+            request.PageSize));
     }
 }

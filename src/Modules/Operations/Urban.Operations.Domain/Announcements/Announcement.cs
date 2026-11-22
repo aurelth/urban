@@ -11,6 +11,27 @@ public sealed class Announcement
     public const int TitleMaxLength = 120;
     public const int BodyMaxLength = 5000;
 
+    private Announcement(
+        Guid condominiumId,
+        string title,
+        string body,
+        AnnouncementCategory category,
+        AnnouncementAudience audience,
+        Guid createdBy,
+        DateTimeOffset createdAt)
+    {
+        Id = Guid.CreateVersion7();
+        CondominiumId = condominiumId;
+        Title = title;
+        Body = body;
+        Category = category;
+        Scope = audience.Scope;
+        Block = audience.Block;
+        UnitId = audience.UnitId;
+        CreatedBy = createdBy;
+        CreatedAt = createdAt;
+    }
+
     // Usado só pelo EF Core ao ler do banco.
     private Announcement()
     {
@@ -53,12 +74,53 @@ public sealed class Announcement
         Guid createdBy,
         DateTimeOffset now)
     {
-        throw new NotImplementedException();
+        if (condominiumId == Guid.Empty)
+        {
+            return Result.Failure<Announcement>(AnnouncementErrors.CondominiumRequired);
+        }
+
+        if (createdBy == Guid.Empty)
+        {
+            return Result.Failure<Announcement>(AnnouncementErrors.AuthorRequired);
+        }
+
+        Result<(string Title, string Body)> text = Validate(title, body);
+
+        return text.IsFailure
+            ? Result.Failure<Announcement>(text.Error)
+            : Result.Success(new Announcement(condominiumId, text.Value.Title, text.Value.Body, category, audience, createdBy, now));
     }
 
     /// <summary>Troca tudo o que o síndico pode mudar. Quem já leu continua tendo lido.</summary>
     public Result Edit(string? title, string? body, AnnouncementCategory category, AnnouncementAudience audience, DateTimeOffset now)
     {
-        throw new NotImplementedException();
+        Result<(string Title, string Body)> text = Validate(title, body);
+
+        if (text.IsFailure)
+        {
+            return Result.Failure(text.Error);
+        }
+
+        Title = text.Value.Title;
+        Body = text.Value.Body;
+        Category = category;
+        Scope = audience.Scope;
+        Block = audience.Block;
+        UnitId = audience.UnitId;
+        UpdatedAt = now;
+
+        return Result.Success();
+    }
+
+    private static Result<(string Title, string Body)> Validate(string? title, string? body)
+    {
+        if (!TextRules.IsValidLine(title, TitleMaxLength, out string normalizedTitle))
+        {
+            return Result.Failure<(string, string)>(AnnouncementErrors.TitleInvalid);
+        }
+
+        return TextRules.IsValidParagraphs(body, BodyMaxLength, out string normalizedBody)
+            ? Result.Success((normalizedTitle, normalizedBody))
+            : Result.Failure<(string, string)>(AnnouncementErrors.BodyInvalid);
     }
 }

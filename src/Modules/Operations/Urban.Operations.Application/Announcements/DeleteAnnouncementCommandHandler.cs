@@ -10,9 +10,27 @@ namespace Urban.Operations.Application.Announcements;
 /// <summary>Apaga o comunicado e as leituras dele. A versão lida na listagem precisa vir junto.</summary>
 public sealed class DeleteAnnouncementCommandHandler(IAnnouncements announcements, ITenantContext tenant) : IRequestHandler<DeleteAnnouncementCommand, Result>
 {
-    public Task<Result> Handle(DeleteAnnouncementCommand request, CancellationToken cancellationToken)
+    public async Task<Result> Handle(DeleteAnnouncementCommand request, CancellationToken cancellationToken)
     {
-        _ = (announcements, tenant);
-        throw new NotImplementedException();
+        if (tenant.CondominiumId is null)
+        {
+            return Result.Failure(OperationsErrors.CondominiumNotFound);
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Version))
+        {
+            return Result.Failure(OperationsErrors.VersionRequired);
+        }
+
+        AnnouncementRecord? record = await announcements.FindAsync(request.AnnouncementId, cancellationToken);
+
+        if (record is null)
+        {
+            return Result.Failure(AnnouncementErrors.NotFound);
+        }
+
+        return request.Version == record.Version
+            ? await announcements.DeleteAsync(record, cancellationToken)
+            : Result.Failure(OperationsErrors.ConcurrencyConflict);
     }
 }

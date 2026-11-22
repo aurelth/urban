@@ -18,9 +18,26 @@ public sealed class MarkAnnouncementReadCommandHandler(
     ITenantContext tenant,
     IClock clock) : IRequestHandler<MarkAnnouncementReadCommand, Result>
 {
-    public Task<Result> Handle(MarkAnnouncementReadCommand request, CancellationToken cancellationToken)
+    public async Task<Result> Handle(MarkAnnouncementReadCommand request, CancellationToken cancellationToken)
     {
-        _ = (announcements, directory, tenant, clock);
-        throw new NotImplementedException();
+        if (tenant.CondominiumId is null)
+        {
+            return Result.Failure(OperationsErrors.CondominiumNotFound);
+        }
+
+        AnnouncementRecord? record = await announcements.FindAsync(request.AnnouncementId, cancellationToken);
+
+        if (record is null || record.Announcement.CreatedBy == request.UserId)
+        {
+            return Result.Failure(AnnouncementErrors.NotFound);
+        }
+
+        DateTimeOffset now = clock.UtcNow;
+        IReadOnlyList<ResidentUnit> units = await directory.GetUnitsAsync(request.UserId, OperationsCalendar.Today(now), cancellationToken);
+        AnnouncementViewer viewer = AnnouncementRules.ViewerOf(request.UserId, units);
+
+        return units.Count > 0 && record.Announcement.Audience.Reaches(viewer.Blocks, viewer.UnitIds)
+            ? await announcements.MarkReadAsync(request.AnnouncementId, request.UserId, now, cancellationToken)
+            : Result.Failure(AnnouncementErrors.NotFound);
     }
 }

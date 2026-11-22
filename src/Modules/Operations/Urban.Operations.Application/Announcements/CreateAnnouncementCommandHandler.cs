@@ -18,9 +18,52 @@ public sealed class CreateAnnouncementCommandHandler(
     ITenantContext tenant,
     IClock clock) : IRequestHandler<CreateAnnouncementCommand, Result<AnnouncementView>>
 {
-    public Task<Result<AnnouncementView>> Handle(CreateAnnouncementCommand request, CancellationToken cancellationToken)
+    public async Task<Result<AnnouncementView>> Handle(CreateAnnouncementCommand request, CancellationToken cancellationToken)
     {
-        _ = (announcements, directory, tenant, clock);
-        throw new NotImplementedException();
+        if (tenant.CondominiumId is not { } condominiumId)
+        {
+            return Result.Failure<AnnouncementView>(OperationsErrors.CondominiumNotFound);
+        }
+
+        Result<AnnouncementCategory> category = AnnouncementCategories.Parse(request.Category);
+
+        if (category.IsFailure)
+        {
+            return Result.Failure<AnnouncementView>(category.Error);
+        }
+
+        Result<AnnouncementAudience> audience = AnnouncementAudience.Parse(request.Scope, request.Block, request.UnitId);
+
+        if (audience.IsFailure)
+        {
+            return Result.Failure<AnnouncementView>(audience.Error);
+        }
+
+        DateTimeOffset now = clock.UtcNow;
+        Result<Announcement> announcement = Announcement.Create(condominiumId, request.Title, request.Body, category.Value, audience.Value, request.ActorUserId, now);
+
+        if (announcement.IsFailure)
+        {
+            return Result.Failure<AnnouncementView>(announcement.Error);
+        }
+
+        Result<AnnouncementAudience> checkedAudience = await AnnouncementRules.CheckAudienceAsync(audience.Value, directory, cancellationToken);
+
+        if (checkedAudience.IsFailure)
+        {
+            return Result.Failure<AnnouncementView>(checkedAudience.Error);
+        }
+
+        Result<string> added = await announcements.AddAsync(announcement.Value, cancellationToken);
+
+        if (added.IsFailure)
+        {
+            return Result.Failure<AnnouncementView>(added.Error);
+        }
+
+        IReadOnlyList<AnnouncementView> views = await AnnouncementRules.ViewsAsync(
+            [new AnnouncementRecord(announcement.Value, added.Value)], announcements, directory, OperationsCalendar.Today(now), cancellationToken);
+
+        return Result.Success(views[0]);
     }
 }

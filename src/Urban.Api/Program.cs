@@ -59,6 +59,7 @@ app.MapMonthDashboardEndpoints();
 app.MapInvoiceEndpoints();
 app.MapMyFinanceEndpoints();
 app.MapInvoiceDeliveryEndpoints();
+app.MapAnnouncementEndpoints();
 app.MapPaymentInstructionsEndpoints();
 app.MapPostalCodeEndpoints();
 app.MapPasswordResetEndpoints();

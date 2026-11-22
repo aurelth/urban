@@ -19,6 +19,8 @@ public sealed class OperationsDbContext(DbContextOptions<OperationsDbContext> op
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(Schema);
+        modelBuilder.ApplyConfiguration(new Configurations.AnnouncementConfiguration());
+        modelBuilder.ApplyConfiguration(new Configurations.AnnouncementReadConfiguration());
 
         // Sem tenant a comparação com nulo não casa com nenhuma linha: o padrão é não ver nada.
         modelBuilder.Entity<Announcement>().HasQueryFilter(announcement => announcement.CondominiumId == tenant.CondominiumId);

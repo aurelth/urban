@@ -27,16 +27,34 @@ public sealed record AnnouncementAudience
 
     public static AnnouncementAudience WholeCondominium { get; } = new(AnnouncementScope.Condominium, null, null);
 
-    public static Result<AnnouncementAudience> OfBlock(string? block) => throw new NotImplementedException();
+    public static Result<AnnouncementAudience> OfBlock(string? block) =>
+        TextRules.IsValidLine(block, BlockMaxLength, out string normalized)
+            ? Result.Success(new AnnouncementAudience(AnnouncementScope.Block, normalized, null))
+            : Result.Failure<AnnouncementAudience>(AnnouncementErrors.BlockInvalid);
 
-    public static Result<AnnouncementAudience> OfUnit(Guid? unitId) => throw new NotImplementedException();
+    public static Result<AnnouncementAudience> OfUnit(Guid? unitId) =>
+        unitId is { } id && id != Guid.Empty
+            ? Result.Success(new AnnouncementAudience(AnnouncementScope.Unit, null, id))
+            : Result.Failure<AnnouncementAudience>(AnnouncementErrors.UnitRequired);
 
     /// <summary>Monta o alcance pelo que a requisição trouxe. Bloco e unidade que sobram para o alcance escolhido são ignorados.</summary>
-    public static Result<AnnouncementAudience> Parse(string? scope, string? block, Guid? unitId) => throw new NotImplementedException();
+    public static Result<AnnouncementAudience> Parse(string? scope, string? block, Guid? unitId) =>
+        scope?.Trim().ToLowerInvariant() switch
+        {
+            "condominium" => Result.Success(WholeCondominium),
+            "block" => OfBlock(block),
+            "unit" => OfUnit(unitId),
+            _ => Result.Failure<AnnouncementAudience>(AnnouncementErrors.ScopeInvalid),
+        };
 
     /// <summary>Monta o alcance a partir dos campos já gravados no comunicado, sem repetir a conferência.</summary>
     internal static AnnouncementAudience From(AnnouncementScope scope, string? block, Guid? unitId) => new(scope, block, unitId);
 
     /// <summary>O comunicado vale para quem mora em algum destes blocos ou unidades.</summary>
-    public bool Reaches(IReadOnlyCollection<string> blocks, IReadOnlyCollection<Guid> unitIds) => throw new NotImplementedException();
+    public bool Reaches(IReadOnlyCollection<string> blocks, IReadOnlyCollection<Guid> unitIds) => Scope switch
+    {
+        AnnouncementScope.Condominium => true,
+        AnnouncementScope.Block => Block is { } block && blocks.Contains(block),
+        _ => UnitId is { } unit && unitIds.Contains(unit),
+    };
 }

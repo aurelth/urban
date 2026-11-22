@@ -15,9 +15,69 @@ public sealed class UpdateAnnouncementCommandHandler(
     ITenantContext tenant,
     IClock clock) : IRequestHandler<UpdateAnnouncementCommand, Result<AnnouncementView>>
 {
-    public Task<Result<AnnouncementView>> Handle(UpdateAnnouncementCommand request, CancellationToken cancellationToken)
+    public async Task<Result<AnnouncementView>> Handle(UpdateAnnouncementCommand request, CancellationToken cancellationToken)
     {
-        _ = (announcements, directory, tenant, clock);
-        throw new NotImplementedException();
+        if (tenant.CondominiumId is null)
+        {
+            return Result.Failure<AnnouncementView>(OperationsErrors.CondominiumNotFound);
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Version))
+        {
+            return Result.Failure<AnnouncementView>(OperationsErrors.VersionRequired);
+        }
+
+        AnnouncementRecord? record = await announcements.FindAsync(request.AnnouncementId, cancellationToken);
+
+        if (record is null)
+        {
+            return Result.Failure<AnnouncementView>(AnnouncementErrors.NotFound);
+        }
+
+        if (request.Version != record.Version)
+        {
+            return Result.Failure<AnnouncementView>(OperationsErrors.ConcurrencyConflict);
+        }
+
+        Result<AnnouncementCategory> category = AnnouncementCategories.Parse(request.Category);
+
+        if (category.IsFailure)
+        {
+            return Result.Failure<AnnouncementView>(category.Error);
+        }
+
+        Result<AnnouncementAudience> audience = AnnouncementAudience.Parse(request.Scope, request.Block, request.UnitId);
+
+        if (audience.IsFailure)
+        {
+            return Result.Failure<AnnouncementView>(audience.Error);
+        }
+
+        DateTimeOffset now = clock.UtcNow;
+        Result edited = record.Announcement.Edit(request.Title, request.Body, category.Value, audience.Value, now);
+
+        if (edited.IsFailure)
+        {
+            return Result.Failure<AnnouncementView>(edited.Error);
+        }
+
+        Result<AnnouncementAudience> checkedAudience = await AnnouncementRules.CheckAudienceAsync(audience.Value, directory, cancellationToken);
+
+        if (checkedAudience.IsFailure)
+        {
+            return Result.Failure<AnnouncementView>(checkedAudience.Error);
+        }
+
+        Result<string> saved = await announcements.SaveAsync(record, cancellationToken);
+
+        if (saved.IsFailure)
+        {
+            return Result.Failure<AnnouncementView>(saved.Error);
+        }
+
+        IReadOnlyList<AnnouncementView> views = await AnnouncementRules.ViewsAsync(
+            [record with { Version = saved.Value }], announcements, directory, OperationsCalendar.Today(now), cancellationToken);
+
+        return Result.Success(views[0]);
     }
 }
