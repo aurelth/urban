@@ -35,7 +35,7 @@ public sealed class GetMyMonthQueryHandler(
         if (dwelling.Units.Count == 0)
         {
             return Result.Success(new MyMonthView(
-                month.Value.ToString(), today, dwelling.LivesAsDependent ? MyMonthAccess.Dependent : MyMonthAccess.None, false, [], null));
+                month.Value.ToString(), today, MyAccess.Of(dwelling), false, [], null));
         }
 
         // Uma cobrança por unidade: o mês inteiro cabe numa página só e o que é de cada morador sai dela em memória. A situação sai do
