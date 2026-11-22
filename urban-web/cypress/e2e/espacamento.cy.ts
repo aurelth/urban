@@ -39,6 +39,7 @@ import {
   stubPayments,
 } from '../support/pagamentos';
 import { stubDashboard } from '../support/painel';
+import { MONTH_DASHBOARD_PATH, stubMonthDashboard } from '../support/painel-financeiro';
 import { PROFILE_PATH, stubProfile } from '../support/perfil';
 import { ADMIN, REQUESTS_PATH, stubRequests } from '../support/pedidos';
 import { MANAGER, stubAnonymous, stubSignedIn } from '../support/session';
@@ -415,6 +416,18 @@ SCREENS.forEach(([where, width, height]) => {
 
       cy.get('button[aria-label="Reenviar fatura de Outubro de 2026 de 201"]').click();
       cy.get('[data-testid="action-error"]').should('be.visible');
+      expectBreathingRoom();
+    });
+
+    it('não cola texto em container no painel financeiro, nem no mês sem cobranças', () => {
+      stubSignedIn(MANAGER);
+      stubMonthDashboard();
+      cy.visit(MONTH_DASHBOARD_PATH);
+      cy.get('[data-testid="card-charges"]').should('exist');
+      expectBreathingRoom();
+
+      cy.get('[data-testid="next-month"]').click();
+      cy.get('[data-testid="not-closed"]').should('exist');
       expectBreathingRoom();
     });
 
