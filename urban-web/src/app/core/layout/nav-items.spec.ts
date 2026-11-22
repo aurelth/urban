@@ -19,6 +19,7 @@ describe('navGroupsFor', () => {
       ['dashboard'],
       ['units', 'residents', 'vehicles'],
       [
+        'month-dashboard',
         'expenses',
         'tariffs',
         'readings',
@@ -39,6 +40,7 @@ describe('navGroupsFor', () => {
       ['Unidades', '/unidades', 'home_work'],
       ['Moradores', '/moradores', 'groups'],
       ['Veículos', '/veiculos', 'directions_car'],
+      ['Painel financeiro', '/financeiro/painel', 'monitoring'],
       ['Despesas', '/financeiro/despesas', 'receipt_long'],
       ['Tarifas', '/financeiro/tarifas', 'price_change'],
       ['Leituras', '/financeiro/leituras', 'water_drop'],

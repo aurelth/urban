@@ -16,6 +16,7 @@ class Page {}
 const ROUTES: Routes = [
   'dashboard',
   'unidades',
+  'financeiro/painel',
   'financeiro/despesas',
   'financeiro/tarifas',
   'financeiro/leituras',
@@ -250,6 +251,7 @@ describe('ShellLayout', () => {
         'nav-units',
         'nav-residents',
         'nav-vehicles',
+        'nav-month-dashboard',
         'nav-expenses',
         'nav-tariffs',
         'nav-readings',
@@ -265,6 +267,7 @@ describe('ShellLayout', () => {
         'Unidades',
         'Moradores',
         'Veículos',
+        'Painel financeiro',
         'Despesas',
         'Tarifas',
         'Leituras',
@@ -280,6 +283,7 @@ describe('ShellLayout', () => {
         '/unidades',
         '/moradores',
         '/veiculos',
+        '/financeiro/painel',
         '/financeiro/despesas',
         '/financeiro/tarifas',
         '/financeiro/leituras',
@@ -429,6 +433,7 @@ describe('ShellLayout', () => {
           'Unidades',
           'Moradores',
           'Veículos',
+          'Painel financeiro',
           'Despesas',
           'Tarifas',
           'Leituras',
@@ -541,6 +546,7 @@ describe('ShellLayout', () => {
 
         expect(links(html).map((link) => link.dataset['testid'])).toEqual([
           'nav-dashboard',
+          'nav-month-dashboard',
           'nav-expenses',
           'nav-tariffs',
           'nav-readings',
@@ -563,7 +569,7 @@ describe('ShellLayout', () => {
 
         await click(fixture, header(html, 'Financeiro'));
 
-        expect(links(html)).toHaveLength(13);
+        expect(links(html)).toHaveLength(14);
         expect(header(html, 'Financeiro').getAttribute('aria-expanded')).toBe('true');
         expect(iconOf(header(html, 'Financeiro'))).toBe('remove');
       });
@@ -611,7 +617,7 @@ describe('ShellLayout', () => {
 
         await click(fixture, byTestId(html, 'menu-toggle')!);
 
-        expect(links(html)).toHaveLength(13);
+        expect(links(html)).toHaveLength(14);
         expect(html.querySelectorAll('button[data-testid="nav-group"]')).toHaveLength(0);
 
         await click(fixture, byTestId(html, 'menu-toggle')!);

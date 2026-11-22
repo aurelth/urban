@@ -13,6 +13,7 @@ import { INSTRUCTIONS_PATH, NO_INSTRUCTIONS, stubInstructions } from '../support
 import { INVOICE_DELIVERIES_PATH, stubInvoiceDeliveries } from '../support/enviar-faturas';
 import { DELINQUENCY_PATH, stubDelinquency } from '../support/inadimplencia';
 import { PAYMENTS_PATH, stubPayments } from '../support/pagamentos';
+import { MONTH_DASHBOARD_PATH, stubMonthDashboard } from '../support/painel-financeiro';
 import { stubDashboard } from '../support/painel';
 import { ADMIN, REQUESTS_PATH, stubRequests } from '../support/pedidos';
 import { TARIFFS_PATH, stubTariffs } from '../support/tarifas';
@@ -242,6 +243,21 @@ describe('Tela de celular (375 x 667)', () => {
     cy.contains('h1', 'Pagamentos').should('be.visible');
     cy.get('[data-testid="charge-row"]').should('have.length', 3);
     cy.get('[data-testid="charge-row"] button').each(($button) => {
+      const { left, right } = $button[0].getBoundingClientRect();
+      expect(left).to.be.at.least(0);
+      expect(right).to.be.at.most(375);
+    });
+    expectNoHorizontalScroll();
+  });
+
+  it('mostra o painel financeiro sem rolagem horizontal, com as setas de mês dentro da tela', () => {
+    stubSignedIn(MANAGER);
+    stubMonthDashboard();
+    cy.visit(MONTH_DASHBOARD_PATH);
+
+    cy.contains('h1', 'Painel financeiro').should('be.visible');
+    cy.get('[data-testid="card-charges"]').should('be.visible');
+    cy.get('[data-testid="previous-month"], [data-testid="next-month"]').each(($button) => {
       const { left, right } = $button[0].getBoundingClientRect();
       expect(left).to.be.at.least(0);
       expect(right).to.be.at.most(375);

@@ -41,6 +41,12 @@ const MANAGER_GROUPS: readonly NavGroup[] = [
     id: 'finance',
     label: 'Financeiro',
     items: [
+      {
+        id: 'month-dashboard',
+        label: 'Painel financeiro',
+        icon: 'monitoring',
+        path: '/financeiro/painel',
+      },
       { id: 'expenses', label: 'Despesas', icon: 'receipt_long', path: '/financeiro/despesas' },
       { id: 'tariffs', label: 'Tarifas', icon: 'price_change', path: '/financeiro/tarifas' },
       { id: 'readings', label: 'Leituras', icon: 'water_drop', path: '/financeiro/leituras' },
