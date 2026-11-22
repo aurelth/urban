@@ -1,0 +1,12 @@
+import { MessagesByCode } from '../../core/http/problem-message';
+
+/** O título de cada cartão de unidade: "Unidade 101" ou "Bloco A · Unidade 102". */
+export function unitHeading(unit: {
+  readonly block: string | null;
+  readonly number: string;
+}): string {
+  return unit.number;
+}
+
+/** O que a tela diz quando o download da própria fatura é recusado (limite, rede e o resto vêm do texto padrão). */
+export const MY_INVOICE_MESSAGES: MessagesByCode = {};

@@ -325,15 +325,27 @@ describe('ShellLayout', () => {
       expect(byTestId(html, 'nav-contact')?.getAttribute('aria-current')).toBe('page');
     });
 
-    it.each([
-      ['síndico sem condomínio', MANAGER],
-      ['morador', { ...REGISTERED_MANAGER, role: 'Resident' as const }],
-    ])('não tem menu lateral nem botão para abri-lo para %s', async (_name, user) => {
-      const { html } = await setup(user);
+    it('não tem menu lateral nem botão para abri-lo para o síndico sem condomínio', async () => {
+      const { html } = await setup(MANAGER);
 
       expect(sideMenu(html)).toBeNull();
       expect(byTestId(html, 'menu-toggle')).toBeNull();
       expect(byTestId(html, 'user-menu')).not.toBeNull();
+    });
+
+    it('leva o morador ao painel e à sua fatura, e só', async () => {
+      const { html } = await setup({ ...REGISTERED_MANAGER, role: 'Resident' });
+
+      expect(links(html).map((link) => link.dataset['testid'])).toEqual([
+        'nav-dashboard',
+        'nav-my-invoice',
+      ]);
+      expect(links(html).map(text)).toEqual(['Painel', 'Minha fatura']);
+      expect(links(html).map((link) => link.getAttribute('href'))).toEqual([
+        '/dashboard',
+        '/minha-fatura',
+      ]);
+      expect(byTestId(html, 'menu-toggle')).not.toBeNull();
     });
 
     it('leva o administrador à visão geral, aos síndicos, aos pedidos de cadastro e às mensagens, e só', async () => {

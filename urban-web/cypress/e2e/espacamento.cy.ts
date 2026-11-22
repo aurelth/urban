@@ -39,10 +39,16 @@ import {
   stubPayments,
 } from '../support/pagamentos';
 import { stubDashboard } from '../support/painel';
+import {
+  MY_INVOICE_PATH,
+  OVERDUE_CHARGE_ID,
+  stubMyInvoiceRejected,
+  stubMyMonth,
+} from '../support/minha-fatura';
 import { MONTH_DASHBOARD_PATH, stubMonthDashboard } from '../support/painel-financeiro';
 import { PROFILE_PATH, stubProfile } from '../support/perfil';
 import { ADMIN, REQUESTS_PATH, stubRequests } from '../support/pedidos';
-import { MANAGER, stubAnonymous, stubSignedIn } from '../support/session';
+import { MANAGER, RESIDENT, stubAnonymous, stubSignedIn } from '../support/session';
 import { TARIFFS_PATH, stubTariffs } from '../support/tarifas';
 import {
   CURRENT_RESIDENT,
@@ -424,6 +430,23 @@ SCREENS.forEach(([where, width, height]) => {
       stubMonthDashboard();
       cy.visit(MONTH_DASHBOARD_PATH);
       cy.get('[data-testid="card-charges"]').should('exist');
+      expectBreathingRoom();
+
+      cy.get('[data-testid="next-month"]').click();
+      cy.get('[data-testid="not-closed"]').should('exist');
+      expectBreathingRoom();
+    });
+
+    it('não cola texto em container na fatura do morador, nem no mês aberto nem com o erro do download', () => {
+      stubSignedIn(RESIDENT);
+      stubMyMonth();
+      stubMyInvoiceRejected(OVERDUE_CHARGE_ID, 404, 'finance.charge.not_found');
+      cy.visit(MY_INVOICE_PATH);
+      cy.get('[data-testid="unit-card"]').should('exist');
+      expectBreathingRoom();
+
+      cy.get('[data-testid="download-invoice"]').first().click();
+      cy.get('[data-testid="invoice-error"]').should('be.visible');
       expectBreathingRoom();
 
       cy.get('[data-testid="next-month"]').click();

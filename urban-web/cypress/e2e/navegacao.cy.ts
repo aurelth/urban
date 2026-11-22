@@ -8,7 +8,7 @@ import {
 } from '../support/navegacao';
 import { stubProfile } from '../support/perfil';
 import { NEW_MANAGER } from '../support/condominio';
-import { MANAGER, stubSignedIn } from '../support/session';
+import { MANAGER, RESIDENT, stubSignedIn } from '../support/session';
 import { stubUnits } from '../support/unidades';
 
 const LINKS = [
@@ -320,6 +320,18 @@ describe('Navegação', () => {
       cy.get('[data-testid="user-menu"]').should('be.visible');
       cy.get('mat-toolbar a[aria-label="Urban, ir para a página inicial"]').should('be.visible');
       expectText('[data-testid="current-user"]', 'sindica@example.com - Síndico');
+    });
+
+    it('dá ao morador só o painel e a sua fatura no menu lateral', () => {
+      stubSignedIn(RESIDENT);
+      cy.visit('/dashboard');
+
+      cy.get('nav[aria-label="Menu principal"] a[data-testid^="nav-"]').should('have.length', 2);
+      cy.get('[data-testid="nav-dashboard"]').should('be.visible');
+      cy.get('[data-testid="nav-my-invoice"]').should('be.visible');
+      cy.get('[data-testid="nav-units"]').should('not.exist');
+      cy.get('[data-testid="menu-toggle"]').should('be.visible');
+      expectText('[data-testid="current-user"]', 'Olá Joao - Morador');
     });
 
     it('dá ao administrador só a visão geral, os síndicos, os pedidos de cadastro e as mensagens no menu lateral', () => {

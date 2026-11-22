@@ -354,4 +354,19 @@ describe('DashboardPage', () => {
     expect(byId(html, 'card-month')).toBeNull();
     expect(html.querySelector('h1')?.textContent?.trim()).toBe('Painel');
   });
+
+  it('para o morador, leva à sua fatura e deixa os avisos para quando existirem', async () => {
+    const { html } = await setup({}, RESIDENT_USER);
+
+    const link = byId(html, 'my-invoice-link');
+    expect(link?.getAttribute('href')).toBe('/minha-fatura');
+    expect(link?.textContent?.replace(/\s+/g, ' ').trim()).toContain('Ver minha fatura');
+    expect(byId(html, 'welcome')?.textContent).not.toContain('suas faturas');
+  });
+
+  it('para o síndico, não mostra o atalho da fatura do morador', async () => {
+    const { html } = await setup({});
+
+    expect(byId(html, 'my-invoice-link')).toBeNull();
+  });
 });

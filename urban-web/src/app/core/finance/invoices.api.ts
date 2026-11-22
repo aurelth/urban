@@ -16,6 +16,11 @@ export interface InvoiceDownload {
 export class InvoicesApi {
   private readonly http = inject(HttpClient);
 
+  /** A fatura da própria unidade do morador. */
+  downloadMine(chargeId: string): Observable<InvoiceDownload> {
+    return throwError(() => new Error(`sem implementação: ${chargeId}`));
+  }
+
   download(chargeId: string): Observable<InvoiceDownload> {
     return this.http
       .get(`${BASE}/charges/${chargeId}/invoice`, { responseType: 'blob', observe: 'response' })
