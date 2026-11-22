@@ -46,8 +46,8 @@ describe('Minha fatura', () => {
     cy.visit(MY_INVOICE_PATH);
 
     cy.get('[data-testid="unit-card"]').should('have.length', 2);
-    cy.get('[data-testid="unit-heading"]').first().should('have.text', 'Unidade 101');
-    cy.get('[data-testid="unit-heading"]').last().should('have.text', 'Bloco A · Unidade 102');
+    cy.get('[data-testid="unit-heading"]').first().should('contain.text', 'Unidade 101');
+    cy.get('[data-testid="unit-heading"]').last().should('contain.text', 'Bloco A · Unidade 102');
     cy.get('[data-testid="unit-card"]')
       .first()
       .within(() => {

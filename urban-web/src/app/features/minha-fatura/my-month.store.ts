@@ -1,4 +1,7 @@
+import { inject } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
+import { firstValueFrom } from 'rxjs';
+import { MyMonthApi } from '../../core/finance/my-month.api';
 import { MyMonth } from '../../core/finance/my-month.models';
 
 /**
@@ -17,11 +20,24 @@ interface MyMonthState {
 /** Estado da tela "Minha fatura". Fornecido no componente, então cada visita começa do zero. */
 export const MyMonthStore = signalStore(
   withState<MyMonthState>({ status: 'loading', month: '', data: null }),
-  withMethods((store) => ({
-    // Esqueleto da fatia de testes: a leitura da API vem com a implementação.
-    show(month: string): Promise<void> {
-      patchState(store, { status: 'loading', month });
-      return Promise.resolve();
-    },
-  })),
+  withMethods((store) => {
+    const api = inject(MyMonthApi);
+
+    return {
+      /** Lê o mês. Resposta (ou falha) de um mês que a pessoa já deixou para trás é ignorada. */
+      async show(month: string): Promise<void> {
+        patchState(store, { status: 'loading', month });
+        try {
+          const data = await firstValueFrom(api.get(month));
+          if (store.month() === month) {
+            patchState(store, { status: 'ready', data });
+          }
+        } catch {
+          if (store.month() === month) {
+            patchState(store, { status: 'error' });
+          }
+        }
+      },
+    };
+  }),
 );

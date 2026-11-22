@@ -1,15 +1,16 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, throwError } from 'rxjs';
+import { Observable } from 'rxjs';
 import { MyMonth } from './my-month.models';
+
+const BASE = '/api/finance/me';
 
 /** Chamada HTTP do painel financeiro do morador. */
 @Injectable({ providedIn: 'root' })
 export class MyMonthApi {
-  // Esqueleto da fatia de testes: o corpo vem com a implementação.
-  protected readonly http = inject(HttpClient);
+  private readonly http = inject(HttpClient);
 
   get(month: string): Observable<MyMonth> {
-    return throwError(() => new Error(`sem implementação: ${month}`));
+    return this.http.get<MyMonth>(`${BASE}/months/${month}`);
   }
 }

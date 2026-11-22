@@ -5,6 +5,7 @@ import {
   provideHttpClientTesting,
 } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { jest } from '@jest/globals';
 import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { Router, provideRouter } from '@angular/router';
 import { CurrentUser } from '../../core/auth/auth.models';

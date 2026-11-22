@@ -53,5 +53,7 @@ export const memberGuard: CanActivateFn = async () => {
 
   await session.ready();
 
-  return router.createUrlTree(['/dashboard']);
+  const user = session.user();
+
+  return user === null || user.role !== 'SuperAdmin' ? true : router.createUrlTree(['/dashboard']);
 };
