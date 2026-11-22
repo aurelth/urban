@@ -11,8 +11,17 @@ import { MatIcon } from '@angular/material/icon';
 import { Announcement, AnnouncementPayload } from '../../core/announcements/announcements.models';
 import { ApiProblem } from '../../core/http/api-problem';
 import { describeProblem } from '../../core/http/problem-message';
+import { ExpandableText } from '../../shared/ui/expandable-text/expandable-text';
 import { openAnnouncementDialog } from './announcement.dialog';
-import { categoryLabel, formatMoment, readersLabel, scopeLabel } from './announcement-values';
+import {
+  categoryClasses,
+  categoryLabel,
+  formatMoment,
+  readersClasses,
+  readersLabel,
+  scopeClasses,
+  scopeLabel,
+} from './announcement-values';
 import { ANNOUNCEMENT_DELETE_MESSAGES, ANNOUNCEMENT_FORM_MESSAGES } from './announcements.messages';
 import { AnnouncementsStore } from './announcements.store';
 import { openDeleteAnnouncementDialog } from './delete-announcement.dialog';
@@ -23,7 +32,7 @@ import { openDeleteAnnouncementDialog } from './delete-announcement.dialog';
  */
 @Component({
   selector: 'urban-announcements-page',
-  imports: [MatButton, MatIconButton, MatIcon],
+  imports: [ExpandableText, MatButton, MatIconButton, MatIcon],
   templateUrl: './announcements.page.html',
   providers: [AnnouncementsStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -36,6 +45,9 @@ export class AnnouncementsPage implements OnInit {
   protected readonly actionError = signal<string | null>(null);
 
   protected readonly category = categoryLabel;
+  protected readonly categoryStyle = categoryClasses;
+  protected readonly scopeStyle = scopeClasses;
+  protected readonly readersStyle = readersClasses;
   protected readonly moment = formatMoment;
   protected readonly readers = readersLabel;
   protected readonly scope = (item: Announcement): string => scopeLabel(item, this.store.units());

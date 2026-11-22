@@ -17,6 +17,23 @@
   --urban-warning: light-dark(#b25000, #ff9f0a);
   --urban-warning-container: color-mix(in srgb, var(--urban-warning) 14%, transparent);
 
+  // Etiquetas coloridas (grau e publico dos comunicados, quantos ja leram): texto na cor e fundo da mesma cor, translucido.
+  // Cada cor passa de 4,5:1 sobre o proprio fundo nos dois temas (tag-colors.spec.ts). Sempre junto com texto.
+  --urban-tag-blue: light-dark(#0b5cad, #64b5ff);
+  --urban-tag-blue-container: color-mix(in srgb, var(--urban-tag-blue) 14%, transparent);
+  --urban-tag-amber: light-dark(#8a5a00, #ffd60a);
+  --urban-tag-amber-container: color-mix(in srgb, var(--urban-tag-amber) 14%, transparent);
+  --urban-tag-red: light-dark(#c2001a, #ff6961);
+  --urban-tag-red-container: color-mix(in srgb, var(--urban-tag-red) 14%, transparent);
+  --urban-tag-teal: light-dark(#0d6b63, #5eead4);
+  --urban-tag-teal-container: color-mix(in srgb, var(--urban-tag-teal) 14%, transparent);
+  --urban-tag-purple: light-dark(#7e22ce, #d8b4fe);
+  --urban-tag-purple-container: color-mix(in srgb, var(--urban-tag-purple) 14%, transparent);
+  --urban-tag-pink: light-dark(#be185d, #f9a8d4);
+  --urban-tag-pink-container: color-mix(in srgb, var(--urban-tag-pink) 14%, transparent);
+  --urban-tag-green: light-dark(#1a7131, #30d158);
+  --urban-tag-green-container: color-mix(in srgb, var(--urban-tag-green) 14%, transparent);
+
   // Preenchimento de destaque: fundo do botao principal e do cabecalho das tabelas, com o texto sobre ele.
   // No escuro e um indigo mais escuro que o papel "primary" (#9E9CFF), que serve de cor de texto.
   --urban-accent-fill: light-dark(#5856d6, #5e5ce6);
