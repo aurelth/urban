@@ -83,7 +83,8 @@ describe('Navegação', () => {
       stubMyMonth();
       cy.visit('/dashboard');
 
-      cy.get('nav[aria-label="Menu principal"] a').then(($links) => {
+      // O item chega depois da resposta da API: a conferência repete até ele aparecer.
+      cy.get('nav[aria-label="Menu principal"] a').should(($links) => {
         expect([...$links].slice(0, 3).map((link) => link.dataset['testid'])).to.deep.eq([
           'nav-dashboard',
           'nav-my-invoice',

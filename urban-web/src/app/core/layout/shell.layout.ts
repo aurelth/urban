@@ -1,6 +1,6 @@
 import { BreakpointObserver } from '@angular/cdk/layout';
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, computed, effect, inject, linkedSignal } from '@angular/core';
+import { Component, computed, effect, inject, linkedSignal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { MatIconButton } from '@angular/material/button';
 import { MatIcon } from '@angular/material/icon';
@@ -16,6 +16,7 @@ import { roleLabel } from '../auth/role-label';
 import { SessionStore } from '../auth/session.store';
 import { BrandLink } from '../../shared/ui/brand-link/brand.link';
 import { ThemeStore } from '../services/theme.store';
+import { ManagerHousingStore } from './manager-housing.store';
 import { NavGroup, navFooterFor, navGroupsFor, userMenuFor } from './nav-items';
 import { SidebarStore } from './sidebar.store';
 
@@ -59,7 +60,11 @@ export class ShellLayout {
   protected readonly initialsOf = initialsOf;
   protected readonly roleLabel = roleLabel;
 
-  protected readonly groups = computed(() => navGroupsFor(this.session.user()));
+  private readonly housing = inject(ManagerHousingStore);
+
+  protected readonly groups = computed(() =>
+    navGroupsFor(this.session.user(), this.housing.livesHere()),
+  );
   protected readonly footerItems = computed(() => navFooterFor(this.session.user()));
   protected readonly userMenuItems = computed(() => userMenuFor(this.session.user()));
   protected readonly hasSidebar = computed(() => this.groups().length > 0);
@@ -108,6 +113,18 @@ export class ShellLayout {
   private readonly router = inject(Router);
 
   constructor() {
+    // O síndico só ganha "Minha fatura" se mora no condomínio: pergunta uma vez por pessoa e esquece quando ela sai.
+    effect(() => {
+      const user = this.session.user();
+      untracked(() => {
+        if (user?.role === 'Manager' && user.condominiumId !== null) {
+          void this.housing.load(user.id);
+        } else {
+          this.housing.reset();
+        }
+      });
+    });
+
     // Sessão que caiu sozinha (renovação recusada): volta para a entrada e guarda onde a pessoa estava.
     effect(() => {
       if (this.session.status() === 'anonymous' && this.session.expired()) {
