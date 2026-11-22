@@ -6,6 +6,7 @@ import { SessionStore } from '../../core/auth/session.store';
 import { NOW } from '../../core/finance/clock';
 import { formatDate, currentMonth, monthTitle } from '../../core/finance/month';
 import { formatMoney } from '../../core/finance/money';
+import { Mural } from '../mural/mural';
 import { DashboardCard } from './dashboard-card';
 import { MonthState, monthState, receivedPercent } from './dashboard-values';
 import { DashboardStore } from './dashboard.store';
@@ -16,10 +17,10 @@ const MONTH_STATE_LABELS: Record<MonthState, string> = {
   closed: 'Fechado',
 };
 
-/** O painel do síndico: o mês, os recebimentos, o condomínio e o que precisa de atenção. */
+/** O painel do síndico: o mês, os recebimentos, o condomínio e o que precisa de atenção. Para o morador, o painel é o mural. */
 @Component({
   selector: 'urban-dashboard-page',
-  imports: [RouterLink, MatAnchor, MatButton, MatIcon, DashboardCard],
+  imports: [RouterLink, MatAnchor, MatButton, MatIcon, DashboardCard, Mural],
   providers: [DashboardStore],
   templateUrl: './dashboard.page.html',
   changeDetection: ChangeDetectionStrategy.OnPush,

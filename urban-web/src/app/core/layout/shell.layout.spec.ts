@@ -254,12 +254,21 @@ describe('ShellLayout', () => {
       );
     }
 
-    it('mostra o item logo depois do Painel ao síndico que mora no condomínio', async () => {
+    it('mostra o Mural e a fatura logo depois do Painel ao síndico que mora no condomínio', async () => {
       const { fixture, http, html } = await setup(REGISTERED_MANAGER);
 
       await answer(fixture, http, 'unit');
 
-      expect(ids(html).slice(0, 3)).toEqual(['nav-dashboard', 'nav-my-invoice', 'nav-units']);
+      expect(ids(html).slice(0, 4)).toEqual([
+        'nav-dashboard',
+        'nav-mural',
+        'nav-my-invoice',
+        'nav-units',
+      ]);
+      const mural = byTestId(html, 'nav-mural')!;
+      expect(text(mural)).toBe('Mural');
+      expect(mural.getAttribute('href')).toBe('/mural');
+      expect(mural.querySelector('mat-icon')).not.toBeNull();
       const link = byTestId(html, 'nav-my-invoice')!;
       expect(text(link)).toBe('Minha fatura');
       expect(link.getAttribute('href')).toBe('/minha-fatura');
@@ -272,6 +281,7 @@ describe('ShellLayout', () => {
       await answer(fixture, http, access);
 
       expect(byTestId(html, 'nav-my-invoice')).toBeNull();
+      expect(byTestId(html, 'nav-mural')).toBeNull();
       expect(ids(html)[1]).toBe('nav-units');
     });
 

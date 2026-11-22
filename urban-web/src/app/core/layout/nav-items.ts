@@ -33,6 +33,13 @@ const MY_INVOICE: NavItem = {
   path: '/minha-fatura',
 };
 
+const MURAL: NavItem = {
+  id: 'mural',
+  label: 'Mural',
+  icon: 'newspaper',
+  path: '/mural',
+};
+
 const RESIDENT_GROUPS: readonly NavGroup[] = [
   { id: 'main', label: null, items: [DASHBOARD, MY_INVOICE] },
 ];
@@ -91,9 +98,12 @@ const MANAGER_GROUPS: readonly NavGroup[] = [
   },
 ];
 
-/** O síndico que mora no condomínio também tem fatura: "Minha fatura" entra no grupo principal, logo depois do Painel. */
+/**
+ * O síndico que mora no condomínio também é morador: "Mural" e "Minha fatura" entram no grupo principal, logo depois do
+ * Painel. Para o morador o Painel já é o mural; o painel do síndico é o de gestão, então o mural dele tem item próprio.
+ */
 const MANAGER_GROUPS_WHO_LIVES_HERE: readonly NavGroup[] = MANAGER_GROUPS.map((group) =>
-  group.id === 'main' ? { ...group, items: [...group.items, MY_INVOICE] } : group,
+  group.id === 'main' ? { ...group, items: [...group.items, MURAL, MY_INVOICE] } : group,
 );
 
 const OVERVIEW: NavItem = {

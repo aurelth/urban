@@ -1,6 +1,7 @@
 import { PALETTE } from '../support/layout';
 import { INSTRUCTIONS_API, NO_INSTRUCTIONS } from '../support/dados-pagamento';
 import { MONTH_URL, PAYMENTS_URL, failOnce, stubDashboard } from '../support/painel';
+import { stubMural } from '../support/mural';
 import { RESIDENT, stubSignedIn } from '../support/session';
 
 describe('Painel', () => {
@@ -147,12 +148,15 @@ describe('Painel', () => {
     });
   });
 
-  it('mostra só as boas-vindas para o morador, sem chamar a API do condomínio', () => {
+  it('mostra o mural para o morador, no lugar do painel, sem chamar a API do condomínio', () => {
     stubSignedIn(RESIDENT);
     stubDashboard();
+    stubMural();
     cy.visit('/dashboard');
 
-    cy.get('[data-testid="welcome"]').should('be.visible');
+    cy.contains('h1', 'Mural').should('be.visible');
+    cy.get('[data-testid="mural-card"]').should('have.length.greaterThan', 0);
+    cy.get('[data-testid="welcome"]').should('not.exist');
     cy.get('[data-testid="card-month"]').should('not.exist');
     cy.get('@month.all').should('have.length', 0);
   });

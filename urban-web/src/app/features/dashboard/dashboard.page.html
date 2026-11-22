@@ -1,22 +1,7 @@
-<section class="mx-auto max-w-5xl p-6">
-  <h1 class="sr-only">Painel</h1>
+@if (isManager()) {
+  <section class="mx-auto max-w-5xl p-6">
+    <h1 class="sr-only">Painel</h1>
 
-  @if (!isManager()) {
-    <section
-      class="rounded-xl border border-outline-variant bg-surface-container p-6"
-      data-testid="welcome"
-    >
-      <h2 class="m-0 mb-4 text-base font-medium">Bem-vindo ao Urban</h2>
-      <p class="m-0 mb-4 text-on-surface-variant">
-        A fatura da sua unidade e as despesas do condomínio ficam em Minha fatura. Os avisos do
-        condomínio ainda estão em construção.
-      </p>
-      <a mat-stroked-button data-testid="my-invoice-link" routerLink="/minha-fatura">
-        Ver minha fatura
-        <mat-icon svgIcon="arrow_forward" aria-hidden="true" />
-      </a>
-    </section>
-  } @else {
     <div class="grid gap-4 md:grid-cols-3">
       <urban-dashboard-card
         data-testid="card-month"
@@ -208,5 +193,7 @@
         }
       </urban-dashboard-card>
     </div>
-  }
-</section>
+  </section>
+} @else {
+  <urban-mural />
+}

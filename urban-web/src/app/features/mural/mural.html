@@ -1,0 +1,204 @@
+<header class="mb-6 rounded-2xl border border-outline-variant bg-surface-container p-5 sm:p-6">
+  <div class="flex items-start justify-between gap-4">
+    <div>
+      <h1 class="m-0 mb-1 text-3xl font-semibold tracking-tight">Mural</h1>
+      @if (store.status() === 'ready') {
+        <p class="m-0 flex items-center gap-2 text-on-surface-variant" data-testid="summary">
+          @if (store.unread() > 0) {
+            <span class="inline-flex text-primary"
+              ><mat-icon svgIcon="mark_email_unread" aria-hidden="true"
+            /></span>
+          } @else {
+            <span class="inline-flex text-success"
+              ><mat-icon svgIcon="check_circle" aria-hidden="true"
+            /></span>
+          }
+          <span>{{ unreadSummary(store.unread()) }}</span>
+        </p>
+      } @else {
+        <p class="m-0 text-on-surface-variant">Os avisos do seu condomínio</p>
+      }
+    </div>
+    @if (store.status() === 'ready') {
+      <button
+        mat-icon-button
+        type="button"
+        data-testid="refresh"
+        aria-label="Atualizar avisos"
+        [disabled]="store.refreshing()"
+        (click)="store.refresh()"
+      >
+        <mat-icon svgIcon="refresh" />
+      </button>
+    }
+  </div>
+</header>
+
+@switch (store.status()) {
+  @case ('loading') {
+    <div
+      role="status"
+      aria-label="Carregando os avisos"
+      class="flex flex-col gap-4"
+      data-testid="loading"
+    >
+      @for (placeholder of [1, 2, 3]; track placeholder) {
+        <div
+          class="h-32 rounded-xl border border-outline-variant bg-surface-container motion-safe:animate-pulse"
+        ></div>
+      }
+    </div>
+  }
+  @case ('error') {
+    <div class="flex flex-col items-start gap-4" data-testid="load-error">
+      <p class="m-0 flex items-start gap-2 text-error">
+        <mat-icon svgIcon="error" aria-hidden="true" />
+        <span>Não foi possível carregar os avisos</span>
+      </p>
+      <button mat-stroked-button type="button" data-testid="retry" (click)="store.load()">
+        Tentar de novo
+      </button>
+    </div>
+  }
+  @case ('ready') {
+    @if (store.notice(); as message) {
+      <p role="status" class="mb-6 flex items-start gap-2" data-testid="notice">
+        <span class="inline-flex text-success"
+          ><mat-icon svgIcon="check_circle" aria-hidden="true"
+        /></span>
+        <span>{{ message }}</span>
+      </p>
+    }
+    @if (store.actionError(); as message) {
+      <p role="alert" class="mb-6 flex items-start gap-2 text-error" data-testid="action-error">
+        <mat-icon svgIcon="error" aria-hidden="true" />
+        <span>{{ message }}</span>
+      </p>
+    }
+
+    @if (showToolbar()) {
+      <div
+        class="mb-4 flex flex-wrap items-center gap-2"
+        role="group"
+        aria-label="Filtrar por categoria"
+      >
+        @for (chip of store.chips(); track chip.label) {
+          <button
+            type="button"
+            [class]="chipClasses(chip)"
+            [attr.data-testid]="'chip-' + (chip.value ?? 'all')"
+            [attr.aria-pressed]="store.category() === chip.value"
+            (click)="store.setCategory(chip.value)"
+          >
+            {{ chip.label }}
+            @if (chip.unread > 0) {
+              <span
+                class="inline-flex min-w-5 items-center justify-center rounded-full bg-on-surface px-1.5 text-xs font-semibold text-surface"
+                data-testid="chip-badge"
+                >{{ chip.unread }}</span
+              >
+            }
+          </button>
+        }
+      </div>
+
+      <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+        <button
+          type="button"
+          class="inline-flex min-h-9 cursor-pointer items-center gap-2 rounded-full border px-3.5 py-1 text-sm font-medium transition-colors"
+          [class]="
+            store.unreadOnly()
+              ? 'border-primary bg-primary text-on-primary'
+              : 'border-outline-variant bg-transparent text-on-surface hover:bg-surface-container'
+          "
+          data-testid="unread-only"
+          [attr.aria-pressed]="store.unreadOnly()"
+          (click)="store.setUnreadOnly(!store.unreadOnly())"
+        >
+          <mat-icon class="size-[18px]!" svgIcon="mark_email_unread" aria-hidden="true" />
+          Só não lidos
+        </button>
+        <button
+          mat-stroked-button
+          type="button"
+          data-testid="mark-all"
+          [disabled]="store.unreadInScope() === 0 || store.markingAll()"
+          (click)="store.markAll()"
+        >
+          <mat-icon svgIcon="done_all" aria-hidden="true" />
+          {{ markAllLabel(store.category()) }}
+        </button>
+      </div>
+    }
+
+    @if (store.items().length > 0) {
+      <ul
+        class="m-0 flex list-none flex-col gap-4 p-0 transition-opacity"
+        [class.opacity-60]="store.refreshing()"
+        [attr.aria-busy]="store.refreshing()"
+        data-testid="list"
+      >
+        @for (item of store.items(); track item.id) {
+          <li>
+            <urban-mural-card
+              [item]="item"
+              [marking]="store.marking().includes(item.id)"
+              (markRead)="store.markRead(item)"
+            />
+          </li>
+        }
+      </ul>
+
+      <div class="mt-6 flex flex-col items-center gap-3">
+        <p class="m-0 text-sm text-on-surface-variant" data-testid="shown-count">
+          {{ shownText() }}
+        </p>
+        @if (store.hasMore()) {
+          <button
+            mat-stroked-button
+            type="button"
+            data-testid="load-more"
+            [disabled]="store.loadingMore()"
+            (click)="store.loadMore()"
+          >
+            <mat-icon
+              [class]="store.loadingMore() ? 'motion-safe:animate-spin' : ''"
+              [svgIcon]="store.loadingMore() ? 'progress_activity' : 'keyboard_arrow_down'"
+              aria-hidden="true"
+            />
+            {{ store.loadingMore() ? 'Buscando' : 'Mostrar mais avisos' }}
+          </button>
+        }
+      </div>
+    } @else if (store.hasFilters()) {
+      <div
+        class="flex flex-col items-center gap-4 rounded-xl border border-outline-variant bg-surface-container p-6 text-center"
+        data-testid="empty-filter"
+      >
+        <p class="m-0 text-base font-medium">{{ emptyFilterTitle() }}</p>
+        <button
+          mat-stroked-button
+          type="button"
+          data-testid="clear-filters"
+          (click)="store.clearFilters()"
+        >
+          Ver todos os avisos
+        </button>
+      </div>
+    } @else {
+      <div
+        class="flex flex-col items-center gap-3 rounded-xl border border-outline-variant bg-surface-container p-8 text-center"
+        data-testid="empty"
+      >
+        <span class="inline-flex text-on-surface-variant"
+          ><mat-icon class="size-12!" svgIcon="newspaper" aria-hidden="true"
+        /></span>
+        <p class="m-0 text-base font-medium">Nenhum aviso por enquanto</p>
+        <p class="m-0 text-on-surface-variant">
+          Quando o síndico publicar um aviso para o seu condomínio, bloco ou unidade, ele aparece
+          aqui.
+        </p>
+      </div>
+    }
+  }
+}

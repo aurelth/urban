@@ -15,6 +15,8 @@ import { DELINQUENCY_PATH, stubDelinquency } from '../support/inadimplencia';
 import { PAYMENTS_PATH, stubPayments } from '../support/pagamentos';
 import { MY_DATA_PATH, stubMyRegistration } from '../support/meu-cadastro';
 import { MY_INVOICE_PATH, stubMyMonth } from '../support/minha-fatura';
+import { TODAY } from '../support/financeiro';
+import { stubMural } from '../support/mural';
 import { PROFILE_PATH, stubProfile } from '../support/perfil';
 import { MONTH_DASHBOARD_PATH, stubMonthDashboard } from '../support/painel-financeiro';
 import { stubDashboard } from '../support/painel';
@@ -246,6 +248,24 @@ describe('Tela de celular (375 x 667)', () => {
     cy.contains('h1', 'Pagamentos').should('be.visible');
     cy.get('[data-testid="charge-row"]').should('have.length', 3);
     cy.get('[data-testid="charge-row"] button').each(($button) => {
+      const { left, right } = $button[0].getBoundingClientRect();
+      expect(left).to.be.at.least(0);
+      expect(right).to.be.at.most(375);
+    });
+    expectNoHorizontalScroll();
+  });
+
+  it('mostra o mural do morador sem rolagem horizontal, com filtros e botões dentro da tela', () => {
+    cy.clock(TODAY, ['Date']);
+    stubSignedIn(RESIDENT);
+    stubMural();
+    cy.visit('/dashboard');
+
+    cy.contains('h1', 'Mural').should('be.visible');
+    cy.get('[data-testid="mural-card"]').should('have.length', 4);
+    cy.get(
+      '[data-testid^="chip-"], [data-testid="unread-only"], [data-testid="mark-all"], [data-testid="refresh"], [data-testid="mark-read"]',
+    ).each(($button) => {
       const { left, right } = $button[0].getBoundingClientRect();
       expect(left).to.be.at.least(0);
       expect(right).to.be.at.most(375);
