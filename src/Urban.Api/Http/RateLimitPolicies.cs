@@ -38,6 +38,9 @@ public static class RateLimitPolicies
     /// <summary>Todas as rotas de veículos das unidades.</summary>
     public const string Vehicles = "vehicles";
 
+    /// <summary>Todas as rotas de comunicados, do síndico e do mural de quem mora.</summary>
+    public const string Announcements = "announcements";
+
     /// <summary>Todas as rotas do financeiro: despesas, grupos e lançamentos do mês.</summary>
     public const string Finance = "finance";
 

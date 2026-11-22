@@ -26,6 +26,8 @@ using Urban.Identity.Domain.Consent;
 using Urban.Identity.Domain.Contact;
 using Urban.Identity.Domain.Tokens;
 using Urban.Identity.Domain.Users;
+using Urban.Operations.Domain;
+using Urban.Operations.Domain.Announcements;
 using Urban.SharedKernel;
 
 namespace Urban.IntegrationTests.Api;
@@ -202,10 +204,25 @@ public sealed class ErrorHttpMappingTests
         { ConsumptionErrors.UnitNotFound.Code, 404 },
         { ConsumptionErrors.ServiceInvalid.Code, 400 },
         { CondominiumErrors.ApportionmentNotReady.Code, 422 },
+        { OperationsErrors.CondominiumNotFound.Code, 404 },
+        { OperationsErrors.VersionRequired.Code, 400 },
+        { OperationsErrors.ConcurrencyConflict.Code, 409 },
+        { AnnouncementErrors.CondominiumRequired.Code, 422 },
+        { AnnouncementErrors.AuthorRequired.Code, 422 },
+        { AnnouncementErrors.BlockNotFound.Code, 422 },
+        { AnnouncementErrors.UnitNotFound.Code, 422 },
+        { AnnouncementErrors.TitleInvalid.Code, 400 },
+        { AnnouncementErrors.BodyInvalid.Code, 400 },
+        { AnnouncementErrors.CategoryInvalid.Code, 400 },
+        { AnnouncementErrors.ScopeInvalid.Code, 400 },
+        { AnnouncementErrors.BlockInvalid.Code, 400 },
+        { AnnouncementErrors.UnitRequired.Code, 400 },
+        { AnnouncementErrors.PageInvalid.Code, 400 },
+        { AnnouncementErrors.NotFound.Code, 404 },
     };
 
     [Fact]
-    public void Every_error_declared_by_the_identity_condominium_and_finance_modules_has_a_status_code()
+    public void Every_error_declared_by_the_identity_condominium_finance_and_operations_modules_has_a_status_code()
     {
         Assembly[] assemblies =
         [
@@ -215,6 +232,8 @@ public sealed class ErrorHttpMappingTests
             Urban.Condominium.Application.AssemblyReference.Assembly,
             typeof(FinanceErrors).Assembly,
             Urban.Finance.Application.AssemblyReference.Assembly,
+            typeof(OperationsErrors).Assembly,
+            Urban.Operations.Application.AssemblyReference.Assembly,
         ];
 
         Error[] errors = assemblies

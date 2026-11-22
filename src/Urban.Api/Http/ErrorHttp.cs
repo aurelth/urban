@@ -27,6 +27,8 @@ using Urban.Identity.Domain.Consent;
 using Urban.Identity.Domain.Contact;
 using Urban.Identity.Domain.Tokens;
 using Urban.Identity.Domain.Users;
+using Urban.Operations.Domain;
+using Urban.Operations.Domain.Announcements;
 using Urban.SharedKernel;
 
 namespace Urban.Api.Http;
@@ -185,6 +187,21 @@ public static class ErrorHttp
         [VehicleErrors.CondominiumRequired.Code] = StatusCodes.Status422UnprocessableEntity,
         [VehicleErrors.NotFound.Code] = StatusCodes.Status404NotFound,
         [VehicleErrors.PlateAlreadyRegistered.Code] = StatusCodes.Status409Conflict,
+
+        [OperationsErrors.CondominiumNotFound.Code] = StatusCodes.Status404NotFound,
+        [OperationsErrors.VersionRequired.Code] = StatusCodes.Status400BadRequest,
+        [AnnouncementErrors.CondominiumRequired.Code] = StatusCodes.Status422UnprocessableEntity,
+        [AnnouncementErrors.AuthorRequired.Code] = StatusCodes.Status422UnprocessableEntity,
+        [AnnouncementErrors.TitleInvalid.Code] = StatusCodes.Status400BadRequest,
+        [AnnouncementErrors.BodyInvalid.Code] = StatusCodes.Status400BadRequest,
+        [AnnouncementErrors.CategoryInvalid.Code] = StatusCodes.Status400BadRequest,
+        [AnnouncementErrors.ScopeInvalid.Code] = StatusCodes.Status400BadRequest,
+        [AnnouncementErrors.BlockInvalid.Code] = StatusCodes.Status400BadRequest,
+        [AnnouncementErrors.UnitRequired.Code] = StatusCodes.Status400BadRequest,
+        [AnnouncementErrors.BlockNotFound.Code] = StatusCodes.Status422UnprocessableEntity,
+        [AnnouncementErrors.UnitNotFound.Code] = StatusCodes.Status422UnprocessableEntity,
+        [AnnouncementErrors.NotFound.Code] = StatusCodes.Status404NotFound,
+        [AnnouncementErrors.PageInvalid.Code] = StatusCodes.Status400BadRequest,
 
         [FinanceErrors.CondominiumNotFound.Code] = StatusCodes.Status404NotFound,
         [FinanceErrors.VersionRequired.Code] = StatusCodes.Status400BadRequest,
