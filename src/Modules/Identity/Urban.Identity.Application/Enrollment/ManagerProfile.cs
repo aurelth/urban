@@ -1,5 +1,6 @@
 using Urban.Identity.Application.Abstractions;
 using Urban.Identity.Application.Authentication;
+using Urban.Identity.Domain.Access;
 using Urban.Identity.Domain.Users;
 using Urban.SharedKernel;
 using Urban.SharedKernel.Contracts;
@@ -19,11 +20,11 @@ public sealed class ManagerProfile(IUserAccounts accounts) : IManagerProfile
         return user?.DisplayName?.Value;
     }
 
-    public Task<string?> GetEmailAsync(Guid userId, Guid condominiumId, CancellationToken cancellationToken)
+    public async Task<string?> GetEmailAsync(Guid userId, Guid condominiumId, CancellationToken cancellationToken)
     {
-        _ = (userId, condominiumId, cancellationToken, accounts);
+        User? user = await accounts.FindByIdAsync(userId, cancellationToken);
 
-        return Task.FromResult<string?>(null);
+        return user is { Role: UserRole.Manager } && user.CondominiumId == condominiumId ? user.Email.Value : null;
     }
 
     public async Task<Result<string>> UpdateDisplayNameAsync(Guid userId, string? displayName, CancellationToken cancellationToken)
