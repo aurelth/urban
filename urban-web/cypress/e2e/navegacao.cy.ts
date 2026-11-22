@@ -6,6 +6,8 @@ import {
   openDrawer,
   openUserMenu,
 } from '../support/navegacao';
+import { TODAY } from '../support/financeiro';
+import { stubMyAccess, stubMyAccessUnavailable, stubMyMonth } from '../support/minha-fatura';
 import { stubProfile } from '../support/perfil';
 import { NEW_MANAGER } from '../support/condominio';
 import { MANAGER, RESIDENT, stubSignedIn } from '../support/session';
@@ -67,6 +69,67 @@ describe('Navegação', () => {
     stubSignedIn();
     stubUnits();
     stubProfile();
+    stubMyAccess('none');
+  });
+
+  describe('síndico que mora no condomínio', () => {
+    beforeEach(() => {
+      cy.viewport(DESKTOP.width, DESKTOP.height);
+    });
+
+    it('ganha "Minha fatura" logo depois do Painel e abre a própria fatura', () => {
+      cy.clock(TODAY, ['Date']);
+      stubMyAccess('unit');
+      stubMyMonth();
+      cy.visit('/dashboard');
+
+      // O item chega depois da resposta da API: a conferência repete até ele aparecer.
+      cy.get('nav[aria-label="Menu principal"] a').should(($links) => {
+        expect([...$links].slice(0, 3).map((link) => link.dataset['testid'])).to.deep.eq([
+          'nav-dashboard',
+          'nav-my-invoice',
+          'nav-units',
+        ]);
+      });
+      cy.get('[data-testid="nav-my-invoice"]').should('contain.text', 'Minha fatura').click();
+
+      cy.location('pathname').should('eq', '/minha-fatura');
+      cy.contains('h1', 'Minha fatura').should('be.visible');
+      cy.get('[data-testid="nav-my-invoice"]').should('have.attr', 'aria-current', 'page');
+    });
+
+    for (const access of ['dependent', 'none'] as const) {
+      it(`não mostra "Minha fatura" quando o acesso é ${access}`, () => {
+        stubMyAccess(access);
+        cy.visit('/dashboard');
+
+        cy.wait('@myAccess');
+        cy.get('[data-testid="nav-units"]').should('be.visible');
+        cy.get('[data-testid="nav-my-invoice"]').should('not.exist');
+      });
+    }
+
+    it('segue sem o item, e com o menu de sempre, se a consulta falhar', () => {
+      stubMyAccessUnavailable();
+      cy.visit('/dashboard');
+
+      cy.wait('@myAccess');
+      cy.get('[data-testid="nav-units"]').should('be.visible');
+      cy.get('[data-testid="nav-my-invoice"]').should('not.exist');
+    });
+
+    it('mostra o item também na gaveta do celular, sem rolagem horizontal', () => {
+      cy.viewport(PHONE.width, PHONE.height);
+      cy.clock(TODAY, ['Date']);
+      stubMyAccess('unit');
+      stubMyMonth();
+      cy.visit('/dashboard');
+
+      openDrawer();
+
+      cy.get('[data-testid="nav-my-invoice"]').should('be.visible');
+      expectNoHorizontalScroll();
+    });
   });
 
   describe('no computador', () => {

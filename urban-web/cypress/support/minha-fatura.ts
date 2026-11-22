@@ -1,4 +1,5 @@
 export const MY_INVOICE_PATH = '/minha-fatura';
+export const MY_ACCESS_API = '/api/finance/me/access';
 export const MY_MONTH_API = /\/api\/finance\/me\/months\/(\d{4}-\d{2})$/;
 
 const ORDINARY = {
@@ -117,4 +118,16 @@ export function stubMyInvoiceRejected(chargeId: string, status: number, code: st
     headers: { 'content-type': 'application/problem+json' },
     body: JSON.stringify({ status, code, detail: 'Detalhe da API' }),
   }).as('myInvoice');
+}
+
+/** Como a conta mora no condomínio: o que o menu do síndico pergunta para decidir se mostra "Minha fatura". */
+export function stubMyAccess(access: 'unit' | 'dependent' | 'none'): void {
+  cy.intercept('GET', MY_ACCESS_API, { statusCode: 200, body: { access } }).as('myAccess');
+}
+
+export function stubMyAccessUnavailable(): void {
+  cy.intercept('GET', MY_ACCESS_API, {
+    statusCode: 503,
+    body: { status: 503, code: 'identity.session.store_unavailable', detail: 'Indisponível' },
+  }).as('myAccess');
 }

@@ -95,6 +95,43 @@ describe('navGroupsFor', () => {
   });
 });
 
+describe('síndico que mora no condomínio', () => {
+  it('ganha "Minha fatura" logo depois do Painel, no grupo principal', () => {
+    const groups = navGroupsFor(MANAGER_WITH_CONDOMINIUM, true);
+
+    expect(groups.map((group) => group.id)).toEqual(['main', 'condominium', 'finance']);
+    expect(groups[0].items.map((item) => [item.id, item.label, item.path, item.icon])).toEqual([
+      ['dashboard', 'Painel', '/dashboard', 'dashboard'],
+      ['my-invoice', 'Minha fatura', '/minha-fatura', 'receipt_long'],
+    ]);
+  });
+
+  it('não muda o resto do menu do síndico', () => {
+    const withInvoice = navGroupsFor(MANAGER_WITH_CONDOMINIUM, true).slice(1);
+    const without = navGroupsFor(MANAGER_WITH_CONDOMINIUM, false).slice(1);
+
+    expect(withInvoice).toEqual(without);
+  });
+
+  it('não ganha o item quando não mora: é o menu de sempre', () => {
+    expect(navGroupsFor(MANAGER_WITH_CONDOMINIUM, false)[0].items.map((item) => item.id)).toEqual([
+      'dashboard',
+    ]);
+    expect(navGroupsFor(MANAGER_WITH_CONDOMINIUM)[0].items.map((item) => item.id)).toEqual([
+      'dashboard',
+    ]);
+  });
+
+  it('não dá item a quem não é síndico com condomínio, mesmo com o aviso de que mora', () => {
+    expect(navGroupsFor({ role: 'Manager', condominiumId: null }, true)).toEqual([]);
+    expect(navGroupsFor(null, true)).toEqual([]);
+    expect(navGroupsFor(ADMIN, true)).toEqual(navGroupsFor(ADMIN, false));
+    expect(navGroupsFor(RESIDENT_WITH_CONDOMINIUM, true)).toEqual(
+      navGroupsFor(RESIDENT_WITH_CONDOMINIUM, false),
+    );
+  });
+});
+
 describe('navFooterFor', () => {
   it('leva o síndico com condomínio ao Contato, no canto inferior do menu', () => {
     expect(

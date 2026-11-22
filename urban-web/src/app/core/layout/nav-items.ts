@@ -90,6 +90,11 @@ const MANAGER_GROUPS: readonly NavGroup[] = [
   },
 ];
 
+/** O síndico que mora no condomínio também tem fatura: "Minha fatura" entra no grupo principal, logo depois do Painel. */
+const MANAGER_GROUPS_WHO_LIVES_HERE: readonly NavGroup[] = MANAGER_GROUPS.map((group) =>
+  group.id === 'main' ? { ...group, items: [...group.items, MY_INVOICE] } : group,
+);
+
 const OVERVIEW: NavItem = {
   id: 'overview',
   label: 'Visão geral',
@@ -141,13 +146,16 @@ function managesCondominium(who: Who): boolean {
   return who?.role === 'Manager' && who.condominiumId !== null;
 }
 
-/** Itens do menu lateral, agrupados. Vazio quando a pessoa não tem telas (o menu nem aparece). */
-export function navGroupsFor(who: Who): readonly NavGroup[] {
+/**
+ * Itens do menu lateral, agrupados. Vazio quando a pessoa não tem telas (o menu nem aparece). `livesHere` diz que o
+ * síndico mora no condomínio (ver `ManagerHousingStore`): só ele ganha "Minha fatura"; o morador já a tem sempre.
+ */
+export function navGroupsFor(who: Who, livesHere = false): readonly NavGroup[] {
   if (who?.role === 'SuperAdmin') {
     return ADMIN_GROUPS;
   }
   if (managesCondominium(who)) {
-    return MANAGER_GROUPS;
+    return livesHere ? MANAGER_GROUPS_WHO_LIVES_HERE : MANAGER_GROUPS;
   }
   return who?.role === 'Resident' && who.condominiumId !== null ? RESIDENT_GROUPS : [];
 }
