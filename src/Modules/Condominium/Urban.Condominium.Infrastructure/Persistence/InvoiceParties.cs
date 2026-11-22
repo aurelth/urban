@@ -10,7 +10,7 @@ namespace Urban.Condominium.Infrastructure.Persistence;
 /// O lado do Condomínio do contrato da fatura. O condomínio e os vínculos são sempre os do tenant da requisição (ou da tarefa em
 /// segundo plano que carrega o tenant), conferido aqui de novo além do filtro global.
 /// </summary>
-public sealed class InvoiceParties(CondominiumDbContext db, ITenantContext tenant) : IInvoiceParties
+public sealed class InvoiceParties(CondominiumDbContext db, ITenantContext tenant, IManagerProfile managers) : IInvoiceParties
 {
     public async Task<InvoiceCondominium?> GetCondominiumAsync(CancellationToken cancellationToken)
     {
@@ -61,22 +61,46 @@ public sealed class InvoiceParties(CondominiumDbContext db, ITenantContext tenan
                 db.People,
                 occupancy => occupancy.PersonId,
                 person => person.Id,
-                (occupancy, person) => new { occupancy.UnitId, occupancy.PersonId, occupancy.Kind, occupancy.StartDate, occupancy.EndDate, person.FullName, person.Email })
+                (occupancy, person) => new { occupancy.UnitId, occupancy.PersonId, occupancy.Kind, occupancy.StartDate, occupancy.EndDate, person.FullName, person.Email, person.UserId })
             .ToListAsync(cancellationToken);
 
-        Dictionary<Guid, InvoiceResponsible> responsibles = [];
+        var chosen = new List<(Guid UnitId, string Name, string? Email, Guid? UserId)>();
 
         foreach (var unit in rows.GroupBy(row => row.UnitId))
         {
-            Guid? chosen = ChargeResponsible.Choose(unit.Select(row => new ResponsibleCandidate(row.PersonId, row.Kind, row.StartDate, row.EndDate)), today);
+            Guid? personId = ChargeResponsible.Choose(unit.Select(row => new ResponsibleCandidate(row.PersonId, row.Kind, row.StartDate, row.EndDate)), today);
 
-            if (chosen is { } personId)
+            if (personId is { } id)
             {
-                var row = unit.First(candidate => candidate.PersonId == personId);
-                responsibles[unit.Key] = new InvoiceResponsible(row.FullName.Value, row.Email?.Value);
+                var row = unit.First(candidate => candidate.PersonId == id);
+                chosen.Add((unit.Key, row.FullName.Value, row.Email?.Value, row.UserId));
             }
         }
 
-        return responsibles;
+        IReadOnlyDictionary<Guid, string> accountEmails = await AccountEmailsAsync(condominiumId, chosen, cancellationToken);
+
+        return chosen.ToDictionary(
+            found => found.UnitId,
+            found => new InvoiceResponsible(found.Name, found.Email ?? (found.UserId is { } userId ? accountEmails.GetValueOrDefault(userId) : null)));
+    }
+
+    /// <summary>
+    /// O síndico é a única pessoa com conta e sem e-mail no cadastro (o do morador nasce junto com o convite), e o endereço dele é o do
+    /// login. Só quem ficou sem e-mail é perguntado, e cada conta uma vez, mesmo que ele seja o responsável de várias unidades.
+    /// </summary>
+    private async Task<IReadOnlyDictionary<Guid, string>> AccountEmailsAsync(
+        Guid condominiumId, IEnumerable<(Guid UnitId, string Name, string? Email, Guid? UserId)> chosen, CancellationToken cancellationToken)
+    {
+        Dictionary<Guid, string> emails = [];
+
+        foreach (Guid userId in chosen.Where(found => found.Email is null && found.UserId is not null).Select(found => found.UserId!.Value).Distinct())
+        {
+            if (await managers.GetEmailAsync(userId, condominiumId, cancellationToken) is { } email)
+            {
+                emails[userId] = email;
+            }
+        }
+
+        return emails;
     }
 }

@@ -174,6 +174,47 @@ public sealed class InvoiceDeliveryEndpointsTests(ApiFixture fixture) : IDisposa
     }
 
     [Fact]
+    public async Task The_manager_who_lives_in_a_unit_receives_his_own_invoice_at_the_email_of_his_account()
+    {
+        ManagerSession manager = await RegisterAsync();
+        await ClosedMonthKit.CloseAsync(_client, manager, Month(0), "2099-12-10");
+        string address = $"morador-{Guid.NewGuid():N}@exemplo.com";
+        await CreateResidentAsync(manager, "101", address);
+        await ManagerLivesInAsync(manager, "102");
+
+        JsonElement list = await ReadListAsync(manager, Month(0));
+        JsonElement[] items = [.. list.GetProperty("items").EnumerateArray()];
+        list.GetProperty("counts").GetProperty("noRecipient").GetInt32().Should().Be(0);
+        items[1].GetProperty("state").GetString().Should().Be("notSent");
+        items[1].GetProperty("responsibleName").GetString().Should().Be("Ana Maria Silva");
+
+        HttpResponseMessage response = await PostAsync(manager, MonthRoute(Month(0)));
+
+        response.StatusCode.Should().Be(HttpStatusCode.Accepted, await response.Content.ReadAsStringAsync());
+        JsonElement summary = await response.Content.ReadFromJsonAsync<JsonElement>();
+        summary.GetProperty("queued").GetInt32().Should().Be(2);
+        summary.GetProperty("withoutRecipient").GetInt32().Should().Be(0);
+        EmailMessage message = fixture.Factory.Emails.SentTo(manager.User.Email.Value).Should().ContainSingle().Subject;
+        message.TextBody.Should().Contain("Olá, Ana Maria Silva.").And.Contain("da unidade 102").And.Contain("R$ 400,00");
+        Encoding.ASCII.GetString(message.Attachments.Should().ContainSingle().Subject.Content, 0, 5).Should().Be("%PDF-");
+        fixture.Factory.Emails.SentTo(address).Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task The_manager_who_does_not_live_in_any_unit_changes_nothing_in_the_send()
+    {
+        ManagerSession manager = await RegisterAsync();
+        await ClosedMonthKit.CloseAsync(_client, manager, Month(0), "2099-12-10");
+        await CreateResidentAsync(manager, "101", $"morador-{Guid.NewGuid():N}@exemplo.com");
+
+        JsonElement summary = await (await PostAsync(manager, MonthRoute(Month(0)))).Content.ReadFromJsonAsync<JsonElement>();
+
+        summary.GetProperty("queued").GetInt32().Should().Be(1);
+        summary.GetProperty("withoutRecipient").GetInt32().Should().Be(1);
+        fixture.Factory.Emails.SentTo(manager.User.Email.Value).Should().BeEmpty();
+    }
+
+    [Fact]
     public async Task Sending_the_month_again_does_not_mail_the_same_invoice_twice()
     {
         ManagerSession manager = await RegisterAsync();
@@ -330,6 +371,24 @@ public sealed class InvoiceDeliveryEndpointsTests(ApiFixture fixture) : IDisposa
         JsonElement list = await ReadListAsync(manager, month);
 
         return list.GetProperty("items").EnumerateArray().Single(item => item.GetProperty("number").GetString() == number).GetProperty("chargeId").GetGuid();
+    }
+
+    /// <summary>O síndico registra, como a tela "Meus dados" faz, que mora na unidade: pega a própria pessoa e abre o vínculo de proprietário.</summary>
+    private async Task ManagerLivesInAsync(ManagerSession manager, string unitNumber)
+    {
+        HttpResponseMessage units = await GetAsync(manager, "/api/units");
+        Guid unitId = (await units.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("items").EnumerateArray()
+            .Single(unit => unit.GetProperty("number").GetString() == unitNumber).GetProperty("id").GetGuid();
+        HttpResponseMessage mine = await GetAsync(manager, "/api/residents/me");
+        mine.StatusCode.Should().Be(HttpStatusCode.OK, await mine.Content.ReadAsStringAsync());
+        Guid personId = (await mine.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
+
+        HttpResponseMessage added = await _client.SendJsonAsync(
+            HttpMethod.Post,
+            $"/api/residents/{personId}/occupancies",
+            manager.AccessToken,
+            new JsonObject { ["unitId"] = unitId, ["kind"] = "owner", ["startDate"] = "2024-03-01" });
+        added.StatusCode.Should().Be(HttpStatusCode.Created, await added.Content.ReadAsStringAsync());
     }
 
     private async Task CreateResidentAsync(ManagerSession manager, string unitNumber, string email)

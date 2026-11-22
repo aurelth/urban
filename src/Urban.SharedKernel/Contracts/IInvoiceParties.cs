@@ -15,7 +15,7 @@ public sealed record InvoiceManager(string Name, string? Phone)
 public sealed record InvoiceCondominium(string Name, string Cnpj, string Address, InvoiceManager? Manager = null);
 
 /// <param name="Name">Nome de quem recebe a fatura da unidade.</param>
-/// <param name="Email">E-mail do cadastro; nulo quando a pessoa não tem (a fatura existe, mas não há para onde enviá-la).</param>
+/// <param name="Email">E-mail do cadastro; o do síndico, que não tem e-mail de cadastro, é o do login. Nulo quando a pessoa não tem nenhum (a fatura existe, mas não há para onde enviá-la).</param>
 public sealed record InvoiceResponsible(string Name, string? Email)
 {
     // Nome e e-mail são dados pessoais: um log ou uma mensagem de erro que imprima o objeto não os vaza.
@@ -33,6 +33,7 @@ public interface IInvoiceParties
 
     /// <summary>
     /// O responsável de cada unidade na data: o inquilino que mora nela; sem inquilino, o proprietário. Dependentes nunca recebem.
+    /// O síndico que mora na unidade é o responsável como qualquer proprietário, e recebe no e-mail do login.
     /// Uma consulta para todas as unidades pedidas, nunca uma por unidade.
     /// </summary>
     /// <param name="unitIds">Unidades do condomínio da requisição.</param>
