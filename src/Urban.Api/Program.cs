@@ -57,6 +57,7 @@ app.MapPaymentEndpoints();
 app.MapDelinquencyEndpoints();
 app.MapMonthDashboardEndpoints();
 app.MapInvoiceEndpoints();
+app.MapMyFinanceEndpoints();
 app.MapInvoiceDeliveryEndpoints();
 app.MapPaymentInstructionsEndpoints();
 app.MapPostalCodeEndpoints();

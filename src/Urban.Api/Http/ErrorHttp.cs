@@ -86,6 +86,7 @@ public static class ErrorHttp
         [UserErrors.CondominiumMismatch.Code] = StatusCodes.Status422UnprocessableEntity,
         [UserErrors.CondominiumRequired.Code] = StatusCodes.Status422UnprocessableEntity,
         [UserErrors.NotManager.Code] = StatusCodes.Status403Forbidden,
+        [UserErrors.NotCondominiumMember.Code] = StatusCodes.Status403Forbidden,
         [UserErrors.CondominiumAlreadyAssigned.Code] = StatusCodes.Status409Conflict,
         [DisplayName.Invalid.Code] = StatusCodes.Status400BadRequest,
         [Email.Invalid.Code] = StatusCodes.Status400BadRequest,

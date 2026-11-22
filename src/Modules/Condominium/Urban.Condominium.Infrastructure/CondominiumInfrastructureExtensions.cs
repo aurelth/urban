@@ -41,6 +41,7 @@ public static class CondominiumInfrastructureExtensions
         services.AddScoped<IApportionmentBasis, ApportionmentBasisProvider>();
         services.AddScoped<ICondominiumDirectory, CondominiumDirectory>();
         services.AddScoped<IInvoiceParties, InvoiceParties>();
+        services.AddScoped<IResidentHousing, ResidentHousing>();
 
         return services;
     }

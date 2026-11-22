@@ -20,6 +20,9 @@ public static class UserErrors
     public static readonly Error NotManager =
         new("identity.user.not_manager", "Só o síndico pode cadastrar o condomínio");
 
+    public static readonly Error NotCondominiumMember =
+        new("identity.user.not_condominium_member", "Só moradores e o síndico acessam esta área");
+
     public static readonly Error CondominiumAlreadyAssigned =
         new("identity.user.condominium_already_assigned", "Esta conta já tem um condomínio cadastrado");
 
