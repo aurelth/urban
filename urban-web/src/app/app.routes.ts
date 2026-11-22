@@ -135,6 +135,12 @@ export const routes: Routes = [
               import('./features/comunicados/announcements.page').then((m) => m.AnnouncementsPage),
           },
           {
+            path: 'mural',
+            title: 'Mural',
+            canActivate: [memberGuard],
+            loadComponent: () => import('./features/mural/mural').then((m) => m.Mural),
+          },
+          {
             path: 'minha-fatura',
             title: 'Minha fatura',
             canActivate: [memberGuard],

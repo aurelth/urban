@@ -38,15 +38,26 @@ export class AnnouncementsApi {
     return this.http.delete<void>(`${BASE}/${id}`, { params: { version } });
   }
 
+  /** O mural de quem mora: só manda os filtros que a pessoa ligou. */
   listMine(query: MyAnnouncementsQuery): Observable<MyAnnouncementPage> {
-    throw new Error(`Não implementado: ${String(query.page)}`);
+    let params = new HttpParams().set('page', query.page).set('pageSize', query.pageSize);
+    if (query.unreadOnly) {
+      params = params.set('unreadOnly', true);
+    }
+    if (query.category !== null) {
+      params = params.set('category', query.category);
+    }
+    return this.http.get<MyAnnouncementPage>(`${BASE}/mine`, { params });
   }
 
   markRead(id: string): Observable<void> {
-    throw new Error(`Não implementado: ${id}`);
+    return this.http.post<void>(`${BASE}/${id}/read`, null);
   }
 
+  /** Sem categoria, marca o mural inteiro; com ela, só os avisos dela. */
   markAllRead(category: AnnouncementCategory | null): Observable<MarkAllResult> {
-    throw new Error(`Não implementado: ${String(category)}`);
+    const params =
+      category === null ? new HttpParams() : new HttpParams().set('category', category);
+    return this.http.post<MarkAllResult>(`${BASE}/read-all`, null, { params });
   }
 }
