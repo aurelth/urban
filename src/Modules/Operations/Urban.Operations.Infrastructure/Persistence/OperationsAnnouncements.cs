@@ -22,11 +22,11 @@ public sealed class OperationsAnnouncements(OperationsDbContext db) : IAnnouncem
     public async Task<PagedAnnouncements> ListAsync(int page, int pageSize, CancellationToken cancellationToken) =>
         await PageAsync(db.Announcements, page, pageSize, cancellationToken);
 
-    public async Task<PagedAnnouncements> ListVisibleAsync(AnnouncementViewer viewer, bool unreadOnly, int page, int pageSize, CancellationToken cancellationToken)
+    public async Task<PagedAnnouncements> ListVisibleAsync(AnnouncementViewer viewer, MuralFilter filter, int page, int pageSize, CancellationToken cancellationToken)
     {
         IQueryable<Announcement> visible = Visible(viewer);
 
-        if (unreadOnly)
+        if (filter.UnreadOnly)
         {
             visible = Unread(visible, viewer.UserId);
         }
@@ -34,8 +34,10 @@ public sealed class OperationsAnnouncements(OperationsDbContext db) : IAnnouncem
         return await PageAsync(visible, page, pageSize, cancellationToken);
     }
 
-    public async Task<int> CountUnreadAsync(AnnouncementViewer viewer, CancellationToken cancellationToken) =>
-        await Unread(Visible(viewer), viewer.UserId).CountAsync(cancellationToken);
+    public async Task<UnreadCounts> CountUnreadAsync(AnnouncementViewer viewer, CancellationToken cancellationToken) =>
+        new(await Unread(Visible(viewer), viewer.UserId).CountAsync(cancellationToken), 0, 0);
+
+    public Task<int> MarkAllReadAsync(AnnouncementViewer viewer, AnnouncementCategory? category, DateTimeOffset now, CancellationToken cancellationToken) => throw new NotImplementedException();
 
     public async Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> ListReadersAsync(IReadOnlyCollection<Guid> announcementIds, CancellationToken cancellationToken)
     {

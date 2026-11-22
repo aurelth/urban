@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Urban.Operations.Application.Abstractions;
 using Urban.Operations.Application.Announcements;
 using Urban.Operations.Domain;
 using Urban.Operations.Domain.Announcements;
@@ -16,6 +17,8 @@ public class AnnouncementReadHandlersTests
     private ListMyAnnouncementsQueryHandler MineHandler() => new(_kit.Announcements, _kit.Directory, _kit.Tenant, _kit.Clock);
 
     private MarkAnnouncementReadCommandHandler MarkHandler() => new(_kit.Announcements, _kit.Directory, _kit.Tenant, _kit.Clock);
+
+    private MarkAllAnnouncementsReadCommandHandler MarkAllHandler() => new(_kit.Announcements, _kit.Directory, _kit.Tenant, _kit.Clock);
 
     private static DateTimeOffset Day(int offset) => AnnouncementTestKit.Now.AddDays(offset);
 
@@ -221,6 +224,7 @@ public class AnnouncementReadHandlersTests
         result.Value.Items.Should().BeEmpty();
         result.Value.Total.Should().Be(0);
         result.Value.Unread.Should().Be(0);
+        result.Value.UnreadByCategory.Should().Be(UnreadCounts.None);
         _kit.Announcements.ListVisibleCalls.Should().Be(0);
     }
 
@@ -282,6 +286,124 @@ public class AnnouncementReadHandlersTests
     }
 
     [Fact]
+    public async Task Mine_ABlockAnnouncementCarriesItsBlock_AUnitOneCarriesTheUnitOfTheAccount_AndTheWholeCondominiumCarriesNeither()
+    {
+        ResidentUnit a101 = _kit.NewUnit("Bloco A", "101");
+        ResidentUnit house = _kit.NewUnit(null, "7");
+        Guid me = _kit.NewResident(a101);
+        _kit.Directory.Live(me, house);
+        _kit.NewAnnouncement(title: "Todos", at: Day(-3));
+        _kit.NewAnnouncement(AnnouncementTestKit.Block("Bloco A"), title: "Bloco", at: Day(-2));
+        _kit.NewAnnouncement(AnnouncementTestKit.Unit(a101), title: "Apartamento", at: Day(-1));
+        _kit.NewAnnouncement(AnnouncementTestKit.Unit(house), title: "Casa", at: Day(0));
+
+        Result<MyAnnouncementPageView> result = await MineHandler().Handle(new ListMyAnnouncementsQuery(me, false, 1, 20), default);
+
+        MyAnnouncementView[] items = [.. result.Value.Items];
+        items.Select(item => item.Title).Should().Equal("Casa", "Apartamento", "Bloco", "Todos");
+        items[0].Unit.Should().Be(new MyAnnouncementUnitView(house.UnitId, null, "7"));
+        items[0].Block.Should().BeNull();
+        items[1].Unit.Should().Be(new MyAnnouncementUnitView(a101.UnitId, "Bloco A", "101"));
+        items[1].Block.Should().BeNull();
+        items[2].Block.Should().Be("Bloco A");
+        items[2].Unit.Should().BeNull();
+        items[3].Block.Should().BeNull();
+        items[3].Unit.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Mine_Category_ShowsOnlyThatCategory_AndTheTotalFollowsTheFilter()
+    {
+        ResidentUnit a101 = _kit.NewUnit("Bloco A", "101");
+        Guid me = _kit.NewResident(a101);
+        _kit.NewAnnouncement(title: "Geral", category: AnnouncementCategory.General, at: Day(-3));
+        Announcement water = _kit.NewAnnouncement(title: "Corte de água", category: AnnouncementCategory.Maintenance, at: Day(-2));
+        Announcement lift = _kit.NewAnnouncement(title: "Elevador", category: AnnouncementCategory.Maintenance, at: Day(-1));
+        _kit.NewAnnouncement(title: "Assembleia", category: AnnouncementCategory.Important, at: Day(0));
+
+        Result<MyAnnouncementPageView> result = await MineHandler().Handle(new ListMyAnnouncementsQuery(me, false, 1, 20, "maintenance"), default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Items.Select(item => item.Id).Should().Equal(lift.Id, water.Id);
+        result.Value.Total.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Mine_Category_WorksTogetherWithUnreadOnly()
+    {
+        ResidentUnit a101 = _kit.NewUnit("Bloco A", "101");
+        Guid me = _kit.NewResident(a101);
+        Announcement read = _kit.NewAnnouncement(title: "Lido", category: AnnouncementCategory.Important, at: Day(-1));
+        Announcement unread = _kit.NewAnnouncement(title: "Não lido", category: AnnouncementCategory.Important, at: Day(0));
+        _kit.NewAnnouncement(title: "Outra categoria", category: AnnouncementCategory.General, at: Day(0));
+        _kit.Announcements.SeedRead(read, me, AnnouncementTestKit.Now);
+
+        Result<MyAnnouncementPageView> result = await MineHandler().Handle(new ListMyAnnouncementsQuery(me, true, 1, 20, "important"), default);
+
+        result.Value.Items.Select(item => item.Id).Should().Equal(unread.Id);
+        result.Value.Total.Should().Be(1);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task Mine_ABlankCategory_ShowsEveryCategory(string? category)
+    {
+        ResidentUnit a101 = _kit.NewUnit("Bloco A", "101");
+        Guid me = _kit.NewResident(a101);
+        _kit.NewAnnouncement(category: AnnouncementCategory.General);
+        _kit.NewAnnouncement(category: AnnouncementCategory.Important);
+
+        Result<MyAnnouncementPageView> result = await MineHandler().Handle(new ListMyAnnouncementsQuery(me, false, 1, 20, category), default);
+
+        result.Value.Total.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Mine_TheCategoryNameIsTrimmedAndCaseInsensitive()
+    {
+        ResidentUnit a101 = _kit.NewUnit("Bloco A", "101");
+        Guid me = _kit.NewResident(a101);
+        _kit.NewAnnouncement(category: AnnouncementCategory.General);
+        Announcement important = _kit.NewAnnouncement(category: AnnouncementCategory.Important);
+
+        Result<MyAnnouncementPageView> result = await MineHandler().Handle(new ListMyAnnouncementsQuery(me, false, 1, 20, "  Important "), default);
+
+        result.Value.Items.Select(item => item.Id).Should().Equal(important.Id);
+    }
+
+    [Fact]
+    public async Task Mine_ACategoryThatDoesNotExist_Fails_EvenForSomeoneWhoLivesNowhere()
+    {
+        Result<MyAnnouncementPageView> result = await MineHandler().Handle(new ListMyAnnouncementsQuery(Guid.CreateVersion7(), false, 1, 20, "urgente"), default);
+
+        result.Error.Should().Be(AnnouncementErrors.CategoryInvalid);
+    }
+
+    [Fact]
+    public async Task Mine_UnreadByCategory_CoversTheWholeBoard_NoMatterThePageOrTheFilters()
+    {
+        ResidentUnit a101 = _kit.NewUnit("Bloco A", "101");
+        Guid me = _kit.NewResident(a101);
+        Announcement readGeneral = _kit.NewAnnouncement(category: AnnouncementCategory.General, at: Day(-5));
+        _kit.NewAnnouncement(category: AnnouncementCategory.General, at: Day(-4));
+        _kit.NewAnnouncement(category: AnnouncementCategory.Maintenance, at: Day(-3));
+        _kit.NewAnnouncement(category: AnnouncementCategory.Maintenance, at: Day(-2));
+        _kit.NewAnnouncement(category: AnnouncementCategory.Maintenance, at: Day(-1));
+        _kit.NewAnnouncement(category: AnnouncementCategory.Important, at: Day(0));
+        _kit.NewAnnouncement(AnnouncementTestKit.Block("Bloco B"), category: AnnouncementCategory.Important, at: Day(0));
+        _kit.NewAnnouncement(category: AnnouncementCategory.Important, author: me, at: Day(0));
+        _kit.Announcements.SeedRead(readGeneral, me, AnnouncementTestKit.Now);
+
+        Result<MyAnnouncementPageView> filtered = await MineHandler().Handle(new ListMyAnnouncementsQuery(me, true, 2, 1, "maintenance"), default);
+
+        filtered.Value.UnreadByCategory.Should().Be(new UnreadCounts(1, 3, 1));
+        filtered.Value.Unread.Should().Be(5);
+        filtered.Value.Total.Should().Be(3);
+    }
+
+    [Fact]
     public async Task Mine_TheViewDoesNotCarryTheAuthorNorWhoRead()
     {
         ResidentUnit a101 = _kit.NewUnit("Bloco A", "101");
@@ -290,7 +412,7 @@ public class AnnouncementReadHandlersTests
 
         Result<MyAnnouncementPageView> result = await MineHandler().Handle(new ListMyAnnouncementsQuery(me, false, 1, 20), default);
 
-        typeof(MyAnnouncementView).GetProperties().Select(property => property.Name).Should().NotContain(["CreatedBy", "Readers", "Recipients", "Version", "UnitId", "Block"]);
+        typeof(MyAnnouncementView).GetProperties().Select(property => property.Name).Should().NotContain(["CreatedBy", "Readers", "Recipients", "Version", "UnitId"]);
         result.Value.Items.Should().ContainSingle();
     }
 
@@ -421,6 +543,168 @@ public class AnnouncementReadHandlersTests
     {
         Result result = await new MarkAnnouncementReadCommandHandler(_kit.Announcements, _kit.Directory, _kit.WithoutATenant().Tenant, _kit.Clock)
             .Handle(new MarkAnnouncementReadCommand(Guid.CreateVersion7(), Guid.CreateVersion7()), default);
+
+        result.Error.Should().Be(OperationsErrors.CondominiumNotFound);
+    }
+
+    // ---- Marcar todos como lidos ----
+
+    [Fact]
+    public async Task MarkAll_MarksEverythingTheAccountSees_WithTheMoment_AndReturnsHowManyWereMarked()
+    {
+        ResidentUnit a101 = _kit.NewUnit("Bloco A", "101");
+        Guid me = _kit.NewResident(a101);
+        Announcement everyone = _kit.NewAnnouncement();
+        Announcement block = _kit.NewAnnouncement(AnnouncementTestKit.Block("Bloco A"));
+        Announcement unit = _kit.NewAnnouncement(AnnouncementTestKit.Unit(a101));
+
+        Result<int> result = await MarkAllHandler().Handle(new MarkAllAnnouncementsReadCommand(me), default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().Be(3);
+        _kit.Announcements.Reads.Should().BeEquivalentTo(
+            [(everyone.Id, me, AnnouncementTestKit.Now), (block.Id, me, AnnouncementTestKit.Now), (unit.Id, me, AnnouncementTestKit.Now)]);
+    }
+
+    [Fact]
+    public async Task MarkAll_LeavesOutWhatTheAccountDoesNotSee_ThatIsAnotherBlock_AnotherUnit_OrItsOwn()
+    {
+        ResidentUnit a101 = _kit.NewUnit("Bloco A", "101");
+        ResidentUnit b201 = _kit.NewUnit("Bloco B", "201");
+        Guid me = _kit.NewResident(a101);
+        _kit.NewAnnouncement(AnnouncementTestKit.Block("Bloco B"));
+        _kit.NewAnnouncement(AnnouncementTestKit.Unit(b201));
+        _kit.NewAnnouncement(author: me);
+
+        Result<int> result = await MarkAllHandler().Handle(new MarkAllAnnouncementsReadCommand(me), default);
+
+        result.Value.Should().Be(0);
+        _kit.Announcements.Reads.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task MarkAll_DoesNotChangeTheMomentOfWhatWasAlreadyRead_NorCountsIt()
+    {
+        ResidentUnit a101 = _kit.NewUnit("Bloco A", "101");
+        Guid me = _kit.NewResident(a101);
+        Announcement alreadyRead = _kit.NewAnnouncement(title: "Lido", at: Day(-1));
+        Announcement pending = _kit.NewAnnouncement(title: "Pendente", at: Day(0));
+        DateTimeOffset before = AnnouncementTestKit.Now.AddDays(-2);
+        _kit.Announcements.SeedRead(alreadyRead, me, before);
+
+        Result<int> result = await MarkAllHandler().Handle(new MarkAllAnnouncementsReadCommand(me), default);
+
+        result.Value.Should().Be(1);
+        _kit.Announcements.Reads.Should().BeEquivalentTo([(alreadyRead.Id, me, before), (pending.Id, me, AnnouncementTestKit.Now)]);
+    }
+
+    [Fact]
+    public async Task MarkAll_Twice_IsSuccess_AndTheSecondMarksNothing()
+    {
+        ResidentUnit a101 = _kit.NewUnit("Bloco A", "101");
+        Guid me = _kit.NewResident(a101);
+        _kit.NewAnnouncement();
+        _kit.NewAnnouncement();
+        await MarkAllHandler().Handle(new MarkAllAnnouncementsReadCommand(me), default);
+
+        Result<int> again = await MarkAllHandler().Handle(new MarkAllAnnouncementsReadCommand(me), default);
+
+        again.IsSuccess.Should().BeTrue();
+        again.Value.Should().Be(0);
+        _kit.Announcements.Reads.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task MarkAll_WithACategory_MarksOnlyThatCategory()
+    {
+        ResidentUnit a101 = _kit.NewUnit("Bloco A", "101");
+        Guid me = _kit.NewResident(a101);
+        _kit.NewAnnouncement(category: AnnouncementCategory.General);
+        Announcement water = _kit.NewAnnouncement(category: AnnouncementCategory.Maintenance);
+        _kit.NewAnnouncement(category: AnnouncementCategory.Important);
+
+        Result<int> result = await MarkAllHandler().Handle(new MarkAllAnnouncementsReadCommand(me, "maintenance"), default);
+
+        result.Value.Should().Be(1);
+        _kit.Announcements.Reads.Should().ContainSingle().Which.AnnouncementId.Should().Be(water.Id);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task MarkAll_ABlankCategory_MarksEveryCategory(string? category)
+    {
+        ResidentUnit a101 = _kit.NewUnit("Bloco A", "101");
+        Guid me = _kit.NewResident(a101);
+        _kit.NewAnnouncement(category: AnnouncementCategory.General);
+        _kit.NewAnnouncement(category: AnnouncementCategory.Important);
+
+        Result<int> result = await MarkAllHandler().Handle(new MarkAllAnnouncementsReadCommand(me, category), default);
+
+        result.Value.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task MarkAll_ACategoryThatDoesNotExist_FailsAndMarksNothing()
+    {
+        ResidentUnit a101 = _kit.NewUnit("Bloco A", "101");
+        Guid me = _kit.NewResident(a101);
+        _kit.NewAnnouncement();
+
+        Result<int> result = await MarkAllHandler().Handle(new MarkAllAnnouncementsReadCommand(me, "urgente"), default);
+
+        result.Error.Should().Be(AnnouncementErrors.CategoryInvalid);
+        _kit.Announcements.Reads.Should().BeEmpty();
+        _kit.Announcements.MarkAllReadCalls.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task MarkAll_SomeoneWhoLivesNowhere_MarksNothing_AndIsSuccess()
+    {
+        _kit.NewUnit("Bloco A", "101");
+        _kit.NewAnnouncement();
+
+        Result<int> result = await MarkAllHandler().Handle(new MarkAllAnnouncementsReadCommand(Guid.CreateVersion7()), default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().Be(0);
+        _kit.Announcements.MarkAllReadCalls.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task MarkAll_SomeoneWhoLivesInTwoUnits_MarksTheBoardOfBothOnce()
+    {
+        ResidentUnit a101 = _kit.NewUnit("Bloco A", "101");
+        ResidentUnit b201 = _kit.NewUnit("Bloco B", "201");
+        Guid me = _kit.NewResident(a101);
+        _kit.Directory.Live(me, b201);
+        _kit.NewAnnouncement(AnnouncementTestKit.Block("Bloco A"));
+        _kit.NewAnnouncement(AnnouncementTestKit.Block("Bloco B"));
+        _kit.NewAnnouncement();
+
+        Result<int> result = await MarkAllHandler().Handle(new MarkAllAnnouncementsReadCommand(me), default);
+
+        result.Value.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task MarkAll_AskedForTodayInBrasilia()
+    {
+        ResidentUnit a101 = _kit.NewUnit("Bloco A", "101");
+        Guid me = _kit.NewResident(a101);
+        _kit.Clock.Advance(TimeSpan.FromHours(15).Add(TimeSpan.FromMinutes(30)));
+
+        await MarkAllHandler().Handle(new MarkAllAnnouncementsReadCommand(me), default);
+
+        _kit.Directory.LastToday.Should().Be(new DateOnly(2026, 11, 23));
+    }
+
+    [Fact]
+    public async Task MarkAll_WithoutACondominium_Fails()
+    {
+        Result<int> result = await new MarkAllAnnouncementsReadCommandHandler(_kit.Announcements, _kit.Directory, _kit.WithoutATenant().Tenant, _kit.Clock)
+            .Handle(new MarkAllAnnouncementsReadCommand(Guid.CreateVersion7()), default);
 
         result.Error.Should().Be(OperationsErrors.CondominiumNotFound);
     }

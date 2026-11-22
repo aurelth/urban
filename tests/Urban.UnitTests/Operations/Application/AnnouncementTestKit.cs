@@ -82,6 +82,8 @@ internal sealed class FakeAnnouncements : IAnnouncements
 
     public int ListVisibleCalls { get; private set; }
 
+    public int MarkAllReadCalls { get; private set; }
+
     public int SaveCalls { get; private set; }
 
     /// <summary>Faz o próximo <see cref="SaveAsync"/>, <see cref="DeleteAsync"/> ou <see cref="MarkReadAsync"/> falhar com o erro dado.</summary>
@@ -108,21 +110,46 @@ internal sealed class FakeAnnouncements : IAnnouncements
 
     public Task<PagedAnnouncements> ListAsync(int page, int pageSize, CancellationToken cancellationToken) => Task.FromResult(Page(_items, page, pageSize));
 
-    public Task<PagedAnnouncements> ListVisibleAsync(AnnouncementViewer viewer, bool unreadOnly, int page, int pageSize, CancellationToken cancellationToken)
+    public Task<PagedAnnouncements> ListVisibleAsync(AnnouncementViewer viewer, MuralFilter filter, int page, int pageSize, CancellationToken cancellationToken)
     {
         ListVisibleCalls++;
         IEnumerable<Announcement> visible = Visible(viewer);
 
-        if (unreadOnly)
+        if (filter.UnreadOnly)
         {
             visible = visible.Where(item => !HasRead(item, viewer.UserId));
+        }
+
+        if (filter.Category is { } category)
+        {
+            visible = visible.Where(item => item.Category == category);
         }
 
         return Task.FromResult(Page(visible, page, pageSize));
     }
 
-    public Task<int> CountUnreadAsync(AnnouncementViewer viewer, CancellationToken cancellationToken) =>
-        Task.FromResult(Visible(viewer).Count(item => !HasRead(item, viewer.UserId)));
+    public Task<UnreadCounts> CountUnreadAsync(AnnouncementViewer viewer, CancellationToken cancellationToken)
+    {
+        List<Announcement> unread = [.. Visible(viewer).Where(item => !HasRead(item, viewer.UserId))];
+
+        return Task.FromResult(new UnreadCounts(
+            unread.Count(item => item.Category == AnnouncementCategory.General),
+            unread.Count(item => item.Category == AnnouncementCategory.Maintenance),
+            unread.Count(item => item.Category == AnnouncementCategory.Important)));
+    }
+
+    public Task<int> MarkAllReadAsync(AnnouncementViewer viewer, AnnouncementCategory? category, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        MarkAllReadCalls++;
+        List<Announcement> pending = [.. Visible(viewer).Where(item => !HasRead(item, viewer.UserId) && (category is null || item.Category == category))];
+
+        foreach (Announcement item in pending)
+        {
+            _reads.Add((item.Id, viewer.UserId, now));
+        }
+
+        return Task.FromResult(pending.Count);
+    }
 
     public Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> ListReadersAsync(IReadOnlyCollection<Guid> announcementIds, CancellationToken cancellationToken)
     {
