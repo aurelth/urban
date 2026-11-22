@@ -65,6 +65,7 @@ import {
 } from '../support/moradores';
 import { BATCH_PATH, UNITS_PATH, stubUnits } from '../support/unidades';
 import { VEHICLES_PATH, stubVehicles } from '../support/veiculos';
+import { ANNOUNCEMENTS_PATH, stubAnnouncements } from '../support/comunicados';
 
 function closeDialog(): void {
   cy.get('.mat-mdc-dialog-container [data-testid="cancel"]').click();
@@ -225,6 +226,20 @@ SCREENS.forEach(([where, width, height]) => {
       expectBreathingRoom();
       cy.get('[data-testid="cancel-delete"]').click();
       cy.get('[data-testid="new-vehicle"]').click();
+      expectDialogBreathingRoom();
+    });
+
+    it('não cola texto em container nos comunicados, nos diálogos de publicar e de excluir', () => {
+      stubSignedIn(MANAGER);
+      stubUnits();
+      stubAnnouncements();
+      cy.visit(ANNOUNCEMENTS_PATH);
+      cy.get('[data-testid="announcement-row"]').should('have.length', 3);
+      expectBreathingRoom();
+      cy.get('[data-testid="new-announcement"]').click();
+      expectDialogBreathingRoom();
+      closeDialog();
+      cy.get('button[aria-label="Excluir Reunião de sábado"]').click();
       expectDialogBreathingRoom();
     });
 

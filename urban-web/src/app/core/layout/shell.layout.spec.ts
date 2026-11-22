@@ -327,6 +327,7 @@ describe('ShellLayout', () => {
         'nav-units',
         'nav-residents',
         'nav-vehicles',
+        'nav-announcements',
         'nav-month-dashboard',
         'nav-expenses',
         'nav-tariffs',
@@ -343,6 +344,7 @@ describe('ShellLayout', () => {
         'Unidades',
         'Moradores',
         'Veículos',
+        'Comunicados',
         'Painel financeiro',
         'Despesas',
         'Tarifas',
@@ -359,6 +361,7 @@ describe('ShellLayout', () => {
         '/unidades',
         '/moradores',
         '/veiculos',
+        '/comunicados',
         '/financeiro/painel',
         '/financeiro/despesas',
         '/financeiro/tarifas',
@@ -521,6 +524,7 @@ describe('ShellLayout', () => {
           'Unidades',
           'Moradores',
           'Veículos',
+          'Comunicados',
           'Painel financeiro',
           'Despesas',
           'Tarifas',
@@ -657,7 +661,7 @@ describe('ShellLayout', () => {
 
         await click(fixture, header(html, 'Financeiro'));
 
-        expect(links(html)).toHaveLength(14);
+        expect(links(html)).toHaveLength(15);
         expect(header(html, 'Financeiro').getAttribute('aria-expanded')).toBe('true');
         expect(iconOf(header(html, 'Financeiro'))).toBe('remove');
       });
@@ -705,7 +709,7 @@ describe('ShellLayout', () => {
 
         await click(fixture, byTestId(html, 'menu-toggle')!);
 
-        expect(links(html)).toHaveLength(14);
+        expect(links(html)).toHaveLength(15);
         expect(html.querySelectorAll('button[data-testid="nav-group"]')).toHaveLength(0);
 
         await click(fixture, byTestId(html, 'menu-toggle')!);
