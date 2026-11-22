@@ -221,6 +221,38 @@ describe('AnnouncementsPage', () => {
       expect(testId(rows(html)[0], 'body')!.classList.contains('whitespace-pre-line')).toBe(true);
     });
 
+    it('cada grau e cada público ganham a sua cor', async () => {
+      const { html } = await setup();
+
+      const [first, second, third] = rows(html);
+      expect(testId(first, 'category')!.className).toContain('text-tag-red');
+      expect(testId(second, 'category')!.className).toContain('text-tag-amber');
+      expect(testId(third, 'category')!.className).toContain('text-tag-blue');
+      expect(testId(first, 'scope')!.className).toContain('text-tag-teal');
+      expect(testId(second, 'scope')!.className).toContain('text-tag-purple');
+      expect(testId(third, 'scope')!.className).toContain('text-tag-pink');
+    });
+
+    it('quantos leram chama a atenção em verde, com o ícone do olho, e fica neutro sem ninguém para ler', async () => {
+      const { html } = await setup();
+
+      const [first, , third] = rows(html);
+      expect(testId(first, 'readers')!.className).toContain('text-tag-green');
+      expect(testId(first, 'readers')!.querySelector('mat-icon')).not.toBeNull();
+      expect(testId(third, 'readers')!.className).not.toContain('text-tag-green');
+      expect(testId(third, 'readers')!.querySelector('mat-icon')).toBeNull();
+    });
+
+    it('o texto vem num bloco que corta em 4 linhas e oferece "Ver mais" quando passa disso', async () => {
+      jest.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(200);
+      jest.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(96);
+      const { html } = await setup();
+
+      const first = rows(html)[0];
+      expect(testId(first, 'body')!.classList.contains('line-clamp-4')).toBe(true);
+      expect(text(first, 'toggle-body')).toBe('Ver mais');
+    });
+
     it('só mostra "editado em" quando o comunicado foi editado', async () => {
       const { html } = await setup();
 

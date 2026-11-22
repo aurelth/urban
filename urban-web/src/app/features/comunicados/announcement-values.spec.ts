@@ -2,9 +2,12 @@ import { announcement } from '../../testing/announcements.fixtures';
 import { unit } from '../../testing/units.fixtures';
 import {
   CATEGORY_OPTIONS,
+  categoryClasses,
   categoryLabel,
   formatMoment,
+  readersClasses,
   readersLabel,
+  scopeClasses,
   scopeLabel,
 } from './announcement-values';
 
@@ -85,5 +88,43 @@ describe('formatMoment', () => {
 
   it('devolve o texto como veio quando não é uma data', () => {
     expect(formatMoment('ontem')).toBe('ontem');
+  });
+});
+
+describe('cores das etiquetas', () => {
+  it.each([
+    ['general', 'bg-tag-blue-container text-tag-blue'],
+    ['maintenance', 'bg-tag-amber-container text-tag-amber'],
+    ['important', 'bg-tag-red-container text-tag-red'],
+  ] as const)('o grau %s usa "%s"', (category, classes) => {
+    expect(categoryClasses(category)).toBe(classes);
+  });
+
+  it.each([
+    ['condominium', 'bg-tag-teal-container text-tag-teal'],
+    ['block', 'bg-tag-purple-container text-tag-purple'],
+    ['unit', 'bg-tag-pink-container text-tag-pink'],
+  ] as const)('o público %s usa "%s"', (scope, classes) => {
+    expect(scopeClasses(scope)).toBe(classes);
+  });
+
+  it('cada grau tem uma cor só dele, e cada público também', () => {
+    const categories = (['general', 'maintenance', 'important'] as const).map(categoryClasses);
+    const scopes = (['condominium', 'block', 'unit'] as const).map(scopeClasses);
+
+    expect(new Set(categories).size).toBe(3);
+    expect(new Set(scopes).size).toBe(3);
+  });
+
+  it('o grau e o público nunca dividem uma cor', () => {
+    const categories = (['general', 'maintenance', 'important'] as const).map(categoryClasses);
+    const scopes = (['condominium', 'block', 'unit'] as const).map(scopeClasses);
+
+    expect(categories.filter((classes) => scopes.includes(classes))).toEqual([]);
+  });
+
+  it('quantos leram ganha o verde quando há quem leia, e fica neutro quando não há', () => {
+    expect(readersClasses({ recipients: 10 })).toBe('bg-tag-green-container text-tag-green');
+    expect(readersClasses({ recipients: 0 })).toBe('text-on-surface-variant');
   });
 });

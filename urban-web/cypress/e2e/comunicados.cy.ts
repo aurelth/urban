@@ -2,6 +2,7 @@ import {
   ANNOUNCEMENTS_PATH,
   FIRST_ANNOUNCEMENT,
   SECOND_ANNOUNCEMENT,
+  THIRD_ANNOUNCEMENT,
   stubAnnouncement,
   stubAnnouncementRejected,
   stubAnnouncements,
@@ -11,6 +12,13 @@ import { chooseMenu } from '../support/menu';
 import { DESKTOP } from '../support/navegacao';
 import { MANAGER, stubSignedIn } from '../support/session';
 import { SECOND_UNIT, stubUnits } from '../support/unidades';
+
+/** Texto do elemento sem os espaços das pontas: o ícone e a quebra de linha do template ficam fora da conta. */
+function textOf(expected: string): (element: JQuery<HTMLElement>) => void {
+  return (element) => {
+    expect(element.text().replace(/\s+/g, ' ').trim()).to.eq(expected);
+  };
+}
 
 function rows(): Cypress.Chainable<JQuery<HTMLElement>> {
   return cy.get('[data-testid="announcement-row"]');
@@ -51,17 +59,14 @@ describe('Comunicados', () => {
       .and('contain.text', 'Importante')
       .and('contain.text', 'Condomínio inteiro')
       .and('contain.text', 'Publicado em 22/11/2026 às 10:50');
-    rows().eq(0).find('[data-testid="readers"]').should('have.text', '12 de 40 leram');
+    rows().eq(0).find('[data-testid="readers"]').should(textOf('12 de 40 leram'));
     rows()
       .eq(1)
       .should('contain.text', 'Bloco A')
       .and('contain.text', 'Editado em 21/11/2026 às 12:30');
-    rows().eq(1).find('[data-testid="readers"]').should('have.text', '1 de 1 leu');
+    rows().eq(1).find('[data-testid="readers"]').should(textOf('1 de 1 leu'));
     rows().eq(2).should('contain.text', 'Unidade 102');
-    rows()
-      .eq(2)
-      .find('[data-testid="readers"]')
-      .should('have.text', 'Ninguém mora aqui ainda para ler');
+    rows().eq(2).find('[data-testid="readers"]').should(textOf('Ninguém mora aqui ainda para ler'));
   });
 
   it('publica para um bloco escolhendo o alcance em três passos e avisa em verde', () => {
@@ -252,6 +257,128 @@ describe('Comunicados', () => {
       'contain.text',
       'foi alterado em outro lugar',
     );
+  });
+
+  it('mantém o título na cor de sempre e pinta cada grau, público e a leitura com a sua cor, nos dois temas', () => {
+    cy.visit(ANNOUNCEMENTS_PATH);
+    rows().should('have.length', 3);
+
+    const colors = {
+      light: {
+        primary: 'rgb(88, 86, 214)',
+        category: ['rgb(194, 0, 26)', 'rgb(138, 90, 0)', 'rgb(11, 92, 173)'],
+        scope: ['rgb(13, 107, 99)', 'rgb(126, 34, 206)', 'rgb(190, 24, 93)'],
+        readers: 'rgb(26, 113, 49)',
+      },
+      dark: {
+        primary: 'rgb(158, 156, 255)',
+        category: ['rgb(255, 105, 97)', 'rgb(255, 214, 10)', 'rgb(100, 181, 255)'],
+        scope: ['rgb(94, 234, 212)', 'rgb(216, 180, 254)', 'rgb(249, 168, 212)'],
+        readers: 'rgb(48, 209, 88)',
+      },
+    };
+    rows().eq(0).find('[data-testid="title"]').should('have.css', 'color', PALETTE.light.onSurface);
+    for (const theme of ['light', 'dark'] as const) {
+      cy.document().then((doc) =>
+        doc.documentElement.classList.toggle('app-dark', theme === 'dark'),
+      );
+      const expected = colors[theme];
+      for (let index = 0; index < 3; index += 1) {
+        rows()
+          .eq(index)
+          .find('[data-testid="title"]')
+          .should('not.have.css', 'color', expected.primary);
+        rows()
+          .eq(index)
+          .find('[data-testid="category"]')
+          .should('have.css', 'color', expected.category[index]);
+        rows()
+          .eq(index)
+          .find('[data-testid="scope"]')
+          .should('have.css', 'color', expected.scope[index]);
+      }
+      rows().eq(0).find('[data-testid="readers"]').should('have.css', 'color', expected.readers);
+      rows().eq(1).find('[data-testid="readers"]').should('have.css', 'color', expected.readers);
+      rows()
+        .eq(2)
+        .find('[data-testid="readers"]')
+        .should('not.have.css', 'color', expected.readers);
+    }
+    cy.document().then((doc) => doc.documentElement.classList.remove('app-dark'));
+  });
+
+  it('o olho de quantos leram cabe na etiqueta, com 18 px', () => {
+    cy.visit(ANNOUNCEMENTS_PATH);
+
+    cy.get('[data-testid="readers"] mat-icon').first().should('have.css', 'width', '18px');
+    cy.get('[data-testid="readers"] mat-icon').first().should('have.css', 'height', '18px');
+  });
+
+  describe('texto longo', () => {
+    const LONG_BODY = Array.from({ length: 12 }, (_, line) => `Linha ${line + 1} do aviso`).join(
+      '\n',
+    );
+
+    beforeEach(() => {
+      stubAnnouncements([
+        stubAnnouncement({ body: LONG_BODY }),
+        SECOND_ANNOUNCEMENT,
+        THIRD_ANNOUNCEMENT,
+      ]);
+    });
+
+    it('corta em 4 linhas com "Ver mais" em índigo, abre tudo e volta com "Ver menos"', () => {
+      cy.visit(ANNOUNCEMENTS_PATH);
+      const body = (): Cypress.Chainable<JQuery<HTMLElement>> =>
+        rows().eq(0).find('[data-testid="body"]');
+
+      body().should('have.css', 'overflow', 'hidden');
+      body().then(($body) => {
+        const lineHeight = parseFloat(getComputedStyle($body[0]).lineHeight);
+        expect($body[0].clientHeight).to.be.closeTo(lineHeight * 4, 2);
+      });
+      rows()
+        .eq(0)
+        .find('[data-testid="toggle-body"]')
+        .should(textOf('Ver mais'))
+        .and('have.attr', 'aria-expanded', 'false')
+        .and('have.css', 'color', PALETTE.light.primary);
+
+      rows().eq(0).find('[data-testid="toggle-body"]').click();
+      body().then(($body) => {
+        expect($body[0].scrollHeight).to.be.at.most($body[0].clientHeight + 1);
+      });
+      body().should('contain.text', 'Linha 12 do aviso');
+      rows()
+        .eq(0)
+        .find('[data-testid="toggle-body"]')
+        .should(textOf('Ver menos'))
+        .and('have.attr', 'aria-expanded', 'true')
+        .and('have.css', 'color', PALETTE.light.primary);
+
+      rows().eq(0).find('[data-testid="toggle-body"]').click();
+      body().should('have.css', 'overflow', 'hidden');
+      rows().eq(0).find('[data-testid="toggle-body"]').should(textOf('Ver mais'));
+    });
+
+    it('só oferece "Ver mais" nos textos que passam de 4 linhas', () => {
+      cy.visit(ANNOUNCEMENTS_PATH);
+
+      rows().eq(0).find('[data-testid="toggle-body"]').should('exist');
+      rows().eq(1).find('[data-testid="toggle-body"]').should('not.exist');
+      rows().eq(2).find('[data-testid="toggle-body"]').should('not.exist');
+    });
+
+    it('o botão é índigo claro no tema escuro', () => {
+      cy.visit(ANNOUNCEMENTS_PATH);
+
+      cy.document().then((doc) => doc.documentElement.classList.add('app-dark'));
+      rows()
+        .eq(0)
+        .find('[data-testid="toggle-body"]')
+        .should('have.css', 'color', 'rgb(158, 156, 255)');
+      cy.document().then((doc) => doc.documentElement.classList.remove('app-dark'));
+    });
   });
 
   it('sem comunicados, convida a publicar o primeiro', () => {

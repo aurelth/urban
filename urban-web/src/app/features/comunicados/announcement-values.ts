@@ -1,4 +1,8 @@
-import { Announcement, AnnouncementCategory } from '../../core/announcements/announcements.models';
+import {
+  Announcement,
+  AnnouncementCategory,
+  AnnouncementScope,
+} from '../../core/announcements/announcements.models';
 import { Unit } from '../../core/units/units.models';
 
 export const CATEGORY_OPTIONS: readonly { value: AnnouncementCategory; label: string }[] = [
@@ -38,6 +42,38 @@ export function scopeLabel(item: Announcement, units: readonly Unit[]): string {
     default:
       return 'Condomínio inteiro';
   }
+}
+
+/**
+ * Cor de cada grau: azul para o aviso comum, âmbar para a manutenção (algo em andamento) e vermelho para o importante.
+ * Os nomes das classes ficam inteiros aqui para o Tailwind achá-los; o texto da etiqueta continua dizendo o grau.
+ */
+const CATEGORY_CLASSES: Record<AnnouncementCategory, string> = {
+  general: 'bg-tag-blue-container text-tag-blue',
+  maintenance: 'bg-tag-amber-container text-tag-amber',
+  important: 'bg-tag-red-container text-tag-red',
+};
+
+/** Cor de cada público, em cores que não se repetem com as do grau. */
+const SCOPE_CLASSES: Record<AnnouncementScope, string> = {
+  condominium: 'bg-tag-teal-container text-tag-teal',
+  block: 'bg-tag-purple-container text-tag-purple',
+  unit: 'bg-tag-pink-container text-tag-pink',
+};
+
+export function categoryClasses(category: AnnouncementCategory): string {
+  return CATEGORY_CLASSES[category] ?? CATEGORY_CLASSES.general;
+}
+
+export function scopeClasses(scope: AnnouncementScope): string {
+  return SCOPE_CLASSES[scope] ?? SCOPE_CLASSES.condominium;
+}
+
+/** Quantos leram chama a atenção do síndico em verde; sem ninguém para ler, não há o que destacar. */
+export function readersClasses(item: Pick<Announcement, 'recipients'>): string {
+  return item.recipients === 0
+    ? 'text-on-surface-variant'
+    : 'bg-tag-green-container text-tag-green';
 }
 
 /** "3 de 10 leram". Sem ninguém morando no alcance, não há quem leia. */

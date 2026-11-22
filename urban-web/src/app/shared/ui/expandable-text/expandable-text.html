@@ -1,0 +1,24 @@
+<p
+  #paragraph
+  class="mt-0 mb-1 whitespace-pre-line"
+  [class.line-clamp-4]="!expanded()"
+  data-testid="body"
+>
+  {{ text() }}
+</p>
+@if (overflowing()) {
+  <button
+    mat-button
+    type="button"
+    class="-ml-3 mb-2"
+    data-testid="toggle-body"
+    [attr.aria-expanded]="expanded()"
+    (click)="toggle()"
+  >
+    {{ expanded() ? 'Ver menos' : 'Ver mais' }}
+    <mat-icon
+      [svgIcon]="expanded() ? 'keyboard_arrow_up' : 'keyboard_arrow_down'"
+      iconPositionEnd
+    />
+  </button>
+}

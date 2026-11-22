@@ -21,6 +21,21 @@
   /* Sucesso (verde) e andamento (laranja): tokens do Urban, em _tokens.scss, com versão para o tema escuro. */
   --color-success: var(--urban-success);
   --color-warning: var(--urban-warning);
+  /* Etiquetas coloridas dos comunicados: texto e fundo translucido, em _tokens.scss, com versao para o tema escuro. */
+  --color-tag-blue: var(--urban-tag-blue);
+  --color-tag-blue-container: var(--urban-tag-blue-container);
+  --color-tag-amber: var(--urban-tag-amber);
+  --color-tag-amber-container: var(--urban-tag-amber-container);
+  --color-tag-red: var(--urban-tag-red);
+  --color-tag-red-container: var(--urban-tag-red-container);
+  --color-tag-teal: var(--urban-tag-teal);
+  --color-tag-teal-container: var(--urban-tag-teal-container);
+  --color-tag-purple: var(--urban-tag-purple);
+  --color-tag-purple-container: var(--urban-tag-purple-container);
+  --color-tag-pink: var(--urban-tag-pink);
+  --color-tag-pink-container: var(--urban-tag-pink-container);
+  --color-tag-green: var(--urban-tag-green);
+  --color-tag-green-container: var(--urban-tag-green-container);
   /* Fundo de destaque (botao principal, cabecalho de tabela) e o texto sobre ele. */
   --color-accent-fill: var(--urban-accent-fill);
   --color-on-accent-fill: var(--urban-on-accent-fill);
