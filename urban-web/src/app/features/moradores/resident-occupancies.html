@@ -1,6 +1,6 @@
 <mat-card appearance="outlined" class="mt-8" data-testid="occupancies">
   <mat-card-content class="p-6">
-    <h2 class="mb-6 text-xl font-semibold">Unidades do morador</h2>
+    <h2 class="mb-6 text-xl font-semibold">{{ own() ? 'Onde eu moro' : 'Unidades do morador' }}</h2>
 
     @if (notice(); as message) {
       <p role="status" class="mb-6 flex items-start gap-2" data-testid="occupancy-notice">
@@ -19,7 +19,11 @@
 
     @if (occupancies().length === 0) {
       <p class="mb-6 text-on-surface-variant" data-testid="no-occupancies">
-        Este morador ainda não mora em nenhuma unidade
+        {{
+          own()
+            ? 'Você ainda não mora em nenhuma unidade'
+            : 'Este morador ainda não mora em nenhuma unidade'
+        }}
       </p>
     } @else {
       <ul class="m-0 flex list-none flex-col p-0">
@@ -138,7 +142,11 @@
     } @else if (unitOptions().length === 0) {
       <div class="mt-6 flex flex-col items-start gap-4" data-testid="no-free-units">
         <p class="m-0 text-on-surface-variant">
-          Este morador já mora em todas as unidades ativas do condomínio
+          {{
+            own()
+              ? 'Você já mora em todas as unidades ativas do condomínio'
+              : 'Este morador já mora em todas as unidades ativas do condomínio'
+          }}
         </p>
         <button mat-button type="button" data-testid="cancel-add" (click)="closeForms()">
           Fechar

@@ -46,6 +46,7 @@ import {
   stubMyMonth,
 } from '../support/minha-fatura';
 import { MONTH_DASHBOARD_PATH, stubMonthDashboard } from '../support/painel-financeiro';
+import { MY_DATA_PATH, stubMyRegistration } from '../support/meu-cadastro';
 import { PROFILE_PATH, stubProfile } from '../support/perfil';
 import { ADMIN, REQUESTS_PATH, stubRequests } from '../support/pedidos';
 import { MANAGER, RESIDENT, stubAnonymous, stubSignedIn } from '../support/session';
@@ -114,6 +115,17 @@ SCREENS.forEach(([where, width, height]) => {
       expectBreathingRoom();
       cy.visit(PROFILE_PATH);
       cy.get('[data-testid="condominium-section"]').should('be.visible');
+      cy.get('[data-testid="occupancies"]').should('be.visible');
+      expectBreathingRoom();
+    });
+
+    it('não cola texto em container nos dados do morador', () => {
+      stubSignedIn(RESIDENT);
+      stubMyRegistration();
+      cy.visit(MY_DATA_PATH);
+
+      cy.get('[data-testid="personal-section"]').should('be.visible');
+      cy.get('[data-testid="occupancy"]').should('have.length', 2);
       expectBreathingRoom();
     });
 

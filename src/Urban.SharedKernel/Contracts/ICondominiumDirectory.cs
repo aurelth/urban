@@ -8,4 +8,7 @@ public interface ICondominiumDirectory
 {
     /// <returns>O nome de cada condomínio encontrado; identificadores desconhecidos ficam de fora. Vale para a plataforma inteira, não só para o tenant da requisição.</returns>
     Task<IReadOnlyDictionary<Guid, string>> GetNamesAsync(IReadOnlyCollection<Guid> condominiumIds, CancellationToken cancellationToken);
+
+    /// <returns>O primeiro nome da pessoa ligada à conta, no condomínio da requisição; nulo se a conta não tem pessoa ou não há condomínio.</returns>
+    Task<string?> FindFirstNameAsync(Guid userId, CancellationToken cancellationToken);
 }

@@ -115,6 +115,19 @@ export const ResidentFormStore = signalStore(
           patchState(store, { status: 'error' });
         }
       },
+      /** "Meus dados" do síndico: busca o próprio cadastro (com ou sem unidade). Serve também para tentar de novo. */
+      loadForMine: async (): Promise<void> => {
+        patchState(store, { status: 'loading' });
+        try {
+          patchState(store, {
+            status: 'ready',
+            resident: await firstValueFrom(residents.getMine()),
+          });
+        } catch (error) {
+          const notFound = toApiProblem(error).status === NOT_FOUND_STATUS;
+          patchState(store, { status: notFound ? 'not-found' : 'error', resident: null });
+        }
+      },
       /** Edição: busca o morador. Serve à primeira carga, a tentar de novo e a recarregar depois de um conflito. */
       loadForEdit: async (id: string): Promise<void> => {
         patchState(store, { status: 'loading' });

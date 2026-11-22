@@ -134,6 +134,14 @@ const PROFILE: NavItem = {
   path: '/condominio/meus-dados',
 };
 
+/** O cadastro do morador, só para ler. O ícone é o do "Meus dados" do síndico: um ícone novo pede arquivo novo nos assets. */
+const MY_DATA: NavItem = {
+  id: 'my-data',
+  label: 'Meus dados',
+  icon: 'apartment',
+  path: '/meus-dados',
+};
+
 const ACCOUNT: NavItem = {
   id: 'account',
   label: 'Minha conta',
@@ -165,7 +173,13 @@ export function navFooterFor(who: Who): readonly NavItem[] {
   return managesCondominium(who) ? [CONTACT] : [];
 }
 
-/** Itens do menu do avatar, acima de "Sair": "Meus dados" é do síndico com condomínio, "Minha conta" é de todos. */
+/**
+ * Itens do menu do avatar, acima de "Sair": "Meus dados" é do síndico com condomínio (os dados dele e do condomínio) e do
+ * morador (o cadastro dele, só para ler); "Minha conta" é de todos.
+ */
 export function userMenuFor(who: Who): readonly NavItem[] {
-  return managesCondominium(who) ? [PROFILE, ACCOUNT] : [ACCOUNT];
+  if (managesCondominium(who)) {
+    return [PROFILE, ACCOUNT];
+  }
+  return who?.role === 'Resident' && who.condominiumId !== null ? [MY_DATA, ACCOUNT] : [ACCOUNT];
 }

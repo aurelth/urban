@@ -65,4 +65,14 @@ public class PersonTests
         Person.RegisterManager(CondominiumId, Guid.Empty, Name, Cpf, BirthDate, Mobile, Address, Now).Error
             .Should().Be(PersonErrors.UserRequired);
     }
+
+    [Fact]
+    public void IsManager_IsTrueForTheManagerAndFalseForAResident()
+    {
+        Person manager = Person.RegisterManager(CondominiumId, UserId, Name, Cpf, BirthDate, Mobile, Address, Now).Value;
+        Person resident = Urban.TestSupport.Condominium.ResidentBuilders.Resident(CondominiumId, "Maria Souza");
+
+        manager.IsManager.Should().BeTrue();
+        resident.IsManager.Should().BeFalse();
+    }
 }

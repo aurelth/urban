@@ -421,4 +421,16 @@ public class UpdateResidentCommandHandlerTests
         result.Error.Code.Should().Be("condominium.profession.invalid");
         _kit.Saved.Should().BeEmpty();
     }
+
+    [Fact]
+    public async Task Handle_RefusesTheManagersOwnPerson_AsIfItWasNotAResident()
+    {
+        Person manager = CondominiumBuilders.Manager(_kit.CondominiumId);
+        _kit.Existing(manager);
+
+        Result<ResidentView> result = await Handler().Handle(ResidentCommands.Update(manager.Id, "4", cpf: manager.Cpf.Value), default);
+
+        result.Error.Should().Be(ResidentErrors.NotFound);
+        _kit.Saved.Should().BeEmpty();
+    }
 }

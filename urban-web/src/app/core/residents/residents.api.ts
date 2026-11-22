@@ -26,6 +26,11 @@ export class ResidentsApi {
     return this.http.get<Resident>(`${BASE}/${id}`);
   }
 
+  /** O cadastro de quem está logado (morador ou síndico que mora no condomínio), pela conta do token. */
+  getMine(): Observable<Resident> {
+    return this.http.get<Resident>(`${BASE}/me`);
+  }
+
   create(payload: ResidentPayload): Observable<Resident> {
     return this.http.post<Resident>(BASE, payload);
   }

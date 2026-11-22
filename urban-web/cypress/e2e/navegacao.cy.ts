@@ -8,6 +8,7 @@ import {
 } from '../support/navegacao';
 import { TODAY } from '../support/financeiro';
 import { stubMyAccess, stubMyAccessUnavailable, stubMyMonth } from '../support/minha-fatura';
+import { stubMyRegistration } from '../support/meu-cadastro';
 import { stubProfile } from '../support/perfil';
 import { NEW_MANAGER } from '../support/condominio';
 import { MANAGER, RESIDENT, stubSignedIn } from '../support/session';
@@ -395,6 +396,25 @@ describe('Navegação', () => {
       cy.get('[data-testid="nav-units"]').should('not.exist');
       cy.get('[data-testid="menu-toggle"]').should('be.visible');
       expectText('[data-testid="current-user"]', 'Olá Joao - Morador');
+    });
+
+    it('dá ao morador "Meus dados" e "Minha conta" no menu do avatar, e "Meus dados" abre o seu cadastro', () => {
+      stubSignedIn(RESIDENT);
+      stubMyRegistration();
+      cy.visit('/dashboard');
+
+      openUserMenu();
+      cy.get('.mat-mdc-menu-panel [data-testid^="menu-"]').should(($items) => {
+        expect([...$items].map((item) => item.dataset['testid'])).to.deep.eq([
+          'menu-user',
+          'menu-my-data',
+          'menu-account',
+        ]);
+      });
+      cy.get('[data-testid="menu-my-data"]').should('contain.text', 'Meus dados').click();
+
+      cy.location('pathname').should('eq', '/meus-dados');
+      cy.contains('h1', 'Meus dados').should('be.visible');
     });
 
     it('dá ao administrador só a visão geral, os síndicos, os pedidos de cadastro e as mensagens no menu lateral', () => {

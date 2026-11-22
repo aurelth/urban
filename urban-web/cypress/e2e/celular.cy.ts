@@ -13,7 +13,9 @@ import { INSTRUCTIONS_PATH, NO_INSTRUCTIONS, stubInstructions } from '../support
 import { INVOICE_DELIVERIES_PATH, stubInvoiceDeliveries } from '../support/enviar-faturas';
 import { DELINQUENCY_PATH, stubDelinquency } from '../support/inadimplencia';
 import { PAYMENTS_PATH, stubPayments } from '../support/pagamentos';
+import { MY_DATA_PATH, stubMyRegistration } from '../support/meu-cadastro';
 import { MY_INVOICE_PATH, stubMyMonth } from '../support/minha-fatura';
+import { PROFILE_PATH, stubProfile } from '../support/perfil';
 import { MONTH_DASHBOARD_PATH, stubMonthDashboard } from '../support/painel-financeiro';
 import { stubDashboard } from '../support/painel';
 import { ADMIN, REQUESTS_PATH, stubRequests } from '../support/pedidos';
@@ -327,6 +329,35 @@ describe('Tela de celular (375 x 667)', () => {
     cy.get('mat-form-field').should('have.length.greaterThan', 15);
     cy.get('mat-form-field').each(($field) => {
       const { left, right } = $field[0].getBoundingClientRect();
+      expect(left).to.be.at.least(0);
+      expect(right).to.be.at.most(375);
+    });
+    expectNoHorizontalScroll();
+  });
+
+  it('mostra os dados do morador sem rolagem horizontal, com os cartões dentro da tela', () => {
+    stubSignedIn(RESIDENT);
+    stubMyRegistration();
+    cy.visit(MY_DATA_PATH);
+
+    cy.contains('h1', 'Meus dados').should('be.visible');
+    cy.get('[data-testid="occupancy"]').should('have.length', 2);
+    cy.get('[data-testid$="-section"]').each(($section) => {
+      const { left, right } = $section[0].getBoundingClientRect();
+      expect(left).to.be.at.least(0);
+      expect(right).to.be.at.most(375);
+    });
+    expectNoHorizontalScroll();
+  });
+
+  it('mostra o cartão "Onde eu moro" do síndico sem rolagem horizontal, com os botões dentro da tela', () => {
+    stubSignedIn(MANAGER);
+    stubProfile();
+    cy.visit(PROFILE_PATH);
+
+    cy.get('[data-testid="occupancies"]').should('be.visible');
+    cy.get('[data-testid="occupancies"] button').each(($button) => {
+      const { left, right } = $button[0].getBoundingClientRect();
       expect(left).to.be.at.least(0);
       expect(right).to.be.at.most(375);
     });

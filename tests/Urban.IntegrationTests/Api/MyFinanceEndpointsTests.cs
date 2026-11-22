@@ -24,7 +24,6 @@ namespace Urban.IntegrationTests.Api;
 public sealed class MyFinanceEndpointsTests(ApiFixture fixture) : IDisposable
 {
     private const string Finance = "/api/finance/me";
-    private const string Residents = "/api/residents";
     private const string AccessRoute = Finance + "/access";
 
     private static readonly CancellationToken Ct = CancellationToken.None;
@@ -402,48 +401,12 @@ public sealed class MyFinanceEndpointsTests(ApiFixture fixture) : IDisposable
         return body.GetProperty("items").EnumerateArray().ToDictionary(item => item.GetProperty("number").GetString()!, item => item.GetProperty("id").GetGuid());
     }
 
-    private async Task<Guid> CreateUnitAsync(ManagerSession manager, string number)
-    {
-        HttpResponseMessage response = await _client.SendJsonAsync(HttpMethod.Post, "/api/units", manager.AccessToken, new JsonObject { ["number"] = number, ["type"] = "apartment" });
-        response.StatusCode.Should().Be(HttpStatusCode.Created, await response.Content.ReadAsStringAsync(Ct));
+    private Task<Guid> CreateUnitAsync(ManagerSession manager, string number) => ResidentSetup.CreateUnitAsync(_client, manager, number);
 
-        return (await response.Content.ReadFromJsonAsync<JsonElement>(Ct)).GetProperty("id").GetGuid();
-    }
+    private Task<string> ResidentTokenAsync(ManagerSession manager, Guid unitId, string kind = "owner") =>
+        ResidentSetup.TokenAsync(fixture, _client, manager, unitId, kind);
 
-    /// <summary>Cadastra o morador na unidade, convida, ele escolhe a senha pelo link do e-mail e entra: o token é o de quem mora de verdade.</summary>
-    private async Task<string> ResidentTokenAsync(ManagerSession manager, Guid unitId, string kind = "owner")
-    {
-        string email = $"morador-{Guid.NewGuid():N}@exemplo.com";
-        JsonObject body = new()
-        {
-            ["fullName"] = "Maria Souza",
-            ["cpf"] = CondominiumBuilders.UniqueCpf().Value,
-            ["birthDate"] = "1990-05-20",
-            ["phone"] = "(47) 99876-5432",
-            ["email"] = email,
-            ["profession"] = "Engenheira",
-            ["emergencyContact"] = new JsonObject { ["name"] = "Carlos Souza", ["relationship"] = "Irmão", ["phone"] = "(47) 3333-4444" },
-            ["unitId"] = unitId,
-            ["kind"] = kind,
-            ["startDate"] = "2024-03-01",
-        };
-        HttpResponseMessage created = await _client.SendJsonAsync(HttpMethod.Post, Residents, manager.AccessToken, body);
-        created.StatusCode.Should().Be(HttpStatusCode.Created, await created.Content.ReadAsStringAsync(Ct));
-        Guid residentId = (await created.Content.ReadFromJsonAsync<JsonElement>(Ct)).GetProperty("id").GetGuid();
-
-        HttpResponseMessage invited = await _client.SendJsonAsync(HttpMethod.Post, $"{Residents}/{residentId}/invitation", manager.AccessToken);
-        invited.StatusCode.Should().Be(HttpStatusCode.Accepted, await invited.Content.ReadAsStringAsync(Ct));
-        string link = RecordingEmailSender.TokenIn(fixture.Factory.Emails.SentTo(email).Last());
-        HttpResponseMessage confirmed = await _client.PostAsJsonAsync(
-            "/api/auth/confirm-email",
-            new { token = link, password = ManagerSetup.Password, termsVersion = fixture.Factory.TermsVersion },
-            Ct);
-        confirmed.StatusCode.Should().Be(HttpStatusCode.NoContent, await confirmed.Content.ReadAsStringAsync(Ct));
-
-        return await (await _client.LoginAsync(email, ManagerSetup.Password)).AccessTokenAsync();
-    }
-
-    /// <summary>A API ainda não deixa o síndico morar numa unidade (a unidade dele no cadastro é uma fatia futura), então o vínculo é gravado direto no banco.</summary>
+    /// <summary>O vínculo do síndico é gravado direto no banco para o teste do financeiro não depender de outra rota; o caminho pela API tem os testes de `ResidentSelfEndpointsTests`.</summary>
     private async Task MakeManagerLiveInAsync(ManagerSession manager, Guid unitId, DateOnly? endDate)
     {
         await using AsyncServiceScope scope = fixture.Factory.Services.CreateAsyncScope();

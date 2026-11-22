@@ -37,8 +37,9 @@ public sealed class UpdateResidentCommandHandler(
         }
 
         ResidentRecord? record = await residents.FindAsync(request.ResidentId, cancellationToken);
-        if (record is null)
+        if (record is null || record.Person.IsManager)
         {
+            // O síndico não é morador de lista: os dados dele mudam em "Meus dados" do síndico, não por aqui.
             return Result.Failure<ResidentView>(ResidentErrors.NotFound);
         }
 

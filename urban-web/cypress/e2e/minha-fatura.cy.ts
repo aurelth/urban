@@ -9,6 +9,7 @@ import {
   stubMyMonth,
 } from '../support/minha-fatura';
 import { TODAY } from '../support/financeiro';
+import { PALETTE } from '../support/layout';
 import { DESKTOP } from '../support/navegacao';
 import { MANAGER, RESIDENT, stubSignedIn } from '../support/session';
 
@@ -107,6 +108,23 @@ describe('Minha fatura', () => {
     cy.get('[data-testid="unit-card"]').should('not.exist');
     cy.get('[data-testid="card-expenses"]').should('not.exist');
   });
+
+  for (const theme of ['light', 'dark'] as const) {
+    it(`mostra o aviso do mês aberto e o ícone em laranja, no tema ${theme}`, () => {
+      cy.visit(`${MY_INVOICE_PATH}?mes=2026-12`, {
+        onBeforeLoad: (win) => win.localStorage.setItem('urban.theme', theme),
+      });
+
+      cy.get('[data-testid="not-closed"]')
+        .should('contain.text', 'ainda não foi fechada')
+        .and('have.css', 'color', PALETTE[theme].warning);
+      cy.get('[data-testid="not-closed"] mat-icon').should(
+        'have.css',
+        'color',
+        PALETTE[theme].warning,
+      );
+    });
+  }
 
   it('abre no mês do endereço (?mes=)', () => {
     cy.visit(`${MY_INVOICE_PATH}?mes=2026-12`);

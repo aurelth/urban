@@ -12,6 +12,9 @@ public interface IResidents
 {
     Task<ResidentRecord?> FindAsync(Guid personId, CancellationToken cancellationToken);
 
+    /// <summary>A pessoa ligada à conta, no condomínio da requisição, com os vínculos; sem exigir que more em alguma unidade.</summary>
+    Task<ResidentRecord?> FindByUserAsync(Guid userId, CancellationToken cancellationToken);
+
     /// <summary>Uma página em ordem de nome, com todos os vínculos de cada morador.</summary>
     Task<PagedResidents> ListAsync(ResidentFilter filter, int page, int pageSize, CancellationToken cancellationToken);
 

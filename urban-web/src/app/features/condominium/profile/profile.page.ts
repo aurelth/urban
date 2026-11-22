@@ -14,6 +14,7 @@ import { MatButton } from '@angular/material/button';
 import { MatCard, MatCardContent } from '@angular/material/card';
 import { MatIcon } from '@angular/material/icon';
 import { SessionStore } from '../../../core/auth/session.store';
+import { ManagerHousingStore } from '../../../core/layout/manager-housing.store';
 import { MyCondominium } from '../../../core/condominium/condominium.models';
 import { ApiProblem } from '../../../core/http/api-problem';
 import { describeProblem } from '../../../core/http/problem-message';
@@ -29,6 +30,8 @@ import { AddressFields } from '../../../shared/ui/address-fields/address.fields'
 import { FormSubmit } from '../../../shared/ui/form-submit/form-submit';
 import { openPasswordConfirm } from '../../../shared/ui/password-confirm-dialog/password-confirm.dialog';
 import { TextField } from '../../../shared/ui/text-field/text.field';
+import { ResidentFormStore } from '../../moradores/resident-form.store';
+import { ResidentOccupancies } from '../../moradores/resident-occupancies';
 import { PROFILE_MESSAGES } from './profile.messages';
 import {
   ProfileFormValue,
@@ -48,6 +51,8 @@ const CONDOMINIUM_NAME_MAX_LENGTH = 120;
  * celular, endereços e nome do condomínio) salvam direto. Nome completo, data de nascimento e CPF pedem a senha da
  * conta num diálogo, e o CPF só vira campo quando a pessoa pede para trocá-lo: o número salvo nunca chega à tela.
  * O CNPJ não muda. A versão lida junto com os dados volta no envio, e a API recusa (409) se outra pessoa mexeu antes.
+ * Abaixo do formulário, "Onde eu moro": o síndico que mora no condomínio registra a própria unidade (os mesmos vínculos do
+ * cadastro de morador, sobre o próprio cadastro). Quando um vínculo muda, o menu é avisado, e "Minha fatura" aparece ou some sem sair da conta.
  */
 @Component({
   selector: 'urban-profile-page',
@@ -60,13 +65,17 @@ const CONDOMINIUM_NAME_MAX_LENGTH = 120;
     TextField,
     AddressFields,
     FormSubmit,
+    ResidentOccupancies,
   ],
   templateUrl: './profile.page.html',
-  providers: [ProfileStore],
+  providers: [ProfileStore, ResidentFormStore],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ProfilePage implements OnInit {
   protected readonly store = inject(ProfileStore);
+  /** O próprio cadastro do síndico, base do cartão "Onde eu moro". */
+  protected readonly housing = inject(ResidentFormStore);
+  private readonly managerHousing = inject(ManagerHousingStore);
   private readonly session = inject(SessionStore);
   private readonly injector = inject(Injector);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
@@ -152,6 +161,20 @@ export class ProfilePage implements OnInit {
       this.saved.set(false);
     });
     void this.load();
+    void this.loadHousing();
+  }
+
+  /** Busca o próprio cadastro (com os vínculos). Serve à abertura e a "Tentar de novo"; o erro fica só no cartão. */
+  protected async loadHousing(): Promise<void> {
+    await this.housing.loadForMine();
+  }
+
+  /** Um vínculo foi gravado: pergunta de novo se o síndico mora no condomínio, para o item "Minha fatura" do menu. */
+  protected housingChanged(): void {
+    const user = this.session.user();
+    if (user !== null) {
+      void this.managerHousing.refresh(user.id);
+    }
   }
 
   /** Busca os dados e, quando chegam, troca o formulário por eles. Serve a abertura, a nova tentativa e o recarregar. */

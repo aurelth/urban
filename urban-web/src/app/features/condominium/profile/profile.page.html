@@ -144,6 +144,29 @@
         [error]="error()"
       />
     </form>
+
+    @if (housing.status() === 'loading') {
+      <p role="status" class="mt-8 text-on-surface-variant" data-testid="housing-loading">
+        Carregando onde você mora
+      </p>
+    } @else if (housing.status() === 'error' || housing.status() === 'not-found') {
+      <div class="mt-8 flex flex-col items-start gap-4" data-testid="housing-error">
+        <p class="flex items-start gap-2 text-error">
+          <mat-icon svgIcon="error" aria-hidden="true" />
+          <span>Não foi possível carregar onde você mora</span>
+        </p>
+        <button
+          mat-stroked-button
+          type="button"
+          data-testid="housing-retry"
+          (click)="loadHousing()"
+        >
+          Tentar de novo
+        </button>
+      </div>
+    } @else {
+      <urban-resident-occupancies [own]="true" (changed)="housingChanged()" />
+    }
   } @else {
     <p role="status" class="text-on-surface-variant" data-testid="loading">Carregando seus dados</p>
   }
