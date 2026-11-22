@@ -16,6 +16,7 @@ public sealed class GetInvoiceQueryHandler(
     IExpenseGroups groups,
     IPaymentInstructionsStore instructions,
     IInvoiceParties parties,
+    IResidentHousing housing,
     IInvoiceRenderer renderer,
     ITenantContext tenant,
     IClock clock)
@@ -29,6 +30,8 @@ public sealed class GetInvoiceQueryHandler(
         {
             return Result.Failure<InvoiceFile>(FinanceErrors.CondominiumNotFound);
         }
+
+        _ = housing;
 
         if (await charges.FindAsync(request.ChargeId, cancellationToken) is not { } detail)
         {

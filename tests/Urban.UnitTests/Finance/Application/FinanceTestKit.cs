@@ -39,6 +39,8 @@ internal sealed class FinanceTestKit
 
     public FakeInvoiceParties Parties { get; } = new();
 
+    public FakeResidentHousing Housing { get; } = new();
+
     public FakeInvoiceRenderer Renderer { get; } = new();
 
     public FakeInvoiceDeliveries Deliveries { get; }

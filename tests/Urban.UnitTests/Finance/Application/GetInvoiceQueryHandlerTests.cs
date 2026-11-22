@@ -38,7 +38,7 @@ public class GetInvoiceQueryHandlerTests
     {
         FinanceTestKit used = kit ?? _kit;
 
-        return new GetInvoiceQueryHandler(used.Charges, used.Entries, used.Groups, used.Instructions, used.Parties, used.Renderer, used.Tenant, clock ?? used.Clock);
+        return new GetInvoiceQueryHandler(used.Charges, used.Entries, used.Groups, used.Instructions, used.Parties, used.Housing, used.Renderer, used.Tenant, clock ?? used.Clock);
     }
 
     private async Task<InvoiceDocument> RenderedAsync(UnitCharge charge, FinanceTestKit? kit = null, IClock? clock = null)
@@ -138,6 +138,102 @@ public class GetInvoiceQueryHandlerTests
 
         result.IsSuccess.Should().BeTrue();
         _kit.Renderer.Rendered.Single().ResponsibleName.Should().BeNull();
+    }
+
+    // ---- O morador pede a própria fatura ----
+
+    private static readonly Guid Resident = Guid.CreateVersion7();
+
+    private static ResidentUnit HomeOf(UnitCharge charge) => new(charge.UnitId, charge.Block, charge.Number);
+
+    private Task<Result<InvoiceFile>> AskAsResident(UnitCharge charge, Guid? userId = null, FinanceTestKit? kit = null) =>
+        Handler(kit).Handle(new GetInvoiceQuery(charge.Id, userId ?? Resident), default);
+
+    [Fact]
+    public async Task Handle_AResidentGetsTheInvoiceOfTheUnitHeLivesIn_ExactlyTheSameThePdfOfTheManager()
+    {
+        _kit.Housing.Lives(Resident, HomeOf(_second));
+        InvoiceDocument forTheManager = await RenderedAsync(_second);
+        _kit.Renderer.Rendered.Clear();
+
+        Result<InvoiceFile> result = await AskAsResident(_second);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.FileName.Should().Be("fatura-2026-10-bloco-a-102.pdf");
+        _kit.Renderer.Rendered.Single().Should().BeEquivalentTo(forTheManager);
+    }
+
+    [Fact]
+    public async Task Handle_AResidentCannotGetTheInvoiceOfAnotherUnit_AndItLooksLikeTheChargeDoesNotExist()
+    {
+        _kit.Housing.Lives(Resident, HomeOf(_first));
+
+        Result<InvoiceFile> result = await AskAsResident(_second);
+
+        result.Error.Should().Be(PaymentErrors.ChargeNotFound);
+        _kit.Renderer.Rendered.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_AResidentWithTwoUnitsGetsTheInvoiceOfEach()
+    {
+        _kit.Housing.Lives(Resident, HomeOf(_first), HomeOf(_second));
+
+        (await AskAsResident(_first)).IsSuccess.Should().BeTrue();
+        (await AskAsResident(_second)).IsSuccess.Should().BeTrue();
+        _kit.Renderer.Rendered.Should().HaveCount(2);
+    }
+
+    [Fact]
+    public async Task Handle_AResidentWhoOnlyLivesAsDependentOrWhoLivesNowhereGetsNothing()
+    {
+        Guid dependent = Guid.CreateVersion7();
+        _kit.Housing.LivesAsDependent(dependent);
+
+        (await AskAsResident(_first, dependent)).Error.Should().Be(PaymentErrors.ChargeNotFound);
+        (await AskAsResident(_first, Guid.CreateVersion7())).Error.Should().Be(PaymentErrors.ChargeNotFound);
+        _kit.Renderer.Rendered.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Handle_AResidentAskingForAChargeThatDoesNotExist_GetsTheSameAnswerAsForAnotherUnit()
+    {
+        _kit.Housing.Lives(Resident, HomeOf(_first));
+
+        Result<InvoiceFile> result = await Handler().Handle(new GetInvoiceQuery(Guid.CreateVersion7(), Resident), default);
+
+        result.Error.Should().Be(PaymentErrors.ChargeNotFound);
+    }
+
+    [Fact]
+    public async Task Handle_TheHousingIsAskedAboutTheAccountOfTheToken_AsOfTodayInBrasilia()
+    {
+        _kit.Housing.Lives(Resident, HomeOf(_first));
+
+        await AskAsResident(_first);
+
+        _kit.Housing.AskedAbout.Should().Be(Resident);
+        _kit.Housing.AskedOn.Should().Be(new DateOnly(2026, 11, 7));
+    }
+
+    [Fact]
+    public async Task Handle_TheManagerAsksWithoutAnAccountAndTheHousingIsNeverConsulted()
+    {
+        Result<InvoiceFile> result = await Handler().Handle(new GetInvoiceQuery(_second.Id), default);
+
+        result.IsSuccess.Should().BeTrue();
+        _kit.Housing.Calls.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Handle_WithoutACondominium_AResidentGetsNothingAndTheHousingIsNeverConsulted()
+    {
+        FinanceTestKit kit = new FinanceTestKit().WithoutATenant();
+
+        Result<InvoiceFile> result = await AskAsResident(_first, kit: kit);
+
+        result.Error.Should().Be(FinanceErrors.CondominiumNotFound);
+        kit.Housing.Calls.Should().Be(0);
     }
 
     // ---- Fatura não é recibo ----

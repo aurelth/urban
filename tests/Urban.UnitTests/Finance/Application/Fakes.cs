@@ -606,6 +606,31 @@ internal sealed class FakeInvoiceParties : IInvoiceParties
     }
 }
 
+/// <summary>Em que unidades cada conta mora, do jeito que o Condomínio responderia; conta que não foi cadastrada não mora em lugar nenhum.</summary>
+internal sealed class FakeResidentHousing : IResidentHousing
+{
+    private readonly Dictionary<Guid, ResidentDwelling> _homes = [];
+
+    public Guid? AskedAbout { get; private set; }
+
+    public DateOnly? AskedOn { get; private set; }
+
+    public int Calls { get; private set; }
+
+    public void Lives(Guid userId, params ResidentUnit[] units) => _homes[userId] = new ResidentDwelling(units, false);
+
+    public void LivesAsDependent(Guid userId, params ResidentUnit[] units) => _homes[userId] = new ResidentDwelling(units, true);
+
+    public Task<ResidentDwelling> GetAsync(Guid userId, DateOnly today, CancellationToken cancellationToken)
+    {
+        Calls++;
+        AskedAbout = userId;
+        AskedOn = today;
+
+        return Task.FromResult(_homes.GetValueOrDefault(userId) ?? new ResidentDwelling([], false));
+    }
+}
+
 internal sealed class FakeInvoiceRenderer : IInvoiceRenderer
 {
     public static readonly byte[] Output = [0x25, 0x50, 0x44, 0x46, 0x2D];
