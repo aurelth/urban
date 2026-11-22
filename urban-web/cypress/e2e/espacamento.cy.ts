@@ -20,6 +20,7 @@ import {
   EXPENSES_PATH,
   FILLED_MONTH,
   OPENED_MONTH,
+  TODAY,
   stubExpenses,
   stubFinanceRejected,
   stubMonth,
@@ -46,6 +47,7 @@ import {
   stubMyMonth,
 } from '../support/minha-fatura';
 import { MONTH_DASHBOARD_PATH, stubMonthDashboard } from '../support/painel-financeiro';
+import { stubMural } from '../support/mural';
 import { MY_DATA_PATH, stubMyRegistration } from '../support/meu-cadastro';
 import { PROFILE_PATH, stubProfile } from '../support/perfil';
 import { ADMIN, REQUESTS_PATH, stubRequests } from '../support/pedidos';
@@ -461,6 +463,19 @@ SCREENS.forEach(([where, width, height]) => {
 
       cy.get('[data-testid="next-month"]').click();
       cy.get('[data-testid="not-closed"]').should('exist');
+      expectBreathingRoom();
+    });
+
+    it('não cola texto em container no mural do morador, nem com o aviso de marcar todos', () => {
+      cy.clock(TODAY, ['Date']);
+      stubSignedIn(RESIDENT);
+      stubMural();
+      cy.visit('/dashboard');
+      cy.get('[data-testid="mural-card"]').should('exist');
+      expectBreathingRoom();
+
+      cy.get('[data-testid="mark-all"]').click();
+      cy.get('[data-testid="notice"]').should('be.visible');
       expectBreathingRoom();
     });
 

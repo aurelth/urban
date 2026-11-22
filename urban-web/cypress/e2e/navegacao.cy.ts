@@ -79,16 +79,17 @@ describe('Navegação', () => {
       cy.viewport(DESKTOP.width, DESKTOP.height);
     });
 
-    it('ganha "Minha fatura" logo depois do Painel e abre a própria fatura', () => {
+    it('ganha "Mural" e "Minha fatura" logo depois do Painel e abre a própria fatura', () => {
       cy.clock(TODAY, ['Date']);
       stubMyAccess('unit');
       stubMyMonth();
       cy.visit('/dashboard');
 
-      // O item chega depois da resposta da API: a conferência repete até ele aparecer.
+      // Os itens chegam depois da resposta da API: a conferência repete até eles aparecerem.
       cy.get('nav[aria-label="Menu principal"] a').should(($links) => {
-        expect([...$links].slice(0, 3).map((link) => link.dataset['testid'])).to.deep.eq([
+        expect([...$links].slice(0, 4).map((link) => link.dataset['testid'])).to.deep.eq([
           'nav-dashboard',
+          'nav-mural',
           'nav-my-invoice',
           'nav-units',
         ]);
@@ -108,6 +109,7 @@ describe('Navegação', () => {
         cy.wait('@myAccess');
         cy.get('[data-testid="nav-units"]').should('be.visible');
         cy.get('[data-testid="nav-my-invoice"]').should('not.exist');
+        cy.get('[data-testid="nav-mural"]').should('not.exist');
       });
     }
 

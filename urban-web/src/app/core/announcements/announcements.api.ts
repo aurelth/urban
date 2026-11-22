@@ -3,8 +3,12 @@ import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import {
   Announcement,
+  AnnouncementCategory,
   AnnouncementPage,
   AnnouncementPayload,
+  MarkAllResult,
+  MyAnnouncementPage,
+  MyAnnouncementsQuery,
   UpdateAnnouncementPayload,
 } from './announcements.models';
 
@@ -32,5 +36,17 @@ export class AnnouncementsApi {
   /** A versão vai na consulta: a API não lê corpo no DELETE. */
   remove(id: string, version: string): Observable<void> {
     return this.http.delete<void>(`${BASE}/${id}`, { params: { version } });
+  }
+
+  listMine(query: MyAnnouncementsQuery): Observable<MyAnnouncementPage> {
+    throw new Error(`Não implementado: ${String(query.page)}`);
+  }
+
+  markRead(id: string): Observable<void> {
+    throw new Error(`Não implementado: ${id}`);
+  }
+
+  markAllRead(category: AnnouncementCategory | null): Observable<MarkAllResult> {
+    throw new Error(`Não implementado: ${String(category)}`);
   }
 }

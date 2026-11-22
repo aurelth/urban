@@ -11,6 +11,7 @@ import {
 import { TODAY } from '../support/financeiro';
 import { PALETTE } from '../support/layout';
 import { DESKTOP } from '../support/navegacao';
+import { stubMural } from '../support/mural';
 import { MANAGER, RESIDENT, stubSignedIn } from '../support/session';
 
 function text(testId: string): Cypress.Chainable<string> {
@@ -26,6 +27,7 @@ describe('Minha fatura', () => {
 
   it('abre pelo menu lateral do morador, no mês de hoje', () => {
     cy.viewport(DESKTOP.width, DESKTOP.height);
+    stubMural();
     cy.visit('/dashboard');
 
     cy.get('[data-testid="nav-my-invoice"]').should('contain.text', 'Minha fatura').click();
@@ -33,14 +35,6 @@ describe('Minha fatura', () => {
     cy.location('pathname').should('eq', MY_INVOICE_PATH);
     cy.contains('h1', 'Minha fatura').should('be.visible');
     cy.get('[data-testid="month-title"]').should('contain.text', 'Novembro de 2026');
-  });
-
-  it('abre pelo atalho do painel do morador', () => {
-    cy.visit('/dashboard');
-
-    cy.get('[data-testid="my-invoice-link"]').click();
-
-    cy.location('pathname').should('eq', MY_INVOICE_PATH);
   });
 
   it('mostra um cartão por unidade, com valor, pago, saldo e a situação em texto', () => {

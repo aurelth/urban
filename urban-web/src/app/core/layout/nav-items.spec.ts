@@ -97,12 +97,13 @@ describe('navGroupsFor', () => {
 });
 
 describe('síndico que mora no condomínio', () => {
-  it('ganha "Minha fatura" logo depois do Painel, no grupo principal', () => {
+  it('ganha o "Mural" e a "Minha fatura" logo depois do Painel, no grupo principal', () => {
     const groups = navGroupsFor(MANAGER_WITH_CONDOMINIUM, true);
 
     expect(groups.map((group) => group.id)).toEqual(['main', 'condominium', 'finance']);
     expect(groups[0].items.map((item) => [item.id, item.label, item.path, item.icon])).toEqual([
       ['dashboard', 'Painel', '/dashboard', 'dashboard'],
+      ['mural', 'Mural', '/mural', 'newspaper'],
       ['my-invoice', 'Minha fatura', '/minha-fatura', 'receipt_long'],
     ]);
   });

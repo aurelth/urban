@@ -347,21 +347,38 @@ describe('DashboardPage', () => {
     });
   });
 
-  it('para quem não é síndico mostra só as boas-vindas, sem chamar a API do condomínio', async () => {
-    const { html } = await setup({}, RESIDENT_USER);
+  it('para quem não é síndico mostra o mural no lugar do painel, sem chamar a API do condomínio', async () => {
+    const { http, html } = await setup({}, RESIDENT_USER);
 
-    expect(byId(html, 'welcome')).not.toBeNull();
+    expect(html.querySelector('urban-mural')).not.toBeNull();
+    expect(byId(html, 'welcome')).toBeNull();
     expect(byId(html, 'card-month')).toBeNull();
-    expect(html.querySelector('h1')?.textContent?.trim()).toBe('Painel');
+    expect(http.match((r) => r.url.startsWith('/api/finance'))).toHaveLength(0);
+    expect(http.match((r) => r.url === '/api/announcements/mine')).toHaveLength(1);
   });
 
-  it('para o morador, leva à sua fatura e deixa os avisos para quando existirem', async () => {
+  it('para o morador, o título da tela é o do mural, visível e único', async () => {
     const { html } = await setup({}, RESIDENT_USER);
 
-    const link = byId(html, 'my-invoice-link');
-    expect(link?.getAttribute('href')).toBe('/minha-fatura');
-    expect(link?.textContent?.replace(/\s+/g, ' ').trim()).toContain('Ver minha fatura');
-    expect(byId(html, 'welcome')?.textContent).not.toContain('suas faturas');
+    const titles = html.querySelectorAll('h1');
+    expect(titles).toHaveLength(1);
+    expect(titles[0].textContent?.trim()).toBe('Mural');
+    expect(titles[0].classList).not.toContain('sr-only');
+  });
+
+  it('para o morador, o cartão de boas-vindas e o aviso de "em construção" saíram', async () => {
+    const { html } = await setup({}, RESIDENT_USER);
+
+    expect(byId(html, 'my-invoice-link')).toBeNull();
+    expect(html.textContent).not.toContain('em construção');
+    expect(html.textContent).not.toContain('Bem-vindo ao Urban');
+  });
+
+  it('para o síndico, não mostra o mural nem busca os avisos', async () => {
+    const { http, html } = await setup({});
+
+    expect(html.querySelector('urban-mural')).toBeNull();
+    expect(http.match((r) => r.url === '/api/announcements/mine')).toHaveLength(0);
   });
 
   it('para o síndico, não mostra o atalho da fatura do morador', async () => {
