@@ -8,6 +8,7 @@ import { MANAGER, REGISTERED_MANAGER, signInAs } from '../../testing/auth.fixtur
 import { CurrentUser } from '../auth/auth.models';
 import { SessionStore } from '../auth/session.store';
 import { provideUrbanIcons } from '../theme/icons';
+import { ManagerHousingStore } from './manager-housing.store';
 import { ShellLayout } from './shell.layout';
 
 @Component({ template: '' })
@@ -231,6 +232,81 @@ describe('ShellLayout', () => {
       TestBed.tick();
 
       expect(navigate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Minha fatura do síndico', () => {
+    const ROUTE = '/api/finance/me/access';
+
+    async function answer(
+      fixture: ComponentFixture<ShellLayout>,
+      http: HttpTestingController,
+      access: string,
+    ): Promise<void> {
+      http.expectOne(ROUTE).flush({ access });
+      await fixture.whenStable();
+      TestBed.tick();
+    }
+
+    function ids(html: HTMLElement): (string | undefined)[] {
+      return [...html.querySelectorAll<HTMLAnchorElement>('nav a[data-testid^="nav-"]')].map(
+        (link) => link.dataset['testid'],
+      );
+    }
+
+    it('mostra o item logo depois do Painel ao síndico que mora no condomínio', async () => {
+      const { fixture, http, html } = await setup(REGISTERED_MANAGER);
+
+      await answer(fixture, http, 'unit');
+
+      expect(ids(html).slice(0, 3)).toEqual(['nav-dashboard', 'nav-my-invoice', 'nav-units']);
+      const link = byTestId(html, 'nav-my-invoice')!;
+      expect(text(link)).toBe('Minha fatura');
+      expect(link.getAttribute('href')).toBe('/minha-fatura');
+      expect(link.querySelector('mat-icon')).not.toBeNull();
+    });
+
+    it.each(['dependent', 'none'])('não mostra o item quando o acesso é %s', async (access) => {
+      const { fixture, http, html } = await setup(REGISTERED_MANAGER);
+
+      await answer(fixture, http, access);
+
+      expect(byTestId(html, 'nav-my-invoice')).toBeNull();
+      expect(ids(html)[1]).toBe('nav-units');
+    });
+
+    it('não mostra o item enquanto a resposta não chega, nem se ela falhar', async () => {
+      const { fixture, http, html } = await setup(REGISTERED_MANAGER);
+      expect(byTestId(html, 'nav-my-invoice')).toBeNull();
+
+      http.expectOne(ROUTE).flush({}, { status: 503, statusText: 'Service Unavailable' });
+      await fixture.whenStable();
+      TestBed.tick();
+
+      expect(byTestId(html, 'nav-my-invoice')).toBeNull();
+      expect(byTestId(html, 'nav-units')).not.toBeNull();
+    });
+
+    it.each([
+      ['morador', { ...REGISTERED_MANAGER, role: 'Resident' as const }],
+      ['administrador', { ...REGISTERED_MANAGER, role: 'SuperAdmin' as const }],
+      ['síndico sem condomínio', MANAGER],
+    ])('não pergunta nada para %s', async (_name, user) => {
+      const { http } = await setup(user);
+
+      http.expectNone(ROUTE);
+    });
+
+    it('esquece a resposta quando a sessão acaba', async () => {
+      const { fixture, store, http, html } = await setup(REGISTERED_MANAGER);
+      await answer(fixture, http, 'unit');
+      expect(byTestId(html, 'nav-my-invoice')).not.toBeNull();
+
+      store.endSession();
+      await fixture.whenStable();
+      TestBed.tick();
+
+      expect(TestBed.inject(ManagerHousingStore).livesHere()).toBe(false);
     });
   });
 

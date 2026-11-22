@@ -142,7 +142,7 @@ function managesCondominium(who: Who): boolean {
 }
 
 /** Itens do menu lateral, agrupados. Vazio quando a pessoa não tem telas (o menu nem aparece). */
-export function navGroupsFor(who: Who): readonly NavGroup[] {
+export function navGroupsFor(who: Who, _livesHere = false): readonly NavGroup[] {
   if (who?.role === 'SuperAdmin') {
     return ADMIN_GROUPS;
   }

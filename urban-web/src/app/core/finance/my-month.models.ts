@@ -3,6 +3,11 @@ import { ChargeStatus } from './payments.models';
 /** O que a pessoa tem a ver com as cobranças: de uma ou mais unidades, só dependente (sem fatura) ou nenhuma. */
 export type MyMonthAccess = 'unit' | 'dependent' | 'none';
 
+/** Só como a pessoa mora, sem ler mês nenhum: é o que o menu pergunta para decidir se mostra "Minha fatura" ao síndico. */
+export interface MyAccess {
+  readonly access: MyMonthAccess;
+}
+
 /** A cobrança do mês de uma unidade, como o morador a vê. */
 export interface MyCharge {
   readonly chargeId: string;
