@@ -28,11 +28,21 @@ public static class AnnouncementMapper
         view.Body,
         view.Category,
         view.Scope,
+        view.Block,
+        view.Unit is null ? null : new MyAnnouncementUnitResponse(view.Unit.Id, view.Unit.Block, view.Unit.Number),
         view.CreatedAt,
         view.UpdatedAt,
         view.Read,
         view.ReadAt);
 
     public static MyAnnouncementPageResponse ToResponse(MyAnnouncementPageView view) =>
-        new([.. view.Items.Select(ToResponse)], view.Total, view.Unread, view.Page, view.PageSize);
+        new(
+            [.. view.Items.Select(ToResponse)],
+            view.Total,
+            view.Unread,
+            new UnreadByCategoryResponse(view.UnreadByCategory.General, view.UnreadByCategory.Maintenance, view.UnreadByCategory.Important),
+            view.Page,
+            view.PageSize);
+
+    public static MarkedReadResponse ToMarkedResponse(int marked) => new(marked);
 }

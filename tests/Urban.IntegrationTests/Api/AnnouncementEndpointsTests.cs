@@ -24,6 +24,7 @@ public sealed class AnnouncementEndpointsTests(ApiFixture fixture) : IDisposable
 {
     private const string Route = "/api/announcements";
     private const string MineRoute = Route + "/mine";
+    private const string ReadAllRoute = Route + "/read-all";
 
     private static readonly CancellationToken Ct = CancellationToken.None;
 
@@ -44,6 +45,7 @@ public sealed class AnnouncementEndpointsTests(ApiFixture fixture) : IDisposable
     [InlineData("DELETE", "/api/announcements/00000000-0000-0000-0000-000000000001?version=1")]
     [InlineData("GET", MineRoute)]
     [InlineData("POST", "/api/announcements/00000000-0000-0000-0000-000000000001/read")]
+    [InlineData("POST", ReadAllRoute)]
     public async Task Every_route_requires_a_token(string method, string route)
     {
         HttpResponseMessage response = await _client.SendJsonAsync(new HttpMethod(method), route, null, method is "POST" or "PUT" ? Body() : null);
@@ -85,6 +87,9 @@ public sealed class AnnouncementEndpointsTests(ApiFixture fixture) : IDisposable
         mine.StatusCode.Should().Be(HttpStatusCode.Forbidden);
         (await mine.CodeAsync()).Should().Be("identity.user.not_condominium_member");
         (await _client.SendJsonAsync(HttpMethod.Post, ReadRoute(Guid.NewGuid()), token)).StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        HttpResponseMessage readAll = await _client.SendJsonAsync(HttpMethod.Post, ReadAllRoute, token);
+        readAll.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+        (await readAll.CodeAsync()).Should().Be("identity.user.not_condominium_member");
     }
 
     [Fact]
@@ -488,6 +493,97 @@ public sealed class AnnouncementEndpointsTests(ApiFixture fixture) : IDisposable
         mural.GetProperty("unread").GetInt32().Should().Be(3);
     }
 
+    [Fact]
+    public async Task Mine_EachAnnouncementTellsItsBlockOrItsUnit_AndTheWholeCondominiumTellsNeither()
+    {
+        (ManagerSession manager, Guid a101) = await ManagerWithAUnitAsync();
+        string ana = await ResidentTokenAsync(manager, a101);
+        await CreateAsync(manager, "Todos");
+        await CreateAsync(manager, "Bloco", scope: "block", block: "Bloco A");
+        await CreateAsync(manager, "Apartamento", scope: "unit", unitId: a101);
+
+        JsonElement mural = await MineAsync(ana);
+
+        JsonElement unit = Item(mural, "Apartamento");
+        unit.GetProperty("scope").GetString().Should().Be("unit");
+        unit.GetProperty("block").ValueKind.Should().Be(JsonValueKind.Null);
+        unit.GetProperty("unit").GetProperty("id").GetGuid().Should().Be(a101);
+        unit.GetProperty("unit").GetProperty("block").GetString().Should().Be("Bloco A");
+        unit.GetProperty("unit").GetProperty("number").GetString().Should().Be("101");
+        JsonElement block = Item(mural, "Bloco");
+        block.GetProperty("block").GetString().Should().Be("Bloco A");
+        block.GetProperty("unit").ValueKind.Should().Be(JsonValueKind.Null);
+        JsonElement everyone = Item(mural, "Todos");
+        everyone.GetProperty("block").ValueKind.Should().Be(JsonValueKind.Null);
+        everyone.GetProperty("unit").ValueKind.Should().Be(JsonValueKind.Null);
+    }
+
+    [Fact]
+    public async Task Mine_Category_FiltersTheListAndItsTotal_ButNotTheUnreadCounters()
+    {
+        (ManagerSession manager, Guid a101) = await ManagerWithAUnitAsync();
+        string ana = await ResidentTokenAsync(manager, a101);
+        await CreateAsync(manager, "Geral", category: "general");
+        await CreateAsync(manager, "Corte de água", category: "maintenance");
+        await CreateAsync(manager, "Elevador", category: "maintenance");
+        await CreateAsync(manager, "Assembleia", category: "important");
+
+        JsonElement mural = await MineAsync(ana, "category=maintenance");
+
+        Titles(mural).Should().Equal("Elevador", "Corte de água");
+        mural.GetProperty("total").GetInt32().Should().Be(2);
+        mural.GetProperty("unread").GetInt32().Should().Be(4);
+    }
+
+    [Fact]
+    public async Task Mine_UnreadByCategory_CountsTheWholeBoard_AndFollowsWhatWasRead()
+    {
+        (ManagerSession manager, Guid a101) = await ManagerWithAUnitAsync();
+        await CreateUnitAsync(manager, "Bloco B", "201");
+        string ana = await ResidentTokenAsync(manager, a101);
+        Guid read = await CreateAsync(manager, "Geral lido", category: "general");
+        await CreateAsync(manager, "Geral", category: "general");
+        await CreateAsync(manager, "Manutenção 1", category: "maintenance");
+        await CreateAsync(manager, "Manutenção 2", category: "maintenance");
+        await CreateAsync(manager, "Importante", category: "important");
+        await CreateAsync(manager, "Do outro bloco", category: "important", scope: "block", block: "Bloco B");
+        await MarkReadAsync(ana, read);
+
+        JsonElement mural = await MineAsync(ana, "unreadOnly=true&category=general&pageSize=1");
+
+        JsonElement counts = mural.GetProperty("unreadByCategory");
+        counts.EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo("general", "maintenance", "important");
+        counts.GetProperty("general").GetInt32().Should().Be(1);
+        counts.GetProperty("maintenance").GetInt32().Should().Be(2);
+        counts.GetProperty("important").GetInt32().Should().Be(1);
+        mural.GetProperty("unread").GetInt32().Should().Be(4);
+    }
+
+    [Theory]
+    [InlineData("category=urgente")]
+    [InlineData("category=1")]
+    public async Task Mine_ACategoryThatDoesNotExist_Is400(string query)
+    {
+        (ManagerSession manager, Guid a101) = await ManagerWithAUnitAsync();
+        string ana = await ResidentTokenAsync(manager, a101);
+
+        HttpResponseMessage response = await _client.SendJsonAsync(HttpMethod.Get, $"{MineRoute}?{query}", ana);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.CodeAsync()).Should().Be("announcement.category.invalid");
+    }
+
+    [Fact]
+    public async Task Mine_ABlankCategory_ShowsEveryCategory()
+    {
+        (ManagerSession manager, Guid a101) = await ManagerWithAUnitAsync();
+        string ana = await ResidentTokenAsync(manager, a101);
+        await CreateAsync(manager, "Geral", category: "general");
+        await CreateAsync(manager, "Importante", category: "important");
+
+        Titles(await MineAsync(ana, "category=")).Should().Equal("Importante", "Geral");
+    }
+
     [Theory]
     [InlineData("owner")]
     [InlineData("tenant")]
@@ -510,7 +606,7 @@ public sealed class AnnouncementEndpointsTests(ApiFixture fixture) : IDisposable
 
         JsonElement item = (await MineAsync(ana)).GetProperty("items")[0];
 
-        item.EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo("id", "title", "body", "category", "scope", "createdAt", "updatedAt", "read", "readAt");
+        item.EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo("id", "title", "body", "category", "scope", "block", "unit", "createdAt", "updatedAt", "read", "readAt");
     }
 
     [Fact]
@@ -524,6 +620,9 @@ public sealed class AnnouncementEndpointsTests(ApiFixture fixture) : IDisposable
         mural.GetProperty("items").GetArrayLength().Should().Be(0);
         mural.GetProperty("total").GetInt32().Should().Be(0);
         mural.GetProperty("unread").GetInt32().Should().Be(0);
+        mural.GetProperty("unreadByCategory").GetProperty("general").GetInt32().Should().Be(0);
+        mural.GetProperty("unreadByCategory").GetProperty("maintenance").GetInt32().Should().Be(0);
+        mural.GetProperty("unreadByCategory").GetProperty("important").GetInt32().Should().Be(0);
     }
 
     [Fact]
@@ -705,11 +804,138 @@ public sealed class AnnouncementEndpointsTests(ApiFixture fixture) : IDisposable
         Item(await ListAsync(manager), id).GetProperty("readers").GetInt32().Should().Be(1);
     }
 
+    // ---- Marcar todos como lidos ----
+
+    [Fact]
+    public async Task MarkAllRead_Returns200WithHowManyWereMarked_AndTheMuralShowsEverythingRead()
+    {
+        (ManagerSession manager, Guid a101) = await ManagerWithAUnitAsync();
+        await CreateUnitAsync(manager, "Bloco B", "201");
+        string ana = await ResidentTokenAsync(manager, a101);
+        Guid already = await CreateAsync(manager, "Já lido");
+        await CreateAsync(manager, "Todos");
+        await CreateAsync(manager, "Meu bloco", scope: "block", block: "Bloco A");
+        await CreateAsync(manager, "Outro bloco", scope: "block", block: "Bloco B");
+        await MarkReadAsync(ana, already);
+
+        HttpResponseMessage response = await _client.SendJsonAsync(HttpMethod.Post, ReadAllRoute, ana);
+
+        response.Headers.CacheControl!.NoStore.Should().BeTrue();
+        (await ReadOkAsync(response)).GetProperty("marked").GetInt32().Should().Be(2);
+        JsonElement mural = await MineAsync(ana);
+        mural.GetProperty("unread").GetInt32().Should().Be(0);
+        mural.GetProperty("items").EnumerateArray().Should().OnlyContain(item => item.GetProperty("read").GetBoolean());
+        Item(await ListAsync(manager), "Outro bloco").GetProperty("readers").GetInt32().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task MarkAllRead_Twice_Is200_AndTheSecondMarksNothing()
+    {
+        (ManagerSession manager, Guid a101) = await ManagerWithAUnitAsync();
+        string ana = await ResidentTokenAsync(manager, a101);
+        await CreateAsync(manager);
+        await _client.SendJsonAsync(HttpMethod.Post, ReadAllRoute, ana);
+        DateTimeOffset first = (await MineAsync(ana)).GetProperty("items")[0].GetProperty("readAt").GetDateTimeOffset();
+
+        JsonElement again = await ReadOkAsync(await _client.SendJsonAsync(HttpMethod.Post, ReadAllRoute, ana));
+
+        again.GetProperty("marked").GetInt32().Should().Be(0);
+        (await MineAsync(ana)).GetProperty("items")[0].GetProperty("readAt").GetDateTimeOffset().Should().Be(first);
+    }
+
+    [Fact]
+    public async Task MarkAllRead_WithACategory_MarksOnlyThatCategory()
+    {
+        (ManagerSession manager, Guid a101) = await ManagerWithAUnitAsync();
+        string ana = await ResidentTokenAsync(manager, a101);
+        await CreateAsync(manager, "Geral", category: "general");
+        await CreateAsync(manager, "Corte de água", category: "maintenance");
+        await CreateAsync(manager, "Assembleia", category: "important");
+
+        JsonElement result = await ReadOkAsync(await _client.SendJsonAsync(HttpMethod.Post, $"{ReadAllRoute}?category=maintenance", ana));
+
+        result.GetProperty("marked").GetInt32().Should().Be(1);
+        JsonElement counts = (await MineAsync(ana)).GetProperty("unreadByCategory");
+        counts.GetProperty("general").GetInt32().Should().Be(1);
+        counts.GetProperty("maintenance").GetInt32().Should().Be(0);
+        counts.GetProperty("important").GetInt32().Should().Be(1);
+    }
+
+    [Fact]
+    public async Task MarkAllRead_ACategoryThatDoesNotExist_Is400_AndMarksNothing()
+    {
+        (ManagerSession manager, Guid a101) = await ManagerWithAUnitAsync();
+        string ana = await ResidentTokenAsync(manager, a101);
+        await CreateAsync(manager);
+
+        HttpResponseMessage response = await _client.SendJsonAsync(HttpMethod.Post, $"{ReadAllRoute}?category=urgente", ana);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        (await response.CodeAsync()).Should().Be("announcement.category.invalid");
+        (await MineAsync(ana)).GetProperty("unread").GetInt32().Should().Be(1);
+    }
+
+    [Fact]
+    public async Task MarkAllRead_ByWhoLivesNowhereOrByTheAuthor_MarksNothing()
+    {
+        (ManagerSession manager, Guid a101) = await ManagerWithAUnitAsync();
+        await CreateAsync(manager, "Para todos");
+
+        JsonElement nowhere = await ReadOkAsync(await _client.SendJsonAsync(HttpMethod.Post, ReadAllRoute, manager.AccessToken));
+        await MakeManagerLiveInAsync(manager, a101);
+        JsonElement author = await ReadOkAsync(await _client.SendJsonAsync(HttpMethod.Post, ReadAllRoute, manager.AccessToken));
+
+        nowhere.GetProperty("marked").GetInt32().Should().Be(0);
+        author.GetProperty("marked").GetInt32().Should().Be(0);
+        Item(await ListAsync(manager), "Para todos").GetProperty("readers").GetInt32().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task MarkAllRead_NeverTouchesTheAnnouncementsOfAnotherCondominium()
+    {
+        (ManagerSession ours, Guid a101) = await ManagerWithAUnitAsync();
+        ManagerSession theirs = await ManagerSetup.RegisterAsync(fixture, _client);
+        string ana = await ResidentTokenAsync(ours, a101);
+        await CreateAsync(ours, "Nosso");
+        await CreateAsync(theirs, "Deles");
+
+        JsonElement result = await ReadOkAsync(await _client.SendJsonAsync(HttpMethod.Post, ReadAllRoute, ana));
+
+        result.GetProperty("marked").GetInt32().Should().Be(1);
+        Item(await ListAsync(theirs), "Deles").GetProperty("readers").GetInt32().Should().Be(0);
+    }
+
+    [Fact]
+    public async Task MarkAllRead_ManyAtTheSameTime_AreAllAccepted_AndEachAnnouncementCountsOnce()
+    {
+        (ManagerSession manager, Guid a101) = await ManagerWithAUnitAsync();
+        string ana = await ResidentTokenAsync(manager, a101);
+        await CreateAsync(manager, "Um");
+        await CreateAsync(manager, "Dois");
+        await CreateAsync(manager, "Três");
+
+        HttpResponseMessage[] responses = await Task.WhenAll(Enumerable.Range(0, 5).Select(_ => _client.SendJsonAsync(HttpMethod.Post, ReadAllRoute, ana)));
+
+        responses.Should().OnlyContain(response => response.StatusCode == HttpStatusCode.OK);
+        int marked = 0;
+        foreach (HttpResponseMessage response in responses)
+        {
+            marked += (await ReadOkAsync(response)).GetProperty("marked").GetInt32();
+        }
+
+        marked.Should().Be(3);
+        (await MineAsync(ana)).GetProperty("unread").GetInt32().Should().Be(0);
+        JsonElement list = await ListAsync(manager);
+        list.GetProperty("items").EnumerateArray().Should().OnlyContain(item => item.GetProperty("readers").GetInt32() == 1);
+    }
+
     // ---- Apoio ----
 
     private static string[] Titles(JsonElement page) => [.. page.GetProperty("items").EnumerateArray().Select(item => item.GetProperty("title").GetString()!)];
 
     private static JsonElement Item(JsonElement page, Guid id) => page.GetProperty("items").EnumerateArray().Single(item => item.GetProperty("id").GetGuid() == id);
+
+    private static JsonElement Item(JsonElement page, string title) => page.GetProperty("items").EnumerateArray().Single(item => item.GetProperty("title").GetString() == title);
 
     private static JsonObject Body(
         string title = "Aviso do síndico",
@@ -757,9 +983,10 @@ public sealed class AnnouncementEndpointsTests(ApiFixture fixture) : IDisposable
     private Task<string> ResidentTokenAsync(ManagerSession manager, Guid unitId, string kind = "owner", string fullName = "Maria Souza") =>
         ResidentSetup.TokenAsync(fixture, _client, manager, unitId, kind, fullName);
 
-    private async Task<Guid> CreateAsync(ManagerSession manager, string title = "Aviso do síndico", string scope = "condominium", string? block = null, Guid? unitId = null)
+    private async Task<Guid> CreateAsync(
+        ManagerSession manager, string title = "Aviso do síndico", string scope = "condominium", string? block = null, Guid? unitId = null, string category = "general")
     {
-        HttpResponseMessage response = await _client.SendJsonAsync(HttpMethod.Post, Route, manager.AccessToken, Body(title, scope: scope, block: block, unitId: unitId));
+        HttpResponseMessage response = await _client.SendJsonAsync(HttpMethod.Post, Route, manager.AccessToken, Body(title, category: category, scope: scope, block: block, unitId: unitId));
         response.StatusCode.Should().Be(HttpStatusCode.Created, await response.Content.ReadAsStringAsync(Ct));
 
         return (await response.Content.ReadFromJsonAsync<JsonElement>(Ct)).GetProperty("id").GetGuid();

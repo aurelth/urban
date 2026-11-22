@@ -15,7 +15,13 @@ public sealed record DeleteAnnouncementCommand(Guid AnnouncementId, string? Vers
 /// <summary>Os comunicados do condomínio, do mais novo ao mais velho, cada um com quantos já leram.</summary>
 public sealed record ListAnnouncementsQuery(int Page, int PageSize) : IRequest<Result<AnnouncementPageView>>;
 
-/// <summary>O mural de quem mora: os comunicados que chegam à conta, com o que ela já leu e quantos faltam.</summary>
-public sealed record ListMyAnnouncementsQuery(Guid UserId, bool UnreadOnly, int Page, int PageSize) : IRequest<Result<MyAnnouncementPageView>>;
+/// <summary>
+/// O mural de quem mora: os comunicados que chegam à conta, com o que ela já leu e quantos faltam. <paramref name="Category"/> em branco
+/// mostra todas as categorias; um nome que não é categoria falha.
+/// </summary>
+public sealed record ListMyAnnouncementsQuery(Guid UserId, bool UnreadOnly, int Page, int PageSize, string? Category = null) : IRequest<Result<MyAnnouncementPageView>>;
 
 public sealed record MarkAnnouncementReadCommand(Guid UserId, Guid AnnouncementId) : IRequest<Result>;
+
+/// <summary>Marca como lidos todos os comunicados do mural da conta (só os da categoria, se informada). Devolve quantos foram marcados agora.</summary>
+public sealed record MarkAllAnnouncementsReadCommand(Guid UserId, string? Category = null) : IRequest<Result<int>>;

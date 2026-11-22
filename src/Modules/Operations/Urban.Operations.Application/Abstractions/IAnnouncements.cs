@@ -15,11 +15,18 @@ public interface IAnnouncements
     /// Os comunicados que a conta vê no mural, do mais novo ao mais velho: os do condomínio inteiro, os dos blocos e os das unidades em que
     /// ela mora. Os que a própria conta escreveu ficam de fora.
     /// </summary>
-    /// <param name="unreadOnly">Só os que a conta ainda não marcou como lidos.</param>
-    Task<PagedAnnouncements> ListVisibleAsync(AnnouncementViewer viewer, bool unreadOnly, int page, int pageSize, CancellationToken cancellationToken);
+    /// <param name="filter">Só os não lidos e/ou só uma categoria; o total devolvido acompanha o filtro.</param>
+    Task<PagedAnnouncements> ListVisibleAsync(AnnouncementViewer viewer, MuralFilter filter, int page, int pageSize, CancellationToken cancellationToken);
 
-    /// <summary>Quantos comunicados do mural a conta ainda não marcou como lidos.</summary>
-    Task<int> CountUnreadAsync(AnnouncementViewer viewer, CancellationToken cancellationToken);
+    /// <summary>Quantos comunicados do mural a conta ainda não marcou como lidos, por categoria. Conta o mural inteiro, sem filtro.</summary>
+    Task<UnreadCounts> CountUnreadAsync(AnnouncementViewer viewer, CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Marca como lidos, de uma vez, os comunicados do mural que a conta ainda não leu (só os da categoria, se informada), com o mesmo momento.
+    /// Os que ela já leu não mudam de data.
+    /// </summary>
+    /// <returns>Quantos foram marcados agora.</returns>
+    Task<int> MarkAllReadAsync(AnnouncementViewer viewer, AnnouncementCategory? category, DateTimeOffset now, CancellationToken cancellationToken);
 
     /// <summary>As contas que leram cada comunicado, numa consulta só. Comunicado sem leitura fica de fora.</summary>
     Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> ListReadersAsync(IReadOnlyCollection<Guid> announcementIds, CancellationToken cancellationToken);

@@ -22,20 +22,70 @@ public sealed class OperationsAnnouncements(OperationsDbContext db) : IAnnouncem
     public async Task<PagedAnnouncements> ListAsync(int page, int pageSize, CancellationToken cancellationToken) =>
         await PageAsync(db.Announcements, page, pageSize, cancellationToken);
 
-    public async Task<PagedAnnouncements> ListVisibleAsync(AnnouncementViewer viewer, bool unreadOnly, int page, int pageSize, CancellationToken cancellationToken)
+    public async Task<PagedAnnouncements> ListVisibleAsync(AnnouncementViewer viewer, MuralFilter filter, int page, int pageSize, CancellationToken cancellationToken)
     {
         IQueryable<Announcement> visible = Visible(viewer);
 
-        if (unreadOnly)
+        if (filter.UnreadOnly)
         {
             visible = Unread(visible, viewer.UserId);
+        }
+
+        if (filter.Category is { } category)
+        {
+            visible = visible.Where(announcement => announcement.Category == category);
         }
 
         return await PageAsync(visible, page, pageSize, cancellationToken);
     }
 
-    public async Task<int> CountUnreadAsync(AnnouncementViewer viewer, CancellationToken cancellationToken) =>
-        await Unread(Visible(viewer), viewer.UserId).CountAsync(cancellationToken);
+    public async Task<UnreadCounts> CountUnreadAsync(AnnouncementViewer viewer, CancellationToken cancellationToken)
+    {
+        var perCategory = await Unread(Visible(viewer), viewer.UserId)
+            .GroupBy(announcement => announcement.Category)
+            .Select(group => new { Category = group.Key, Count = group.Count() })
+            .ToListAsync(cancellationToken);
+
+        int Of(AnnouncementCategory category) => perCategory.Where(row => row.Category == category).Sum(row => row.Count);
+
+        return new UnreadCounts(Of(AnnouncementCategory.General), Of(AnnouncementCategory.Maintenance), Of(AnnouncementCategory.Important));
+    }
+
+    public async Task<int> MarkAllReadAsync(AnnouncementViewer viewer, AnnouncementCategory? category, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            IQueryable<Announcement> pending = Unread(Visible(viewer), viewer.UserId);
+
+            if (category is { } wanted)
+            {
+                pending = pending.Where(announcement => announcement.Category == wanted);
+            }
+
+            var rows = await pending.Select(announcement => new { announcement.Id, announcement.CondominiumId }).ToListAsync(cancellationToken);
+
+            if (rows.Count == 0)
+            {
+                return 0;
+            }
+
+            db.AnnouncementReads.AddRange(rows.Select(row => new AnnouncementRead(row.Id, viewer.UserId, row.CondominiumId, now)));
+
+            try
+            {
+                await db.SaveChangesAsync(cancellationToken);
+
+                return rows.Count;
+            }
+            catch (DbUpdateException ex) when (PostgresErrors.IsUniqueViolation(ex) || PostgresErrors.IsMissingParentViolation(ex))
+            {
+                db.ChangeTracker.Clear();
+
+                // Outra marcação (ou uma exclusão) passou na frente no meio do caminho: a gravação toda é desfeita, e a lista do que falta
+                // é lida de novo sem o que já foi lido ou sumiu. Cada volta acontece porque alguém avançou, então o laço termina.
+            }
+        }
+    }
 
     public async Task<IReadOnlyDictionary<Guid, IReadOnlySet<Guid>>> ListReadersAsync(IReadOnlyCollection<Guid> announcementIds, CancellationToken cancellationToken)
     {

@@ -246,7 +246,7 @@ public class OperationsAnnouncementsTests(OperationsPostgresFixture postgres)
         await _kit.StoreAsync(OperationsStoreKit.Unit(Guid.CreateVersion7()), title: "Outra unidade", at: Day(0));
         AnnouncementViewer viewer = Viewer(Guid.CreateVersion7(), ["Bloco A"], [myUnit]);
 
-        PagedAnnouncements page = await _kit.Announcements().ListVisibleAsync(viewer, false, 1, 20, Ct);
+        PagedAnnouncements page = await _kit.Announcements().ListVisibleAsync(viewer, MuralFilter.All, 1, 20, Ct);
 
         page.Items.Select(item => item.Announcement.Id).Should().Equal(mine.Id, myBlock.Id, everyone.Id);
         page.Total.Should().Be(3);
@@ -258,7 +258,7 @@ public class OperationsAnnouncementsTests(OperationsPostgresFixture postgres)
         await _kit.StoreAsync(OperationsStoreKit.Block("Bloco A"), title: "Bloco A");
         await _kit.StoreAsync(OperationsStoreKit.Block("Bloco AB"), title: "Bloco AB");
 
-        PagedAnnouncements page = await _kit.Announcements().ListVisibleAsync(Viewer(Guid.CreateVersion7(), ["Bloco A"]), false, 1, 20, Ct);
+        PagedAnnouncements page = await _kit.Announcements().ListVisibleAsync(Viewer(Guid.CreateVersion7(), ["Bloco A"]), MuralFilter.All, 1, 20, Ct);
 
         page.Items.Select(item => item.Announcement.Title).Should().Equal("Bloco A");
     }
@@ -269,7 +269,7 @@ public class OperationsAnnouncementsTests(OperationsPostgresFixture postgres)
         Announcement theirs = await _kit.StoreAsync(title: "De outro síndico", author: Guid.CreateVersion7());
         await _kit.StoreAsync(title: "Meu");
 
-        PagedAnnouncements page = await _kit.Announcements().ListVisibleAsync(Viewer(_kit.Manager), false, 1, 20, Ct);
+        PagedAnnouncements page = await _kit.Announcements().ListVisibleAsync(Viewer(_kit.Manager), MuralFilter.All, 1, 20, Ct);
 
         page.Items.Select(item => item.Announcement.Id).Should().Equal(theirs.Id);
     }
@@ -283,7 +283,7 @@ public class OperationsAnnouncementsTests(OperationsPostgresFixture postgres)
         (await _kit.Announcements().MarkReadAsync(read.Id, me, OperationsStoreKit.Now, Ct)).IsSuccess.Should().BeTrue();
         (await _kit.Announcements().MarkReadAsync(unread.Id, Guid.CreateVersion7(), OperationsStoreKit.Now, Ct)).IsSuccess.Should().BeTrue();
 
-        PagedAnnouncements page = await _kit.Announcements().ListVisibleAsync(Viewer(me), true, 1, 20, Ct);
+        PagedAnnouncements page = await _kit.Announcements().ListVisibleAsync(Viewer(me), new MuralFilter(UnreadOnly: true), 1, 20, Ct);
 
         page.Items.Select(item => item.Announcement.Id).Should().Equal(unread.Id);
         page.Total.Should().Be(1);
@@ -297,7 +297,7 @@ public class OperationsAnnouncementsTests(OperationsPostgresFixture postgres)
             await _kit.StoreAsync(title: $"Aviso {i}", at: Day(-i));
         }
 
-        PagedAnnouncements second = await _kit.Announcements().ListVisibleAsync(Viewer(Guid.CreateVersion7()), false, 2, 2, Ct);
+        PagedAnnouncements second = await _kit.Announcements().ListVisibleAsync(Viewer(Guid.CreateVersion7()), MuralFilter.All, 2, 2, Ct);
 
         second.Items.Select(item => item.Announcement.Title).Should().Equal("Aviso 2", "Aviso 3");
         second.Total.Should().Be(5);
@@ -309,7 +309,7 @@ public class OperationsAnnouncementsTests(OperationsPostgresFixture postgres)
         await _kit.StoreAsync(title: "Nosso");
         await _kit.StoreAsync(title: "Deles", condominiumId: Guid.CreateVersion7());
 
-        PagedAnnouncements page = await _kit.Announcements().ListVisibleAsync(Viewer(Guid.CreateVersion7()), false, 1, 20, Ct);
+        PagedAnnouncements page = await _kit.Announcements().ListVisibleAsync(Viewer(Guid.CreateVersion7()), MuralFilter.All, 1, 20, Ct);
 
         page.Items.Select(item => item.Announcement.Title).Should().Equal("Nosso");
     }
@@ -324,9 +324,183 @@ public class OperationsAnnouncementsTests(OperationsPostgresFixture postgres)
         await _kit.StoreAsync(author: me);
         (await _kit.Announcements().MarkReadAsync(first.Id, me, OperationsStoreKit.Now, Ct)).IsSuccess.Should().BeTrue();
 
-        int unread = await _kit.Announcements().CountUnreadAsync(Viewer(me, ["Bloco A"]), Ct);
+        UnreadCounts unread = await _kit.Announcements().CountUnreadAsync(Viewer(me, ["Bloco A"]), Ct);
 
-        unread.Should().Be(1);
+        unread.Total.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task CountUnread_SplitsTheUnreadOnesByCategory_AndIgnoresWhatWasReadOrIsNotVisible()
+    {
+        Guid me = Guid.CreateVersion7();
+        Announcement readGeneral = await _kit.StoreAsync(category: AnnouncementCategory.General);
+        await _kit.StoreAsync(category: AnnouncementCategory.General);
+        await _kit.StoreAsync(category: AnnouncementCategory.Maintenance);
+        await _kit.StoreAsync(category: AnnouncementCategory.Maintenance);
+        await _kit.StoreAsync(category: AnnouncementCategory.Maintenance);
+        await _kit.StoreAsync(OperationsStoreKit.Block("Bloco A"), category: AnnouncementCategory.Important);
+        await _kit.StoreAsync(OperationsStoreKit.Block("Bloco B"), category: AnnouncementCategory.Important);
+        await _kit.StoreAsync(category: AnnouncementCategory.Important, author: me);
+        await _kit.StoreAsync(category: AnnouncementCategory.Important, condominiumId: Guid.CreateVersion7());
+        (await _kit.Announcements().MarkReadAsync(readGeneral.Id, me, OperationsStoreKit.Now, Ct)).IsSuccess.Should().BeTrue();
+
+        UnreadCounts unread = await _kit.Announcements().CountUnreadAsync(Viewer(me, ["Bloco A"]), Ct);
+
+        unread.Should().Be(new UnreadCounts(1, 3, 1));
+        unread.Total.Should().Be(5);
+    }
+
+    [Fact]
+    public async Task CountUnread_WithNothingToRead_IsZeroInEveryCategory()
+    {
+        UnreadCounts unread = await _kit.Announcements().CountUnreadAsync(Viewer(Guid.CreateVersion7()), Ct);
+
+        unread.Should().Be(UnreadCounts.None);
+    }
+
+    [Fact]
+    public async Task ListVisible_Category_LeavesOutTheOthers_AndTheTotalFollows()
+    {
+        await _kit.StoreAsync(title: "Geral", category: AnnouncementCategory.General, at: Day(-3));
+        Announcement water = await _kit.StoreAsync(title: "Corte de água", category: AnnouncementCategory.Maintenance, at: Day(-2));
+        Announcement lift = await _kit.StoreAsync(title: "Elevador", category: AnnouncementCategory.Maintenance, at: Day(-1));
+        await _kit.StoreAsync(title: "Assembleia", category: AnnouncementCategory.Important, at: Day(0));
+
+        PagedAnnouncements page = await _kit.Announcements().ListVisibleAsync(Viewer(Guid.CreateVersion7()), new MuralFilter(Category: AnnouncementCategory.Maintenance), 1, 20, Ct);
+
+        page.Items.Select(item => item.Announcement.Id).Should().Equal(lift.Id, water.Id);
+        page.Total.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task ListVisible_CategoryAndUnreadOnly_WorkTogether()
+    {
+        Guid me = Guid.CreateVersion7();
+        Announcement read = await _kit.StoreAsync(title: "Lido", category: AnnouncementCategory.Important, at: Day(-1));
+        Announcement unread = await _kit.StoreAsync(title: "Não lido", category: AnnouncementCategory.Important, at: Day(0));
+        await _kit.StoreAsync(title: "Outra categoria", category: AnnouncementCategory.General, at: Day(0));
+        (await _kit.Announcements().MarkReadAsync(read.Id, me, OperationsStoreKit.Now, Ct)).IsSuccess.Should().BeTrue();
+
+        PagedAnnouncements page = await _kit.Announcements().ListVisibleAsync(Viewer(me), new MuralFilter(true, AnnouncementCategory.Important), 1, 20, Ct);
+
+        page.Items.Select(item => item.Announcement.Id).Should().Equal(unread.Id);
+        page.Total.Should().Be(1);
+    }
+
+    // ---- Marcar todos como lidos ----
+
+    [Fact]
+    public async Task MarkAllRead_MarksWhatTheViewerSeesAndHasNotRead_WithTheMoment_AndCountsThem()
+    {
+        Guid me = Guid.CreateVersion7();
+        Guid myUnit = Guid.CreateVersion7();
+        Announcement everyone = await _kit.StoreAsync();
+        Announcement block = await _kit.StoreAsync(OperationsStoreKit.Block("Bloco A"));
+        Announcement unit = await _kit.StoreAsync(OperationsStoreKit.Unit(myUnit));
+        DateTimeOffset now = OperationsStoreKit.Now.AddHours(2);
+
+        int marked = await _kit.Announcements().MarkAllReadAsync(Viewer(me, ["Bloco A"], [myUnit]), null, now, Ct);
+
+        marked.Should().Be(3);
+        IReadOnlyDictionary<Guid, DateTimeOffset> readAt = await _kit.Announcements().ListReadAtAsync(me, [everyone.Id, block.Id, unit.Id], Ct);
+        readAt.Keys.Should().BeEquivalentTo([everyone.Id, block.Id, unit.Id]);
+        readAt.Values.Should().OnlyContain(at => at == now);
+    }
+
+    [Fact]
+    public async Task MarkAllRead_LeavesOutWhatTheViewerDoesNotSee_AndWhatBelongsToAnotherCondominium()
+    {
+        Guid me = Guid.CreateVersion7();
+        Announcement otherBlock = await _kit.StoreAsync(OperationsStoreKit.Block("Bloco B"));
+        Announcement otherUnit = await _kit.StoreAsync(OperationsStoreKit.Unit(Guid.CreateVersion7()));
+        Announcement mine = await _kit.StoreAsync(author: me);
+        Announcement foreign = await _kit.StoreAsync(condominiumId: Guid.CreateVersion7());
+
+        int marked = await _kit.Announcements().MarkAllReadAsync(Viewer(me, ["Bloco A"]), null, OperationsStoreKit.Now, Ct);
+
+        marked.Should().Be(0);
+        (await _kit.Announcements().ListReadersAsync([otherBlock.Id, otherUnit.Id, mine.Id], Ct)).Should().BeEmpty();
+        (await _kit.Announcements(foreign.CondominiumId).ListReadersAsync([foreign.Id], Ct)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task MarkAllRead_KeepsTheMomentOfWhatWasAlreadyRead_AndDoesNotCountIt()
+    {
+        Guid me = Guid.CreateVersion7();
+        Announcement alreadyRead = await _kit.StoreAsync(title: "Lido");
+        Announcement pending = await _kit.StoreAsync(title: "Pendente");
+        await _kit.Announcements().MarkReadAsync(alreadyRead.Id, me, OperationsStoreKit.Now, Ct);
+
+        int marked = await _kit.Announcements().MarkAllReadAsync(Viewer(me), null, OperationsStoreKit.Now.AddDays(1), Ct);
+
+        marked.Should().Be(1);
+        IReadOnlyDictionary<Guid, DateTimeOffset> readAt = await _kit.Announcements().ListReadAtAsync(me, [alreadyRead.Id, pending.Id], Ct);
+        readAt[alreadyRead.Id].Should().Be(OperationsStoreKit.Now);
+        readAt[pending.Id].Should().Be(OperationsStoreKit.Now.AddDays(1));
+    }
+
+    [Fact]
+    public async Task MarkAllRead_Twice_MarksNothingTheSecondTime()
+    {
+        Guid me = Guid.CreateVersion7();
+        await _kit.StoreAsync();
+        await _kit.StoreAsync();
+        await _kit.Announcements().MarkAllReadAsync(Viewer(me), null, OperationsStoreKit.Now, Ct);
+
+        int again = await _kit.Announcements().MarkAllReadAsync(Viewer(me), null, OperationsStoreKit.Now.AddHours(1), Ct);
+
+        again.Should().Be(0);
+        (await _kit.Announcements().CountUnreadAsync(Viewer(me), Ct)).Should().Be(UnreadCounts.None);
+    }
+
+    [Fact]
+    public async Task MarkAllRead_WithACategory_MarksOnlyThatCategory()
+    {
+        Guid me = Guid.CreateVersion7();
+        await _kit.StoreAsync(category: AnnouncementCategory.General);
+        await _kit.StoreAsync(category: AnnouncementCategory.Maintenance);
+        await _kit.StoreAsync(category: AnnouncementCategory.Maintenance);
+        await _kit.StoreAsync(category: AnnouncementCategory.Important);
+
+        int marked = await _kit.Announcements().MarkAllReadAsync(Viewer(me), AnnouncementCategory.Maintenance, OperationsStoreKit.Now, Ct);
+
+        marked.Should().Be(2);
+        (await _kit.Announcements().CountUnreadAsync(Viewer(me), Ct)).Should().Be(new UnreadCounts(1, 0, 1));
+    }
+
+    [Fact]
+    public async Task MarkAllRead_OfAnotherAccount_DoesNotMarkMine()
+    {
+        Guid me = Guid.CreateVersion7();
+        await _kit.StoreAsync();
+
+        await _kit.Announcements().MarkAllReadAsync(Viewer(Guid.CreateVersion7()), null, OperationsStoreKit.Now, Ct);
+
+        (await _kit.Announcements().CountUnreadAsync(Viewer(me), Ct)).Total.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task MarkAllRead_ManyAtTheSameTime_MarksEachAnnouncementExactlyOnce_AndEveryoneSucceeds()
+    {
+        Guid me = Guid.CreateVersion7();
+        Announcement[] stored = [await _kit.StoreAsync(), await _kit.StoreAsync(), await _kit.StoreAsync(), await _kit.StoreAsync()];
+
+        int[] marked = await Task.WhenAll(Enumerable.Range(0, 6).Select(_ => _kit.Announcements().MarkAllReadAsync(Viewer(me), null, OperationsStoreKit.Now, Ct)));
+
+        marked.Sum().Should().Be(4);
+        IReadOnlyDictionary<Guid, IReadOnlySet<Guid>> readers = await _kit.Announcements().ListReadersAsync([.. stored.Select(item => item.Id)], Ct);
+        readers.Should().HaveCount(4);
+        readers.Values.Should().OnlyContain(accounts => accounts.Count == 1 && accounts.Contains(me));
+    }
+
+    [Fact]
+    public async Task MarkAllRead_WithoutATenant_MarksNothing()
+    {
+        await _kit.StoreAsync();
+
+        int marked = await _kit.WithoutATenant().MarkAllReadAsync(Viewer(Guid.CreateVersion7()), null, OperationsStoreKit.Now, Ct);
+
+        marked.Should().Be(0);
     }
 
     // ---- Leituras ----

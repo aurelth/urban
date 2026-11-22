@@ -57,9 +57,20 @@ public static class AnnouncementEndpoints
             .WithSummary("O mural de quem mora no condomínio")
             .WithDescription(
                 "Para o morador, o inquilino, o dependente e o síndico que mora numa unidade. Devolve os comunicados do condomínio inteiro, do bloco e da unidade em que a conta mora hoje (vínculo em andamento, de qualquer papel), do mais novo ao mais velho, "
-                + "cada um com read e readAt. unread conta os que a conta ainda não leu no mural inteiro. Com unreadOnly=true vêm só os não lidos. page a partir de 1 e pageSize de 1 a 100, padrão 20 (400 fora disso). "
-                + "Quem não mora em nenhuma unidade recebe o mural vazio. Os comunicados que a própria conta escreveu não aparecem. A resposta nunca é guardada em cache. " + RateLimitText)
+                + "cada um com read e readAt e, conforme o alcance, o bloco (block) ou a unidade (unit, com id, bloco e número) a que se destina. "
+                + "unread conta os que a conta ainda não leu no mural inteiro e unreadByCategory os separa em general, maintenance e important; nenhum filtro nem a página mudam essas contagens. "
+                + "Com unreadOnly=true vêm só os não lidos e com category=general, maintenance ou important vêm só os dessa categoria (em branco, todas; outro nome é 400); os dois filtros valem juntos e o total os acompanha. "
+                + "page a partir de 1 e pageSize de 1 a 100, padrão 20 (400 fora disso). Quem não mora em nenhuma unidade recebe o mural vazio. Os comunicados que a própria conta escreveu não aparecem. A resposta nunca é guardada em cache. " + RateLimitText)
             .Produces<MyAnnouncementPageResponse>()
+            .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound);
+
+        announcements.MapPost("/read-all", MarkAllReadAsync)
+            .WithName("MarkAllAnnouncementsRead")
+            .WithSummary("Marca todos os comunicados do mural como lidos")
+            .WithDescription(
+                "Para quem recebe comunicados. Marca de uma vez os que a conta ainda não leu no mural (só os da categoria, se category=general, maintenance ou important vier; em branco, todas; outro nome é 400) e responde 200 com marked, "
+                + "quantos foram marcados agora. Os que a conta já tinha lido não mudam de data e não entram na conta; chamar de novo responde marked 0. Quem não mora em nenhuma unidade recebe marked 0. A resposta nunca é guardada em cache. " + RateLimitText)
+            .Produces<MarkedReadResponse>()
             .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound);
 
         announcements.MapPost("/{id:guid}/read", MarkReadAsync)
@@ -122,16 +133,26 @@ public static class AnnouncementEndpoints
     }
 
     private static async Task<IResult> ListMineAsync(
-        bool? unreadOnly, int? page, int? pageSize, ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken cancellationToken)
+        bool? unreadOnly, string? category, int? page, int? pageSize, ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken cancellationToken)
     {
         if (!MemberAccess.TryRead(user, out Guid userId, out IResult? refusal))
         {
             return refusal;
         }
 
-        Result<MyAnnouncementPageView> result = await sender.Send(new ListMyAnnouncementsQuery(userId, unreadOnly ?? false, page ?? 1, pageSize ?? 20), cancellationToken);
+        Result<MyAnnouncementPageView> result = await sender.Send(new ListMyAnnouncementsQuery(userId, unreadOnly ?? false, page ?? 1, pageSize ?? 20, category), cancellationToken);
 
         return ApiResults.Respond(result, response, AnnouncementMapper.ToResponse);
+    }
+
+    private static async Task<IResult> MarkAllReadAsync(string? category, ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken cancellationToken)
+    {
+        if (!MemberAccess.TryRead(user, out Guid userId, out IResult? refusal))
+        {
+            return refusal;
+        }
+
+        return ApiResults.Respond(await sender.Send(new MarkAllAnnouncementsReadCommand(userId, category), cancellationToken), response, AnnouncementMapper.ToMarkedResponse);
     }
 
     private static async Task<IResult> MarkReadAsync(Guid id, ClaimsPrincipal user, ISender sender, CancellationToken cancellationToken)

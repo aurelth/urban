@@ -30,22 +30,29 @@ public sealed class ListMyAnnouncementsQueryHandler(
             return Result.Failure<MyAnnouncementPageView>(AnnouncementErrors.PageInvalid);
         }
 
+        Result<AnnouncementCategory?> category = AnnouncementRules.ParseCategoryFilter(request.Category);
+
+        if (category.IsFailure)
+        {
+            return Result.Failure<MyAnnouncementPageView>(category.Error);
+        }
+
         IReadOnlyList<ResidentUnit> units = await directory.GetUnitsAsync(request.UserId, OperationsCalendar.Today(clock.UtcNow), cancellationToken);
 
         if (units.Count == 0)
         {
-            return Result.Success(new MyAnnouncementPageView([], 0, 0, request.Page, request.PageSize));
+            return Result.Success(new MyAnnouncementPageView([], 0, UnreadCounts.None, request.Page, request.PageSize));
         }
 
         AnnouncementViewer viewer = AnnouncementRules.ViewerOf(request.UserId, units);
-        PagedAnnouncements page = await announcements.ListVisibleAsync(viewer, request.UnreadOnly, request.Page, request.PageSize, cancellationToken);
-        int unread = await announcements.CountUnreadAsync(viewer, cancellationToken);
+        PagedAnnouncements page = await announcements.ListVisibleAsync(viewer, new MuralFilter(request.UnreadOnly, category.Value), request.Page, request.PageSize, cancellationToken);
+        UnreadCounts unread = await announcements.CountUnreadAsync(viewer, cancellationToken);
         IReadOnlyDictionary<Guid, DateTimeOffset> readAt = page.Items.Count == 0
             ? new Dictionary<Guid, DateTimeOffset>()
             : await announcements.ListReadAtAsync(request.UserId, [.. page.Items.Select(record => record.Announcement.Id)], cancellationToken);
 
         return Result.Success(new MyAnnouncementPageView(
-            [.. page.Items.Select(record => MyAnnouncementView.From(record.Announcement, readAt.TryGetValue(record.Announcement.Id, out DateTimeOffset at) ? at : null))],
+            [.. page.Items.Select(record => MyAnnouncementView.From(record.Announcement, readAt.TryGetValue(record.Announcement.Id, out DateTimeOffset at) ? at : null, units))],
             page.Total,
             unread,
             request.Page,
