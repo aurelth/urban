@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Urban.Condominium.Domain.People;
 using Urban.SharedKernel.Contracts;
 
 namespace Urban.Condominium.Infrastructure.Persistence;
@@ -24,5 +25,14 @@ public sealed class CondominiumDirectory(CondominiumDbContext db) : ICondominium
             .ToDictionaryAsync(c => c.Id, c => c.Name, cancellationToken);
     }
 
-    public Task<string?> FindFirstNameAsync(Guid userId, CancellationToken cancellationToken) => Task.FromResult<string?>(null);
+    public async Task<string?> FindFirstNameAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        PersonName? name = await db.People
+            .AsNoTracking()
+            .Where(p => p.UserId == userId)
+            .Select(p => p.FullName)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return name?.FirstName;
+    }
 }

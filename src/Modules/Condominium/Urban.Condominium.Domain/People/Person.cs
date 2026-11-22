@@ -70,7 +70,7 @@ public sealed class Person
     public DateTimeOffset CreatedAt { get; }
 
     /// <summary>O síndico é a única pessoa com endereço próprio; o morador mora na unidade.</summary>
-    public bool IsManager => false;
+    public bool IsManager => Address is not null;
 
     public static Result<Person> RegisterManager(
         Guid condominiumId,

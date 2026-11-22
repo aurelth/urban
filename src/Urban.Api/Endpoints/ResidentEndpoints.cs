@@ -28,6 +28,18 @@ public static class ResidentEndpoints
             .Produces<ResidentListResponse>()
             .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound);
 
+        residents.MapGet("/me", GetMineAsync)
+            .WithName("GetMyResident")
+            .WithSummary("Lê o próprio cadastro de quem está logado")
+            .WithDescription(
+                "Exige o token de acesso de um morador ou de um síndico com condomínio. A pessoa vem do token, nunca da rota: o morador lê o próprio cadastro (só leitura; a correção é com o síndico) "
+                + "e o síndico lê o dele, com ou sem unidade, e usa o id devolvido para registrar a unidade onde mora em POST /api/residents/{id}/occupancies. "
+                + "Devolve o mesmo corpo de GET /api/residents/{id}: o CPF sai mascarado e os vínculos (inclusive os já encerrados) vêm com bloco e número da unidade. "
+                + "Não exige vínculo. O administrador responde 403 (identity.user.not_condominium_member); conta sem cadastro no condomínio responde 404 (condominium.resident.not_found). A resposta nunca é guardada em cache. " + RateLimitText)
+            .RequireRateLimiting(RateLimitPolicies.Residents)
+            .Produces<ResidentResponse>()
+            .WithErrors(StatusCodes.Status404NotFound);
+
         residents.MapGet("/{id:guid}", GetAsync)
             .WithName("GetResident")
             .WithSummary("Lê um morador")
@@ -133,6 +145,18 @@ public static class ResidentEndpoints
         Result<ResidentListing> result = await sender.Send(new ListResidentsQuery(search, unitId, page ?? 1, pageSize ?? 50, statusFilter, registrationFilter), cancellationToken);
 
         return ApiResults.Respond(result, response, listing => ResidentMapper.ToResponse(listing));
+    }
+
+    private static async Task<IResult> GetMineAsync(ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken cancellationToken)
+    {
+        if (!MemberAccess.TryRead(user, out Guid userId, out IResult? refusal))
+        {
+            return refusal;
+        }
+
+        Result<ResidentView> result = await sender.Send(new GetMyResidentQuery(userId), cancellationToken);
+
+        return ApiResults.Respond(result, response, view => ResidentMapper.ToResponse(view));
     }
 
     private static async Task<IResult> GetAsync(Guid id, ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken cancellationToken)

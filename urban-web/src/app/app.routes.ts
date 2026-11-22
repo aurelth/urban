@@ -134,6 +134,13 @@ export const routes: Routes = [
             loadComponent: () =>
               import('./features/minha-fatura/my-month.page').then((m) => m.MyMonthPage),
           },
+          {
+            path: 'meus-dados',
+            title: 'Meus dados',
+            canActivate: [memberGuard],
+            loadComponent: () =>
+              import('./features/meus-dados/my-data.page').then((m) => m.MyDataPage),
+          },
           { path: 'financeiro', pathMatch: 'full', redirectTo: 'financeiro/despesas' },
           {
             path: 'financeiro/painel',

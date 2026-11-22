@@ -189,6 +189,7 @@ export class ResidentOccupancies {
     if (problem === null) {
       this.closeForms();
       this.notice.set(`Saída de ${occupancyUnit(occupancy)} registrada`);
+      this.changed.emit();
       return;
     }
     await this.explain(problem, resident.id);
@@ -219,6 +220,7 @@ export class ResidentOccupancies {
       this.notice.set(
         `Vínculo com ${unit === undefined ? 'a unidade' : unitLabel(unit)} adicionado`,
       );
+      this.changed.emit();
       return;
     }
     await this.explain(problem, resident.id);

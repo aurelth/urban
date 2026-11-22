@@ -18,7 +18,7 @@ public sealed record PersonName
     public string Value { get; }
 
     /// <summary>A primeira palavra do nome: como o cabeçalho chama quem ainda não escolheu "como prefere ser chamado".</summary>
-    public string FirstName => string.Empty;
+    public string FirstName => Value.Split(' ', 2)[0];
 
     public static Result<PersonName> Create(string? fullName)
     {

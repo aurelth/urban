@@ -13,7 +13,8 @@ namespace Urban.Condominium.Infrastructure.Persistence;
 
 /// <summary>
 /// Os moradores no PostgreSQL. A leitura só enxerga o condomínio da requisição (filtro de tenant do contexto). Morador é a
-/// pessoa com ao menos um vínculo: o síndico sem unidade fica de fora. O CPF repetido, o e-mail repetido (sem diferenciar maiúsculas)
+/// pessoa com ao menos um vínculo e sem endereço próprio: o síndico nunca entra na lista, more ou não em uma unidade (para ver e
+/// mexer nos vínculos dele há a leitura por conta e a busca por id). O CPF repetido, o e-mail repetido (sem diferenciar maiúsculas)
 /// e o segundo vínculo em andamento na mesma unidade são decididos pelos índices únicos do banco, que valem mesmo com dois pedidos ao mesmo tempo; a versão velha de uma
 /// edição é decidida pelo <c>xmin</c>.
 /// </summary>
@@ -25,7 +26,8 @@ public sealed class CondominiumResidents(CondominiumDbContext db) : IResidents
 
     public async Task<ResidentRecord?> FindAsync(Guid personId, CancellationToken cancellationToken)
     {
-        Person? person = await db.People.SingleOrDefaultAsync(p => p.Id == personId && db.Occupancies.Any(o => o.PersonId == p.Id), cancellationToken);
+        // O síndico (a única pessoa com endereço próprio) também é achado pelo id, mesmo sem vínculo: é assim que ele registra a unidade onde mora.
+        Person? person = await db.People.SingleOrDefaultAsync(p => p.Id == personId && (p.Address != null || db.Occupancies.Any(o => o.PersonId == p.Id)), cancellationToken);
         if (person is null)
         {
             return null;
@@ -36,11 +38,22 @@ public sealed class CondominiumResidents(CondominiumDbContext db) : IResidents
         return new ResidentRecord(person, [.. occupancies[personId]], CurrentVersion(person));
     }
 
-    public Task<ResidentRecord?> FindByUserAsync(Guid userId, CancellationToken cancellationToken) => Task.FromResult<ResidentRecord?>(null);
+    public async Task<ResidentRecord?> FindByUserAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        Person? person = await db.People.SingleOrDefaultAsync(p => p.UserId == userId, cancellationToken);
+        if (person is null)
+        {
+            return null;
+        }
+
+        ILookup<Guid, ResidentOccupancy> occupancies = await OccupanciesOfAsync([person.Id], cancellationToken);
+
+        return new ResidentRecord(person, [.. occupancies[person.Id]], CurrentVersion(person));
+    }
 
     public async Task<PagedResidents> ListAsync(ResidentFilter filter, int page, int pageSize, CancellationToken cancellationToken)
     {
-        IQueryable<Person> people = db.People.AsNoTracking();
+        IQueryable<Person> people = db.People.AsNoTracking().Where(p => p.Address == null);
         if (filter.Search is { } search)
         {
             // O nome tem conversor de valor, então a busca por trecho vai em SQL: só os ids que casam, como subconsulta, e o filtro de

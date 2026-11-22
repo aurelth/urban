@@ -29,8 +29,9 @@ public sealed class InviteResidentCommandHandler(
         }
 
         ResidentRecord? record = await residents.FindAsync(request.ResidentId, cancellationToken);
-        if (record is null)
+        if (record is null || record.Person.IsManager)
         {
+            // O síndico não é convidado por aqui: a conta dele já existe e ele entra por ela.
             return Result.Failure(ResidentErrors.NotFound);
         }
 
