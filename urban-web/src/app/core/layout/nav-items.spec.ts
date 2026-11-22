@@ -5,6 +5,7 @@ type Who = Pick<CurrentUser, 'role' | 'condominiumId'>;
 
 const MANAGER_WITH_CONDOMINIUM: Who = { role: 'Manager', condominiumId: 'c-1' };
 const ADMIN: Who = { role: 'SuperAdmin', condominiumId: null };
+const RESIDENT_WITH_CONDOMINIUM: Who = { role: 'Resident', condominiumId: 'c-1' };
 
 describe('navGroupsFor', () => {
   it('agrupa os itens do síndico com condomínio: painel, condomínio e financeiro', () => {
@@ -55,9 +56,23 @@ describe('navGroupsFor', () => {
   it.each([
     ['ninguém logado', null],
     ['síndico sem condomínio', { role: 'Manager', condominiumId: null } as Who],
-    ['morador', { role: 'Resident', condominiumId: 'c-1' } as Who],
+    ['morador sem condomínio', { role: 'Resident', condominiumId: null } as Who],
   ])('não tem menu lateral para %s', (_name, who) => {
     expect(navGroupsFor(who)).toEqual([]);
+  });
+
+  it('leva o morador ao painel e à sua fatura, sem as telas de gestão', () => {
+    const groups = navGroupsFor(RESIDENT_WITH_CONDOMINIUM);
+
+    expect(groups.map((group) => [group.id, group.label])).toEqual([['main', null]]);
+    expect(
+      groups
+        .flatMap((group) => group.items)
+        .map((item) => [item.id, item.label, item.path, item.icon]),
+    ).toEqual([
+      ['dashboard', 'Painel', '/dashboard', 'dashboard'],
+      ['my-invoice', 'Minha fatura', '/minha-fatura', 'receipt_long'],
+    ]);
   });
 
   it('leva o administrador à visão geral, aos síndicos e aos pedidos de cadastro, sem as telas de condomínio', () => {

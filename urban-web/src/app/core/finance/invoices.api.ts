@@ -17,17 +17,24 @@ export class InvoicesApi {
   private readonly http = inject(HttpClient);
 
   download(chargeId: string): Observable<InvoiceDownload> {
-    return this.http
-      .get(`${BASE}/charges/${chargeId}/invoice`, { responseType: 'blob', observe: 'response' })
-      .pipe(
-        map((response) => ({
-          blob: response.body!,
-          fileName: invoiceFileName(response.headers.get('Content-Disposition')),
-        })),
-        catchError((error: unknown) =>
-          from(withReadableBody(error)).pipe(mergeMap((readable) => throwError(() => readable))),
-        ),
-      );
+    return this.fetch(`${BASE}/charges/${chargeId}/invoice`);
+  }
+
+  /** A fatura da própria unidade do morador: a API recusa (404) qualquer cobrança que não seja dele. */
+  downloadMine(chargeId: string): Observable<InvoiceDownload> {
+    return this.fetch(`${BASE}/me/charges/${chargeId}/invoice`);
+  }
+
+  private fetch(url: string): Observable<InvoiceDownload> {
+    return this.http.get(url, { responseType: 'blob', observe: 'response' }).pipe(
+      map((response) => ({
+        blob: response.body!,
+        fileName: invoiceFileName(response.headers.get('Content-Disposition')),
+      })),
+      catchError((error: unknown) =>
+        from(withReadableBody(error)).pipe(mergeMap((readable) => throwError(() => readable))),
+      ),
+    );
   }
 }
 

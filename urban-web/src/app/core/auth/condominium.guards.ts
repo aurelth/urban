@@ -41,3 +41,19 @@ export const managerGuard: CanActivateFn = async () => {
 
   return user === null || user.role === 'Manager' ? true : router.createUrlTree(['/dashboard']);
 };
+
+/**
+ * As telas da área do morador (a fatura da própria unidade) são de quem mora no condomínio, e o síndico pode morar nele.
+ * O administrador da plataforma não tem unidade nem acesso aos dados do condomínio: vai para o painel. Quem não está
+ * logado passa por aqui e cai na guarda de login.
+ */
+export const memberGuard: CanActivateFn = async () => {
+  const session = inject(SessionStore);
+  const router = inject(Router);
+
+  await session.ready();
+
+  const user = session.user();
+
+  return user === null || user.role !== 'SuperAdmin' ? true : router.createUrlTree(['/dashboard']);
+};

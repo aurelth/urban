@@ -5,6 +5,7 @@ import {
   condominiumGuard,
   condominiumSetupGuard,
   managerGuard,
+  memberGuard,
 } from './core/auth/condominium.guards';
 import { AuthLayout } from './core/layout/auth.layout';
 
@@ -125,6 +126,13 @@ export const routes: Routes = [
             canActivate: [managerGuard],
             loadComponent: () =>
               import('./features/vehicles/vehicles.page').then((m) => m.VehiclesPage),
+          },
+          {
+            path: 'minha-fatura',
+            title: 'Minha fatura',
+            canActivate: [memberGuard],
+            loadComponent: () =>
+              import('./features/minha-fatura/my-month.page').then((m) => m.MyMonthPage),
           },
           { path: 'financeiro', pathMatch: 'full', redirectTo: 'financeiro/despesas' },
           {

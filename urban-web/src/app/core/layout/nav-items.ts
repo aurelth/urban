@@ -26,6 +26,17 @@ const DASHBOARD: NavItem = {
   path: '/dashboard',
 };
 
+const MY_INVOICE: NavItem = {
+  id: 'my-invoice',
+  label: 'Minha fatura',
+  icon: 'receipt_long',
+  path: '/minha-fatura',
+};
+
+const RESIDENT_GROUPS: readonly NavGroup[] = [
+  { id: 'main', label: null, items: [DASHBOARD, MY_INVOICE] },
+];
+
 const MANAGER_GROUPS: readonly NavGroup[] = [
   { id: 'main', label: null, items: [DASHBOARD] },
   {
@@ -125,17 +136,20 @@ const ACCOUNT: NavItem = {
   path: '/conta',
 };
 
-/** O síndico que já cadastrou o condomínio tem as telas de gestão; o administrador tem as de administração; o morador ganha as suas depois. */
+/** O síndico que já cadastrou o condomínio tem as telas de gestão; o administrador tem as de administração. */
 function managesCondominium(who: Who): boolean {
   return who?.role === 'Manager' && who.condominiumId !== null;
 }
 
-/** Itens do menu lateral, agrupados. Vazio quando a pessoa não tem telas de gestão (o menu nem aparece). */
+/** Itens do menu lateral, agrupados. Vazio quando a pessoa não tem telas (o menu nem aparece). */
 export function navGroupsFor(who: Who): readonly NavGroup[] {
   if (who?.role === 'SuperAdmin') {
     return ADMIN_GROUPS;
   }
-  return managesCondominium(who) ? MANAGER_GROUPS : [];
+  if (managesCondominium(who)) {
+    return MANAGER_GROUPS;
+  }
+  return who?.role === 'Resident' && who.condominiumId !== null ? RESIDENT_GROUPS : [];
 }
 
 /** Itens do canto inferior do menu lateral, separados dos grupos: hoje só o "Contato" do síndico com condomínio. */

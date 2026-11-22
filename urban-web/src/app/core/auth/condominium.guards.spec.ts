@@ -18,7 +18,12 @@ import {
   tokenResponse,
 } from '../../testing/auth.fixtures';
 import { CurrentUser } from './auth.models';
-import { condominiumGuard, condominiumSetupGuard, managerGuard } from './condominium.guards';
+import {
+  condominiumGuard,
+  condominiumSetupGuard,
+  managerGuard,
+  memberGuard,
+} from './condominium.guards';
 import { SessionStore } from './session.store';
 
 function setup(): {
@@ -191,5 +196,55 @@ describe('managerGuard', () => {
     await restoring;
 
     await expect(run(managerGuard)).resolves.toBe(true);
+  });
+});
+
+describe('memberGuard', () => {
+  afterEach(() => TestBed.inject(HttpTestingController).verify());
+
+  it.each([
+    ['síndico', REGISTERED_MANAGER],
+    ['morador', RESIDENT],
+  ])('deixa %s entrar nas telas da área do morador', async (_name, user) => {
+    const { store, http, run } = setup();
+    await signInAs(store, http, user);
+
+    await expect(run(memberGuard)).resolves.toBe(true);
+  });
+
+  it('leva o administrador para o painel', async () => {
+    const { store, http, router, run } = setup();
+    await signInAs(store, http, ADMIN);
+
+    const result = await run(memberGuard);
+
+    expect(router.serializeUrl(result as UrlTree)).toBe('/dashboard');
+  });
+
+  it('espera a restauração da sessão antes de decidir', async () => {
+    const { store, http, run } = setup();
+    const restoring = store.restore();
+    const decision = run(memberGuard);
+
+    await flushPromises();
+    http.expectOne('/api/auth/refresh').flush(tokenResponse());
+    await flushPromises();
+    http.expectOne('/api/auth/me').flush({ ...REGISTERED_MANAGER, role: 'Resident' });
+    await restoring;
+
+    await expect(decision).resolves.toBe(true);
+  });
+
+  it('deixa a decisão sobre quem não está logado para a guarda de login', async () => {
+    const { store, http, run } = setup();
+    const restoring = store.restore();
+    await flushPromises();
+    http.expectOne('/api/auth/refresh').flush(problem(401, 'identity.session.unauthenticated'), {
+      status: 401,
+      statusText: 'Unauthorized',
+    });
+    await restoring;
+
+    await expect(run(memberGuard)).resolves.toBe(true);
   });
 });
