@@ -113,4 +113,67 @@ describe('ManagerHousingStore', () => {
 
     expect(store.livesHere()).toBe(false);
   });
+
+  describe('refresh', () => {
+    it('pergunta de novo para a mesma pessoa e passa a dizer que ela mora', async () => {
+      const first = store.load('u-1');
+      http.expectOne(ROUTE).flush({ access: 'none' });
+      await first;
+      expect(store.livesHere()).toBe(false);
+
+      const refreshing = store.refresh('u-1');
+      http.expectOne(ROUTE).flush({ access: 'unit' });
+      await refreshing;
+
+      expect(store.livesHere()).toBe(true);
+    });
+
+    it('depois de sair da unidade, o item some', async () => {
+      const first = store.load('u-1');
+      http.expectOne(ROUTE).flush({ access: 'unit' });
+      await first;
+
+      const refreshing = store.refresh('u-1');
+      http.expectOne(ROUTE).flush({ access: 'none' });
+      await refreshing;
+
+      expect(store.livesHere()).toBe(false);
+    });
+
+    it('mantém a resposta antiga enquanto espera, sem piscar o item', async () => {
+      const first = store.load('u-1');
+      http.expectOne(ROUTE).flush({ access: 'unit' });
+      await first;
+
+      const refreshing = store.refresh('u-1');
+      expect(store.livesHere()).toBe(true);
+      http.expectOne(ROUTE).flush({ access: 'unit' });
+      await refreshing;
+    });
+
+    it('falha em silêncio e deixa a resposta que já tinha', async () => {
+      const first = store.load('u-1');
+      http.expectOne(ROUTE).flush({ access: 'unit' });
+      await first;
+
+      const refreshing = store.refresh('u-1');
+      http.expectOne(ROUTE).flush({}, { status: 503, statusText: 'Service Unavailable' });
+
+      await expect(refreshing).resolves.toBeUndefined();
+      expect(store.livesHere()).toBe(true);
+    });
+
+    it('a resposta que chega depois de a sessão trocar de dono é descartada', async () => {
+      const first = store.load('u-1');
+      http.expectOne(ROUTE).flush({ access: 'none' });
+      await first;
+
+      const refreshing = store.refresh('u-1');
+      store.reset();
+      http.expectOne(ROUTE).flush({ access: 'unit' });
+      await refreshing;
+
+      expect(store.livesHere()).toBe(false);
+    });
+  });
 });

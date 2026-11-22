@@ -46,6 +46,16 @@ class Host {
   readonly store = inject(ResidentFormStore);
 }
 
+@Component({
+  imports: [ResidentOccupancies],
+  providers: [ResidentFormStore],
+  template: '<urban-resident-occupancies [own]="true" (changed)="changes = changes + 1" />',
+})
+class OwnHost {
+  readonly store = inject(ResidentFormStore);
+  changes = 0;
+}
+
 interface Harness {
   fixture: ComponentFixture<Host>;
   http: HttpTestingController;
@@ -81,6 +91,30 @@ async function open(
   http.expectOne(`/api/residents/${found.id}`).flush(found);
   await settle(fixture);
   return { fixture, http, html: fixture.nativeElement, found };
+}
+
+async function openOwn(mine: Resident = resident({ occupancies: [] })): Promise<{
+  fixture: ComponentFixture<OwnHost>;
+  http: HttpTestingController;
+  html: HTMLElement;
+  found: Resident;
+}> {
+  TestBed.configureTestingModule({
+    providers: [
+      provideRouter([]),
+      provideHttpClient(),
+      provideHttpClientTesting(),
+      provideUrbanIcons(),
+      { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
+    ],
+  });
+  const http = TestBed.inject(HttpTestingController);
+  const fixture = TestBed.createComponent(OwnHost);
+  fixture.detectChanges();
+  void fixture.componentInstance.store.loadForMine();
+  http.expectOne('/api/residents/me').flush(mine);
+  await settle(fixture);
+  return { fixture, http, html: fixture.nativeElement, found: mine };
 }
 
 function testId(html: HTMLElement, id: string): HTMLElement | null {
@@ -577,6 +611,99 @@ describe('ResidentOccupancies', () => {
 
       expect(testId(h.html, 'add-form')).toBeNull();
       expect(testId(h.html, 'end-form')).not.toBeNull();
+    });
+  });
+
+  describe('quando é a própria pessoa (síndico em "Meus dados")', () => {
+    function heading(html: HTMLElement): string {
+      return html.querySelector('h2')!.textContent!.trim();
+    }
+
+    it('chama o cartão de "Onde eu moro" e o de sempre segue "Unidades do morador"', async () => {
+      const own = await openOwn();
+      expect(heading(own.html)).toBe('Onde eu moro');
+
+      TestBed.resetTestingModule();
+      const other = await open();
+      expect(heading(other.html)).toBe('Unidades do morador');
+    });
+
+    it('sem vínculo, diz "Você ainda não mora em nenhuma unidade"', async () => {
+      const { html } = await openOwn();
+
+      expect(text(html, 'no-occupancies')).toBe('Você ainda não mora em nenhuma unidade');
+    });
+
+    it('sem unidade livre, diz "Você já mora em todas as unidades ativas do condomínio"', async () => {
+      const h = await openOwn(resident({ occupancies: [CURRENT] }));
+
+      click(h.html, 'add-occupancy');
+      await settle(h.fixture);
+      unitsRequest(h.http).flush(unitPage([A_101], 1, 1, 200));
+      await settle(h.fixture);
+
+      expect(text(h.html, 'no-free-units')).toContain(
+        'Você já mora em todas as unidades ativas do condomínio',
+      );
+    });
+
+    it('adiciona a unidade pelo id do próprio cadastro, atualiza a lista e avisa a tela com "changed"', async () => {
+      const h = await openOwn();
+      click(h.html, 'add-occupancy');
+      await settle(h.fixture);
+      unitsRequest(h.http).flush(unitPage([A_101, B_202], 2, 1, 200));
+      await settle(h.fixture);
+      setFieldValue(field(h.html, 'unitId'), A_101.id);
+      setFieldValue(field(h.html, 'kind'), 'owner');
+      setFieldValue(field(h.html, 'startDate'), '01032024');
+
+      await submit(h, 'add-form');
+      const request = h.http.expectOne(`/api/residents/${h.found.id}/occupancies`);
+      expect(request.request.body).toEqual({
+        unitId: A_101.id,
+        kind: 'owner',
+        startDate: '2024-03-01',
+      });
+      expect(h.fixture.componentInstance.changes).toBe(0);
+      request.flush({ ...h.found, occupancies: [CURRENT] }, { status: 201, statusText: 'Created' });
+      await settle(h.fixture);
+
+      expect(h.html.querySelectorAll('[data-testid="occupancy"]')).toHaveLength(1);
+      expect(text(h.html, 'occupancy-notice')).toBe('Vínculo com Bloco A · 101 adicionado');
+      expect(h.fixture.componentInstance.changes).toBe(1);
+    });
+
+    it('registra a saída da unidade e avisa a tela com "changed"', async () => {
+      const h = await openOwn(resident({ occupancies: [CURRENT] }));
+      click(h.html, 'end-occupancy');
+      await settle(h.fixture);
+      setFieldValue(field(h.html, 'endDate'), '01042024');
+
+      await submit(h, 'end-form');
+      h.http
+        .expectOne(`/api/residents/${h.found.id}/occupancies/occ-current/end`)
+        .flush({ ...h.found, occupancies: [{ ...CURRENT, endDate: '2024-04-01' }] });
+      await settle(h.fixture);
+
+      expect(text(h.html, 'occupancy-notice')).toBe('Saída de Bloco A · 101 registrada');
+      expect(h.fixture.componentInstance.changes).toBe(1);
+    });
+
+    it('uma recusa da API não avisa a tela: nada mudou', async () => {
+      const h = await openOwn(resident({ occupancies: [CURRENT] }));
+      click(h.html, 'end-occupancy');
+      await settle(h.fixture);
+      setFieldValue(field(h.html, 'endDate'), '01042024');
+
+      await submit(h, 'end-form');
+      reject(
+        h.http.expectOne(`/api/residents/${h.found.id}/occupancies/occ-current/end`),
+        422,
+        'condominium.occupancy.exit_in_future',
+      );
+      await settle(h.fixture);
+
+      expect(h.fixture.componentInstance.changes).toBe(0);
     });
   });
 });

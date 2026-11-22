@@ -1,5 +1,5 @@
 import { PALETTE } from '../support/layout';
-import { chooseUserMenu, openUserMenu } from '../support/navegacao';
+import { DESKTOP, chooseUserMenu, openUserMenu } from '../support/navegacao';
 import {
   PROFILE_PATH,
   stubProfile,
@@ -7,7 +7,17 @@ import {
   stubProfileSaves,
 } from '../support/perfil';
 import { stubPostalCodeFailure } from '../support/condominio';
+import { chooseMenu } from '../support/menu';
+import {
+  MANAGER_REGISTRATION,
+  MY_CURRENT_OCCUPANCY,
+  stubMyRegistration,
+  stubMyRegistrationRejected,
+} from '../support/meu-cadastro';
+import { MY_ACCESS_API } from '../support/minha-fatura';
+import { typeInto } from '../support/moradores';
 import { stubSignedIn } from '../support/session';
+import { FIRST_UNIT, stubUnits } from '../support/unidades';
 
 function manager(): Cypress.Chainable<JQuery<HTMLElement>> {
   return cy.get('[data-testid="manager-section"]');
@@ -172,4 +182,110 @@ describe('Meus dados', () => {
       cy.get('[data-testid="saved"]').should('contain.text', 'Dados salvos');
     });
   }
+
+  describe('onde eu moro', () => {
+    beforeEach(() => {
+      stubUnits();
+    });
+
+    it('mostra o cartão e diz que o síndico ainda não mora em nenhuma unidade', () => {
+      cy.visit(PROFILE_PATH);
+
+      cy.get('[data-testid="occupancies"] h2').should('have.text', 'Onde eu moro');
+      cy.get('[data-testid="no-occupancies"]').should(
+        'contain.text',
+        'Você ainda não mora em nenhuma unidade',
+      );
+      cy.get('[data-testid="manager-section"]').should('exist');
+    });
+
+    it('mostra a unidade onde o síndico mora', () => {
+      stubMyRegistration({ ...MANAGER_REGISTRATION, occupancies: [MY_CURRENT_OCCUPANCY] });
+      cy.visit(PROFILE_PATH);
+
+      cy.get('[data-testid="occupancy"]')
+        .should('have.length', 1)
+        .and('contain.text', 'Bloco A · 101')
+        .and('contain.text', 'Proprietário, desde 01/03/2024');
+    });
+
+    it('avisa só no cartão quando o cadastro próprio não carrega', () => {
+      stubMyRegistrationRejected(500, 'internal');
+      cy.visit(PROFILE_PATH);
+
+      cy.get('[data-testid="housing-error"]').should(
+        'contain.text',
+        'Não foi possível carregar onde você mora',
+      );
+      cy.get('[data-testid="manager-section"]').should('exist');
+    });
+
+    it('cadastrar a unidade faz "Minha fatura" aparecer no menu, sem entrar de novo', () => {
+      cy.viewport(DESKTOP.width, DESKTOP.height);
+      let access = 'none';
+      cy.intercept('GET', MY_ACCESS_API, (request) => {
+        request.reply({ statusCode: 200, body: { access } });
+      });
+      cy.intercept('POST', `/api/residents/${MANAGER_REGISTRATION.id}/occupancies`, (request) => {
+        access = 'unit';
+        request.reply({
+          statusCode: 201,
+          body: {
+            ...MANAGER_REGISTRATION,
+            occupancies: [{ ...MY_CURRENT_OCCUPANCY, startDate: '2026-01-05' }],
+          },
+        });
+      }).as('addOccupancy');
+      cy.visit(PROFILE_PATH);
+      cy.get('[data-testid="no-occupancies"]').should('exist');
+      cy.get('[data-testid="nav-my-invoice"]').should('not.exist');
+
+      cy.get('[data-testid="add-occupancy"]').click();
+      chooseMenu('[formControlName="unitId"]', 'Bloco A · 101');
+      chooseMenu('[formControlName="kind"]', 'Proprietário');
+      typeInto('startDate', '05012026');
+      cy.contains('button[type="submit"]', 'Adicionar vínculo').click();
+
+      cy.wait('@addOccupancy')
+        .its('request.body')
+        .should('deep.equal', { unitId: FIRST_UNIT.id, kind: 'owner', startDate: '2026-01-05' });
+      cy.get('[data-testid="occupancy-notice"]').should(
+        'contain.text',
+        'Vínculo com Bloco A · 101 adicionado',
+      );
+      cy.get('[data-testid="nav-my-invoice"]').should('be.visible');
+    });
+
+    it('registrar a saída faz "Minha fatura" sumir do menu', () => {
+      cy.viewport(DESKTOP.width, DESKTOP.height);
+      stubMyRegistration({ ...MANAGER_REGISTRATION, occupancies: [MY_CURRENT_OCCUPANCY] });
+      let access = 'unit';
+      cy.intercept('GET', MY_ACCESS_API, (request) => {
+        request.reply({ statusCode: 200, body: { access } });
+      });
+      cy.intercept(
+        'POST',
+        `/api/residents/${MANAGER_REGISTRATION.id}/occupancies/${MY_CURRENT_OCCUPANCY.id}/end`,
+        (request) => {
+          access = 'none';
+          request.reply({
+            statusCode: 200,
+            body: {
+              ...MANAGER_REGISTRATION,
+              occupancies: [{ ...MY_CURRENT_OCCUPANCY, endDate: '2026-11-10' }],
+            },
+          });
+        },
+      ).as('endOccupancy');
+      cy.visit(PROFILE_PATH);
+      cy.get('[data-testid="nav-my-invoice"]').should('be.visible');
+
+      cy.get('[data-testid="end-occupancy"]').click();
+      typeInto('endDate', '10112026');
+      cy.contains('button[type="submit"]', 'Registrar saída').click();
+
+      cy.wait('@endOccupancy').its('request.body').should('deep.equal', { endDate: '2026-11-10' });
+      cy.get('[data-testid="nav-my-invoice"]').should('not.exist');
+    });
+  });
 });

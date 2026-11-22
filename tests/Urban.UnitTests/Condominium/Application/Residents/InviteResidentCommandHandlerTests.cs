@@ -6,6 +6,7 @@ using Urban.Condominium.Domain.Condominiums;
 using Urban.Condominium.Domain.People;
 using Urban.SharedKernel;
 using Urban.SharedKernel.Contracts;
+using Urban.TestSupport.Condominium;
 
 namespace Urban.UnitTests.Condominium.Application.Residents;
 
@@ -187,4 +188,16 @@ public class InviteResidentCommandHandlerTests
 
     private void NoEmailWasRequested() =>
         _access.Verify(a => a.SendInvitationAsync(It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+
+    [Fact]
+    public async Task Handle_RefusesTheManagersOwnPerson_AsIfItWasNotAResident()
+    {
+        Person manager = CondominiumBuilders.Manager(_kit.CondominiumId);
+        _kit.Existing(manager);
+
+        Result result = await Handler().Handle(Command(manager.Id), default);
+
+        result.Error.Should().Be(ResidentErrors.NotFound);
+        _access.Verify(a => a.CreateAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

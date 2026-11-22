@@ -41,6 +41,10 @@ export const ManagerHousingStore = signalStore(
           }
         }
       },
+      /** Pergunta de novo, sem esquecer a resposta antiga enquanto espera: o item do menu não pisca. */
+      async refresh(userId: string): Promise<void> {
+        void userId;
+      },
       /** Esquece tudo: a sessão acabou ou a pessoa já não é síndico com condomínio. */
       reset(): void {
         current = null;

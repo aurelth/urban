@@ -5,9 +5,13 @@ import { MATERIAL_ANIMATIONS } from '@angular/material/core';
 import { provideRouter } from '@angular/router';
 import { jest } from '@jest/globals';
 import { SessionStore } from '../../../core/auth/session.store';
+import { ManagerHousingStore } from '../../../core/layout/manager-housing.store';
 import { MyCondominium } from '../../../core/condominium/condominium.models';
+import { Resident } from '../../../core/residents/residents.models';
 import { provideUrbanIcons } from '../../../core/theme/icons';
 import { flushPromises } from '../../../testing/async';
+import { occupancy, resident } from '../../../testing/residents.fixtures';
+import { unit, unitPage } from '../../../testing/units.fixtures';
 import { fieldValueOf, setFieldValue } from '../../../testing/menu-select';
 import {
   REGISTERED_MANAGER,
@@ -152,6 +156,28 @@ function failure(status: number, code: string): [unknown, { status: number; stat
 
 function saved(changes: Partial<MyCondominium> = {}): MyCondominium {
   return { ...MINE, version: '8.9', ...changes };
+}
+
+const A_101 = unit({ id: '0199aaaa-0000-7000-8000-000000000001', block: 'A', number: '101' });
+const LIVES_IN_A_101 = occupancy({
+  id: 'occ-current',
+  unitId: A_101.id,
+  unitBlock: 'A',
+  unitNumber: '101',
+});
+
+/** Abre a tela e responde o cadastro do próprio síndico (`mine`), ou deixa a resposta pendente. */
+async function setupHousing(
+  mine: Resident | 'pending' = resident({ occupancies: [] }),
+): Promise<Harness & { mine: Resident }> {
+  const h = await setup();
+  const request = h.http.expectOne('/api/residents/me');
+  if (mine === 'pending') {
+    return { ...h, mine: resident() };
+  }
+  request.flush(mine);
+  await settle(h.fixture);
+  return { ...h, mine };
 }
 
 describe('ProfilePage', () => {
@@ -746,6 +772,124 @@ describe('ProfilePage', () => {
       expect(dialog()).toBeNull();
       expect(testId(h.html, 'conflict')).not.toBeNull();
       h.http.expectNone('/api/condominiums/mine');
+    });
+  });
+
+  describe('onde eu moro', () => {
+    it('busca o próprio cadastro em GET /api/residents/me ao abrir', async () => {
+      const h = await setup();
+
+      const request = h.http.expectOne('/api/residents/me');
+
+      expect(request.request.method).toBe('GET');
+    });
+
+    it('mostra o cartão "Onde eu moro" com a unidade do síndico, fora do formulário dos dados', async () => {
+      const h = await setupHousing(resident({ occupancies: [LIVES_IN_A_101] }));
+
+      const card = testId(h.html, 'occupancies')!;
+      expect(card.querySelector('h2')!.textContent!.trim()).toBe('Onde eu moro');
+      expect(card.textContent).toContain('Bloco A · 101');
+      expect(card.textContent).toContain('Proprietário, desde 01/03/2024');
+      expect(h.html.querySelector('form [data-testid="occupancies"]')).toBeNull();
+    });
+
+    it('síndico que não mora no condomínio vê que ainda não mora em nenhuma unidade', async () => {
+      const h = await setupHousing();
+
+      expect(testId(h.html, 'no-occupancies')!.textContent!.trim()).toBe(
+        'Você ainda não mora em nenhuma unidade',
+      );
+      expect(testId(h.html, 'add-occupancy')).not.toBeNull();
+    });
+
+    it('enquanto o cadastro não chega, avisa que está carregando e o resto da tela já aparece', async () => {
+      const h = await setupHousing('pending');
+
+      expect(testId(h.html, 'housing-loading')!.textContent!.trim()).toBe(
+        'Carregando onde você mora',
+      );
+      expect(testId(h.html, 'occupancies')).toBeNull();
+      expect(section(h.html, 'manager')).not.toBeNull();
+    });
+
+    it('falha ao buscar avisa só no cartão, e "Tentar de novo" busca outra vez', async () => {
+      const h = await setup();
+      h.http
+        .expectOne('/api/residents/me')
+        .flush({ code: 'x' }, { status: 500, statusText: 'Erro' });
+      await settle(h.fixture);
+
+      expect(testId(h.html, 'housing-error')!.textContent).toContain(
+        'Não foi possível carregar onde você mora',
+      );
+      expect(section(h.html, 'manager')).not.toBeNull();
+
+      testId(h.html, 'housing-retry')!.click();
+      await settle(h.fixture);
+      h.http.expectOne('/api/residents/me').flush(resident({ occupancies: [LIVES_IN_A_101] }));
+      await settle(h.fixture);
+
+      expect(testId(h.html, 'housing-error')).toBeNull();
+      expect(testId(h.html, 'occupancies')!.textContent).toContain('Bloco A · 101');
+    });
+
+    it('cadastrar a unidade faz o item "Minha fatura" aparecer sem entrar de novo', async () => {
+      const h = await setupHousing();
+      const housing = TestBed.inject(ManagerHousingStore);
+      expect(housing.livesHere()).toBe(false);
+
+      testId(h.html, 'add-occupancy')!.click();
+      await settle(h.fixture);
+      h.http
+        .expectOne((r) => r.url === '/api/units' && r.method === 'GET')
+        .flush(unitPage([A_101], 1, 1, 200));
+      await settle(h.fixture);
+      setFieldValue(field(h.html, 'unitId'), A_101.id);
+      setFieldValue(field(h.html, 'kind'), 'owner');
+      setFieldValue(field(h.html, 'startDate'), '01032024');
+      testId(h.html, 'add-form')!.dispatchEvent(new Event('submit'));
+      await settle(h.fixture);
+      h.http
+        .expectOne(`/api/residents/${h.mine.id}/occupancies`)
+        .flush(
+          { ...h.mine, occupancies: [LIVES_IN_A_101] },
+          { status: 201, statusText: 'Created' },
+        );
+      await settle(h.fixture);
+      h.http.expectOne('/api/finance/me/access').flush({ access: 'unit' });
+      await settle(h.fixture);
+
+      expect(housing.livesHere()).toBe(true);
+    });
+
+    it('registrar a saída da unidade faz o item "Minha fatura" sumir', async () => {
+      const h = await setupHousing(resident({ occupancies: [LIVES_IN_A_101] }));
+      const housing = TestBed.inject(ManagerHousingStore);
+      const loading = housing.load(h.store.user()!.id);
+      h.http.expectOne('/api/finance/me/access').flush({ access: 'unit' });
+      await loading;
+      expect(housing.livesHere()).toBe(true);
+
+      testId(h.html, 'end-occupancy')!.click();
+      await settle(h.fixture);
+      setFieldValue(field(h.html, 'endDate'), '01042026');
+      testId(h.html, 'end-form')!.dispatchEvent(new Event('submit'));
+      await settle(h.fixture);
+      h.http
+        .expectOne(`/api/residents/${h.mine.id}/occupancies/occ-current/end`)
+        .flush({ ...h.mine, occupancies: [{ ...LIVES_IN_A_101, endDate: '2026-04-01' }] });
+      await settle(h.fixture);
+      h.http.expectOne('/api/finance/me/access').flush({ access: 'none' });
+      await settle(h.fixture);
+
+      expect(housing.livesHere()).toBe(false);
+    });
+
+    it('não pergunta pela moradia enquanto nada foi gravado', async () => {
+      const h = await setupHousing(resident({ occupancies: [LIVES_IN_A_101] }));
+
+      h.http.expectNone('/api/finance/me/access');
     });
   });
 });

@@ -2,6 +2,7 @@ using MediatR;
 using Urban.Identity.Application.Abstractions;
 using Urban.Identity.Domain.Users;
 using Urban.SharedKernel;
+using Urban.SharedKernel.Contracts;
 
 namespace Urban.Identity.Application.Authentication.Me;
 
@@ -9,10 +10,11 @@ namespace Urban.Identity.Application.Authentication.Me;
 /// O token só prova quem a pessoa era ao entrar: a conta é lida de novo,
 /// para que suspensão ou desativação apareçam na hora e não só quando o token expirar.
 /// </summary>
-public sealed class GetCurrentUserQueryHandler(IUserAccounts accounts) : IRequestHandler<GetCurrentUserQuery, Result<CurrentUser>>
+public sealed class GetCurrentUserQueryHandler(IUserAccounts accounts, ICondominiumDirectory directory) : IRequestHandler<GetCurrentUserQuery, Result<CurrentUser>>
 {
     public async Task<Result<CurrentUser>> Handle(GetCurrentUserQuery request, CancellationToken cancellationToken)
     {
+        _ = directory;
         User? user = await accounts.FindByIdAsync(request.UserId, cancellationToken);
         if (user is null)
         {

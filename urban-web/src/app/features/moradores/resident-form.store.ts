@@ -115,6 +115,8 @@ export const ResidentFormStore = signalStore(
           patchState(store, { status: 'error' });
         }
       },
+      /** "Meus dados" do síndico: busca o próprio cadastro (com ou sem unidade). Serve também para tentar de novo. */
+      loadForMine: async (): Promise<void> => undefined,
       /** Edição: busca o morador. Serve à primeira carga, a tentar de novo e a recarregar depois de um conflito. */
       loadForEdit: async (id: string): Promise<void> => {
         patchState(store, { status: 'loading' });

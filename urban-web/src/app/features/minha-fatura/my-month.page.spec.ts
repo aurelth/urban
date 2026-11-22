@@ -341,6 +341,16 @@ describe('MyMonthPage', () => {
       expect(cards(html)).toHaveLength(0);
       expect(testId(html, 'card-expenses')).toBeNull();
     });
+
+    it('o aviso e o ícone saem em laranja (a cor de aviso), não no cinza dos avisos neutros', async () => {
+      const { html } = await setup(OPEN);
+
+      const notice = testId(html, 'not-closed')!;
+
+      expect(notice.classList.contains('text-warning')).toBe(true);
+      expect(notice.classList.contains('text-on-surface-variant')).toBe(false);
+      expect(notice.querySelector('mat-icon')!.getAttribute('data-mat-icon-name')).toBe('schedule');
+    });
   });
 
   describe('quem não tem fatura', () => {

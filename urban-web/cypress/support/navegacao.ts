@@ -8,8 +8,10 @@ export function openUserMenu(): void {
   cy.get('.mat-mdc-menu-panel').should('be.visible');
 }
 
-/** Abre o menu do avatar e escolhe um dos itens (`menu-profile`, `menu-account` ou `sign-out`). */
-export function chooseUserMenu(testId: 'menu-profile' | 'menu-account' | 'sign-out'): void {
+/** Abre o menu do avatar e escolhe um dos itens (`menu-profile`, `menu-my-data`, `menu-account` ou `sign-out`). */
+export function chooseUserMenu(
+  testId: 'menu-profile' | 'menu-my-data' | 'menu-account' | 'sign-out',
+): void {
   openUserMenu();
   cy.get(`.mat-mdc-menu-panel [data-testid="${testId}"]`).click();
 }

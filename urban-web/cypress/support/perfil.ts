@@ -1,3 +1,4 @@
+import { MANAGER_REGISTRATION, stubMyRegistration } from './meu-cadastro';
 import { MANAGER } from './session';
 
 const ADDRESS = {
@@ -41,6 +42,8 @@ export const PROFILE_PATH = '/condominio/meus-dados';
 
 export function stubProfile(): void {
   cy.intercept('GET', '/api/condominiums/mine', { statusCode: 200, body: PROFILE }).as('profile');
+  // A tela também lê o cadastro do próprio síndico, para o cartão "Onde eu moro".
+  stubMyRegistration(MANAGER_REGISTRATION);
 }
 
 /**

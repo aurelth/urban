@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable } from 'rxjs';
+import { EMPTY, Observable } from 'rxjs';
 import {
   EndOccupancyPayload,
   OccupancyPayload,
@@ -24,6 +24,11 @@ export class ResidentsApi {
 
   get(id: string): Observable<Resident> {
     return this.http.get<Resident>(`${BASE}/${id}`);
+  }
+
+  /** O cadastro de quem está logado (morador ou síndico que mora no condomínio), pela conta do token. */
+  getMine(): Observable<Resident> {
+    return EMPTY;
   }
 
   create(payload: ResidentPayload): Observable<Resident> {

@@ -23,4 +23,6 @@ public sealed class CondominiumDirectory(CondominiumDbContext db) : ICondominium
             .Where(c => ids.Contains(c.Id))
             .ToDictionaryAsync(c => c.Id, c => c.Name, cancellationToken);
     }
+
+    public Task<string?> FindFirstNameAsync(Guid userId, CancellationToken cancellationToken) => Task.FromResult<string?>(null);
 }

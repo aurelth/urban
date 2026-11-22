@@ -6,6 +6,7 @@ using Urban.Identity.Application.Authentication.Me;
 using Urban.Identity.Domain.Access;
 using Urban.Identity.Domain.Users;
 using Urban.SharedKernel;
+using Urban.SharedKernel.Contracts;
 using Urban.TestSupport.Identity;
 
 namespace Urban.UnitTests.Identity.Application;
@@ -13,11 +14,12 @@ namespace Urban.UnitTests.Identity.Application;
 public class GetCurrentUserQueryHandlerTests
 {
     private readonly Mock<IUserAccounts> _accounts = new();
+    private readonly Mock<ICondominiumDirectory> _directory = new();
     private readonly GetCurrentUserQueryHandler _handler;
 
     public GetCurrentUserQueryHandlerTests()
     {
-        _handler = new GetCurrentUserQueryHandler(_accounts.Object);
+        _handler = new GetCurrentUserQueryHandler(_accounts.Object, _directory.Object);
     }
 
     [Fact]
@@ -97,4 +99,55 @@ public class GetCurrentUserQueryHandlerTests
 
     private void GivenUser(User user) =>
         _accounts.Setup(a => a.FindByIdAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(user);
+
+    [Fact]
+    public async Task Handle_ForAResidentWhoNeverChoseAName_UsesTheFirstNameOfTheirRegistration()
+    {
+        User resident = UserBuilder.InStatus(AccountStatus.Active, UserRole.Resident, "maria@example.com");
+        GivenUser(resident);
+        _directory.Setup(d => d.FindFirstNameAsync(resident.Id, It.IsAny<CancellationToken>())).ReturnsAsync("Maria");
+
+        Result<CurrentUser> result = await _handler.Handle(new GetCurrentUserQuery(resident.Id), CancellationToken.None);
+
+        result.Value.DisplayName.Should().Be("Maria");
+        result.Value.Email.Should().Be("maria@example.com");
+    }
+
+    [Fact]
+    public async Task Handle_ForAResidentWithoutARegistration_HasNoDisplayName()
+    {
+        User resident = UserBuilder.InStatus(AccountStatus.Active, UserRole.Resident);
+        GivenUser(resident);
+        _directory.Setup(d => d.FindFirstNameAsync(resident.Id, It.IsAny<CancellationToken>())).ReturnsAsync((string?)null);
+
+        Result<CurrentUser> result = await _handler.Handle(new GetCurrentUserQuery(resident.Id), CancellationToken.None);
+
+        result.Value.DisplayName.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_ForAnAccountThatChoseAName_KeepsItAndDoesNotAskTheRegistration()
+    {
+        User manager = UserBuilder.EnrolledManager("Ana Paula");
+        GivenUser(manager);
+
+        Result<CurrentUser> result = await _handler.Handle(new GetCurrentUserQuery(manager.Id), CancellationToken.None);
+
+        result.Value.DisplayName.Should().Be("Ana Paula");
+        _directory.Verify(d => d.FindFirstNameAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Handle_ForAnAccountWithoutCondominium_DoesNotAskTheRegistration()
+    {
+        User superAdmin = UserBuilder.InStatus(AccountStatus.Active, UserRole.SuperAdmin);
+        User manager = UserBuilder.ManagerWithoutCondominium();
+        GivenUser(superAdmin);
+        GivenUser(manager);
+
+        await _handler.Handle(new GetCurrentUserQuery(superAdmin.Id), CancellationToken.None);
+        await _handler.Handle(new GetCurrentUserQuery(manager.Id), CancellationToken.None);
+
+        _directory.Verify(d => d.FindFirstNameAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 }

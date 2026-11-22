@@ -48,4 +48,14 @@ public class PersonNameTests
         PersonName.Create(within).IsSuccess.Should().BeTrue();
         PersonName.Create(beyond).IsFailure.Should().BeTrue();
     }
+
+    [Theory]
+    [InlineData("Ana Silva", "Ana")]
+    [InlineData("  Ana   Maria  da Silva ", "Ana")]
+    [InlineData("José D'Ávila-Santos", "José")]
+    [InlineData("Ana-Maria Souza", "Ana-Maria")]
+    public void FirstName_IsTheFirstWordOfTheNormalizedName(string input, string expected)
+    {
+        PersonName.Create(input).Value.FirstName.Should().Be(expected);
+    }
 }

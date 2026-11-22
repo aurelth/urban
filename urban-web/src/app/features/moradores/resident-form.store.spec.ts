@@ -155,6 +155,69 @@ describe('ResidentFormStore', () => {
     });
   });
 
+  describe('loadForMine', () => {
+    it('busca o próprio cadastro em GET /api/residents/me e vira "ready"', async () => {
+      const { store, http } = setup();
+      const mine = resident({ occupancies: [] });
+
+      const loading = store.loadForMine();
+      expect(store.status()).toBe('loading');
+      http.expectOne('/api/residents/me').flush(mine);
+      await loading;
+
+      expect(store.status()).toBe('ready');
+      expect(store.resident()).toEqual(mine);
+    });
+
+    it('vira "not-found" quando a conta não tem cadastro (404)', async () => {
+      const { store, http } = setup();
+
+      const loading = store.loadForMine();
+      reject(http.expectOne('/api/residents/me'), 404, 'condominium.resident.not_found');
+      await loading;
+
+      expect(store.status()).toBe('not-found');
+      expect(store.resident()).toBeNull();
+    });
+
+    it('vira "error" nas outras falhas e dá para tentar de novo', async () => {
+      const { store, http } = setup();
+
+      const failing = store.loadForMine();
+      reject(http.expectOne('/api/residents/me'), 500);
+      await failing;
+      expect(store.status()).toBe('error');
+
+      const mine = resident();
+      const retrying = store.loadForMine();
+      http.expectOne('/api/residents/me').flush(mine);
+      await retrying;
+
+      expect(store.status()).toBe('ready');
+      expect(store.resident()).toEqual(mine);
+    });
+
+    it('os vínculos gravados depois usam o id do cadastro lido', async () => {
+      const { store, http } = setup();
+      const mine = resident({ occupancies: [] });
+      const loading = store.loadForMine();
+      http.expectOne('/api/residents/me').flush(mine);
+      await loading;
+
+      const adding = store.addOccupancy(mine.id, {
+        unitId: '0199aaaa-0000-7000-8000-000000000001',
+        kind: 'owner',
+        startDate: '2024-03-01',
+      });
+      http
+        .expectOne(`/api/residents/${mine.id}/occupancies`)
+        .flush({ ...mine, occupancies: [occupancy()] });
+      await adding;
+
+      expect(store.resident()?.occupancies).toHaveLength(1);
+    });
+  });
+
   describe('create', () => {
     it('grava, guarda o morador criado e devolve nulo', async () => {
       const { store, http } = setup();

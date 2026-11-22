@@ -164,9 +164,23 @@ describe('userMenuFor', () => {
     ]);
   });
 
+  it('leva o morador aos dados do seu cadastro e à conta', () => {
+    expect(
+      userMenuFor(RESIDENT_WITH_CONDOMINIUM).map((item) => [
+        item.id,
+        item.label,
+        item.path,
+        item.icon,
+      ]),
+    ).toEqual([
+      ['my-data', 'Meus dados', '/meus-dados', 'apartment'],
+      ['account', 'Minha conta', '/conta', 'account_circle'],
+    ]);
+  });
+
   it.each([
     ['síndico sem condomínio', { role: 'Manager', condominiumId: null } as Who],
-    ['morador', { role: 'Resident', condominiumId: 'c-1' } as Who],
+    ['morador sem condomínio', { role: 'Resident', condominiumId: null } as Who],
     ['administrador', { role: 'SuperAdmin', condominiumId: null } as Who],
   ])('leva só à conta para %s', (_name, who) => {
     expect(userMenuFor(who).map((item) => item.id)).toEqual(['account']);

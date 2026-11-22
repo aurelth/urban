@@ -35,6 +35,20 @@ describe('ResidentsApi', () => {
     return new URLSearchParams(request.request.params.toString());
   }
 
+  describe('getMine', () => {
+    it('pede GET /api/residents/me e devolve o cadastro de quem está logado', () => {
+      const mine = resident();
+      let received: unknown;
+
+      api.getMine().subscribe((value) => (received = value));
+      const request = http.expectOne('/api/residents/me');
+      request.flush(mine);
+
+      expect(request.request.method).toBe('GET');
+      expect(received).toEqual(mine);
+    });
+  });
+
   describe('list', () => {
     it('pede GET /api/residents e devolve a página', () => {
       const page = residentPage([resident()], 1);

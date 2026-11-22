@@ -36,6 +36,8 @@ public sealed class CondominiumResidents(CondominiumDbContext db) : IResidents
         return new ResidentRecord(person, [.. occupancies[personId]], CurrentVersion(person));
     }
 
+    public Task<ResidentRecord?> FindByUserAsync(Guid userId, CancellationToken cancellationToken) => Task.FromResult<ResidentRecord?>(null);
+
     public async Task<PagedResidents> ListAsync(ResidentFilter filter, int page, int pageSize, CancellationToken cancellationToken)
     {
         IQueryable<Person> people = db.People.AsNoTracking();

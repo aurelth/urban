@@ -135,19 +135,95 @@ public sealed class CondominiumResidentsTests(CondominiumPostgresFixture postgre
     }
 
     [Fact]
-    public async Task The_manager_of_the_condominium_still_reads_the_address_and_the_user_and_is_not_a_resident()
+    public async Task The_manager_without_a_unit_still_reads_the_address_and_the_user_and_is_found_by_id_with_no_occupancies_but_never_listed()
     {
         CondominiumEntity condominium = await SeedCondominiumAsync();
 
         await using CondominiumDbContext db = postgres.CreateContext(condominium.Id);
         Person manager = await db.People.SingleAsync(Ct);
-        ResidentRecord? asResident = await new CondominiumResidents(db).FindAsync(manager.Id, Ct);
+        ResidentRecord? byId = await new CondominiumResidents(db).FindAsync(manager.Id, Ct);
 
         manager.UserId.Should().Be(condominium.CreatedBy);
         manager.RequireAddress().City.Should().Be("Blumenau");
         manager.Email.Should().BeNull();
         manager.EmergencyContact.Should().BeNull();
-        asResident.Should().BeNull();
+        byId.Should().NotBeNull();
+        byId!.Person.Id.Should().Be(manager.Id);
+        byId.Occupancies.Should().BeEmpty();
+        (await ListAsync(condominium, new ResidentFilter(null, null, ResidentStatusFilter.All), 1, 50)).Total.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task The_manager_who_lives_in_a_unit_is_found_by_id_with_the_occupancy_but_never_listed_next_to_the_residents()
+    {
+        CondominiumEntity condominium = await SeedCondominiumAsync();
+        CondominiumUnit unit = await SeedUnitAsync(condominium);
+        Person resident = ResidentBuilders.Resident(condominium.Id, "Maria Souza");
+        await AddAsync(condominium, unit, resident);
+        await using (CondominiumDbContext db = postgres.CreateContext(condominium.Id))
+        {
+            Person manager = await db.People.SingleAsync(p => p.Address != null, Ct);
+            await AddOccupancyDirectlyAsync(condominium, ResidentBuilders.Occupancy(manager, unit.Id));
+        }
+
+        await using CondominiumDbContext read = postgres.CreateContext(condominium.Id);
+        Person managerPerson = await read.People.SingleAsync(p => p.Address != null, Ct);
+        ResidentRecord? byId = await new CondominiumResidents(read).FindAsync(managerPerson.Id, Ct);
+        PagedResidents all = await ListAsync(condominium, new ResidentFilter(null, null, ResidentStatusFilter.All), 1, 50);
+        PagedResidents active = await ListAsync(condominium, new ResidentFilter(null, null, ResidentStatusFilter.Active), 1, 50);
+        PagedResidents inTheUnit = await ListAsync(condominium, new ResidentFilter(null, unit.Id, ResidentStatusFilter.Active), 1, 50);
+
+        byId.Should().NotBeNull();
+        byId!.Occupancies.Should().ContainSingle().Which.Occupancy.UnitId.Should().Be(unit.Id);
+        all.Total.Should().Be(1);
+        all.Items.Should().ContainSingle().Which.Person.Id.Should().Be(resident.Id);
+        active.Total.Should().Be(1);
+        inTheUnit.Total.Should().Be(1);
+    }
+
+    // ---- Leitura pela conta ----
+
+    [Fact]
+    public async Task Find_by_user_reads_the_registration_of_the_account_with_every_occupancy_even_the_ones_that_ended()
+    {
+        CondominiumEntity condominium = await SeedCondominiumAsync();
+        CondominiumUnit first = await SeedUnitAsync(condominium);
+        CondominiumUnit second = await SeedUnitAsync(condominium);
+        Guid userId = Guid.CreateVersion7();
+        Person resident = ResidentBuilders.Resident(condominium.Id, "Maria Souza");
+        resident.AttachUser(userId).IsSuccess.Should().BeTrue();
+        await AddAsync(condominium, first, resident);
+        await AddOccupancyDirectlyAsync(condominium, ResidentBuilders.Occupancy(resident, second.Id));
+        await EndOccupancyAsync(resident.Id, second.Id, new DateOnly(2025, 1, 1));
+
+        ResidentRecord? record = await FindByUserAsync(condominium, userId);
+
+        record.Should().NotBeNull();
+        record!.Person.Id.Should().Be(resident.Id);
+        record.Occupancies.Should().HaveCount(2);
+        record.Version.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task Find_by_user_reads_the_manager_without_any_occupancy()
+    {
+        CondominiumEntity condominium = await SeedCondominiumAsync();
+
+        ResidentRecord? record = await FindByUserAsync(condominium, condominium.CreatedBy);
+
+        record.Should().NotBeNull();
+        record!.Person.IsManager.Should().BeTrue();
+        record.Occupancies.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Find_by_user_finds_nobody_for_an_account_without_registration_or_from_another_condominium()
+    {
+        CondominiumEntity mine = await SeedCondominiumAsync();
+        CondominiumEntity other = await SeedCondominiumAsync();
+
+        (await FindByUserAsync(mine, Guid.CreateVersion7())).Should().BeNull();
+        (await FindByUserAsync(mine, other.CreatedBy)).Should().BeNull();
     }
 
     [Fact]
@@ -634,6 +710,13 @@ public sealed class CondominiumResidentsTests(CondominiumPostgresFixture postgre
         await using CondominiumDbContext db = postgres.CreateContext(condominium.Id);
 
         return await new CondominiumResidents(db).FindAsync(personId, Ct);
+    }
+
+    private async Task<ResidentRecord?> FindByUserAsync(CondominiumEntity condominium, Guid userId)
+    {
+        await using CondominiumDbContext db = postgres.CreateContext(condominium.Id);
+
+        return await new CondominiumResidents(db).FindByUserAsync(userId, Ct);
     }
 
     private async Task<PagedResidents> ListAsync(CondominiumEntity condominium, ResidentFilter filter, int page, int pageSize)

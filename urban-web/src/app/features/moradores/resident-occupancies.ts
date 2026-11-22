@@ -5,6 +5,8 @@ import {
   ElementRef,
   computed,
   inject,
+  input,
+  output,
   signal,
 } from '@angular/core';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -58,6 +60,10 @@ const STALE_CODES: ReadonlySet<string> = new Set([
 })
 export class ResidentOccupancies {
   protected readonly store = inject(ResidentFormStore);
+  /** A pessoa que olha é a própria dona dos vínculos ("Meus dados" do síndico): o título e os avisos falam em "eu". */
+  readonly own = input(false);
+  /** Avisa que um vínculo foi gravado (nova unidade ou saída), para a tela atualizar o que depende dele. */
+  readonly changed = output<void>();
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly builder = inject(NonNullableFormBuilder);
   private readonly changeDetector = inject(ChangeDetectorRef);
