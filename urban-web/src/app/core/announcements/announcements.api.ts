@@ -1,4 +1,5 @@
-import { Injectable } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import {
   Announcement,
@@ -7,24 +8,29 @@ import {
   UpdateAnnouncementPayload,
 } from './announcements.models';
 
-const NOT_IMPLEMENTED = 'Ainda não implementado';
+const BASE = '/api/announcements';
 
 /** Chamadas HTTP dos comunicados do síndico, uma por endpoint. */
 @Injectable({ providedIn: 'root' })
 export class AnnouncementsApi {
-  list(_page: number, _pageSize: number): Observable<AnnouncementPage> {
-    throw new Error(NOT_IMPLEMENTED);
+  private readonly http = inject(HttpClient);
+
+  list(page: number, pageSize: number): Observable<AnnouncementPage> {
+    return this.http.get<AnnouncementPage>(BASE, {
+      params: new HttpParams().set('page', page).set('pageSize', pageSize),
+    });
   }
 
-  create(_payload: AnnouncementPayload): Observable<Announcement> {
-    throw new Error(NOT_IMPLEMENTED);
+  create(payload: AnnouncementPayload): Observable<Announcement> {
+    return this.http.post<Announcement>(BASE, payload);
   }
 
-  update(_id: string, _payload: UpdateAnnouncementPayload): Observable<Announcement> {
-    throw new Error(NOT_IMPLEMENTED);
+  update(id: string, payload: UpdateAnnouncementPayload): Observable<Announcement> {
+    return this.http.put<Announcement>(`${BASE}/${id}`, payload);
   }
 
-  remove(_id: string, _version: string): Observable<void> {
-    throw new Error(NOT_IMPLEMENTED);
+  /** A versão vai na consulta: a API não lê corpo no DELETE. */
+  remove(id: string, version: string): Observable<void> {
+    return this.http.delete<void>(`${BASE}/${id}`, { params: { version } });
   }
 }

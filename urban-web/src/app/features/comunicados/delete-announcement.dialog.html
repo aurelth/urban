@@ -1,0 +1,37 @@
+<h2 mat-dialog-title>Excluir {{ config.announcement.title }}</h2>
+<form (submit)="$event.preventDefault(); confirm()" novalidate>
+  <mat-dialog-content>
+    <p class="mt-0 mb-4">
+      O comunicado some do mural dos moradores e os registros de quem já leu também se perdem. Isso
+      não se desfaz.
+    </p>
+    <p class="mt-0 mb-4 text-on-surface-variant">
+      Se o aviso só mudou, use Editar: quem já leu continua na conta.
+    </p>
+
+    @if (error(); as message) {
+      <p role="alert" class="mt-4 flex items-start gap-2 text-error">
+        <mat-icon svgIcon="error" aria-hidden="true" />
+        <span>{{ message }}</span>
+      </p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button
+      mat-button
+      type="button"
+      data-testid="cancel"
+      [disabled]="busy()"
+      (click)="ref.close(false)"
+    >
+      Cancelar
+    </button>
+    <button mat-button type="submit" class="urban-danger" [disabled]="busy()">
+      @if (busy()) {
+        Excluindo
+      } @else {
+        Excluir comunicado
+      }
+    </button>
+  </mat-dialog-actions>
+</form>

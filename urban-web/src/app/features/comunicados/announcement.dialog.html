@@ -1,0 +1,82 @@
+<h2 mat-dialog-title>{{ editing ? 'Editar comunicado' : 'Novo comunicado' }}</h2>
+<form [formGroup]="form" (ngSubmit)="confirm()" novalidate>
+  <mat-dialog-content>
+    <urban-text-field name="title" label="Título" [errors]="titleErrors" />
+
+    <urban-select-field name="category" label="Categoria" [options]="categoryOptions" />
+
+    <fieldset class="m-0 mb-4 border-0 p-0">
+      <legend class="mb-1 p-0 text-sm text-on-surface-variant">Para quem vai</legend>
+      <mat-radio-group
+        formControlName="scope"
+        class="flex flex-wrap gap-x-6"
+        aria-label="Para quem vai"
+      >
+        <mat-radio-button value="condominium">Condomínio inteiro</mat-radio-button>
+        <mat-radio-button value="block" [disabled]="!hasBlocks">Um bloco</mat-radio-button>
+        <mat-radio-button value="unit" [disabled]="!hasUnits">Uma unidade</mat-radio-button>
+      </mat-radio-group>
+    </fieldset>
+
+    @if (showBlock()) {
+      <urban-select-field
+        name="block"
+        label="Bloco"
+        emptyLabel="Escolha o bloco"
+        [options]="blockOptions"
+        [errors]="blockErrors"
+      />
+    }
+    @if (showUnit()) {
+      <urban-select-field
+        name="unitId"
+        label="Unidade"
+        emptyLabel="Escolha a unidade"
+        [options]="unitOptions"
+        [errors]="unitErrors"
+      />
+    }
+
+    <div class="mb-3">
+      <mat-form-field appearance="outline" subscriptSizing="dynamic" class="w-full">
+        <mat-label>Texto</mat-label>
+        <textarea matInput formControlName="body" rows="7" required></textarea>
+        <mat-hint align="end" data-testid="body-counter"
+          >{{ bodyLength() }} de {{ bodyMax }} caracteres</mat-hint
+        >
+        @if (form.controls.body.hasError('required')) {
+          <mat-error>Informe o texto</mat-error>
+        } @else if (form.controls.body.hasError('tooLong')) {
+          <mat-error>O texto pode ter até {{ bodyMax }} caracteres</mat-error>
+        }
+      </mat-form-field>
+    </div>
+
+    @if (error(); as message) {
+      <p role="alert" class="flex items-start gap-2 text-error">
+        <mat-icon svgIcon="error" aria-hidden="true" />
+        <span>{{ message }}</span>
+      </p>
+    }
+  </mat-dialog-content>
+  <mat-dialog-actions align="end">
+    <button
+      mat-button
+      type="button"
+      data-testid="cancel"
+      [disabled]="busy()"
+      (click)="ref.close(false)"
+    >
+      Cancelar
+    </button>
+    <button mat-flat-button type="submit" [disabled]="busy() || (editing && !changed())">
+      @if (busy()) {
+        Salvando
+      } @else if (editing) {
+        Salvar alterações
+      } @else {
+        Publicar comunicado
+      }
+    </button>
+  </mat-dialog-actions>
+</form>

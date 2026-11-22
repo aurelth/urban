@@ -1,0 +1,166 @@
+<section class="mx-auto max-w-4xl p-6">
+  <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="mb-1 text-3xl font-semibold tracking-tight">Comunicados</h1>
+      <p class="m-0 text-on-surface-variant">
+        Os avisos do condomínio, de um bloco ou de uma unidade, e quem já leu cada um
+      </p>
+    </div>
+    @if (store.status() === 'ready') {
+      <button
+        mat-flat-button
+        type="button"
+        data-testid="new-announcement"
+        [disabled]="store.busy()"
+        (click)="create()"
+      >
+        <mat-icon svgIcon="add" />
+        Novo comunicado
+      </button>
+    }
+  </div>
+
+  @switch (store.status()) {
+    @case ('loading') {
+      <p role="status" class="text-on-surface-variant" data-testid="loading">
+        Carregando os comunicados
+      </p>
+    }
+    @case ('error') {
+      <div class="flex flex-col items-start gap-4" data-testid="load-error">
+        <p class="flex items-start gap-2 text-error">
+          <mat-icon svgIcon="error" aria-hidden="true" />
+          <span>Não foi possível carregar os comunicados</span>
+        </p>
+        <button mat-stroked-button type="button" data-testid="retry" (click)="load()">
+          Tentar de novo
+        </button>
+      </div>
+    }
+    @case ('ready') {
+      @if (notice(); as message) {
+        <p role="status" class="mb-4 flex items-start gap-2" data-testid="notice">
+          <span class="inline-flex text-success"
+            ><mat-icon svgIcon="check_circle" aria-hidden="true"
+          /></span>
+          <span>{{ message }}</span>
+        </p>
+      }
+      @if (actionError(); as message) {
+        <p role="alert" class="mb-4 flex items-start gap-2 text-error" data-testid="action-error">
+          <mat-icon svgIcon="error" aria-hidden="true" />
+          <span>{{ message }}</span>
+        </p>
+      }
+
+      @if (store.total() === 0) {
+        <div
+          class="rounded-xl border border-outline-variant bg-surface-container p-6 text-center"
+          data-testid="empty"
+        >
+          <p class="mb-1 text-lg font-medium">Nenhum comunicado publicado ainda</p>
+          <p class="m-0 text-on-surface-variant">
+            Publique um aviso para o condomínio inteiro, para um bloco ou para uma unidade
+          </p>
+        </div>
+      } @else {
+        <p class="mb-4 text-sm text-on-surface-variant" data-testid="total">
+          {{ store.total() }} {{ store.total() === 1 ? 'comunicado' : 'comunicados' }}
+        </p>
+        <ul class="m-0 flex list-none flex-col gap-4 p-0">
+          @for (item of store.items(); track item.id) {
+            <li
+              class="rounded-xl border border-outline-variant bg-surface-container p-4"
+              data-testid="announcement-row"
+            >
+              <div class="flex items-start justify-between gap-2">
+                <h2 class="m-0 text-lg font-medium" data-testid="title">{{ item.title }}</h2>
+                <div class="flex shrink-0">
+                  <button
+                    mat-icon-button
+                    type="button"
+                    [attr.aria-label]="'Editar ' + item.title"
+                    [attr.title]="'Editar ' + item.title"
+                    [disabled]="store.busy()"
+                    (click)="edit(item)"
+                  >
+                    <mat-icon svgIcon="edit" />
+                  </button>
+                  <button
+                    mat-icon-button
+                    type="button"
+                    class="urban-danger"
+                    [attr.aria-label]="'Excluir ' + item.title"
+                    [attr.title]="'Excluir ' + item.title"
+                    [disabled]="store.busy()"
+                    (click)="remove(item)"
+                  >
+                    <mat-icon svgIcon="delete" />
+                  </button>
+                </div>
+              </div>
+              <p class="mt-1 mb-3 flex flex-wrap items-center gap-2 text-sm">
+                <span
+                  class="rounded-full bg-secondary-container px-3 py-1 text-on-secondary-container"
+                  data-testid="category"
+                  >{{ category(item.category) }}</span
+                >
+                <span
+                  class="rounded-full border border-outline-variant px-3 py-1"
+                  data-testid="scope"
+                  >{{ scope(item) }}</span
+                >
+              </p>
+              <p class="mt-0 mb-3 line-clamp-4 whitespace-pre-line" data-testid="body">
+                {{ item.body }}
+              </p>
+              <p
+                class="m-0 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-on-surface-variant"
+              >
+                <span data-testid="published">Publicado em {{ moment(item.createdAt) }}</span>
+                @if (item.updatedAt) {
+                  <span data-testid="edited">Editado em {{ moment(item.updatedAt) }}</span>
+                }
+                <span class="font-medium text-on-surface" data-testid="readers">{{
+                  readers(item)
+                }}</span>
+              </p>
+            </li>
+          }
+        </ul>
+      }
+
+      @if (store.pageCount() > 1) {
+        <nav
+          class="mt-4 flex items-center justify-between gap-4"
+          aria-label="Paginação"
+          data-testid="pagination"
+        >
+          <button
+            mat-stroked-button
+            type="button"
+            data-testid="previous"
+            [disabled]="store.busy() || store.page() <= 1"
+            (click)="goTo(store.page() - 1)"
+          >
+            <mat-icon svgIcon="chevron_left" />
+            Anterior
+          </button>
+          <span aria-live="polite" data-testid="page-status"
+            >Página {{ store.page() }} de {{ store.pageCount() }}</span
+          >
+          <button
+            mat-stroked-button
+            type="button"
+            data-testid="next"
+            [disabled]="store.busy() || store.page() >= store.pageCount()"
+            (click)="goTo(store.page() + 1)"
+          >
+            Próxima
+            <mat-icon svgIcon="chevron_right" />
+          </button>
+        </nav>
+      }
+    }
+  }
+</section>
