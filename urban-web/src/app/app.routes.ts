@@ -128,6 +128,13 @@ export const routes: Routes = [
           },
           { path: 'financeiro', pathMatch: 'full', redirectTo: 'financeiro/despesas' },
           {
+            path: 'financeiro/painel',
+            title: 'Painel financeiro',
+            canActivate: [managerGuard],
+            loadComponent: () =>
+              import('./features/finance/month-dashboard.page').then((m) => m.MonthDashboardPage),
+          },
+          {
             path: 'financeiro/despesas',
             title: 'Despesas',
             canActivate: [managerGuard],

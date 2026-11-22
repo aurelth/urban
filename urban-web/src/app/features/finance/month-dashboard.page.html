@@ -1,0 +1,229 @@
+<section class="mx-auto max-w-5xl p-6">
+  <div class="mb-6">
+    <h1 class="mb-1 text-3xl font-semibold tracking-tight">Painel financeiro</h1>
+    <p class="m-0 text-on-surface-variant">
+      As despesas e as cobranças do mês, e o que precisa de atenção
+    </p>
+  </div>
+
+  <nav class="mb-6 flex items-center justify-between gap-2" aria-label="Meses">
+    <button
+      mat-icon-button
+      type="button"
+      aria-label="Mês anterior"
+      title="Mês anterior"
+      data-testid="previous-month"
+      [disabled]="!canGo(-1) || store.status() === 'loading'"
+      (click)="go(-1)"
+    >
+      <mat-icon svgIcon="chevron_left" />
+    </button>
+    <h2 class="m-0 text-xl font-medium" aria-live="polite" data-testid="month-title">
+      {{ title(month()) }}
+    </h2>
+    <button
+      mat-icon-button
+      type="button"
+      aria-label="Próximo mês"
+      title="Próximo mês"
+      data-testid="next-month"
+      [disabled]="!canGo(1) || store.status() === 'loading'"
+      (click)="go(1)"
+    >
+      <mat-icon svgIcon="chevron_right" />
+    </button>
+  </nav>
+
+  @switch (store.status()) {
+    @case ('loading') {
+      <p role="status" class="text-on-surface-variant" data-testid="loading">
+        Carregando o painel do mês
+      </p>
+    }
+    @case ('error') {
+      <div class="flex flex-col items-start gap-4" data-testid="load-error">
+        <p class="flex items-start gap-2 text-error">
+          <mat-icon svgIcon="error" aria-hidden="true" />
+          <span>Não foi possível carregar o painel do mês</span>
+        </p>
+        <button mat-stroked-button type="button" data-testid="retry" (click)="reload()">
+          Tentar de novo
+        </button>
+      </div>
+    }
+    @case ('ready') {
+      @if (store.data(); as data) {
+        <div class="grid gap-6 md:grid-cols-2">
+          <section
+            class="flex flex-col rounded-xl border border-outline-variant bg-surface-container p-6"
+            aria-labelledby="expenses-heading"
+            data-testid="card-expenses"
+          >
+            <h2 id="expenses-heading" class="m-0 mb-4 text-lg font-medium">Despesas</h2>
+            @if (state(data) === 'not-open') {
+              <p class="m-0 mb-4 text-on-surface-variant" data-testid="no-expenses">
+                Nenhuma despesa neste mês
+              </p>
+            } @else {
+              <p class="m-0 mb-1 text-sm text-on-surface-variant">Total do mês</p>
+              <p class="m-0 mb-4 text-2xl font-semibold" data-testid="expenses-total">
+                {{ money(data.expenses.total) }}
+              </p>
+              <ul class="m-0 mb-4 flex list-none flex-col gap-3 p-0">
+                @for (group of data.expenses.groups; track group.groupId) {
+                  @let part = share(data.expenses.total, group.total);
+                  <li data-testid="group">
+                    <div class="flex items-baseline justify-between gap-3">
+                      <span class="min-w-0 break-words">{{ group.groupName }}</span>
+                      {{ ' ' }}
+                      <span class="shrink-0 whitespace-nowrap">
+                        <span class="font-medium">{{ money(group.total) }}</span>
+                        {{ ' ' }}
+                        <span class="text-sm text-on-surface-variant">{{ part }}%</span>
+                      </span>
+                    </div>
+                    <div
+                      class="mt-1 h-2 w-full overflow-hidden rounded-full bg-outline-variant"
+                      aria-hidden="true"
+                    >
+                      <div class="h-full rounded-full bg-primary" [style.width.%]="part"></div>
+                    </div>
+                  </li>
+                }
+              </ul>
+              @for (item of attentions(data.expenses); track item.id) {
+                <p
+                  class="m-0 mb-2 flex items-center gap-2 text-warning"
+                  [attr.data-testid]="item.id === 'overdue' ? 'expenses-overdue' : 'needs-amount'"
+                >
+                  <mat-icon class="shrink-0" svgIcon="warning" aria-hidden="true" />
+                  <span>{{ item.text }}</span>
+                </p>
+              }
+            }
+            <div class="mt-auto pt-4">
+              <a
+                mat-stroked-button
+                data-testid="entries-link"
+                routerLink="/financeiro/lancamentos"
+                [queryParams]="{ mes: month() }"
+              >
+                Lançamentos do mês
+                <mat-icon svgIcon="arrow_forward" aria-hidden="true" />
+              </a>
+            </div>
+          </section>
+
+          <section
+            class="flex flex-col rounded-xl border border-outline-variant bg-surface-container p-6"
+            aria-labelledby="charges-heading"
+            data-testid="card-charges"
+          >
+            <h2 id="charges-heading" class="m-0 mb-4 text-lg font-medium">Cobranças</h2>
+            @if (data.charges; as charges) {
+              @let percentage = percent(charges.charged, charges.received);
+              <p class="m-0 mb-1 text-sm text-on-surface-variant">Recebido</p>
+              <p class="m-0 mb-4 text-2xl font-semibold" data-testid="received">
+                {{ money(charges.received) }}
+              </p>
+              <div
+                role="progressbar"
+                aria-label="Parte do valor cobrado que já foi recebida"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                class="mb-2 h-2 w-full overflow-hidden rounded-full bg-outline-variant"
+                [attr.aria-valuenow]="percentage"
+              >
+                <div class="h-full rounded-full bg-success" [style.width.%]="percentage"></div>
+              </div>
+              <p class="m-0 mb-1 text-sm text-on-surface-variant">
+                <span data-testid="received-percent">{{ percentage }}% recebido</span>
+                {{ ' ' }}de
+                <span data-testid="charged">{{ money(charges.charged) }}</span>
+              </p>
+              <p class="m-0 mb-1 text-sm text-on-surface-variant" data-testid="to-receive">
+                A receber {{ money(toReceive(charges.charged, charges.received)) }}
+              </p>
+              <p class="m-0 mb-4 text-sm text-on-surface-variant" data-testid="due-date">
+                Vencimento em {{ date(charges.dueDate) }}
+              </p>
+
+              <ul class="m-0 mb-4 grid list-none grid-cols-2 gap-2 p-0">
+                @for (item of situations(charges); track item.status) {
+                  <li
+                    class="flex items-center gap-2"
+                    [class]="item.tone"
+                    [attr.data-testid]="'situation-' + item.status"
+                  >
+                    <mat-icon class="shrink-0" [svgIcon]="item.icon" aria-hidden="true" />
+                    <span>{{ item.label }}</span>
+                    {{ ' ' }}
+                    <span class="font-semibold">{{ item.count }}</span>
+                  </li>
+                }
+              </ul>
+
+              @if (charges.overdue > 0) {
+                <p
+                  class="m-0 mb-1 flex items-center gap-2 text-error"
+                  data-testid="charges-overdue"
+                >
+                  <mat-icon class="shrink-0" svgIcon="error" aria-hidden="true" />
+                  <span>{{ overdueText(charges.overdue) }}</span>
+                </p>
+                <p class="m-0 mb-4 text-sm text-error" data-testid="overdue-amount">
+                  {{ money(charges.overdueAmount) }} em atraso neste mês
+                </p>
+              } @else {
+                <p
+                  class="m-0 mb-4 flex items-center gap-2 text-success"
+                  data-testid="charges-overdue"
+                >
+                  <mat-icon class="shrink-0" svgIcon="check_circle" aria-hidden="true" />
+                  <span>{{ overdueText(0) }}</span>
+                </p>
+              }
+              <p class="m-0 mb-4 text-sm text-on-surface-variant" data-testid="as-of">
+                Situação em {{ date(data.asOf) }}
+              </p>
+              <div class="mt-auto flex flex-wrap gap-3 pt-4">
+                <a
+                  mat-stroked-button
+                  data-testid="payments-link"
+                  routerLink="/financeiro/pagamentos"
+                  [queryParams]="{ mes: month() }"
+                >
+                  Ver pagamentos
+                  <mat-icon svgIcon="arrow_forward" aria-hidden="true" />
+                </a>
+                @if (charges.overdue > 0) {
+                  <a
+                    mat-button
+                    data-testid="delinquency-link"
+                    routerLink="/financeiro/inadimplencia"
+                  >
+                    Ver inadimplência
+                  </a>
+                }
+              </div>
+            } @else {
+              <p class="m-0 mb-4 text-on-surface-variant" data-testid="not-closed">
+                As cobranças de {{ title(month()) }} aparecem depois que o mês for fechado
+              </p>
+              <div class="mt-auto pt-4">
+                <a
+                  mat-flat-button
+                  data-testid="close-link"
+                  routerLink="/financeiro/lancamentos"
+                  [queryParams]="{ mes: month() }"
+                >
+                  Ir para os lançamentos do mês
+                </a>
+              </div>
+            }
+          </section>
+        </div>
+      }
+    }
+  }
+</section>
