@@ -58,6 +58,10 @@ namespace Urban.Operations.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("created_by");
 
+                    b.Property<bool>("NotifyByEmail")
+                        .HasColumnType("boolean")
+                        .HasColumnName("notify_by_email");
+
                     b.Property<string>("Scope")
                         .IsRequired()
                         .HasMaxLength(20)

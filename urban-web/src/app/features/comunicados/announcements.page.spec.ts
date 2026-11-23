@@ -39,6 +39,7 @@ const FIRST = announcement({
   createdAt: '2026-11-22T13:50:00Z',
   recipients: 40,
   readers: 12,
+  notifiedByEmail: true,
   version: '41',
 });
 const SECOND = announcement({
@@ -243,6 +244,15 @@ describe('AnnouncementsPage', () => {
       expect(testId(third, 'readers')!.querySelector('mat-icon')).toBeNull();
     });
 
+    it('mostra "Avisado por e-mail", com o ícone do envelope, só nos comunicados em que o e-mail foi pedido', async () => {
+      const { html } = await setup();
+
+      const [first, second] = rows(html);
+      expect(text(first, 'emailed')).toBe('Avisado por e-mail');
+      expect(testId(first, 'emailed')!.querySelector('mat-icon')).not.toBeNull();
+      expect(testId(second, 'emailed')).toBeNull();
+    });
+
     it('o texto vem num bloco que corta em 4 linhas e oferece "Ver mais" quando passa disso', async () => {
       jest.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(200);
       jest.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(96);
@@ -379,6 +389,7 @@ describe('AnnouncementsPage', () => {
         scope: 'block',
         block: 'A',
         unitId: null,
+        notifyByEmail: false,
       });
       post.flush(announcement());
       await flushPromises();

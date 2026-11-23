@@ -11,7 +11,7 @@ public class AnnouncementWriteHandlersTests
 {
     private readonly AnnouncementTestKit _kit = new();
 
-    private CreateAnnouncementCommandHandler CreateHandler() => new(_kit.Announcements, _kit.Directory, _kit.Tenant, _kit.Clock);
+    private CreateAnnouncementCommandHandler CreateHandler() => new(_kit.Announcements, _kit.Directory, _kit.Mail, _kit.Tenant, _kit.Clock);
 
     private UpdateAnnouncementCommandHandler UpdateHandler() => new(_kit.Announcements, _kit.Directory, _kit.Tenant, _kit.Clock);
 
@@ -23,8 +23,9 @@ public class AnnouncementWriteHandlersTests
         string? category = "maintenance",
         string? scope = "condominium",
         string? block = null,
-        Guid? unitId = null) =>
-        new(_kit.Manager, title, body, category, scope, block, unitId);
+        Guid? unitId = null,
+        bool notifyByEmail = false) =>
+        new(_kit.Manager, title, body, category, scope, block, unitId, notifyByEmail);
 
     private static UpdateAnnouncementCommand Update(
         Announcement announcement,
@@ -63,6 +64,61 @@ public class AnnouncementWriteHandlersTests
         result.Value.Version.Should().Be("1");
         _kit.Announcements.All.Should().ContainSingle().Which.CreatedBy.Should().Be(_kit.Manager);
         _kit.Announcements.All[0].CondominiumId.Should().Be(_kit.CondominiumId);
+    }
+
+    [Fact]
+    public async Task Create_WithoutAskingForEmail_StoresItWithoutEmailAndEnqueuesNothing()
+    {
+        Result<AnnouncementView> result = await CreateHandler().Handle(Create(), default);
+
+        result.Value.NotifiedByEmail.Should().BeFalse();
+        _kit.Announcements.All.Single().NotifyByEmail.Should().BeFalse();
+        _kit.Mail.FanOuts.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Create_AskingForEmail_RemembersItAndEnqueuesOneFanOutForTheCondominium()
+    {
+        Result<AnnouncementView> result = await CreateHandler().Handle(Create(category: "important", notifyByEmail: true), default);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.NotifiedByEmail.Should().BeTrue();
+        _kit.Announcements.All.Single().NotifyByEmail.Should().BeTrue();
+        _kit.Mail.FanOuts.Should().ContainSingle().Which.Should().Be((_kit.CondominiumId, result.Value.Id));
+        _kit.Mail.Deliveries.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Create_AskingForEmailWithAnInvalidText_EnqueuesNothing()
+    {
+        Result<AnnouncementView> result = await CreateHandler().Handle(Create(title: "", notifyByEmail: true), default);
+
+        result.IsFailure.Should().BeTrue();
+        _kit.Mail.FanOuts.Should().BeEmpty();
+        _kit.Announcements.All.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Create_AskingForEmailForABlockThatDoesNotExist_EnqueuesNothing()
+    {
+        _kit.NewUnit("Bloco A", "101");
+
+        Result<AnnouncementView> result = await CreateHandler().Handle(Create(scope: "block", block: "Bloco Z", notifyByEmail: true), default);
+
+        result.Error.Should().Be(AnnouncementErrors.BlockNotFound);
+        _kit.Mail.FanOuts.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Update_NeverAsksForEmailAgain_AndKeepsWhatWasAsked()
+    {
+        Announcement announcement = _kit.NewAnnouncementWithEmail();
+
+        Result<AnnouncementView> result = await UpdateHandler().Handle(Update(announcement, _kit.Announcements.VersionOf(announcement)), default);
+
+        result.Value.NotifiedByEmail.Should().BeTrue();
+        _kit.Mail.FanOuts.Should().BeEmpty();
+        _kit.Mail.Deliveries.Should().BeEmpty();
     }
 
     [Fact]
@@ -200,7 +256,7 @@ public class AnnouncementWriteHandlersTests
     [Fact]
     public async Task Create_WithoutACondominium_Fails()
     {
-        Result<AnnouncementView> result = await new CreateAnnouncementCommandHandler(_kit.Announcements, _kit.Directory, _kit.WithoutATenant().Tenant, _kit.Clock).Handle(Create(), default);
+        Result<AnnouncementView> result = await new CreateAnnouncementCommandHandler(_kit.Announcements, _kit.Directory, _kit.Mail, _kit.WithoutATenant().Tenant, _kit.Clock).Handle(Create(), default);
 
         result.Error.Should().Be(OperationsErrors.CondominiumNotFound);
         _kit.Announcements.All.Should().BeEmpty();

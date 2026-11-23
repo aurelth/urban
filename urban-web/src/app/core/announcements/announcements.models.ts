@@ -25,6 +25,8 @@ export interface Announcement {
   readonly updatedAt: string | null;
   readonly recipients: number;
   readonly readers: number;
+  /** O síndico pediu o e-mail ao publicar: o aviso foi mandado às contas de quem mora no alcance. */
+  readonly notifiedByEmail: boolean;
   readonly version: string;
 }
 
@@ -44,6 +46,8 @@ export interface AnnouncementPayload {
   readonly scope: AnnouncementScope;
   readonly block: string | null;
   readonly unitId: string | null;
+  /** Só ao publicar: pede também o e-mail a quem mora no alcance. Na edição não vai, porque o e-mail sai uma vez só. */
+  readonly notifyByEmail?: boolean;
 }
 
 /** Corpo de PUT /api/announcements/{id}: os mesmos campos, mais a versão lida. */

@@ -133,6 +133,15 @@
                   }
                   {{ readers(item) }}
                 </span>
+                @if (item.notifiedByEmail) {
+                  <span
+                    class="inline-flex items-center gap-1 rounded-full border border-outline-variant px-3 py-1 font-medium"
+                    data-testid="emailed"
+                  >
+                    <mat-icon svgIcon="mail" class="size-[18px]!" aria-hidden="true" />
+                    Avisado por e-mail
+                  </span>
+                }
               </p>
             </li>
           }

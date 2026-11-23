@@ -25,10 +25,11 @@ internal sealed class OperationsStoreKit(OperationsPostgresFixture postgres)
         Guid? author = null,
         DateTimeOffset? at = null,
         Guid? condominiumId = null,
-        AnnouncementCategory category = AnnouncementCategory.General)
+        AnnouncementCategory category = AnnouncementCategory.General,
+        bool notifyByEmail = false)
     {
         Announcement announcement = Announcement.Create(
-            condominiumId ?? CondominiumId, title, "Texto do aviso.", category, audience ?? AnnouncementAudience.WholeCondominium, author ?? Manager, at ?? Now).Value;
+            condominiumId ?? CondominiumId, title, "Texto do aviso.", category, audience ?? AnnouncementAudience.WholeCondominium, author ?? Manager, at ?? Now, notifyByEmail).Value;
         (await Announcements(condominiumId).AddAsync(announcement, default)).IsSuccess.Should().BeTrue();
 
         return announcement;

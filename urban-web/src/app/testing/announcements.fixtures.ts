@@ -24,6 +24,7 @@ export function announcement(overrides: Partial<Announcement> = {}): Announcemen
     updatedAt: null,
     recipients: 10,
     readers: 3,
+    notifiedByEmail: false,
     version: String(sequence),
     ...overrides,
   };

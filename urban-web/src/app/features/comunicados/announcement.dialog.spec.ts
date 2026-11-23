@@ -9,6 +9,7 @@ import {
   alertOf,
   choiceOf,
   choicesOf,
+  checkboxOf,
   chooseIn,
   configureDialogTest,
   dialogOf,
@@ -17,6 +18,7 @@ import {
   removeOverlays,
   submitButtonOf,
   submitDialog,
+  toggleIn,
   typeIn,
 } from '../../testing/dialog.harness';
 import { unit } from '../../testing/units.fixtures';
@@ -233,6 +235,7 @@ describe('openAnnouncementDialog', () => {
         scope: 'condominium',
         block: null,
         unitId: null,
+        notifyByEmail: false,
       });
     });
 
@@ -253,6 +256,7 @@ describe('openAnnouncementDialog', () => {
         scope: 'block',
         block: 'B',
         unitId: null,
+        notifyByEmail: false,
       });
     });
 
@@ -272,6 +276,91 @@ describe('openAnnouncementDialog', () => {
         scope: 'unit',
         block: null,
         unitId: SECOND.id,
+        notifyByEmail: false,
+      });
+    });
+
+    describe('aviso por e-mail', () => {
+      function emailBox(): HTMLInputElement {
+        return checkboxOf(TAG, 'notify-email');
+      }
+
+      async function publish(): Promise<void> {
+        typeIn(TAG, 'title', 'Aviso');
+        typeIn(TAG, 'body', 'Texto');
+        await submit();
+      }
+
+      it('oferece "Avisar também por e-mail", desmarcado na categoria geral', () => {
+        setup();
+
+        expect(dialogOf(TAG).querySelector('[data-testid="notify-email"]')?.textContent).toContain(
+          'Avisar também por e-mail',
+        );
+        expect(emailBox().checked).toBe(false);
+      });
+
+      it('já vem marcado quando a categoria é importante e desmarcado nas outras', () => {
+        setup();
+
+        chooseIn(TAG, 'category', 'important');
+        TestBed.tick();
+        expect(emailBox().checked).toBe(true);
+
+        chooseIn(TAG, 'category', 'maintenance');
+        TestBed.tick();
+        expect(emailBox().checked).toBe(false);
+      });
+
+      it('publica pedindo o e-mail quando o síndico marca a caixa', async () => {
+        const { save } = setup();
+
+        toggleIn(TAG, 'notify-email');
+        TestBed.tick();
+        await publish();
+
+        expect(save).toHaveBeenCalledWith(expect.objectContaining({ notifyByEmail: true }));
+      });
+
+      it('publica pedindo o e-mail quando a categoria é importante e ele não mexeu na caixa', async () => {
+        const { save } = setup();
+
+        chooseIn(TAG, 'category', 'important');
+        TestBed.tick();
+        await publish();
+
+        expect(save).toHaveBeenCalledWith(
+          expect.objectContaining({ category: 'important', notifyByEmail: true }),
+        );
+      });
+
+      it('respeita a escolha do síndico: desmarcou num importante, mudar a categoria não marca de novo', async () => {
+        const { save } = setup();
+
+        chooseIn(TAG, 'category', 'important');
+        TestBed.tick();
+        toggleIn(TAG, 'notify-email');
+        TestBed.tick();
+        chooseIn(TAG, 'category', 'general');
+        TestBed.tick();
+        chooseIn(TAG, 'category', 'important');
+        TestBed.tick();
+        expect(emailBox().checked).toBe(false);
+        await publish();
+
+        expect(save).toHaveBeenCalledWith(expect.objectContaining({ notifyByEmail: false }));
+      });
+
+      it('na edição não há o que marcar, porque o e-mail sai só ao publicar, e o corpo não leva o pedido', async () => {
+        const { save } = setup(announcement({ title: 'Antigo', notifiedByEmail: true }));
+
+        expect(dialogOf(TAG).querySelector('[data-testid="notify-email"]')).toBeNull();
+        typeIn(TAG, 'title', 'Novo');
+        TestBed.tick();
+        await submit();
+
+        expect(save).toHaveBeenCalledTimes(1);
+        expect(save.mock.calls[0][0]).not.toHaveProperty('notifyByEmail');
       });
     });
 

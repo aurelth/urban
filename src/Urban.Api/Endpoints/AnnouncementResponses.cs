@@ -2,6 +2,7 @@ namespace Urban.Api.Endpoints;
 
 /// <param name="Recipients">Quantas contas de quem mora hoje no alcance do comunicado (sem o síndico que o escreveu).</param>
 /// <param name="Readers">Quantas delas já marcaram como lido.</param>
+/// <param name="NotifiedByEmail">Se o síndico pediu o e-mail ao publicar.</param>
 public sealed record AnnouncementResponse(
     Guid Id,
     string Title,
@@ -14,6 +15,7 @@ public sealed record AnnouncementResponse(
     DateTimeOffset? UpdatedAt,
     int Recipients,
     int Readers,
+    bool NotifiedByEmail,
     string Version);
 
 public sealed record AnnouncementPageResponse(IReadOnlyList<AnnouncementResponse> Items, int Total, int Page, int PageSize);

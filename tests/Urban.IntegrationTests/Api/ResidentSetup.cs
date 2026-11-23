@@ -21,7 +21,11 @@ internal static class ResidentSetup
     }
 
     /// <summary>Cadastra o morador na unidade, convida, ele escolhe a senha pelo link do e-mail e entra: o token é o de quem mora de verdade.</summary>
-    public static async Task<string> TokenAsync(ApiFixture fixture, HttpClient client, ManagerSession manager, Guid unitId, string kind = "owner", string fullName = "Maria Souza")
+    public static async Task<string> TokenAsync(ApiFixture fixture, HttpClient client, ManagerSession manager, Guid unitId, string kind = "owner", string fullName = "Maria Souza") =>
+        (await AccountAsync(fixture, client, manager, unitId, kind, fullName)).Token;
+
+    /// <summary>Como <see cref="TokenAsync"/>, mas devolve também o e-mail de login do morador, para o teste ver o que chegou a ele.</summary>
+    public static async Task<(string Token, string Email)> AccountAsync(ApiFixture fixture, HttpClient client, ManagerSession manager, Guid unitId, string kind = "owner", string fullName = "Maria Souza")
     {
         string email = $"morador-{Guid.NewGuid():N}@exemplo.com";
         JsonObject body = new()
@@ -49,6 +53,6 @@ internal static class ResidentSetup
             new { token = link, password = ManagerSetup.Password, termsVersion = fixture.Factory.TermsVersion });
         confirmed.StatusCode.Should().Be(HttpStatusCode.NoContent, await confirmed.Content.ReadAsStringAsync());
 
-        return await (await client.LoginAsync(email, ManagerSetup.Password)).AccessTokenAsync();
+        return (await (await client.LoginAsync(email, ManagerSetup.Password)).AccessTokenAsync(), email);
     }
 }

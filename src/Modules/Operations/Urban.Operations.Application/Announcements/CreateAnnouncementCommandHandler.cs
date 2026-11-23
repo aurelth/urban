@@ -11,10 +11,12 @@ namespace Urban.Operations.Application.Announcements;
 /// <summary>
 /// Cria o comunicado. A categoria, o alcance e o texto são conferidos antes de qualquer consulta; só então o bloco ou a unidade escolhidos
 /// são conferidos com o condomínio (um bloco sem unidades ou uma unidade de outro condomínio não vira comunicado que ninguém recebe).
+/// Se o síndico pediu o e-mail, o envio é pedido ao segundo plano só depois que o comunicado foi guardado, uma vez.
 /// </summary>
 public sealed class CreateAnnouncementCommandHandler(
     IAnnouncements announcements,
     IAnnouncementAudience directory,
+    IAnnouncementMailDispatcher mail,
     ITenantContext tenant,
     IClock clock) : IRequestHandler<CreateAnnouncementCommand, Result<AnnouncementView>>
 {
@@ -40,7 +42,7 @@ public sealed class CreateAnnouncementCommandHandler(
         }
 
         DateTimeOffset now = clock.UtcNow;
-        Result<Announcement> announcement = Announcement.Create(condominiumId, request.Title, request.Body, category.Value, audience.Value, request.ActorUserId, now);
+        Result<Announcement> announcement = Announcement.Create(condominiumId, request.Title, request.Body, category.Value, audience.Value, request.ActorUserId, now, request.NotifyByEmail);
 
         if (announcement.IsFailure)
         {
@@ -59,6 +61,11 @@ public sealed class CreateAnnouncementCommandHandler(
         if (added.IsFailure)
         {
             return Result.Failure<AnnouncementView>(added.Error);
+        }
+
+        if (request.NotifyByEmail)
+        {
+            await mail.EnqueueFanOutAsync(condominiumId, announcement.Value.Id, cancellationToken);
         }
 
         IReadOnlyList<AnnouncementView> views = await AnnouncementRules.ViewsAsync(

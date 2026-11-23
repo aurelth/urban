@@ -14,6 +14,7 @@ export interface StubAnnouncement {
   updatedAt: string | null;
   recipients: number;
   readers: number;
+  notifiedByEmail: boolean;
   version: string;
 }
 
@@ -30,6 +31,7 @@ export function stubAnnouncement(overrides: Partial<StubAnnouncement> = {}): Stu
     updatedAt: null,
     recipients: 40,
     readers: 12,
+    notifiedByEmail: true,
     version: '31',
     ...overrides,
   };
@@ -47,6 +49,7 @@ export const SECOND_ANNOUNCEMENT = stubAnnouncement({
   updatedAt: '2026-11-21T15:30:00Z',
   recipients: 1,
   readers: 1,
+  notifiedByEmail: false,
   version: '32',
 });
 export const THIRD_ANNOUNCEMENT = stubAnnouncement({
@@ -57,6 +60,7 @@ export const THIRD_ANNOUNCEMENT = stubAnnouncement({
   unitId: SECOND_UNIT.id,
   recipients: 0,
   readers: 0,
+  notifiedByEmail: false,
   version: '33',
 });
 

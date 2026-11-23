@@ -9,11 +9,13 @@ import {
 import { toSignal } from '@angular/core/rxjs-interop';
 import {
   AbstractControl,
+  FormControl,
   NonNullableFormBuilder,
   ReactiveFormsModule,
   ValidationErrors,
 } from '@angular/forms';
 import { MatButton } from '@angular/material/button';
+import { MatCheckbox } from '@angular/material/checkbox';
 import {
   MAT_DIALOG_DATA,
   MatDialog,
@@ -82,6 +84,7 @@ function requiredWhenScope(scope: AnnouncementScope) {
   imports: [
     ReactiveFormsModule,
     MatButton,
+    MatCheckbox,
     MatDialogActions,
     MatDialogContent,
     MatDialogTitle,
@@ -114,6 +117,13 @@ export class AnnouncementDialog {
     unitId: [this.initial.unitId, requiredWhenScope('unit')],
     body: [this.initial.body, [requiredText, trimmedLength(1, ANNOUNCEMENT_BODY_MAX)]],
   });
+
+  /**
+   * "Avisar também por e-mail": só ao publicar. Segue a categoria (marcado no importante, desmarcado nos outros) até o
+   * síndico mexer nela; depois disso a escolha dele vale, mesmo que a categoria mude.
+   */
+  protected readonly notify = new FormControl(false, { nonNullable: true });
+  private emailChosen = false;
 
   protected readonly categoryOptions: readonly SelectOption[] = CATEGORY_OPTIONS;
   protected readonly blockOptions: readonly SelectOption[] = [
@@ -155,7 +165,15 @@ export class AnnouncementDialog {
   protected readonly unitErrors = { required: 'Escolha a unidade' };
 
   constructor() {
-    const { scope, block, unitId } = this.form.controls;
+    const { scope, block, unitId, category } = this.form.controls;
+    category.valueChanges.subscribe((value) => {
+      if (!this.emailChosen) {
+        this.notify.setValue(value === 'important', { emitEvent: false });
+      }
+    });
+    this.notify.valueChanges.subscribe(() => {
+      this.emailChosen = true;
+    });
     scope.valueChanges.subscribe(() => {
       block.updateValueAndValidity();
       unitId.updateValueAndValidity();
@@ -176,7 +194,9 @@ export class AnnouncementDialog {
 
     this.busy.set(true);
     this.error.set(null);
-    const message = await this.config.save(toPayload(this.form.getRawValue()));
+    const message = await this.config.save(
+      toPayload(this.form.getRawValue(), this.editing ? undefined : this.notify.value),
+    );
     this.busy.set(false);
 
     if (message === null) {
@@ -236,8 +256,8 @@ function sameValue(first: AnnouncementFormValue, second: AnnouncementFormValue):
   return JSON.stringify(significant(first)) === JSON.stringify(significant(second));
 }
 
-/** Só chega aqui com o formulário válido. */
-function toPayload(value: AnnouncementFormValue): AnnouncementPayload {
+/** Só chega aqui com o formulário válido. O pedido de e-mail só vai ao publicar: na edição fica de fora. */
+function toPayload(value: AnnouncementFormValue, notifyByEmail?: boolean): AnnouncementPayload {
   const { title, category, scope, block, unitId, body } = significant(value);
   return {
     title,
@@ -246,5 +266,6 @@ function toPayload(value: AnnouncementFormValue): AnnouncementPayload {
     scope,
     block: scope === 'block' ? block : null,
     unitId: scope === 'unit' ? unitId : null,
+    ...(notifyByEmail === undefined ? {} : { notifyByEmail }),
   };
 }

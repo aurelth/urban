@@ -171,6 +171,31 @@ public class AnnouncementTests
     }
 
     [Fact]
+    public void Create_DoesNotAskForEmailUnlessTheManagerDoes()
+    {
+        Create().Value.NotifyByEmail.Should().BeFalse();
+        Announcement.Create(CondominiumId, "Título", "Texto", AnnouncementCategory.General, AnnouncementAudience.WholeCondominium, Author, Now, notifyByEmail: false).Value.NotifyByEmail.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Create_RemembersThatTheManagerAskedForEmail()
+    {
+        Announcement announcement = Announcement.Create(CondominiumId, "Título", "Texto", AnnouncementCategory.Important, AnnouncementAudience.WholeCondominium, Author, Now, notifyByEmail: true).Value;
+
+        announcement.NotifyByEmail.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Edit_NeverChangesWhetherEmailWasAsked()
+    {
+        Announcement announcement = Announcement.Create(CondominiumId, "Título", "Texto", AnnouncementCategory.Important, AnnouncementAudience.WholeCondominium, Author, Now, notifyByEmail: true).Value;
+
+        announcement.Edit("Novo título", "Novo texto", AnnouncementCategory.General, AnnouncementAudience.WholeCondominium, Now.AddHours(1)).IsSuccess.Should().BeTrue();
+
+        announcement.NotifyByEmail.Should().BeTrue();
+    }
+
+    [Fact]
     public void Audience_ReflectsTheScopeBlockAndUnit()
     {
         Guid unit = Guid.CreateVersion7();

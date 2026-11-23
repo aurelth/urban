@@ -52,6 +52,17 @@
       </mat-form-field>
     </div>
 
+    @if (!editing) {
+      <div class="mb-3">
+        <mat-checkbox class="-ml-2" [formControl]="notify" data-testid="notify-email">
+          Avisar também por e-mail
+        </mat-checkbox>
+        <p class="m-0 text-sm text-on-surface-variant">
+          Quem mora no alcance escolhido recebe o comunicado no e-mail. O aviso continua no mural.
+        </p>
+      </div>
+    }
+
     @if (error(); as message) {
       <p role="alert" class="flex items-start gap-2 text-error">
         <mat-icon svgIcon="error" aria-hidden="true" />
