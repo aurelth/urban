@@ -8,6 +8,7 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Http.Connections;
 using Microsoft.AspNetCore.SignalR.Client;
 using Urban.Api.Hubs;
+using Urban.Operations.Infrastructure;
 
 namespace Urban.IntegrationTests.Api;
 
@@ -28,7 +29,7 @@ public sealed class AnnouncementHubTests(ApiFixture fixture) : IAsyncLifetime
 
     private readonly List<Listener> _listeners = [];
 
-    public Task InitializeAsync() => Task.CompletedTask;
+    public Task InitializeAsync() => fixture.Factory.Services.MigrateOperationsAsync();
 
     public async Task DisposeAsync()
     {
