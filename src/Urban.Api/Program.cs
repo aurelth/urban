@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Http;
 using Scalar.AspNetCore;
 using Urban.Api.Endpoints;
 using Urban.Api.Extensions;
+using Urban.Api.Hubs;
 using Urban.Api.Http;
 using Urban.BackgroundJobs;
 using Urban.EmailDelivery;
@@ -23,6 +24,7 @@ builder.Services.AddBackgroundJobs(builder.Configuration);
 builder.Services.AddUrbanAuthentication();
 builder.Services.AddUrbanForwardedHeaders(builder.Configuration);
 builder.Services.AddUrbanRateLimiting(builder.Configuration);
+builder.Services.AddUrbanRealtime();
 
 var app = builder.Build();
 
@@ -64,6 +66,7 @@ app.MapPaymentInstructionsEndpoints();
 app.MapPostalCodeEndpoints();
 app.MapPasswordResetEndpoints();
 app.MapAccountEndpoints();
+app.MapUrbanHubs();
 
 if (!app.Environment.IsProduction())
 {

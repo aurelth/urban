@@ -188,3 +188,26 @@ describe('userMenuFor', () => {
     expect(userMenuFor(who).map((item) => item.id)).toEqual(['account']);
   });
 });
+
+describe('bolinha dos avisos não lidos', () => {
+  const badged = (who: Who, livesHere = false): (string | undefined)[] =>
+    navGroupsFor(who, livesHere)
+      .flatMap((group) => group.items)
+      .filter((item) => item.badge === 'unread-announcements')
+      .map((item) => item.id);
+
+  it('fica no Painel do morador, porque o painel dele é o mural', () => {
+    expect(badged(RESIDENT_WITH_CONDOMINIUM)).toEqual(['dashboard']);
+  });
+
+  it('fica no Mural do síndico que mora no condomínio, não no Painel de gestão', () => {
+    expect(badged(MANAGER_WITH_CONDOMINIUM, true)).toEqual(['mural']);
+  });
+
+  it.each([
+    ['o síndico que não mora no condomínio', MANAGER_WITH_CONDOMINIUM, false],
+    ['o administrador', ADMIN, false],
+  ])('não aparece para %s', (_name, who, livesHere) => {
+    expect(badged(who, livesHere)).toEqual([]);
+  });
+});

@@ -46,6 +46,8 @@ interface MuralState {
   markingAll: boolean;
   notice: string | null;
   actionError: string | null;
+  /** O servidor avisou que o mural mudou e a lista na tela ainda é a de antes: `new` se há avisos novos, `changed` se só mudou o que havia. */
+  pending: 'new' | 'changed' | null;
 }
 
 const NOT_FOUND_STATUS = 404;
@@ -94,6 +96,7 @@ export const MuralStore = signalStore(
     markingAll: false,
     notice: null,
     actionError: null,
+    pending: null,
   }),
   withComputed((store) => ({
     hasMore: computed(() => store.page() * MURAL_PAGE_SIZE < store.total()),

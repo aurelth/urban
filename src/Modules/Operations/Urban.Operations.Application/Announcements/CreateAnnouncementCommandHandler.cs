@@ -18,10 +18,13 @@ public sealed class CreateAnnouncementCommandHandler(
     IAnnouncementAudience directory,
     IAnnouncementMailDispatcher mail,
     ITenantContext tenant,
-    IClock clock) : IRequestHandler<CreateAnnouncementCommand, Result<AnnouncementView>>
+    IClock clock,
+    AnnouncementLiveNotifier live) : IRequestHandler<CreateAnnouncementCommand, Result<AnnouncementView>>
 {
     public async Task<Result<AnnouncementView>> Handle(CreateAnnouncementCommand request, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(live);
+
         if (tenant.CondominiumId is not { } condominiumId)
         {
             return Result.Failure<AnnouncementView>(OperationsErrors.CondominiumNotFound);

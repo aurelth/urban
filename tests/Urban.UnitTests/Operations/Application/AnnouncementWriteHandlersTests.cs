@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Urban.Operations.Application.Abstractions;
 using Urban.Operations.Application.Announcements;
 using Urban.Operations.Domain;
 using Urban.Operations.Domain.Announcements;
@@ -11,11 +12,11 @@ public class AnnouncementWriteHandlersTests
 {
     private readonly AnnouncementTestKit _kit = new();
 
-    private CreateAnnouncementCommandHandler CreateHandler() => new(_kit.Announcements, _kit.Directory, _kit.Mail, _kit.Tenant, _kit.Clock);
+    private CreateAnnouncementCommandHandler CreateHandler() => new(_kit.Announcements, _kit.Directory, _kit.Mail, _kit.Tenant, _kit.Clock, _kit.Live);
 
-    private UpdateAnnouncementCommandHandler UpdateHandler() => new(_kit.Announcements, _kit.Directory, _kit.Tenant, _kit.Clock);
+    private UpdateAnnouncementCommandHandler UpdateHandler() => new(_kit.Announcements, _kit.Directory, _kit.Tenant, _kit.Clock, _kit.Live);
 
-    private DeleteAnnouncementCommandHandler DeleteHandler() => new(_kit.Announcements, _kit.Tenant);
+    private DeleteAnnouncementCommandHandler DeleteHandler() => new(_kit.Announcements, _kit.Tenant, _kit.Live);
 
     private CreateAnnouncementCommand Create(
         string? title = "Corte de água",
@@ -180,13 +181,13 @@ public class AnnouncementWriteHandlersTests
     }
 
     [Fact]
-    public async Task Create_CountsRecipientsWithOneQuery_AndWithTodayInBrasilia()
+    public async Task Create_AsksWhoLivesThereTwice_OnceForTheCountsAndOnceForTheLiveNotice_AndWithTodayInBrasilia()
     {
         _kit.Clock.Advance(TimeSpan.FromHours(13));
 
         await CreateHandler().Handle(Create(), default);
 
-        _kit.Directory.RecipientsCalls.Should().Be(1);
+        _kit.Directory.RecipientsCalls.Should().Be(2);
         _kit.Directory.LastToday.Should().Be(new DateOnly(2026, 11, 22));
     }
 
@@ -256,7 +257,7 @@ public class AnnouncementWriteHandlersTests
     [Fact]
     public async Task Create_WithoutACondominium_Fails()
     {
-        Result<AnnouncementView> result = await new CreateAnnouncementCommandHandler(_kit.Announcements, _kit.Directory, _kit.Mail, _kit.WithoutATenant().Tenant, _kit.Clock).Handle(Create(), default);
+        Result<AnnouncementView> result = await new CreateAnnouncementCommandHandler(_kit.Announcements, _kit.Directory, _kit.Mail, _kit.WithoutATenant().Tenant, _kit.Clock, _kit.Live).Handle(Create(), default);
 
         result.Error.Should().Be(OperationsErrors.CondominiumNotFound);
         _kit.Announcements.All.Should().BeEmpty();
@@ -386,7 +387,7 @@ public class AnnouncementWriteHandlersTests
     {
         Announcement announcement = _kit.NewAnnouncement();
 
-        Result<AnnouncementView> result = await new UpdateAnnouncementCommandHandler(_kit.Announcements, _kit.Directory, _kit.WithoutATenant().Tenant, _kit.Clock).Handle(Update(announcement, "1"), default);
+        Result<AnnouncementView> result = await new UpdateAnnouncementCommandHandler(_kit.Announcements, _kit.Directory, _kit.WithoutATenant().Tenant, _kit.Clock, _kit.Live).Handle(Update(announcement, "1"), default);
 
         result.Error.Should().Be(OperationsErrors.CondominiumNotFound);
     }
@@ -441,9 +442,117 @@ public class AnnouncementWriteHandlersTests
     {
         Announcement announcement = _kit.NewAnnouncement();
 
-        Result result = await new DeleteAnnouncementCommandHandler(_kit.Announcements, _kit.WithoutATenant().Tenant).Handle(new DeleteAnnouncementCommand(announcement.Id, "1"), default);
+        Result result = await new DeleteAnnouncementCommandHandler(_kit.Announcements, _kit.WithoutATenant().Tenant, _kit.Live).Handle(new DeleteAnnouncementCommand(announcement.Id, "1"), default);
 
         result.Error.Should().Be(OperationsErrors.CondominiumNotFound);
         _kit.Announcements.All.Should().ContainSingle();
+    }
+
+    // ---- Aviso em tempo real ----
+
+    [Fact]
+    public async Task Create_TellsTheResidentsOfTheAudienceInRealTime_ButNotTheManagerWhoWroteIt()
+    {
+        ResidentUnit a101 = _kit.NewUnit("Bloco A", "101");
+        ResidentUnit b201 = _kit.NewUnit("Bloco B", "201");
+        Guid ana = _kit.NewResident(a101);
+        _kit.NewResident(b201);
+        _kit.Directory.Live(_kit.Manager, a101);
+
+        Result<AnnouncementView> result = await CreateHandler().Handle(Create(scope: "block", block: "Bloco A"), default);
+
+        (AnnouncementChange change, IReadOnlySet<Guid> users) = _kit.Events.Sent.Should().ContainSingle().Subject;
+        change.Should().Be(new AnnouncementChange(AnnouncementChangeKind.Published, result.Value.Id));
+        users.Should().BeEquivalentTo([ana]);
+    }
+
+    [Fact]
+    public async Task Create_ThatFails_TellsNobody()
+    {
+        ResidentUnit a101 = _kit.NewUnit("Bloco A", "101");
+        _kit.NewResident(a101);
+
+        await CreateHandler().Handle(Create(title: ""), default);
+        await CreateHandler().Handle(Create(scope: "block", block: "Bloco que não existe"), default);
+
+        _kit.Events.Sent.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Create_StillSucceeds_WhenTheRealTimeNoticeFails()
+    {
+        ResidentUnit a101 = _kit.NewUnit("Bloco A", "101");
+        _kit.NewResident(a101);
+        _kit.Events.FailNext = new InvalidOperationException("hub fora do ar");
+
+        Result<AnnouncementView> result = await CreateHandler().Handle(Create(), default);
+
+        result.IsSuccess.Should().BeTrue();
+        _kit.Announcements.All.Should().ContainSingle();
+    }
+
+    [Fact]
+    public async Task Update_TellsTheResidentsOfBothTheOldAndTheNewAudience()
+    {
+        ResidentUnit a101 = _kit.NewUnit("Bloco A", "101");
+        ResidentUnit b201 = _kit.NewUnit("Bloco B", "201");
+        ResidentUnit c301 = _kit.NewUnit("Bloco C", "301");
+        Guid ana = _kit.NewResident(a101);
+        Guid caio = _kit.NewResident(b201);
+        _kit.NewResident(c301);
+        Announcement announcement = _kit.NewAnnouncement(AnnouncementTestKit.Block("Bloco A"));
+
+        await UpdateHandler().Handle(Update(announcement, "1", scope: "block", block: "Bloco B"), default);
+
+        (AnnouncementChange change, IReadOnlySet<Guid> users) = _kit.Events.Sent.Should().ContainSingle().Subject;
+        change.Should().Be(new AnnouncementChange(AnnouncementChangeKind.Updated, announcement.Id));
+        users.Should().BeEquivalentTo([ana, caio]);
+    }
+
+    [Fact]
+    public async Task Update_ThatFails_TellsNobody()
+    {
+        ResidentUnit a101 = _kit.NewUnit("Bloco A", "101");
+        _kit.NewResident(a101);
+        Announcement announcement = _kit.NewAnnouncement();
+
+        await UpdateHandler().Handle(Update(announcement, "9"), default);
+        await UpdateHandler().Handle(Update(announcement, "1", title: ""), default);
+        _kit.Announcements.FailNextWrite = OperationsErrors.ConcurrencyConflict;
+        await UpdateHandler().Handle(Update(announcement, "1"), default);
+
+        _kit.Events.Sent.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Delete_TellsTheResidentsOfTheAudienceThatItWasRemoved()
+    {
+        ResidentUnit a101 = _kit.NewUnit("Bloco A", "101");
+        ResidentUnit b201 = _kit.NewUnit("Bloco B", "201");
+        Guid ana = _kit.NewResident(a101);
+        _kit.NewResident(b201);
+        Announcement announcement = _kit.NewAnnouncement(AnnouncementTestKit.Block("Bloco A"));
+
+        Result result = await DeleteHandler().Handle(new DeleteAnnouncementCommand(announcement.Id, "1"), default);
+
+        result.IsSuccess.Should().BeTrue();
+        (AnnouncementChange change, IReadOnlySet<Guid> users) = _kit.Events.Sent.Should().ContainSingle().Subject;
+        change.Should().Be(new AnnouncementChange(AnnouncementChangeKind.Removed, announcement.Id));
+        users.Should().BeEquivalentTo([ana]);
+    }
+
+    [Fact]
+    public async Task Delete_ThatFails_TellsNobody()
+    {
+        ResidentUnit a101 = _kit.NewUnit("Bloco A", "101");
+        _kit.NewResident(a101);
+        Announcement announcement = _kit.NewAnnouncement();
+
+        await DeleteHandler().Handle(new DeleteAnnouncementCommand(announcement.Id, "9"), default);
+        await DeleteHandler().Handle(new DeleteAnnouncementCommand(Guid.CreateVersion7(), "1"), default);
+        _kit.Announcements.FailNextWrite = OperationsErrors.ConcurrencyConflict;
+        await DeleteHandler().Handle(new DeleteAnnouncementCommand(announcement.Id, "1"), default);
+
+        _kit.Events.Sent.Should().BeEmpty();
     }
 }

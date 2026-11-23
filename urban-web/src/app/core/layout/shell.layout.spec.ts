@@ -8,6 +8,7 @@ import { MANAGER, REGISTERED_MANAGER, signInAs } from '../../testing/auth.fixtur
 import { CurrentUser } from '../auth/auth.models';
 import { SessionStore } from '../auth/session.store';
 import { provideUrbanIcons } from '../theme/icons';
+import { MuralLive } from '../announcements/mural-live';
 import { ManagerHousingStore } from './manager-housing.store';
 import { ShellLayout } from './shell.layout';
 
@@ -802,6 +803,136 @@ describe('ShellLayout', () => {
 
         expect(drawer(html).classList.contains('mat-drawer-opened')).toBe(false);
       });
+    });
+  });
+  describe('bolinha dos avisos não lidos', () => {
+    const RESIDENT = { ...REGISTERED_MANAGER, role: 'Resident' as const };
+
+    function unread(count: number): void {
+      TestBed.inject(MuralLive).setUnread(count);
+      TestBed.tick();
+    }
+
+    /** O que se vê e o que o leitor de tela ouve. */
+    function said(badge: HTMLElement | null): [string, string] {
+      return [
+        text(badge?.querySelector('[aria-hidden="true"]')),
+        text(badge?.querySelector('.sr-only')),
+      ];
+    }
+
+    function badgeOf(html: HTMLElement, item: string): HTMLElement | null {
+      return (
+        byTestId(html, `nav-${item}`)?.querySelector<HTMLElement>('[data-testid="nav-badge"]') ??
+        null
+      );
+    }
+
+    it('mostra no Painel do morador, que é o mural dele, quantos avisos faltam ler', async () => {
+      const { fixture, html } = await setup(RESIDENT);
+
+      unread(3);
+      await fixture.whenStable();
+
+      expect(said(badgeOf(html, 'dashboard'))).toEqual(['3', '3 avisos não lidos']);
+      expect(badgeOf(html, 'my-invoice')).toBeNull();
+    });
+
+    it('fala no singular quando falta um só', async () => {
+      const { fixture, html } = await setup(RESIDENT);
+
+      unread(1);
+      await fixture.whenStable();
+
+      expect(said(badgeOf(html, 'dashboard'))).toEqual(['1', '1 aviso não lido']);
+    });
+
+    it('não mostra nada quando não falta ler nenhum', async () => {
+      const { fixture, html } = await setup(RESIDENT);
+
+      unread(0);
+      await fixture.whenStable();
+
+      expect(badgeOf(html, 'dashboard')).toBeNull();
+    });
+
+    it('limita o número a 99+, mas o leitor de tela ouve a conta inteira', async () => {
+      const { fixture, html } = await setup(RESIDENT);
+
+      unread(120);
+      await fixture.whenStable();
+
+      expect(said(badgeOf(html, 'dashboard'))).toEqual(['99+', '120 avisos não lidos']);
+    });
+
+    it('acompanha a contagem: some quando o morador lê tudo', async () => {
+      const { fixture, html } = await setup(RESIDENT);
+      unread(2);
+      await fixture.whenStable();
+      expect(badgeOf(html, 'dashboard')).not.toBeNull();
+
+      unread(0);
+      await fixture.whenStable();
+
+      expect(badgeOf(html, 'dashboard')).toBeNull();
+    });
+
+    it('mostra no Mural do síndico que mora no condomínio, e não no Painel de gestão dele', async () => {
+      const { fixture, http, html } = await setup(REGISTERED_MANAGER);
+      http.expectOne('/api/finance/me/access').flush({ access: 'unit' });
+      await fixture.whenStable();
+      TestBed.tick();
+
+      unread(2);
+      await fixture.whenStable();
+
+      expect(said(badgeOf(html, 'mural'))).toEqual(['2', '2 avisos não lidos']);
+      expect(badgeOf(html, 'dashboard')).toBeNull();
+    });
+
+    it('não mostra nada ao síndico que não mora no condomínio, que não recebe avisos', async () => {
+      const { fixture, http, html } = await setup(REGISTERED_MANAGER);
+      http.expectOne('/api/finance/me/access').flush({ access: 'none' });
+      await fixture.whenStable();
+
+      unread(2);
+      await fixture.whenStable();
+
+      expect(html.querySelector('[data-testid="nav-badge"]')).toBeNull();
+      expect(byTestId(html, 'menu-toggle-badge')).toBeNull();
+    });
+
+    it('avisa também no botão que abre o menu, que no celular esconde os itens', async () => {
+      const { fixture, html } = await setup(RESIDENT);
+
+      unread(4);
+      await fixture.whenStable();
+
+      expect(said(byTestId(html, 'menu-toggle-badge'))).toEqual(['4', '4 avisos não lidos']);
+    });
+
+    it('tira o aviso do botão quando o menu está aberto, porque a bolinha já aparece no item', async () => {
+      const { fixture, html } = await setup(RESIDENT);
+      unread(4);
+      await fixture.whenStable();
+
+      byTestId(html, 'menu-toggle')!.click();
+      await fixture.whenStable();
+      TestBed.tick();
+
+      expect(byTestId(html, 'menu-toggle-badge')).toBeNull();
+      expect(badgeOf(html, 'dashboard')).not.toBeNull();
+    });
+
+    it('não repete a bolinha no botão do computador, onde o menu já está à vista', async () => {
+      useDesktopScreen();
+      const { fixture, html } = await setup(RESIDENT);
+
+      unread(4);
+      await fixture.whenStable();
+
+      expect(byTestId(html, 'menu-toggle-badge')).toBeNull();
+      expect(badgeOf(html, 'dashboard')).not.toBeNull();
     });
   });
 });

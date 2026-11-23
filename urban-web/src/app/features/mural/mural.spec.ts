@@ -12,6 +12,7 @@ import { provideUrbanIcons } from '../../core/theme/icons';
 import { myAnnouncement, myAnnouncementPage } from '../../testing/announcements.fixtures';
 import { flushPromises } from '../../testing/async';
 import { problem } from '../../testing/auth.fixtures';
+import { fakeLive } from '../../testing/mural-live.fake';
 import { Mural } from './mural';
 
 const CLOCK = new Date('2026-11-22T15:00:00Z');
@@ -23,9 +24,11 @@ interface Harness {
   fixture: ComponentFixture<Mural>;
   http: HttpTestingController;
   html: HTMLElement;
+  live: ReturnType<typeof fakeLive>;
 }
 
 function setup(): Harness {
+  const live = fakeLive();
   TestBed.configureTestingModule({
     providers: [
       provideHttpClient(),
@@ -33,11 +36,17 @@ function setup(): Harness {
       provideUrbanIcons(),
       { provide: MATERIAL_ANIMATIONS, useValue: { animationsDisabled: true } },
       { provide: NOW, useValue: () => CLOCK },
+      live.provider,
     ],
   });
   const fixture = TestBed.createComponent(Mural);
   fixture.detectChanges();
-  return { fixture, http: TestBed.inject(HttpTestingController), html: fixture.nativeElement };
+  return {
+    fixture,
+    http: TestBed.inject(HttpTestingController),
+    html: fixture.nativeElement,
+    live,
+  };
 }
 
 async function settle(fixture: ComponentFixture<unknown>): Promise<void> {
@@ -440,6 +449,109 @@ describe('Mural', () => {
       expect(textOf(button)).toBe('Buscando');
       mine(harness.http).flush(myAnnouncementPage([], { total: 12, page: 2 }));
       await settle(harness.fixture);
+    });
+  });
+  describe('ao vivo', () => {
+    const FRESH = { general: 3, maintenance: 1, important: 1 };
+
+    it('não mostra a faixa enquanto nada mudou', async () => {
+      const { html } = await opened();
+
+      expect(byId(html, 'live-banner')).toBeNull();
+    });
+
+    it('avisa que há avisos novos, com o botão de atualizar, e põe os números novos nos filtros', async () => {
+      const harness = await opened();
+
+      harness.live.push({
+        kind: 'new',
+        resync: false,
+        counters: { unread: 5, unreadByCategory: FRESH },
+      });
+      await settle(harness.fixture);
+
+      const banner = byId(harness.html, 'live-banner')!;
+      expect(banner.getAttribute('role')).toBe('status');
+      expect(textOf(banner)).toContain('Há avisos novos');
+      expect(textOf(byId(banner, 'live-refresh'))).toBe('Atualizar');
+      expect(textOf(byId(harness.html, 'summary'))).toContain('Você tem 5 avisos novos');
+      expect(allById(harness.html, 'chip-badge').map(textOf)).toEqual(['5', '3', '1', '1']);
+    });
+
+    it('não mexe na lista enquanto a pessoa não pede', async () => {
+      const first = myAnnouncement({ title: 'Primeiro' });
+      const second = myAnnouncement({ title: 'Segundo' });
+      const harness = await opened([first, second]);
+
+      harness.live.push({
+        kind: 'new',
+        resync: false,
+        counters: { unread: 5, unreadByCategory: FRESH },
+      });
+      await settle(harness.fixture);
+
+      expect(
+        allById(harness.html, 'mural-card').map((card) => textOf(card.querySelector('h3'))),
+      ).toEqual(['Primeiro', 'Segundo']);
+    });
+
+    it('uma mudança em avisos que já existiam usa outro texto', async () => {
+      const harness = await opened();
+
+      harness.live.push({ kind: 'changed', resync: false, counters: null });
+      await settle(harness.fixture);
+
+      expect(textOf(byId(harness.html, 'live-banner'))).toContain('Os avisos foram atualizados');
+      expect(textOf(byId(harness.html, 'live-banner'))).not.toContain('Há avisos novos');
+    });
+
+    it('atualizar busca o mural de novo e tira a faixa', async () => {
+      const harness = await opened();
+      harness.live.push({
+        kind: 'new',
+        resync: false,
+        counters: { unread: 5, unreadByCategory: FRESH },
+      });
+      await settle(harness.fixture);
+
+      await click(harness, 'live-refresh');
+      expect(params(mine(harness.http))).toBe('page=1&pageSize=10');
+    });
+
+    it('depois da resposta a lista tem os avisos novos e a faixa some', async () => {
+      const harness = await opened();
+      harness.live.push({
+        kind: 'new',
+        resync: false,
+        counters: { unread: 5, unreadByCategory: FRESH },
+      });
+      await settle(harness.fixture);
+      const novo = myAnnouncement({ title: 'Aviso que acabou de chegar' });
+
+      await click(harness, 'live-refresh');
+      mine(harness.http).flush(myAnnouncementPage([novo], { unread: 5, unreadByCategory: FRESH }));
+      await settle(harness.fixture);
+
+      expect(byId(harness.html, 'live-banner')).toBeNull();
+      expect(textOf(byId(harness.html, 'mural-card'))).toContain('Aviso que acabou de chegar');
+    });
+
+    it('o botão de atualizar do cabeçalho também tira a faixa', async () => {
+      const harness = await opened();
+      harness.live.push({
+        kind: 'new',
+        resync: false,
+        counters: { unread: 5, unreadByCategory: FRESH },
+      });
+      await settle(harness.fixture);
+
+      await click(harness, 'refresh');
+      mine(harness.http).flush(
+        myAnnouncementPage([myAnnouncement()], { unread: 5, unreadByCategory: FRESH }),
+      );
+      await settle(harness.fixture);
+
+      expect(byId(harness.html, 'live-banner')).toBeNull();
     });
   });
 });

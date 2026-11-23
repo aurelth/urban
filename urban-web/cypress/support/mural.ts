@@ -101,7 +101,9 @@ function unreadCount(items: StubMuralItem[], category: StubCategory | null): num
  * A API do mural, com memória: marcar como lido muda a resposta seguinte, como na API de verdade. Filtros e página seguem
  * as regras dela (as contagens de não lidos ignoram os dois). O E2E do CI sobe só o front, sem API.
  */
-export function stubMural(source: StubMuralItem[] = MURAL_ITEMS): void {
+export function stubMural(source: StubMuralItem[] = MURAL_ITEMS): {
+  publish: (item: StubMuralItem) => void;
+} {
   const items = source.map((item) => ({ ...item }));
   const NOW_ISO = '2026-11-15T15:00:00Z';
 
@@ -152,6 +154,13 @@ export function stubMural(source: StubMuralItem[] = MURAL_ITEMS): void {
     }
     request.reply({ statusCode: 200, body: { marked: pending.length } });
   }).as('markAll');
+
+  return {
+    /** O síndico publicou: o aviso passa a aparecer no começo da lista, como o mais novo. */
+    publish: (item) => {
+      items.unshift({ ...item });
+    },
+  };
 }
 
 /** A primeira busca do mural falha e as seguintes dão certo (o handler que não responde deixa a vez para `stubMural`). */

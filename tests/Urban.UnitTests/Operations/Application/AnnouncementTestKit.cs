@@ -1,4 +1,6 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using Urban.Operations.Application.Abstractions;
+using Urban.Operations.Application.Announcements;
 using Urban.Operations.Domain;
 using Urban.Operations.Domain.Announcements;
 using Urban.SharedKernel;
@@ -30,6 +32,11 @@ internal sealed class AnnouncementTestKit
     public FakeAnnouncementAudience Directory { get; } = new();
 
     public FakeAnnouncementMailDispatcher Mail { get; } = new();
+
+    public FakeAnnouncementEvents Events { get; } = new();
+
+    /// <summary>O notificador de verdade, ligado ao condomínio e aos avisos de mentira.</summary>
+    public AnnouncementLiveNotifier Live => new(Directory, Events, Clock, NullLogger<AnnouncementLiveNotifier>.Instance);
 
     public AnnouncementTestKit()
     {
@@ -266,6 +273,9 @@ internal sealed class FakeAnnouncementAudience : IAnnouncementAudience
 
     public int Queries { get; private set; }
 
+    /// <summary>Faz a próxima consulta de moradores por alcance falhar, como um banco fora do ar.</summary>
+    public Exception? FailRecipients { get; set; }
+
     public ResidentUnit AddUnit(string? block, string number)
     {
         ResidentUnit unit = new(Guid.CreateVersion7(), block, number);
@@ -304,6 +314,11 @@ internal sealed class FakeAnnouncementAudience : IAnnouncementAudience
         RecipientsCalls++;
         LastToday = today;
 
+        if (FailRecipients is not null)
+        {
+            throw FailRecipients;
+        }
+
         return Task.FromResult<IReadOnlyList<IReadOnlySet<Guid>>>([.. targets.Select(target => (IReadOnlySet<Guid>)ResidentsOf(target).ToHashSet())]);
     }
 
@@ -331,6 +346,30 @@ internal sealed class FakeAnnouncementMailDispatcher : IAnnouncementMailDispatch
     public Task EnqueueDeliveryAsync(Guid condominiumId, Guid announcementId, Guid userId, CancellationToken cancellationToken)
     {
         Deliveries.Add((condominiumId, announcementId, userId));
+
+        return Task.CompletedTask;
+    }
+}
+
+/// <summary>Guarda os avisos em tempo real em vez de mandá-los, para o teste ver quem seria avisado.</summary>
+internal sealed class FakeAnnouncementEvents : IAnnouncementEvents
+{
+    public List<(AnnouncementChange Change, IReadOnlySet<Guid> Users)> Sent { get; } = [];
+
+    /// <summary>Faz o próximo envio falhar, como um servidor de tempo real fora do ar.</summary>
+    public Exception? FailNext { get; set; }
+
+    public Task SendAsync(AnnouncementChange change, IReadOnlyCollection<Guid> userIds, CancellationToken cancellationToken)
+    {
+        if (FailNext is not null)
+        {
+            Exception failure = FailNext;
+            FailNext = null;
+
+            throw failure;
+        }
+
+        Sent.Add((change, userIds.ToHashSet()));
 
         return Task.CompletedTask;
     }

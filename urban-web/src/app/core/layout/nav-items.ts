@@ -10,6 +10,8 @@ export interface NavItem {
   /** Nome do ícone Material Symbols (precisa estar no glob de assets do angular.json). */
   readonly icon: string;
   readonly path: string;
+  /** Marca o item que leva a bolinha com os avisos não lidos do mural. */
+  readonly badge?: 'unread-announcements';
 }
 
 export interface NavGroup {
