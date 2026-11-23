@@ -27,6 +27,7 @@ internal sealed class AnnouncementConfiguration : IEntityTypeConfiguration<Annou
         builder.Property(announcement => announcement.CreatedBy).IsRequired();
         builder.Property(announcement => announcement.CreatedAt);
         builder.Property(announcement => announcement.UpdatedAt);
+        builder.Property(announcement => announcement.NotifyByEmail);
         builder.Ignore(announcement => announcement.Audience);
 
         builder.HasIndex(announcement => new { announcement.CondominiumId, announcement.CreatedAt });

@@ -6,6 +6,35 @@ namespace Urban.Operations.Application.Announcements;
 /// <summary>O e-mail de um comunicado: o assunto diz o grau quando importa e o texto traz o comunicado inteiro e o caminho do mural.</summary>
 internal static class AnnouncementEmail
 {
-    public static EmailMessage Build(Announcement announcement, string to, Uri mural) =>
-        throw new NotImplementedException($"Não implementado: {announcement.Id} {to} {mural}");
+    public static EmailMessage Build(Announcement announcement, string to, Uri mural)
+    {
+        string subject = SubjectOf(announcement);
+        string text = string.Join(
+            '\n',
+            $"O síndico publicou um comunicado {AudienceOf(announcement)} no Urban.",
+            string.Empty,
+            subject,
+            string.Empty,
+            announcement.Body,
+            string.Empty,
+            "Veja também no mural:",
+            mural.AbsoluteUri);
+
+        return new EmailMessage(to, subject, text);
+    }
+
+    /// <summary>"Importante: título", "Manutenção: título" ou só o título, no comunicado geral.</summary>
+    private static string SubjectOf(Announcement announcement) => announcement.Category switch
+    {
+        AnnouncementCategory.Important => $"Importante: {announcement.Title}",
+        AnnouncementCategory.Maintenance => $"Manutenção: {announcement.Title}",
+        _ => announcement.Title,
+    };
+
+    private static string AudienceOf(Announcement announcement) => announcement.Scope switch
+    {
+        AnnouncementScope.Block => $"para o bloco {announcement.Block}",
+        AnnouncementScope.Unit => "para a sua unidade",
+        _ => "para todo o condomínio",
+    };
 }

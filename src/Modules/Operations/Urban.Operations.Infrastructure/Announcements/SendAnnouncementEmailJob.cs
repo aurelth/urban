@@ -12,6 +12,9 @@ namespace Urban.Operations.Infrastructure.Announcements;
 public sealed class SendAnnouncementEmailJob(ITenantScope tenant, ISender sender)
 {
     [AutomaticRetry(Attempts = 5, DelaysInSeconds = [60, 300, 900, 3600, 10800], OnAttemptsExceeded = AttemptsExceededAction.Fail)]
-    public Task RunAsync(Guid condominiumId, Guid announcementId, Guid userId, CancellationToken cancellationToken) =>
-        throw new NotImplementedException($"Não implementado: {tenant.GetType().Name} {sender.GetType().Name} {condominiumId} {announcementId} {userId} {cancellationToken}");
+    public async Task RunAsync(Guid condominiumId, Guid announcementId, Guid userId, CancellationToken cancellationToken)
+    {
+        tenant.Enter(condominiumId);
+        await sender.Send(new SendAnnouncementEmailCommand(announcementId, userId), cancellationToken);
+    }
 }

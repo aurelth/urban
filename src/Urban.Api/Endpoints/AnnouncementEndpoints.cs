@@ -34,7 +34,7 @@ public static class AnnouncementEndpoints
         announcements.MapPost("/", CreateAsync)
             .WithName("CreateAnnouncement")
             .WithSummary("Cria um comunicado")
-            .WithDescription("Só o síndico. " + AudienceText + " Devolve 201 com o comunicado. " + RateLimitText)
+            .WithDescription("Só o síndico. " + AudienceText + " Com `notifyByEmail: true`, quem mora no alcance também recebe o comunicado no e-mail, uma vez, ao publicar (sem o campo, não há e-mail; editar nunca reenvia). Devolve 201 com o comunicado. " + RateLimitText)
             .Produces<AnnouncementResponse>(StatusCodes.Status201Created)
             .WithErrors(StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound, StatusCodes.Status422UnprocessableEntity);
 
@@ -102,7 +102,7 @@ public static class AnnouncementEndpoints
         }
 
         Result<AnnouncementView> result = await sender.Send(
-            new CreateAnnouncementCommand(userId, request.Title, request.Body, request.Category, request.Scope, request.Block, request.UnitId), cancellationToken);
+            new CreateAnnouncementCommand(userId, request.Title, request.Body, request.Category, request.Scope, request.Block, request.UnitId, request.NotifyByEmail == true), cancellationToken);
 
         return ApiResults.Created(result, response, view => $"{AnnouncementRoutes.Prefix}/{view.Id}", AnnouncementMapper.ToResponse);
     }

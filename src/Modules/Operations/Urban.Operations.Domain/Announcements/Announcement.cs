@@ -18,7 +18,8 @@ public sealed class Announcement
         AnnouncementCategory category,
         AnnouncementAudience audience,
         Guid createdBy,
-        DateTimeOffset createdAt)
+        DateTimeOffset createdAt,
+        bool notifyByEmail)
     {
         Id = Guid.CreateVersion7();
         CondominiumId = condominiumId;
@@ -30,6 +31,7 @@ public sealed class Announcement
         UnitId = audience.UnitId;
         CreatedBy = createdBy;
         CreatedAt = createdAt;
+        NotifyByEmail = notifyByEmail;
     }
 
     // Usado só pelo EF Core ao ler do banco.
@@ -64,7 +66,7 @@ public sealed class Announcement
     public DateTimeOffset? UpdatedAt { get; private set; }
 
     /// <summary>Se o síndico pediu o e-mail ao publicar. Vale só para a publicação: editar não reenvia nem muda isto.</summary>
-    public bool NotifyByEmail => false;
+    public bool NotifyByEmail { get; private set; }
 
     public AnnouncementAudience Audience => AnnouncementAudience.From(Scope, Block, UnitId);
 
@@ -92,7 +94,7 @@ public sealed class Announcement
 
         return text.IsFailure
             ? Result.Failure<Announcement>(text.Error)
-            : Result.Success(new Announcement(condominiumId, text.Value.Title, text.Value.Body, category, audience, createdBy, now));
+            : Result.Success(new Announcement(condominiumId, text.Value.Title, text.Value.Body, category, audience, createdBy, now, notifyByEmail));
     }
 
     /// <summary>Troca tudo o que o síndico pode mudar. Quem já leu continua tendo lido.</summary>
