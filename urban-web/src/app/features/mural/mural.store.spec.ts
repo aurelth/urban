@@ -6,6 +6,7 @@ import {
 } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { MyAnnouncement } from '../../core/announcements/announcements.models';
+import { MuralUpdate } from '../../core/announcements/mural-live';
 import { NOW } from '../../core/finance/clock';
 import {
   myAnnouncement,
@@ -14,6 +15,7 @@ import {
 } from '../../testing/announcements.fixtures';
 import { flushPromises } from '../../testing/async';
 import { problem } from '../../testing/auth.fixtures';
+import { fakeLive } from '../../testing/mural-live.fake';
 import { MuralStore } from './mural.store';
 
 const CLOCK = new Date('2026-11-22T15:00:00Z');
@@ -22,16 +24,21 @@ const READ_ALL = '/api/announcements/read-all';
 
 type Store = InstanceType<typeof MuralStore>;
 
-function setup(): { store: Store; http: HttpTestingController } {
+function setup(live = fakeLive()): {
+  store: Store;
+  http: HttpTestingController;
+  live: ReturnType<typeof fakeLive>;
+} {
   TestBed.configureTestingModule({
     providers: [
       provideHttpClient(),
       provideHttpClientTesting(),
       { provide: NOW, useValue: () => CLOCK },
+      live.provider,
       MuralStore,
     ],
   });
-  return { store: TestBed.inject(MuralStore), http: TestBed.inject(HttpTestingController) };
+  return { store: TestBed.inject(MuralStore), http: TestBed.inject(HttpTestingController), live };
 }
 
 function params(request: TestRequest): string {
@@ -552,6 +559,238 @@ describe('MuralStore', () => {
       store.dismissNotice();
 
       expect(store.notice()).toBeNull();
+    });
+  });
+});
+
+const FRESH = { general: 3, maintenance: 1, important: 1 };
+
+function update(overrides: Partial<MuralUpdate> = {}): MuralUpdate {
+  return {
+    kind: 'new',
+    resync: false,
+    counters: { unread: 5, unreadByCategory: FRESH },
+    ...overrides,
+  };
+}
+
+describe('MuralStore ao vivo', () => {
+  afterEach(() => TestBed.inject(HttpTestingController).verify());
+
+  it('começa sem nada pendente', () => {
+    const { store } = setup();
+
+    expect(store.pending()).toBeNull();
+  });
+
+  describe('aviso novo do servidor', () => {
+    it('mostra que há avisos novos e atualiza as contagens e os filtros sem mexer na lista', async () => {
+      const { store, http, live } = setup();
+      const items = [myAnnouncement(), myAnnouncement()];
+      await loaded(store, http, items);
+
+      live.push(update());
+
+      expect(store.pending()).toBe('new');
+      expect(store.unread()).toBe(5);
+      expect(store.unreadByCategory()).toEqual(FRESH);
+      expect(store.chips().map((chip) => chip.unread)).toEqual([5, 3, 1, 1]);
+      expect(store.items()).toEqual(items);
+      expect(store.total()).toBe(2);
+    });
+
+    it('uma mudança em avisos que já existiam pede para atualizar, com outro texto', async () => {
+      const { store, http, live } = setup();
+      await loaded(store, http);
+
+      live.push(update({ kind: 'changed' }));
+
+      expect(store.pending()).toBe('changed');
+    });
+
+    it('o aviso novo não é desfeito por uma mudança que chega depois', async () => {
+      const { store, http, live } = setup();
+      await loaded(store, http);
+
+      live.push(update({ kind: 'new' }));
+      live.push(update({ kind: 'changed' }));
+
+      expect(store.pending()).toBe('new');
+    });
+
+    it('uma mudança que vira aviso novo promove o pedido', async () => {
+      const { store, http, live } = setup();
+      await loaded(store, http);
+
+      live.push(update({ kind: 'changed' }));
+      live.push(update({ kind: 'new' }));
+
+      expect(store.pending()).toBe('new');
+    });
+
+    it('sem contagens novas só mostra o pedido, e os números ficam como estavam', async () => {
+      const { store, http, live } = setup();
+      await loaded(store, http);
+
+      live.push(update({ counters: null }));
+
+      expect(store.pending()).toBe('new');
+      expect(store.unread()).toBe(4);
+      expect(store.unreadByCategory()).toEqual(UNREAD);
+    });
+
+    it('com o mural ainda carregando não faz nada: a busca em andamento já traz o que há', () => {
+      const { store, live } = setup();
+
+      live.push(update());
+
+      expect(store.pending()).toBeNull();
+      expect(store.unread()).toBe(0);
+    });
+
+    it('com o mural em erro também não faz nada', async () => {
+      const { store, http, live } = setup();
+      const loading = store.load();
+      mineRequest(http).flush('erro', { status: 500, statusText: 'Erro' });
+      await loading;
+
+      live.push(update());
+
+      expect(store.status()).toBe('error');
+      expect(store.pending()).toBeNull();
+    });
+  });
+
+  describe('reconexão', () => {
+    it('se as contagens são as mesmas, nada mudou e a faixa não aparece', async () => {
+      const { store, http, live } = setup();
+      await loaded(store, http);
+
+      live.push(
+        update({
+          kind: 'changed',
+          resync: true,
+          counters: { unread: 4, unreadByCategory: UNREAD },
+        }),
+      );
+
+      expect(store.pending()).toBeNull();
+    });
+
+    it('se as contagens mudaram, algo aconteceu no meio e a faixa aparece', async () => {
+      const { store, http, live } = setup();
+      await loaded(store, http);
+
+      live.push(update({ kind: 'changed', resync: true }));
+
+      expect(store.pending()).toBe('changed');
+      expect(store.unread()).toBe(5);
+    });
+
+    it('sem contagens para comparar, avisa por precaução', async () => {
+      const { store, http, live } = setup();
+      await loaded(store, http);
+
+      live.push(update({ kind: 'changed', resync: true, counters: null }));
+
+      expect(store.pending()).toBe('changed');
+    });
+  });
+
+  describe('atualizar', () => {
+    it('depois da busca o pedido some e a lista tem o que veio', async () => {
+      const { store, http, live } = setup();
+      await loaded(store, http);
+      live.push(update());
+      const fresh = [myAnnouncement(), myAnnouncement(), myAnnouncement()];
+
+      const refreshing = store.refresh();
+      mineRequest(http).flush(myAnnouncementPage(fresh, { unread: 5, unreadByCategory: FRESH }));
+      await refreshing;
+
+      expect(store.pending()).toBeNull();
+      expect(store.items()).toEqual(fresh);
+    });
+
+    it('trocar o filtro também apaga o pedido, porque a lista foi buscada de novo', async () => {
+      const { store, http, live } = setup();
+      await loaded(store, http);
+      live.push(update());
+
+      const changing = store.setCategory('important');
+      mineRequest(http).flush(
+        myAnnouncementPage([myAnnouncement()], { unread: 5, unreadByCategory: FRESH }),
+      );
+      await changing;
+
+      expect(store.pending()).toBeNull();
+    });
+
+    it('tentar de novo depois de um erro apaga o pedido', async () => {
+      const { store, http, live } = setup();
+      await loaded(store, http);
+      live.push(update());
+
+      const loading = store.load();
+      mineRequest(http).flush(myAnnouncementPage([myAnnouncement()]));
+      await loading;
+
+      expect(store.pending()).toBeNull();
+    });
+
+    it('um aviso que chega durante a busca vale: o pedido volta', async () => {
+      const { store, http, live } = setup();
+      await loaded(store, http);
+
+      const refreshing = store.refresh();
+      live.push(update());
+      mineRequest(http).flush(myAnnouncementPage([myAnnouncement()]));
+      await refreshing;
+
+      expect(store.pending()).toBe('new');
+    });
+  });
+
+  describe('a contagem do menu', () => {
+    it('recebe a contagem do mural assim que ele fica pronto', async () => {
+      const { store, http, live } = setup();
+
+      await loaded(store, http);
+      TestBed.tick();
+
+      expect(live.setUnread).toHaveBeenLastCalledWith(4);
+    });
+
+    it('não recebe nada enquanto o mural ainda carrega, para não zerar a bolinha', () => {
+      const { live } = setup();
+      TestBed.tick();
+
+      expect(live.setUnread).not.toHaveBeenCalled();
+    });
+
+    it('acompanha o aviso lido', async () => {
+      const { store, http, live } = setup();
+      const items = [myAnnouncement(), myAnnouncement()];
+      await loaded(store, http, items);
+      TestBed.tick();
+
+      const marking = store.markRead(items[0]);
+      http.expectOne((request) => request.url.endsWith('/read')).flush(null);
+      await marking;
+      TestBed.tick();
+
+      expect(live.setUnread).toHaveBeenLastCalledWith(3);
+    });
+
+    it('acompanha as contagens que chegam do servidor', async () => {
+      const { store, http, live } = setup();
+      await loaded(store, http);
+      TestBed.tick();
+
+      live.push(update());
+      TestBed.tick();
+
+      expect(live.setUnread).toHaveBeenLastCalledWith(5);
     });
   });
 });

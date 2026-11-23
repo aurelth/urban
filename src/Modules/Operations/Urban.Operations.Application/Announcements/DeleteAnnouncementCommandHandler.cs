@@ -7,8 +7,8 @@ using Urban.SharedKernel.Abstractions;
 
 namespace Urban.Operations.Application.Announcements;
 
-/// <summary>Apaga o comunicado e as leituras dele. A versão lida na listagem precisa vir junto.</summary>
-public sealed class DeleteAnnouncementCommandHandler(IAnnouncements announcements, ITenantContext tenant) : IRequestHandler<DeleteAnnouncementCommand, Result>
+/// <summary>Apaga o comunicado e as leituras dele, e avisa em tempo real quem morava no alcance. A versão lida na listagem precisa vir junto.</summary>
+public sealed class DeleteAnnouncementCommandHandler(IAnnouncements announcements, ITenantContext tenant, AnnouncementLiveNotifier live) : IRequestHandler<DeleteAnnouncementCommand, Result>
 {
     public async Task<Result> Handle(DeleteAnnouncementCommand request, CancellationToken cancellationToken)
     {
@@ -29,8 +29,18 @@ public sealed class DeleteAnnouncementCommandHandler(IAnnouncements announcement
             return Result.Failure(AnnouncementErrors.NotFound);
         }
 
-        return request.Version == record.Version
-            ? await announcements.DeleteAsync(record, cancellationToken)
-            : Result.Failure(OperationsErrors.ConcurrencyConflict);
+        if (request.Version != record.Version)
+        {
+            return Result.Failure(OperationsErrors.ConcurrencyConflict);
+        }
+
+        Result deleted = await announcements.DeleteAsync(record, cancellationToken);
+
+        if (deleted.IsSuccess)
+        {
+            await live.NotifyAsync(AnnouncementChangeKind.Removed, record.Announcement.Id, record.Announcement.CreatedBy, [record.Announcement.Audience], cancellationToken);
+        }
+
+        return deleted;
     }
 }

@@ -10,6 +10,8 @@ export interface NavItem {
   /** Nome do ícone Material Symbols (precisa estar no glob de assets do angular.json). */
   readonly icon: string;
   readonly path: string;
+  /** Marca o item que leva a bolinha com os avisos não lidos do mural. */
+  readonly badge?: 'unread-announcements';
 }
 
 export interface NavGroup {
@@ -38,10 +40,14 @@ const MURAL: NavItem = {
   label: 'Mural',
   icon: 'newspaper',
   path: '/mural',
+  badge: 'unread-announcements',
 };
 
+/** O Painel do morador é o mural dele, então é nele que fica a bolinha dos avisos não lidos. */
+const RESIDENT_DASHBOARD: NavItem = { ...DASHBOARD, badge: 'unread-announcements' };
+
 const RESIDENT_GROUPS: readonly NavGroup[] = [
-  { id: 'main', label: null, items: [DASHBOARD, MY_INVOICE] },
+  { id: 'main', label: null, items: [RESIDENT_DASHBOARD, MY_INVOICE] },
 ];
 
 const MANAGER_GROUPS: readonly NavGroup[] = [

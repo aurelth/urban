@@ -1,5 +1,12 @@
-import { computed, inject } from '@angular/core';
-import { patchState, signalStore, withComputed, withMethods, withState } from '@ngrx/signals';
+import { DestroyRef, computed, effect, inject } from '@angular/core';
+import {
+  patchState,
+  signalStore,
+  withComputed,
+  withHooks,
+  withMethods,
+  withState,
+} from '@ngrx/signals';
 import { firstValueFrom } from 'rxjs';
 import { AnnouncementsApi } from '../../core/announcements/announcements.api';
 import {
@@ -10,6 +17,7 @@ import {
   MyAnnouncementsQuery,
   UnreadByCategory,
 } from '../../core/announcements/announcements.models';
+import { MuralLive, MuralUpdate } from '../../core/announcements/mural-live';
 import { NOW } from '../../core/finance/clock';
 import { toApiProblem } from '../../core/http/api-problem';
 import { CATEGORY_OPTIONS } from '../comunicados/announcement-values';
@@ -46,6 +54,8 @@ interface MuralState {
   markingAll: boolean;
   notice: string | null;
   actionError: string | null;
+  /** O servidor avisou que o mural mudou e a lista na tela ainda é a de antes: `new` se há avisos novos, `changed` se só mudou o que havia. */
+  pending: 'new' | 'changed' | null;
 }
 
 const NOT_FOUND_STATUS = 404;
@@ -77,6 +87,50 @@ function counters(
   return { total: result.total, unread: result.unread, unreadByCategory: result.unreadByCategory };
 }
 
+type Pending = MuralState['pending'];
+
+/** Avisos novos pesam mais que mudanças: quem já sabe que há aviso novo não volta a "só mudou". */
+function strongest(current: Pending, incoming: 'new' | 'changed'): 'new' | 'changed' {
+  return current === 'new' || incoming === 'new' ? 'new' : 'changed';
+}
+
+/**
+ * O servidor avisou que o mural mudou. A lista na tela não se mexe (quem está lendo não perde o lugar): as contagens dos filtros
+ * e do resumo andam na hora e a faixa pede para atualizar. Com o mural ainda carregando, ou em erro, não há o que avisar: a
+ * busca que vier já traz o que há.
+ */
+function applyLiveUpdate(
+  store: {
+    status(): MuralStatus;
+    unread(): number;
+    unreadByCategory(): UnreadByCategory;
+    pending(): Pending;
+  } & Parameters<typeof patchState>[0],
+  update: MuralUpdate,
+): void {
+  if (store.status() !== 'ready') {
+    return;
+  }
+  const { counters } = update;
+  // Uma reconexão sem nada diferente nas contagens não é novidade: a faixa só aparece se algo mudou no meio.
+  const nothingChanged =
+    update.resync &&
+    counters !== null &&
+    counters.unread === store.unread() &&
+    (Object.keys(counters.unreadByCategory) as AnnouncementCategory[]).every(
+      (category) => counters.unreadByCategory[category] === store.unreadByCategory()[category],
+    );
+  if (nothingChanged) {
+    return;
+  }
+  patchState(store, {
+    pending: strongest(store.pending(), update.kind),
+    ...(counters === null
+      ? {}
+      : { unread: counters.unread, unreadByCategory: counters.unreadByCategory }),
+  });
+}
+
 /** Estado do mural do morador. Fornecido no componente, então cada visita começa do zero. */
 export const MuralStore = signalStore(
   withState<MuralState>({
@@ -94,6 +148,7 @@ export const MuralStore = signalStore(
     markingAll: false,
     notice: null,
     actionError: null,
+    pending: null,
   }),
   withComputed((store) => ({
     hasMore: computed(() => store.page() * MURAL_PAGE_SIZE < store.total()),
@@ -132,8 +187,10 @@ export const MuralStore = signalStore(
     const fetchFirst = async (showLoading: boolean): Promise<void> => {
       latest += 1;
       const mine = latest;
+      // A busca traz o que há: o pedido de atualizar vale de novo só se outro aviso chegar durante ela.
       patchState(store, showLoading ? { status: 'loading' as const } : { refreshing: true }, {
         loadingMore: false,
+        pending: null,
       });
       try {
         const result = await firstValueFrom(api.listMine(query(1)));
@@ -270,4 +327,21 @@ export const MuralStore = signalStore(
       },
     };
   }),
+  withHooks((store) => ({
+    onInit: (): void => {
+      const live = inject(MuralLive);
+      const subscription = live.updates.subscribe((update) => {
+        applyLiveUpdate(store, update);
+      });
+      inject(DestroyRef).onDestroy(() => {
+        subscription.unsubscribe();
+      });
+      // A bolinha do menu segue o mural, mas só depois de ele ter lido a contagem: antes disso ela zeraria a que o serviço já tinha.
+      effect(() => {
+        if (store.status() === 'ready') {
+          live.setUnread(store.unread());
+        }
+      });
+    },
+  })),
 );

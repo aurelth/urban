@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Urban.Operations.Application.Abstractions;
+using Urban.Operations.Application.Announcements;
 using Urban.Operations.Infrastructure.Announcements;
 using Urban.Operations.Infrastructure.Persistence;
 using Urban.SharedKernel.Abstractions;
@@ -25,6 +26,7 @@ public static class OperationsInfrastructureExtensions
         services.AddDbContext<OperationsDbContext>(options => OperationsPersistence.Configure(options, postgres));
         services.AddScoped<IAnnouncements, OperationsAnnouncements>();
         services.AddScoped<IAnnouncementMailDispatcher, HangfireAnnouncementMailDispatcher>();
+        services.AddScoped<AnnouncementLiveNotifier>();
         services.AddScoped<FanOutAnnouncementEmailsJob>();
         services.AddScoped<SendAnnouncementEmailJob>();
         services.AddSingleton<IAnnouncementLinks>(new AnnouncementLinks(configuration["Links:WebBaseUrl"]));

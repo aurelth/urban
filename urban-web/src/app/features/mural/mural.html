@@ -61,6 +61,29 @@
     </div>
   }
   @case ('ready') {
+    @if (store.pending(); as pending) {
+      <div
+        role="status"
+        class="mb-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-xl border border-primary bg-surface-container px-4 py-3"
+        data-testid="live-banner"
+      >
+        <p class="m-0 flex items-center gap-2 font-medium">
+          <span class="inline-flex text-primary"
+            ><mat-icon svgIcon="mark_email_unread" aria-hidden="true"
+          /></span>
+          <span>{{ pending === 'new' ? 'Há avisos novos' : 'Os avisos foram atualizados' }}</span>
+        </p>
+        <button
+          mat-stroked-button
+          type="button"
+          data-testid="live-refresh"
+          [disabled]="store.refreshing()"
+          (click)="store.refresh()"
+        >
+          Atualizar
+        </button>
+      </div>
+    }
     @if (store.notice(); as message) {
       <p role="status" class="mb-6 flex items-start gap-2" data-testid="notice">
         <span class="inline-flex text-success"

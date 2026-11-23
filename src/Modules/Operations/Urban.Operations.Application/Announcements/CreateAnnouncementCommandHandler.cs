@@ -11,14 +11,15 @@ namespace Urban.Operations.Application.Announcements;
 /// <summary>
 /// Cria o comunicado. A categoria, o alcance e o texto são conferidos antes de qualquer consulta; só então o bloco ou a unidade escolhidos
 /// são conferidos com o condomínio (um bloco sem unidades ou uma unidade de outro condomínio não vira comunicado que ninguém recebe).
-/// Se o síndico pediu o e-mail, o envio é pedido ao segundo plano só depois que o comunicado foi guardado, uma vez.
+/// Se o síndico pediu o e-mail, o envio é pedido ao segundo plano só depois que o comunicado foi guardado, uma vez. Em seguida, quem mora no alcance é avisado em tempo real (ver <see cref="AnnouncementLiveNotifier"/>).
 /// </summary>
 public sealed class CreateAnnouncementCommandHandler(
     IAnnouncements announcements,
     IAnnouncementAudience directory,
     IAnnouncementMailDispatcher mail,
     ITenantContext tenant,
-    IClock clock) : IRequestHandler<CreateAnnouncementCommand, Result<AnnouncementView>>
+    IClock clock,
+    AnnouncementLiveNotifier live) : IRequestHandler<CreateAnnouncementCommand, Result<AnnouncementView>>
 {
     public async Task<Result<AnnouncementView>> Handle(CreateAnnouncementCommand request, CancellationToken cancellationToken)
     {
@@ -67,6 +68,8 @@ public sealed class CreateAnnouncementCommandHandler(
         {
             await mail.EnqueueFanOutAsync(condominiumId, announcement.Value.Id, cancellationToken);
         }
+
+        await live.NotifyAsync(AnnouncementChangeKind.Published, announcement.Value.Id, request.ActorUserId, [audience.Value], cancellationToken);
 
         IReadOnlyList<AnnouncementView> views = await AnnouncementRules.ViewsAsync(
             [new AnnouncementRecord(announcement.Value, added.Value)], announcements, directory, OperationsCalendar.Today(now), cancellationToken);
