@@ -232,6 +232,7 @@ public sealed class AnnouncementEndpointsTests(ApiFixture fixture) : IDisposable
         created.GetProperty("notifiedByEmail").GetBoolean().Should().BeTrue();
         EmailMessage forAna = AnnouncementMails(ana, "Água cortada").Should().ContainSingle().Subject;
         forAna.Subject.Should().Be("Importante: Água cortada");
+        forAna.ReplyTo.Should().Be(manager.User.Email.Value);
         forAna.TextBody.Split('\n').Should().Contain("https://app.test/mural");
         AnnouncementMails(bia, "Água cortada").Should().ContainSingle();
         AnnouncementMails(manager.User.Email.Value, "Água cortada").Should().BeEmpty();
