@@ -48,6 +48,18 @@ updates:
         update-types: ["version-update:semver-major"]
       - dependency-name: Moq
         update-types: ["version-update:semver-major"]
+      # Pacotes que acompanham a versao do .NET (hoje 10.x): a versao maior so entra quando o projeto
+      # mudar de .NET, junto com o SDK (global.json) e as imagens Docker. Minor e patch seguem automaticos.
+      - dependency-name: "Microsoft.Extensions.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.EntityFrameworkCore*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "Microsoft.AspNetCore.*"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: Npgsql.EntityFrameworkCore.PostgreSQL
+        update-types: ["version-update:semver-major"]
+      - dependency-name: EFCore.NamingConventions
+        update-types: ["version-update:semver-major"]
 
   # --- npm (Angular) ---
   - package-ecosystem: npm

@@ -114,7 +114,7 @@ Decidido em 22/10/2026: todo comportamento novo nasce de um teste que falha.
 - Frontend: Angular 22 + TypeScript 6, Angular Material 22 (Material 3), NgRx Signals, Tailwind 4, SCSS, GSAP, ícones Material Symbols locais.
 - Testes: xUnit + Moq + FluentAssertions 7.2.2, NetArchTest, Testcontainers, Jest 30, Cypress 16.
 - Entrega: GitHub Actions, GHCR, SonarQube Cloud, Dependabot, Semantic Release, Docker, VPS Hostinger com nginx e certbot.
-- Congelados de propósito (licença): MediatR 12.5.0, MassTransit 8.5.10, FluentAssertions 7.2.2. O Dependabot ignora major dessas e de Moq. Não atualize por conta própria.
+- Congelados de propósito (licença): MediatR 12.5.0, MassTransit 8.5.10, FluentAssertions 7.2.2. O Dependabot ignora major dessas e de Moq, e também dos pacotes que acompanham a versão do .NET (`Microsoft.Extensions.*`, `Microsoft.EntityFrameworkCore*`, `Microsoft.AspNetCore.*`, `Npgsql.EntityFrameworkCore.PostgreSQL` e `EFCore.NamingConventions`): a versão maior deles só entra quando o projeto mudar de .NET. Não atualize por conta própria.
 - Não use PrimeNG (foi trocado pelo Angular Material) nem Kafka (foi trocado por RabbitMQ).
 
 ## Arquitetura
