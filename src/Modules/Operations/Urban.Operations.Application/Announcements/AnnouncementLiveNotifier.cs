@@ -25,14 +25,30 @@ public sealed partial class AnnouncementLiveNotifier(
         IReadOnlyList<AnnouncementAudience> audiences,
         CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(directory);
-        ArgumentNullException.ThrowIfNull(events);
-        ArgumentNullException.ThrowIfNull(clock);
-        ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(audiences);
 
-        await Task.CompletedTask;
+        try
+        {
+            List<AudienceTarget> targets = [.. audiences.Select(audience => new AudienceTarget(audience.Block, audience.UnitId))];
 
-        throw new NotImplementedException();
+            IReadOnlyList<IReadOnlySet<Guid>> recipients = await directory.GetRecipientsAsync(targets, OperationsCalendar.Today(clock.UtcNow), cancellationToken);
+
+            HashSet<Guid> users = [.. recipients.SelectMany(set => set)];
+            users.Remove(authorId);
+
+            if (users.Count == 0)
+            {
+                return;
+            }
+
+            await events.SendAsync(new AnnouncementChange(kind, announcementId), users, cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            LogNotifyFailed(logger, exception, announcementId, kind);
+        }
     }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Não foi possível avisar o mural em tempo real do comunicado {AnnouncementId} ({Kind}); quem estava com o mural aberto verá a mudança na próxima vez.")]
+    private static partial void LogNotifyFailed(ILogger logger, Exception exception, Guid announcementId, AnnouncementChangeKind kind);
 }

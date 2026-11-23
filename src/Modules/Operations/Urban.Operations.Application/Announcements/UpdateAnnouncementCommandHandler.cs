@@ -8,7 +8,7 @@ using Urban.SharedKernel.Contracts;
 
 namespace Urban.Operations.Application.Announcements;
 
-/// <summary>Edita o comunicado inteiro. A versão lida na listagem precisa vir junto; quem já leu continua tendo lido.</summary>
+/// <summary>Edita o comunicado inteiro. A versão lida na listagem precisa vir junto; quem já leu continua tendo lido. Quem mora no alcance de antes e no de depois é avisado em tempo real.</summary>
 public sealed class UpdateAnnouncementCommandHandler(
     IAnnouncements announcements,
     IAnnouncementAudience directory,
@@ -18,8 +18,6 @@ public sealed class UpdateAnnouncementCommandHandler(
 {
     public async Task<Result<AnnouncementView>> Handle(UpdateAnnouncementCommand request, CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(live);
-
         if (tenant.CondominiumId is null)
         {
             return Result.Failure<AnnouncementView>(OperationsErrors.CondominiumNotFound);
@@ -56,6 +54,7 @@ public sealed class UpdateAnnouncementCommandHandler(
             return Result.Failure<AnnouncementView>(audience.Error);
         }
 
+        AnnouncementAudience previousAudience = record.Announcement.Audience;
         DateTimeOffset now = clock.UtcNow;
         Result edited = record.Announcement.Edit(request.Title, request.Body, category.Value, audience.Value, now);
 
@@ -77,6 +76,8 @@ public sealed class UpdateAnnouncementCommandHandler(
         {
             return Result.Failure<AnnouncementView>(saved.Error);
         }
+
+        await live.NotifyAsync(AnnouncementChangeKind.Updated, record.Announcement.Id, record.Announcement.CreatedBy, [previousAudience, audience.Value], cancellationToken);
 
         IReadOnlyList<AnnouncementView> views = await AnnouncementRules.ViewsAsync(
             [record with { Version = saved.Value }], announcements, directory, OperationsCalendar.Today(now), cancellationToken);

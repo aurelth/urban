@@ -10,6 +10,7 @@ import { MatTooltip } from '@angular/material/tooltip';
 import { MatToolbar } from '@angular/material/toolbar';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { map } from 'rxjs';
+import { MuralLive } from '../announcements/mural-live';
 import { accountLabel } from '../auth/account-label';
 import { initialsOf } from '../auth/initials';
 import { roleLabel } from '../auth/role-label';
@@ -61,6 +62,7 @@ export class ShellLayout {
   protected readonly roleLabel = roleLabel;
 
   private readonly housing = inject(ManagerHousingStore);
+  private readonly live = inject(MuralLive);
 
   protected readonly groups = computed(() =>
     navGroupsFor(this.session.user(), this.housing.livesHere()),
@@ -68,6 +70,19 @@ export class ShellLayout {
   protected readonly footerItems = computed(() => navFooterFor(this.session.user()));
   protected readonly userMenuItems = computed(() => userMenuFor(this.session.user()));
   protected readonly hasSidebar = computed(() => this.groups().length > 0);
+
+  /** A bolinha só existe para quem tem o item do mural no menu (morador, ou síndico que mora no condomínio). */
+  protected readonly unread = computed(() =>
+    this.groups().some((group) => group.items.some((item) => item.badge === 'unread-announcements'))
+      ? this.live.unread()
+      : 0,
+  );
+  protected readonly unreadShown = computed(() =>
+    this.unread() > 99 ? '99+' : String(this.unread()),
+  );
+  protected readonly unreadSpoken = computed(
+    () => `${String(this.unread())} ${this.unread() === 1 ? 'aviso não lido' : 'avisos não lidos'}`,
+  );
 
   private readonly breakpoints = inject(BreakpointObserver);
 
@@ -108,6 +123,11 @@ export class ShellLayout {
   });
   protected readonly menuExpanded = computed(() =>
     this.isDesktop() ? !this.rail() : this.opened(),
+  );
+
+  /** No celular a gaveta fechada esconde os itens: o botão que a abre leva a bolinha. Aberta, o item já mostra a dela. */
+  protected readonly toggleBadge = computed(
+    () => !this.isDesktop() && !this.opened() && this.unread() > 0,
   );
 
   private readonly router = inject(Router);

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.SignalR;
+using Urban.Api.Http;
 
 namespace Urban.Api.Hubs;
 
@@ -9,6 +10,8 @@ public sealed class SubjectUserIdProvider : IUserIdProvider
     {
         ArgumentNullException.ThrowIfNull(connection);
 
-        return null;
+        return connection.User is { } principal && AccessTokenSession.TryRead(principal, out AccessTokenSession? session)
+            ? session.UserId.ToString()
+            : null;
     }
 }

@@ -14,6 +14,16 @@ export interface AnnouncementChange {
 
 /** Lê o que veio do hub. Tudo o que chega de fora é entrada não confiável: formato diferente é ignorado. */
 export function parseChange(message: unknown): AnnouncementChange | null {
-  void message;
-  return null;
+  if (typeof message !== 'object' || message === null || Array.isArray(message)) {
+    return null;
+  }
+  const { kind, id } = message as Record<string, unknown>;
+  if (!isKind(kind) || typeof id !== 'string' || id === '') {
+    return null;
+  }
+  return { kind, id };
+}
+
+function isKind(value: unknown): value is AnnouncementChangeKind {
+  return value === 'published' || value === 'updated' || value === 'removed';
 }

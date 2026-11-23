@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Urban.Api.Hubs;
 using Urban.Api.Http;
 using Urban.Identity.Application.Abstractions;
 using Urban.Identity.Application.Authentication;
@@ -19,12 +20,29 @@ public static class AuthenticationExtensions
                 options.TokenValidationParameters = AccessTokenValidation.CreateParameters(jwt);
                 options.Events = new JwtBearerEvents
                 {
+                    OnMessageReceived = ReadHubTokenFromQuery,
                     OnTokenValidated = RejectRevokedAsync,
                     OnChallenge = RespondUnauthenticatedAsync,
                 };
             });
 
         return services;
+    }
+
+    /// <summary>
+    /// O WebSocket do navegador não leva cabeçalho Authorization: o SignalR manda o token de acesso em <c>access_token</c> na URL. Só
+    /// vale nas rotas dos hubs; nas demais rotas a URL nunca é fonte de token.
+    /// </summary>
+    private static Task ReadHubTokenFromQuery(MessageReceivedContext context)
+    {
+        string? token = context.Request.Query["access_token"];
+
+        if (!string.IsNullOrEmpty(token) && context.HttpContext.Request.Path.StartsWithSegments(RealtimeExtensions.HubsPrefix, StringComparison.OrdinalIgnoreCase))
+        {
+            context.Token = token;
+        }
+
+        return Task.CompletedTask;
     }
 
     private static async Task RejectRevokedAsync(TokenValidatedContext context)

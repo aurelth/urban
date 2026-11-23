@@ -10,7 +10,7 @@ namespace Urban.Api.Hubs;
 [Authorize]
 public sealed class AnnouncementsHub : Hub
 {
-    public const string Path = "/hubs/announcements";
+    public const string Path = RealtimeExtensions.HubsPrefix + "/announcements";
 
     public const string ChangedMethod = "announcementChanged";
 }

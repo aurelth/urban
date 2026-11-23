@@ -3,6 +3,7 @@ import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/
 import { provideRouter, withComponentInputBinding, withViewTransitions } from '@angular/router';
 import { routes } from './app.routes';
 import { authInterceptor } from './core/auth/auth.interceptor';
+import { provideMuralLive } from './core/announcements/mural-live.watcher';
 import { provideInactivityLogout } from './core/auth/inactivity.monitor';
 import { provideSessionRestore } from './core/auth/session.providers';
 import { providePageTitle } from './core/services/page-title.strategy';
@@ -19,5 +20,6 @@ export const appConfig: ApplicationConfig = {
     provideTheme(),
     provideSessionRestore(),
     provideInactivityLogout(),
+    provideMuralLive(),
   ],
 };
