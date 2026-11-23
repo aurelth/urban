@@ -10,7 +10,7 @@ namespace Urban.Operations.Application.Announcements;
 /// <summary>
 /// O envio de verdade do comunicado a uma conta, no segundo plano. Comunicado apagado nesse meio tempo, que não pediu e-mail ou conta que
 /// já não pode receber (desativada, suspensa, de outro condomínio) terminam sem enviar e sem erro: repetir não adiantaria. Só a falha do
-/// provedor sobe, para a fila tentar de novo.
+/// provedor sobe, para a fila tentar de novo. A resposta ao e-mail chega ao síndico que publicou (Reply-To).
 /// </summary>
 public sealed class SendAnnouncementEmailCommandHandler(
     IAnnouncements announcements,
@@ -40,7 +40,10 @@ public sealed class SendAnnouncementEmailCommandHandler(
             return Result.Success();
         }
 
-        await email.SendAsync(AnnouncementEmail.Build(record.Announcement, address, links.GetMuralUri()), cancellationToken);
+        // A resposta de quem recebe vai para o síndico que publicou. Se a conta dele já não responde, o e-mail sai sem endereço de resposta.
+        string? replyTo = await accounts.FindActiveEmailAsync(record.Announcement.CreatedBy, condominiumId, cancellationToken);
+
+        await email.SendAsync(AnnouncementEmail.Build(record.Announcement, address, links.GetMuralUri(), replyTo), cancellationToken);
 
         return Result.Success();
     }
