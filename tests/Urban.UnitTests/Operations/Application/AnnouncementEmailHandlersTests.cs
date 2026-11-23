@@ -171,6 +171,7 @@ public class AnnouncementEmailHandlersTests
     {
         Guid ana = Guid.CreateVersion7();
         _accounts.Add(ana, "ana@example.com");
+        _accounts.Add(_kit.Manager, "sindico@example.com");
         Announcement announcement = _kit.NewAnnouncementWithEmail(title: "Água cortada na terça", category: AnnouncementCategory.Important, body: "A rua será interditada.\nVolta às 18h.");
 
         Result result = await SendHandler().Handle(new SendAnnouncementEmailCommand(announcement.Id, ana), default);
@@ -184,7 +185,8 @@ public class AnnouncementEmailHandlersTests
         lines.Should().Contain("Importante: Água cortada na terça");
         lines.Should().ContainInOrder("A rua será interditada.", "Volta às 18h.");
         lines.Should().Contain("https://urban-pro.io/mural");
-        message.ReplyTo.Should().BeNull();
+        lines.Should().Contain("Para responder, é só responder a este e-mail: a resposta chega ao síndico.");
+        message.ReplyTo.Should().Be("sindico@example.com");
         message.Attachments.Should().BeNull();
     }
 
@@ -228,7 +230,37 @@ public class AnnouncementEmailHandlersTests
 
         await SendHandler().Handle(new SendAnnouncementEmailCommand(announcement.Id, ana), default);
 
-        _accounts.Lookups.Should().ContainSingle().Which.Should().Be((ana, _kit.CondominiumId));
+        _accounts.Lookups.Should().Equal((ana, _kit.CondominiumId), (_kit.Manager, _kit.CondominiumId));
+    }
+
+    [Fact]
+    public async Task Send_TheReplyGoesToTheManagerWhoPublished_NotToTheSystemSender()
+    {
+        Guid ana = Guid.CreateVersion7();
+        Guid anotherManager = Guid.CreateVersion7();
+        _accounts.Add(ana, "ana@example.com");
+        _accounts.Add(_kit.Manager, "sindico@example.com");
+        _accounts.Add(anotherManager, "outro@example.com");
+        Announcement announcement = _kit.NewAnnouncementWithEmail();
+
+        await SendHandler().Handle(new SendAnnouncementEmailCommand(announcement.Id, ana), default);
+
+        _email.Sent.Single().ReplyTo.Should().Be("sindico@example.com");
+    }
+
+    [Fact]
+    public async Task Send_WhenTheManagerAccountCannotReceiveAnyMore_StillSendsButWithoutAReplyAddress()
+    {
+        Guid ana = Guid.CreateVersion7();
+        _accounts.Add(ana, "ana@example.com");
+        Announcement announcement = _kit.NewAnnouncementWithEmail();
+
+        Result result = await SendHandler().Handle(new SendAnnouncementEmailCommand(announcement.Id, ana), default);
+
+        result.IsSuccess.Should().BeTrue();
+        EmailMessage message = _email.Sent.Should().ContainSingle().Subject;
+        message.ReplyTo.Should().BeNull();
+        message.TextBody.Should().NotContain("é só responder a este e-mail");
     }
 
     [Fact]
