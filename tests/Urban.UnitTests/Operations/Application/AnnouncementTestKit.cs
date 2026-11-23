@@ -29,6 +29,8 @@ internal sealed class AnnouncementTestKit
 
     public FakeAnnouncementAudience Directory { get; } = new();
 
+    public FakeAnnouncementMailDispatcher Mail { get; } = new();
+
     public AnnouncementTestKit()
     {
         Tenant = new FixedTenant(CondominiumId);
@@ -57,6 +59,15 @@ internal sealed class AnnouncementTestKit
     public Announcement NewAnnouncement(AnnouncementAudience? audience = null, string title = "Aviso", AnnouncementCategory category = AnnouncementCategory.General, Guid? author = null, DateTimeOffset? at = null)
     {
         Announcement announcement = Announcement.Create(CondominiumId, title, "Texto do aviso.", category, audience ?? AnnouncementAudience.WholeCondominium, author ?? Manager, at ?? Now).Value;
+        Announcements.Seed(announcement);
+
+        return announcement;
+    }
+
+    /// <summary>Um comunicado já guardado em que o síndico pediu o e-mail ao publicar.</summary>
+    public Announcement NewAnnouncementWithEmail(AnnouncementAudience? audience = null, string title = "Aviso", AnnouncementCategory category = AnnouncementCategory.General, string body = "Texto do aviso.")
+    {
+        Announcement announcement = Announcement.Create(CondominiumId, title, body, category, audience ?? AnnouncementAudience.WholeCondominium, Manager, Now, notifyByEmail: true).Value;
         Announcements.Seed(announcement);
 
         return announcement;
@@ -301,4 +312,26 @@ internal sealed class FakeAnnouncementAudience : IAnnouncementAudience
             .Where(entry => _units.Single(unit => unit.UnitId == entry.UnitId) is var unit
                 && (target.UnitId is { } wanted ? unit.UnitId == wanted : target.Block is not { } block || unit.Block == block))
             .Select(entry => entry.UserId);
+}
+
+/// <summary>Guarda os pedidos de e-mail em vez de enfileirá-los, para o teste ver o que seria pedido ao segundo plano.</summary>
+internal sealed class FakeAnnouncementMailDispatcher : IAnnouncementMailDispatcher
+{
+    public List<(Guid CondominiumId, Guid AnnouncementId)> FanOuts { get; } = [];
+
+    public List<(Guid CondominiumId, Guid AnnouncementId, Guid UserId)> Deliveries { get; } = [];
+
+    public Task EnqueueFanOutAsync(Guid condominiumId, Guid announcementId, CancellationToken cancellationToken)
+    {
+        FanOuts.Add((condominiumId, announcementId));
+
+        return Task.CompletedTask;
+    }
+
+    public Task EnqueueDeliveryAsync(Guid condominiumId, Guid announcementId, Guid userId, CancellationToken cancellationToken)
+    {
+        Deliveries.Add((condominiumId, announcementId, userId));
+
+        return Task.CompletedTask;
+    }
 }

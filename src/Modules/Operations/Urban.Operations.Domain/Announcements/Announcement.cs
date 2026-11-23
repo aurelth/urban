@@ -63,6 +63,9 @@ public sealed class Announcement
     /// <summary>Quando foi editado pela última vez; nulo se nunca foi.</summary>
     public DateTimeOffset? UpdatedAt { get; private set; }
 
+    /// <summary>Se o síndico pediu o e-mail ao publicar. Vale só para a publicação: editar não reenvia nem muda isto.</summary>
+    public bool NotifyByEmail => false;
+
     public AnnouncementAudience Audience => AnnouncementAudience.From(Scope, Block, UnitId);
 
     public static Result<Announcement> Create(
@@ -72,7 +75,8 @@ public sealed class Announcement
         AnnouncementCategory category,
         AnnouncementAudience audience,
         Guid createdBy,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        bool notifyByEmail = false)
     {
         if (condominiumId == Guid.Empty)
         {

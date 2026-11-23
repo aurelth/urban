@@ -60,6 +60,8 @@ describe('Comunicados', () => {
       .and('contain.text', 'Condomínio inteiro')
       .and('contain.text', 'Publicado em 22/11/2026 às 10:50');
     rows().eq(0).find('[data-testid="readers"]').should(textOf('12 de 40 leram'));
+    rows().eq(0).find('[data-testid="emailed"]').should(textOf('Avisado por e-mail'));
+    rows().eq(1).find('[data-testid="emailed"]').should('not.exist');
     rows()
       .eq(1)
       .should('contain.text', 'Bloco A')
@@ -91,6 +93,7 @@ describe('Comunicados', () => {
       scope: 'block',
       block: 'A',
       unitId: null,
+      notifyByEmail: false,
     });
     cy.get('urban-announcement-dialog').should('not.exist');
     cy.get('@announcements.all').should('have.length.at.least', 2);
@@ -98,6 +101,41 @@ describe('Comunicados', () => {
       .should('contain.text', 'Comunicado "Limpeza da caixa d’água" publicado')
       .find('.text-success mat-icon')
       .should('have.css', 'color', PALETTE.light.success);
+  });
+
+  it('já marca o aviso por e-mail num comunicado importante e deixa o síndico desmarcar', () => {
+    cy.intercept('POST', '/api/announcements', { statusCode: 201, body: stubAnnouncement() }).as(
+      'create',
+    );
+    cy.visit(ANNOUNCEMENTS_PATH);
+
+    cy.get('[data-testid="new-announcement"]').click();
+    cy.get('urban-announcement-dialog [data-testid="notify-email"] input').should('not.be.checked');
+    chooseMenu(
+      'urban-announcement-dialog urban-menu-select[formControlName="category"]',
+      'Importante',
+    );
+    cy.get('urban-announcement-dialog [data-testid="notify-email"] input').should('be.checked');
+    enter('title', 'Falta de água');
+    enter('body', 'Volta às 18h.');
+    cy.get('urban-announcement-dialog').contains('button', 'Publicar comunicado').click();
+
+    cy.wait('@create').its('request.body').should('include', {
+      category: 'important',
+      notifyByEmail: true,
+    });
+
+    cy.get('[data-testid="new-announcement"]').click();
+    chooseMenu(
+      'urban-announcement-dialog urban-menu-select[formControlName="category"]',
+      'Importante',
+    );
+    cy.get('urban-announcement-dialog [data-testid="notify-email"] input').uncheck({ force: true });
+    enter('title', 'Outra falta');
+    enter('body', 'Sem e-mail dessa vez.');
+    cy.get('urban-announcement-dialog').contains('button', 'Publicar comunicado').click();
+
+    cy.wait('@create').its('request.body').should('include', { notifyByEmail: false });
   });
 
   it('publica para uma unidade', () => {

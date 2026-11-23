@@ -15,11 +15,14 @@ namespace Urban.Operations.Application.Announcements;
 public sealed class CreateAnnouncementCommandHandler(
     IAnnouncements announcements,
     IAnnouncementAudience directory,
+    IAnnouncementMailDispatcher mail,
     ITenantContext tenant,
     IClock clock) : IRequestHandler<CreateAnnouncementCommand, Result<AnnouncementView>>
 {
     public async Task<Result<AnnouncementView>> Handle(CreateAnnouncementCommand request, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(mail);
+
         if (tenant.CondominiumId is not { } condominiumId)
         {
             return Result.Failure<AnnouncementView>(OperationsErrors.CondominiumNotFound);

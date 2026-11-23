@@ -17,6 +17,7 @@ public static class AnnouncementMapper
         view.UpdatedAt,
         view.Recipients,
         view.Readers,
+        view.NotifiedByEmail,
         view.Version);
 
     public static AnnouncementPageResponse ToResponse(AnnouncementPageView view) =>

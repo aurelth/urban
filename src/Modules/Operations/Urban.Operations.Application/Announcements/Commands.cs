@@ -3,8 +3,11 @@ using Urban.SharedKernel;
 
 namespace Urban.Operations.Application.Announcements;
 
-/// <summary>Cria um comunicado. <paramref name="Scope"/> é <c>condominium</c>, <c>block</c> ou <c>unit</c>; o bloco só vale no alcance de bloco e a unidade, no de unidade.</summary>
-public sealed record CreateAnnouncementCommand(Guid ActorUserId, string? Title, string? Body, string? Category, string? Scope, string? Block, Guid? UnitId)
+/// <summary>
+/// Cria um comunicado. <paramref name="Scope"/> é <c>condominium</c>, <c>block</c> ou <c>unit</c>; o bloco só vale no alcance de bloco e a unidade, no de unidade.
+/// <paramref name="NotifyByEmail"/> pede o e-mail a quem mora no alcance, uma vez, ao publicar (editar nunca reenvia).
+/// </summary>
+public sealed record CreateAnnouncementCommand(Guid ActorUserId, string? Title, string? Body, string? Category, string? Scope, string? Block, Guid? UnitId, bool NotifyByEmail = false)
     : IRequest<Result<AnnouncementView>>;
 
 public sealed record UpdateAnnouncementCommand(Guid AnnouncementId, string? Version, string? Title, string? Body, string? Category, string? Scope, string? Block, Guid? UnitId)
@@ -25,3 +28,12 @@ public sealed record MarkAnnouncementReadCommand(Guid UserId, Guid AnnouncementI
 
 /// <summary>Marca como lidos todos os comunicados do mural da conta (só os da categoria, se informada). Devolve quantos foram marcados agora.</summary>
 public sealed record MarkAllAnnouncementsReadCommand(Guid UserId, string? Category = null) : IRequest<Result<int>>;
+
+/// <summary>
+/// Roda em segundo plano depois de publicar com e-mail: descobre as contas de quem mora hoje no alcance do comunicado (menos o autor) e
+/// abre um envio para cada uma. Devolve quantos envios abriu.
+/// </summary>
+public sealed record FanOutAnnouncementEmailsCommand(Guid AnnouncementId) : IRequest<Result<int>>;
+
+/// <summary>Roda em segundo plano: envia o comunicado à conta, se ela ainda pode receber e o comunicado ainda existe.</summary>
+public sealed record SendAnnouncementEmailCommand(Guid AnnouncementId, Guid UserId) : IRequest<Result>;

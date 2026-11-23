@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using StackExchange.Redis;
 using Urban.Identity.Application.Abstractions;
+using Urban.Identity.Application.Accounts;
 using Urban.Identity.Application.Contact;
 using Urban.Identity.Application.Enrollment;
 using Urban.Identity.Application.Invitations;
@@ -55,6 +56,7 @@ public static class IdentityInfrastructureExtensions
         services.AddScoped<IUserAccounts, UserAccounts>();
         services.AddScoped<IManagerEnrollment, ManagerEnrollment>();
         services.AddScoped<IManagerProfile, ManagerProfile>();
+        services.AddScoped<IAccountEmails, AccountEmails>();
         services.AddScoped<IPasswordConfirmation, PasswordConfirmation>();
         services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
         services.AddScoped<IEmailVerifications, EmailVerifications>();

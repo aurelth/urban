@@ -12,6 +12,7 @@ using Urban.Condominium.Infrastructure.Persistence;
 using Urban.Identity.Domain.Access;
 using Urban.Identity.Domain.Users;
 using Urban.Operations.Infrastructure;
+using Urban.SharedKernel.Abstractions;
 
 namespace Urban.IntegrationTests.Api;
 
@@ -200,6 +201,84 @@ public sealed class AnnouncementEndpointsTests(ApiFixture fixture) : IDisposable
 
         (await longTitle.CodeAsync()).Should().Be("announcement.title.invalid");
         (await longText.CodeAsync()).Should().Be("announcement.body.invalid");
+    }
+
+    // ---- E-mail ao publicar ----
+
+    [Fact]
+    public async Task Create_WithoutAskingForEmail_SendsNothing_AndTheResponseSaysSo()
+    {
+        (ManagerSession manager, Guid a101) = await ManagerWithAUnitAsync();
+        (_, string ana) = await ResidentAccountAsync(manager, a101);
+
+        JsonElement created = await ReadCreatedAsync(await _client.SendJsonAsync(HttpMethod.Post, Route, manager.AccessToken, Body("Sem e-mail")));
+
+        created.GetProperty("notifiedByEmail").GetBoolean().Should().BeFalse();
+        AnnouncementMails(ana, "Sem e-mail").Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Create_AskingForEmail_WritesToEveryoneWhoLivesInTheScope_WithTheMuralLink()
+    {
+        (ManagerSession manager, Guid a101) = await ManagerWithAUnitAsync();
+        Guid b201 = await CreateUnitAsync(manager, "Bloco B", "201");
+        (_, string ana) = await ResidentAccountAsync(manager, a101, fullName: "Ana Souza");
+        (_, string bia) = await ResidentAccountAsync(manager, b201, fullName: "Bia Lima");
+        await MakeManagerLiveInAsync(manager, a101);
+
+        JsonElement created = await ReadCreatedAsync(
+            await _client.SendJsonAsync(HttpMethod.Post, Route, manager.AccessToken, Body("Água cortada", "Volta às 18h.", "important", notifyByEmail: true)));
+
+        created.GetProperty("notifiedByEmail").GetBoolean().Should().BeTrue();
+        EmailMessage forAna = AnnouncementMails(ana, "Água cortada").Should().ContainSingle().Subject;
+        forAna.Subject.Should().Be("Importante: Água cortada");
+        forAna.TextBody.Split('\n').Should().Contain("https://app.test/mural");
+        AnnouncementMails(bia, "Água cortada").Should().ContainSingle();
+        AnnouncementMails(manager.User.Email.Value, "Água cortada").Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Create_AskingForEmail_ForABlock_OnlyWritesToWhoLivesInThatBlock()
+    {
+        (ManagerSession manager, Guid a101) = await ManagerWithAUnitAsync();
+        Guid b201 = await CreateUnitAsync(manager, "Bloco B", "201");
+        (_, string ana) = await ResidentAccountAsync(manager, a101);
+        (_, string bia) = await ResidentAccountAsync(manager, b201);
+
+        await ReadCreatedAsync(await _client.SendJsonAsync(HttpMethod.Post, Route, manager.AccessToken, Body("Só o bloco A", scope: "block", block: "Bloco A", notifyByEmail: true)));
+
+        AnnouncementMails(ana, "Só o bloco A").Should().ContainSingle();
+        AnnouncementMails(bia, "Só o bloco A").Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Create_AskingForEmail_WithInvalidData_SendsNothing()
+    {
+        (ManagerSession manager, Guid a101) = await ManagerWithAUnitAsync();
+        (_, string ana) = await ResidentAccountAsync(manager, a101);
+        int before = Emails.SentTo(ana).Length;
+
+        HttpResponseMessage response = await _client.SendJsonAsync(HttpMethod.Post, Route, manager.AccessToken, Body("", notifyByEmail: true));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        Emails.SentTo(ana).Should().HaveCount(before);
+    }
+
+    [Fact]
+    public async Task Update_NeverWritesAgain_AndKeepsTheFlag()
+    {
+        (ManagerSession manager, Guid a101) = await ManagerWithAUnitAsync();
+        (_, string ana) = await ResidentAccountAsync(manager, a101);
+        JsonElement created = await ReadCreatedAsync(await _client.SendJsonAsync(HttpMethod.Post, Route, manager.AccessToken, Body("Original", notifyByEmail: true)));
+        Guid id = created.GetProperty("id").GetGuid();
+
+        JsonElement updated = await ReadOkAsync(
+            await _client.SendJsonAsync(HttpMethod.Put, ItemRoute(id), manager.AccessToken, Body("Corrigido", notifyByEmail: true, version: created.GetProperty("version").GetString())));
+
+        updated.GetProperty("notifiedByEmail").GetBoolean().Should().BeTrue();
+        AnnouncementMails(ana, "Original").Should().ContainSingle();
+        AnnouncementMails(ana, "Corrigido").Should().BeEmpty();
+        Item(await ListAsync(manager), id).GetProperty("notifiedByEmail").GetBoolean().Should().BeTrue();
     }
 
     // ---- Lista do síndico ----
@@ -944,7 +1023,8 @@ public sealed class AnnouncementEndpointsTests(ApiFixture fixture) : IDisposable
         string scope = "condominium",
         string? block = null,
         Guid? unitId = null,
-        string? version = null) => new()
+        string? version = null,
+        bool? notifyByEmail = null) => new()
         {
             ["version"] = version,
             ["title"] = title,
@@ -953,6 +1033,7 @@ public sealed class AnnouncementEndpointsTests(ApiFixture fixture) : IDisposable
             ["scope"] = scope,
             ["block"] = block,
             ["unitId"] = unitId,
+            ["notifyByEmail"] = notifyByEmail,
         };
 
     private async Task MigrateAsync() => await fixture.Factory.Services.MigrateOperationsAsync();
@@ -982,6 +1063,15 @@ public sealed class AnnouncementEndpointsTests(ApiFixture fixture) : IDisposable
 
     private Task<string> ResidentTokenAsync(ManagerSession manager, Guid unitId, string kind = "owner", string fullName = "Maria Souza") =>
         ResidentSetup.TokenAsync(fixture, _client, manager, unitId, kind, fullName);
+
+    private RecordingEmailSender Emails => fixture.Factory.Emails;
+
+    /// <summary>Os e-mails de comunicado que chegaram ao endereço, achados pelo título (o convite e os outros avisos da conta ficam de fora).</summary>
+    private EmailMessage[] AnnouncementMails(string address, string title) =>
+        [.. Emails.SentTo(address).Where(message => message.Subject.EndsWith(title, StringComparison.Ordinal))];
+
+    private async Task<(string Token, string Email)> ResidentAccountAsync(ManagerSession manager, Guid unitId, string kind = "owner", string fullName = "Maria Souza") =>
+        await ResidentSetup.AccountAsync(fixture, _client, manager, unitId, kind, fullName);
 
     private async Task<Guid> CreateAsync(
         ManagerSession manager, string title = "Aviso do síndico", string scope = "condominium", string? block = null, Guid? unitId = null, string category = "general")

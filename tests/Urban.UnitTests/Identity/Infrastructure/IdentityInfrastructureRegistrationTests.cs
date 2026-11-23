@@ -3,6 +3,7 @@ using FluentAssertions;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Urban.Identity.Application.Abstractions;
+using Urban.Identity.Application.Accounts;
 using Urban.Identity.Application.Contact;
 using Urban.Identity.Application.Enrollment;
 using Urban.Identity.Infrastructure;
@@ -184,6 +185,15 @@ public class IdentityInfrastructureRegistrationTests
         ServiceDescriptor descriptor = Register().Single(d => d.ServiceType == typeof(IManagerProfile));
 
         descriptor.ImplementationType.Should().Be<ManagerProfile>();
+        descriptor.Lifetime.Should().Be(ServiceLifetime.Scoped);
+    }
+
+    [Fact]
+    public void TheAccountEmailsContractIsScoped_BecauseItSharesTheRequestDbContext()
+    {
+        ServiceDescriptor descriptor = Register().Single(d => d.ServiceType == typeof(IAccountEmails));
+
+        descriptor.ImplementationType.Should().Be<AccountEmails>();
         descriptor.Lifetime.Should().Be(ServiceLifetime.Scoped);
     }
 

@@ -84,6 +84,7 @@ internal static class AnnouncementRules
                 announcement.UpdatedAt,
                 audience.Count,
                 audience.Count(read.Contains),
+                announcement.NotifyByEmail,
                 records[i].Version));
         }
 

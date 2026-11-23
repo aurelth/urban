@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Urban.Finance.Application.Abstractions;
 using Urban.Identity.Application.Abstractions;
 using Urban.Identity.Infrastructure.Security;
+using Urban.Operations.Application.Abstractions;
 using Urban.SharedKernel.Abstractions;
 
 namespace Urban.IntegrationTests.Api;
@@ -112,6 +113,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
                 services.Replace(ServiceDescriptor.Scoped<IEmailChangeDispatcher, InlineEmailChangeDispatcher>());
                 services.Replace(ServiceDescriptor.Scoped<ISecurityNoticeDispatcher, InlineSecurityNoticeDispatcher>());
                 services.Replace(ServiceDescriptor.Scoped<IInvoiceDeliveryDispatcher, InlineInvoiceDeliveryDispatcher>());
+                services.Replace(ServiceDescriptor.Scoped<IAnnouncementMailDispatcher, InlineAnnouncementMailDispatcher>());
             }
         });
 

@@ -58,6 +58,29 @@ public class OperationsAnnouncementsTests(OperationsPostgresFixture postgres)
     }
 
     [Fact]
+    public async Task Add_ThenFind_RemembersWhetherTheManagerAskedForEmail()
+    {
+        Announcement withEmail = await _kit.StoreAsync(title: "Com e-mail", notifyByEmail: true);
+        Announcement withoutEmail = await _kit.StoreAsync(title: "Sem e-mail");
+
+        (await _kit.Announcements().FindAsync(withEmail.Id, Ct))!.Announcement.NotifyByEmail.Should().BeTrue();
+        (await _kit.Announcements().FindAsync(withoutEmail.Id, Ct))!.Announcement.NotifyByEmail.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Save_AnEditedAnnouncement_KeepsWhetherTheManagerAskedForEmail()
+    {
+        Announcement stored = await _kit.StoreAsync(title: "Antigo", notifyByEmail: true);
+        OperationsAnnouncements repository = _kit.Announcements();
+        AnnouncementRecord record = (await repository.FindAsync(stored.Id, Ct))!;
+        record.Announcement.Edit("Novo", "Texto novo.", AnnouncementCategory.Important, AnnouncementAudience.WholeCondominium, OperationsStoreKit.Now.AddHours(1)).IsSuccess.Should().BeTrue();
+
+        (await repository.SaveAsync(record, Ct)).IsSuccess.Should().BeTrue();
+
+        (await _kit.Announcements().FindAsync(stored.Id, Ct))!.Announcement.NotifyByEmail.Should().BeTrue();
+    }
+
+    [Fact]
     public async Task Find_FromAnotherCondominium_OrWithoutATenant_ReturnsNothing()
     {
         Announcement stored = await _kit.StoreAsync();
