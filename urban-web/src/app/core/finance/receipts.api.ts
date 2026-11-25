@@ -2,6 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { FileDownload, downloadPdf } from './pdf-download';
+import { ReceiptEmailResult } from './receipts.models';
 
 const BASE = '/api/finance';
 const FALLBACK_NAME = 'recibo.pdf';
@@ -18,5 +19,13 @@ export class ReceiptsApi {
   /** O recibo de um pagamento da própria unidade do morador: a API recusa (404) o de qualquer outra. */
   downloadMine(paymentId: string): Observable<FileDownload> {
     return downloadPdf(this.http, `${BASE}/me/payments/${paymentId}/receipt`, FALLBACK_NAME);
+  }
+
+  /** Pede o envio do recibo, em PDF, ao responsável pela unidade. A API responde 202: o e-mail sai em segundo plano. */
+  sendByEmail(paymentId: string): Observable<ReceiptEmailResult> {
+    return this.http.post<ReceiptEmailResult>(
+      `${BASE}/payments/${paymentId}/receipt-deliveries`,
+      null,
+    );
   }
 }

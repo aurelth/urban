@@ -268,6 +268,8 @@ public static class ErrorHttp
         [InvoiceDeliveryErrors.NoRecipient.Code] = StatusCodes.Status422UnprocessableEntity,
         [InvoiceDeliveryErrors.AlreadyQueued.Code] = StatusCodes.Status409Conflict,
         [InvoiceDeliveryErrors.PageInvalid.Code] = StatusCodes.Status400BadRequest,
+        [ReceiptDeliveryErrors.NoRecipient.Code] = StatusCodes.Status422UnprocessableEntity,
+        [ReceiptDeliveryErrors.PaymentReversed.Code] = StatusCodes.Status409Conflict,
         [ClosingErrors.ReadingsPending(1, 1).Code] = StatusCodes.Status422UnprocessableEntity,
         [ConsumptionErrors.BandsInvalid.Code] = StatusCodes.Status400BadRequest,
         [ConsumptionErrors.GasInvalid.Code] = StatusCodes.Status400BadRequest,

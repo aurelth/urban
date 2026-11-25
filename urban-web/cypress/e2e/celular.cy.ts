@@ -17,6 +17,8 @@ import {
   PAYMENT_ON_102,
   stubChargePayments,
   stubPayments,
+  stubReceiptEmail,
+  stubReceiptEmailRejected,
 } from '../support/pagamentos';
 import { MY_DATA_PATH, stubMyRegistration } from '../support/meu-cadastro';
 import { MY_INVOICE_PATH, stubMyMonth } from '../support/minha-fatura';
@@ -325,8 +327,31 @@ describe('Tela de celular (375 x 667)', () => {
     cy.get('button[aria-label="Ver pagamentos de Bloco A · 102"]').click();
 
     cy.get('[data-testid="receipt-code"]').should('be.visible');
+    cy.get('[data-testid="email-receipt"]').should('be.visible');
     cy.get('urban-charge-payments-dialog button').each(($button) => {
       const { left, right } = $button[0].getBoundingClientRect();
+      expect(left).to.be.at.least(0);
+      expect(right).to.be.at.most(375);
+    });
+    expectNoHorizontalScroll();
+  });
+
+  it('mostra o aviso e o erro do envio do recibo por e-mail dentro da tela, sem rolagem horizontal', () => {
+    stubSignedIn(MANAGER);
+    const charges = stubPayments();
+    stubChargePayments(charges[1], [{ ...PAYMENT_ON_102 }]);
+    stubReceiptEmail(PAYMENT_ON_102.id, 'Maria Souza da Silva Albuquerque');
+    cy.visit(PAYMENTS_PATH);
+
+    cy.get('button[aria-label="Ver pagamentos de Bloco A · 102"]').click();
+    cy.get('[data-testid="email-receipt"]').click();
+    cy.get('[data-testid="email-notice"]').should('be.visible');
+    stubReceiptEmailRejected(PAYMENT_ON_102.id, 422, 'finance.receipt_delivery.no_recipient');
+    cy.get('[data-testid="email-receipt"]').click();
+    cy.get('[data-testid="email-error"]').should('be.visible');
+
+    cy.get('[data-testid="email-error"], [data-testid="email-receipt"]').each(($element) => {
+      const { left, right } = $element[0].getBoundingClientRect();
       expect(left).to.be.at.least(0);
       expect(right).to.be.at.most(375);
     });

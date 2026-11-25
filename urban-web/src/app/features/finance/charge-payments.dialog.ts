@@ -6,6 +6,7 @@ import {
   inject,
   signal,
 } from '@angular/core';
+import { firstValueFrom } from 'rxjs';
 import { NonNullableFormBuilder, ReactiveFormsModule } from '@angular/forms';
 import { MatButton } from '@angular/material/button';
 import {
@@ -19,6 +20,7 @@ import { MatIcon } from '@angular/material/icon';
 import { formatDate } from '../../core/finance/month';
 import { Payment } from '../../core/finance/payments.models';
 import { ReceiptsApi } from '../../core/finance/receipts.api';
+import { toApiProblem } from '../../core/http/api-problem';
 import { describeProblem } from '../../core/http/problem-message';
 import { FileDownloads } from '../../shared/files/file-downloads';
 import { FileSaver } from '../../shared/files/file-saver';
@@ -44,8 +46,8 @@ const STALE_STATUSES: readonly number[] = [404, 409];
 
 /**
  * Os pagamentos de uma cobrança, do mais novo para o mais antigo, estornados inclusive. Cada pagamento ativo tem "Estornar",
- * que abre no próprio item o motivo (obrigatório), e todo pagamento, o estornado também, tem "Baixar recibo". Fecha
- * respondendo verdadeiro quando algo mudou (baixar um recibo não muda nada), para a lista do mês ser lida de novo.
+ * que abre no próprio item o motivo (obrigatório), e todo pagamento, o estornado também, tem "Baixar recibo"; o ativo tem ainda "Enviar por e-mail" (o estornado não: o recibo dele fica cancelado). Fecha
+ * respondendo verdadeiro quando algo mudou (baixar ou enviar um recibo não muda nada, salvo quando a recusa mostra que a lista está velha), para a lista do mês ser lida de novo.
  */
 @Component({
   selector: 'urban-charge-payments-dialog',
@@ -77,6 +79,9 @@ export class ChargePaymentsDialog implements OnInit {
   protected readonly reverseError = signal<string | null>(null);
   protected readonly notice = signal<string | null>(null);
   protected readonly receiptNotice = signal<string | null>(null);
+  protected readonly emailing = signal<string | null>(null);
+  protected readonly emailNotice = signal<string | null>(null);
+  protected readonly emailError = signal<string | null>(null);
   protected readonly changed = signal(false);
 
   protected readonly money = formatMoney;
@@ -107,9 +112,30 @@ export class ChargePaymentsDialog implements OnInit {
 
   protected async downloadReceipt(payment: Payment): Promise<void> {
     this.receiptNotice.set(null);
+    this.clearEmailFeedback();
     this.notice.set(null);
     if (await this.downloads.run(payment.id, this.receipts.download(payment.id))) {
       this.receiptNotice.set(`Recibo ${payment.receiptCode} baixado`);
+    }
+  }
+
+  protected async emailReceipt(payment: Payment): Promise<void> {
+    this.clearEmailFeedback();
+    this.receiptNotice.set(null);
+    this.downloads.clear();
+    this.notice.set(null);
+    this.emailing.set(payment.id);
+    try {
+      const sent = await firstValueFrom(this.receipts.sendByEmail(payment.id));
+      this.emailNotice.set(`Recibo ${payment.receiptCode} enviado para ${sent.recipientName}`);
+    } catch (failure) {
+      const problem = toApiProblem(failure);
+      if (STALE_STATUSES.includes(problem.status)) {
+        this.changed.set(true);
+      }
+      this.emailError.set(describeProblem(problem, RECEIPT_MESSAGES));
+    } finally {
+      this.emailing.set(null);
     }
   }
 
@@ -117,9 +143,15 @@ export class ChargePaymentsDialog implements OnInit {
     this.form.reset();
     this.notice.set(null);
     this.receiptNotice.set(null);
+    this.clearEmailFeedback();
     this.downloads.clear();
     this.reverseError.set(null);
     this.reversing.set(payment.id);
+  }
+
+  private clearEmailFeedback(): void {
+    this.emailNotice.set(null);
+    this.emailError.set(null);
   }
 
   protected cancelReversal(): void {

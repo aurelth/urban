@@ -113,6 +113,18 @@ internal sealed class FakeInvoiceDeliveryDispatcher : IInvoiceDeliveryDispatcher
     }
 }
 
+internal sealed class FakeReceiptEmailDispatcher : IReceiptEmailDispatcher
+{
+    public List<(Guid CondominiumId, Guid PaymentId)> Enqueued { get; } = [];
+
+    public Task EnqueueAsync(Guid condominiumId, Guid paymentId, CancellationToken cancellationToken)
+    {
+        Enqueued.Add((condominiumId, paymentId));
+
+        return Task.CompletedTask;
+    }
+}
+
 internal sealed class FakeEmailSender : IEmailSender
 {
     public List<EmailMessage> Sent { get; } = [];

@@ -101,6 +101,23 @@ export function stubReceiptRejected(paymentId: string, status: number, code: str
   }).as('receipt');
 }
 
+/** O pedido de envio do recibo por e-mail (POST): a API responde 202 com o nome de quem vai receber. */
+export function stubReceiptEmail(paymentId: string, recipientName: string): void {
+  cy.intercept('POST', `/api/finance/payments/${paymentId}/receipt-deliveries`, {
+    statusCode: 202,
+    body: { recipientName },
+  }).as('receiptEmail');
+}
+
+/** A API recusa o pedido de envio com um problema (422, 409, 404...). */
+export function stubReceiptEmailRejected(paymentId: string, status: number, code: string): void {
+  cy.intercept('POST', `/api/finance/payments/${paymentId}/receipt-deliveries`, {
+    statusCode: status,
+    headers: { 'content-type': 'application/problem+json' },
+    body: { status, code, detail: 'Detalhe da API' },
+  }).as('receiptEmail');
+}
+
 /**
  * As cobranças do mês (GET), com o filtro de situação e a paginação que a API faz. Devolve a lista viva: o registro de
  * pagamento (`stubPaymentRegistration`) a atualiza, então a leitura seguinte já mostra o novo saldo.
