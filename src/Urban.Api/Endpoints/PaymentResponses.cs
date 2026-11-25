@@ -3,8 +3,20 @@ namespace Urban.Api.Endpoints;
 /// <param name="ReceivedOn">AAAA-MM-DD.</param>
 /// <param name="Method">"pix", "boleto", "transfer", "cash" ou "other".</param>
 /// <param name="ReversedAt">Preenchido quando o pagamento foi estornado; ele continua na lista e deixa de contar.</param>
+/// <param name="ReceiptNumber">O número do recibo do pagamento, em sequência por condomínio; o recibo existe mesmo depois do estorno.</param>
+/// <param name="ReceiptCode">O número como se fala dele, "REC-000123".</param>
 public sealed record PaymentResponse(
-    Guid Id, Guid ChargeId, decimal Amount, string ReceivedOn, string Method, string? Note, DateTimeOffset RegisteredAt, DateTimeOffset? ReversedAt, string? ReversalReason);
+    Guid Id,
+    Guid ChargeId,
+    decimal Amount,
+    string ReceivedOn,
+    string Method,
+    string? Note,
+    DateTimeOffset RegisteredAt,
+    DateTimeOffset? ReversedAt,
+    string? ReversalReason,
+    int ReceiptNumber,
+    string ReceiptCode);
 
 /// <param name="Paid">A soma dos pagamentos não estornados.</param>
 /// <param name="Balance">O que falta pagar (valor da cobrança menos o pago).</param>

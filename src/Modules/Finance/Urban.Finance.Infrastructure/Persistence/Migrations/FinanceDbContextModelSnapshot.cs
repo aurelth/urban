@@ -598,6 +598,10 @@ namespace Urban.Finance.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("note");
 
+                    b.Property<int>("ReceiptNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("receipt_number");
+
                     b.Property<DateOnly>("ReceivedOn")
                         .HasColumnType("date")
                         .HasColumnName("received_on");
@@ -631,6 +635,10 @@ namespace Urban.Finance.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("CondominiumId", "ChargeId")
                         .HasDatabaseName("ix_payment_condominium_id_unit_charge_id");
+
+                    b.HasIndex("CondominiumId", "ReceiptNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ix_payment_condominium_id_receipt_number");
 
                     b.ToTable("payment", "finance");
                 });
@@ -712,6 +720,22 @@ namespace Urban.Finance.Infrastructure.Persistence.Migrations
                         .HasName("pk_finance_settings");
 
                     b.ToTable("finance_settings", "finance");
+                });
+
+            modelBuilder.Entity("Urban.Finance.Infrastructure.Persistence.ReceiptCounter", b =>
+                {
+                    b.Property<Guid>("CondominiumId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("condominium_id");
+
+                    b.Property<int>("LastNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("last_number");
+
+                    b.HasKey("CondominiumId")
+                        .HasName("pk_receipt_counter");
+
+                    b.ToTable("receipt_counter", "finance");
                 });
 
             modelBuilder.Entity("Urban.Finance.Domain.Closing.UnitCharge", b =>

@@ -15,6 +15,7 @@ using Urban.Finance.Domain.Consumption;
 using Urban.Finance.Domain.Expenses;
 using Urban.Finance.Domain.Invoices;
 using Urban.Finance.Domain.Months;
+using Urban.Finance.Domain.Payments;
 using Urban.Identity.Application.Administration;
 using Urban.Identity.Application.Authentication;
 using Urban.Identity.Application.Authentication.Login;
@@ -152,6 +153,8 @@ public sealed class ErrorHttpMappingTests
         { UnitErrors.FractionSumExceeded.Code, 422 },
         { FinanceErrors.CondominiumNotFound.Code, 404 },
         { FinanceErrors.VersionRequired.Code, 400 },
+        { PaymentErrors.ReceiptAlreadyIssued.Code, 409 },
+        { PaymentErrors.ReceiptNumberInvalid.Code, 500 },
         { FinanceErrors.ConcurrencyConflict.Code, 409 },
         { MonthErrors.Invalid.Code, 400 },
         { MonthErrors.TooFarAhead.Code, 422 },

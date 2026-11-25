@@ -18,6 +18,10 @@ public static class PaymentErrors
 
     public static readonly Error AlreadyReversed = new("finance.payment.already_reversed", "Este pagamento já foi estornado");
 
+    public static readonly Error ReceiptNumberInvalid = new("finance.payment.receipt_number_invalid", "O número do recibo deve ser 1 ou maior");
+
+    public static readonly Error ReceiptAlreadyIssued = new("finance.payment.receipt_already_issued", "O recibo deste pagamento já foi emitido");
+
     public static readonly Error NotFound = new("finance.payment.not_found", "Pagamento não encontrado");
 
     public static readonly Error ChargeNotFound = new("finance.charge.not_found", "Cobrança não encontrada");

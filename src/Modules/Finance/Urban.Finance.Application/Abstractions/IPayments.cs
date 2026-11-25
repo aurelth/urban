@@ -29,7 +29,9 @@ public interface IPayments
 
     /// <summary>
     /// Grava o pagamento depois de conferir de novo, com a cobrança travada, que ele cabe no saldo: dois pagamentos ao mesmo tempo
-    /// não passam do valor. Falha com <see cref="PaymentErrors.ExceedsBalance"/>.
+    /// não passam do valor. Falha com <see cref="PaymentErrors.ExceedsBalance"/>. Ao gravar, emite o número do recibo (a próxima
+    /// posição da sequência do condomínio, sem buracos): quem falha por saldo não gasta número, e <see cref="Payment.ReceiptNumber"/>
+    /// vem preenchido no pagamento que voltou.
     /// </summary>
     Task<Result> AddAsync(Payment payment, decimal chargeAmount, CancellationToken cancellationToken);
 

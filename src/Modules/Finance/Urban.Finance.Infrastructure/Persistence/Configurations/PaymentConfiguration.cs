@@ -22,6 +22,7 @@ internal sealed class PaymentConfiguration : IEntityTypeConfiguration<Payment>
         builder.Property(payment => payment.Note).HasMaxLength(Payment.NoteMaxLength);
         builder.Property(payment => payment.RegisteredBy);
         builder.Property(payment => payment.RegisteredAt);
+        builder.Property(payment => payment.ReceiptNumber);
         builder.Property(payment => payment.ReversedAt);
         builder.Property(payment => payment.ReversedBy);
         builder.Property(payment => payment.ReversalReason).HasMaxLength(Payment.ReasonMaxLength);
@@ -31,5 +32,8 @@ internal sealed class PaymentConfiguration : IEntityTypeConfiguration<Payment>
         builder.HasOne<UnitCharge>().WithMany().HasForeignKey(payment => payment.ChargeId).OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(payment => new { payment.CondominiumId, payment.ChargeId });
+
+        // Um número de recibo por pagamento e por condomínio: é a segunda barreira, depois do contador, contra um número repetido.
+        builder.HasIndex(payment => new { payment.CondominiumId, payment.ReceiptNumber }).IsUnique();
     }
 }

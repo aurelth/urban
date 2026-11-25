@@ -1,6 +1,7 @@
 using System.Globalization;
 using Urban.Api.Endpoints;
 using Urban.Finance.Application.Payments;
+using Urban.Finance.Application.Receipts;
 using Urban.Finance.Domain.Payments;
 
 namespace Urban.Api.Mapping;
@@ -51,7 +52,17 @@ public static class PaymentMapper
     }
 
     public static PaymentResponse ToResponse(PaymentView view) => new(
-        view.Id, view.ChargeId, view.Amount, Format(view.ReceivedOn), MethodText(view.Method), view.Note, view.RegisteredAt, view.ReversedAt, view.ReversalReason);
+        view.Id,
+        view.ChargeId,
+        view.Amount,
+        Format(view.ReceivedOn),
+        MethodText(view.Method),
+        view.Note,
+        view.RegisteredAt,
+        view.ReversedAt,
+        view.ReversalReason,
+        view.ReceiptNumber,
+        ReceiptText.Code(view.ReceiptNumber));
 
     public static MonthPaymentsResponse ToResponse(MonthPaymentsView view) => new(
         view.Month,

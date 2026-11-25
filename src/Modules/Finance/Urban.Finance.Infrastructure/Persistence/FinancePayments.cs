@@ -48,6 +48,9 @@ public sealed class FinancePayments(FinanceDbContext db) : IPayments
             return fits;
         }
 
+        // O número só é pedido depois de o pagamento caber no saldo: quem é recusado não gasta número. Ele sai na mesma transação
+        // do pagamento, então um erro na gravação desfaz os dois e a sequência continua sem buracos.
+        payment.IssueReceipt(await NextReceiptNumberAsync(payment.CondominiumId, cancellationToken));
         db.Payments.Add(payment);
         await db.SaveChangesAsync(cancellationToken);
 
@@ -57,6 +60,25 @@ public sealed class FinancePayments(FinanceDbContext db) : IPayments
         }
 
         return Result.Success();
+    }
+
+    /// <summary>
+    /// O próximo número da sequência do condomínio. O <c>insert ... on conflict do update</c> trava a linha do contador até o fim da
+    /// transação, então dois pagamentos ao mesmo tempo, mesmo de cobranças diferentes, recebem números diferentes e seguidos.
+    /// </summary>
+    private async Task<int> NextReceiptNumberAsync(Guid condominiumId, CancellationToken cancellationToken)
+    {
+        // ToListAsync e não SingleAsync: o EF compõe o SQL em volta do Single (limit 2), e um insert ... returning não se compõe.
+        List<int> numbers = await db.Database
+            .SqlQuery<int>(
+                $"""
+                insert into finance.receipt_counter (condominium_id, last_number) values ({condominiumId}, 1)
+                on conflict (condominium_id) do update set last_number = finance.receipt_counter.last_number + 1
+                returning last_number as "Value"
+                """)
+            .ToListAsync(cancellationToken);
+
+        return numbers.Single();
     }
 
     public async Task<Result> ReverseAsync(Payment payment, CancellationToken cancellationToken)

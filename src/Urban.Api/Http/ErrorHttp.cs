@@ -255,6 +255,8 @@ public static class ErrorHttp
         [DelinquencyErrors.PageInvalid.Code] = StatusCodes.Status400BadRequest,
         [PaymentErrors.ExceedsBalance(0m).Code] = StatusCodes.Status422UnprocessableEntity,
         [PaymentErrors.AlreadyReversed.Code] = StatusCodes.Status409Conflict,
+        [PaymentErrors.ReceiptAlreadyIssued.Code] = StatusCodes.Status409Conflict,
+        [PaymentErrors.ReceiptNumberInvalid.Code] = StatusCodes.Status500InternalServerError,
         [PaymentErrors.NotFound.Code] = StatusCodes.Status404NotFound,
         [PaymentInstructionsErrors.PixKeyKindInvalid.Code] = StatusCodes.Status400BadRequest,
         [PaymentInstructionsErrors.PixKeyInvalid.Code] = StatusCodes.Status400BadRequest,

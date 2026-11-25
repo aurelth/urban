@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Urban.Finance.Application.Abstractions;
 using Urban.Finance.Infrastructure.Invoices;
 using Urban.Finance.Infrastructure.Persistence;
+using Urban.Finance.Infrastructure.Receipts;
 using Urban.SharedKernel.Abstractions;
 using Urban.SharedKernel.Time;
 
@@ -38,6 +39,7 @@ public static class FinanceInfrastructureExtensions
         services.AddScoped<IOverdueCharges, FinanceOverdueCharges>();
         services.AddScoped<ICharges, FinanceCharges>();
         services.AddSingleton<IInvoiceRenderer, QuestPdfInvoiceRenderer>();
+        services.AddSingleton<IReceiptRenderer, QuestPdfReceiptRenderer>();
         services.AddScoped<IInvoiceDeliveries, FinanceInvoiceDeliveries>();
         services.AddScoped<IInvoiceDeliveryDispatcher, HangfireInvoiceDeliveryDispatcher>();
 

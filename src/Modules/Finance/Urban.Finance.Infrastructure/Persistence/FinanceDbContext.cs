@@ -41,6 +41,8 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options,
 
     public DbSet<InvoiceDelivery> InvoiceDeliveries => Set<InvoiceDelivery>();
 
+    internal DbSet<ReceiptCounter> ReceiptCounters => Set<ReceiptCounter>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(Schema);
@@ -56,6 +58,7 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options,
         modelBuilder.ApplyConfiguration(new Configurations.PaymentConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.PaymentInstructionsConfiguration());
         modelBuilder.ApplyConfiguration(new Configurations.InvoiceDeliveryConfiguration());
+        modelBuilder.ApplyConfiguration(new Configurations.ReceiptCounterConfiguration());
 
         // Sem tenant a comparação com nulo não casa com nenhuma linha: o padrão é não ver nada.
         modelBuilder.Entity<ExpenseGroup>().HasQueryFilter(group => group.CondominiumId == tenant.CondominiumId);
