@@ -1,5 +1,6 @@
 using Urban.Finance.Application.Abstractions;
 using Urban.Finance.Application.Invoices;
+using Urban.Finance.Application.Receipts;
 using Urban.Finance.Domain;
 using Urban.Finance.Domain.Closing;
 using Urban.Finance.Domain.Consumption;
@@ -454,10 +455,14 @@ internal sealed class FakePayments(FakeMonthClosings closings) : IPayments
 
     public Payment Existing(Payment payment)
     {
+        payment.IssueReceipt(NextReceiptNumber());
         _store.Add(payment);
 
         return payment;
     }
+
+    /// <summary>A sequência do condomínio, como a gravação de verdade a entrega: o próximo depois do maior já dado.</summary>
+    private int NextReceiptNumber() => _store.Select(stored => stored.ReceiptNumber).DefaultIfEmpty(0).Max() + 1;
 
     public Task<ChargeRef?> FindChargeAsync(Guid chargeId, CancellationToken cancellationToken)
     {
@@ -490,6 +495,7 @@ internal sealed class FakePayments(FakeMonthClosings closings) : IPayments
             return Task.FromResult(fits);
         }
 
+        payment.IssueReceipt(NextReceiptNumber());
         _store.Add(payment);
 
         return Task.FromResult(Result.Success());
@@ -628,6 +634,20 @@ internal sealed class FakeResidentHousing : IResidentHousing
         AskedOn = today;
 
         return Task.FromResult(_homes.GetValueOrDefault(userId) ?? new ResidentDwelling([], false));
+    }
+}
+
+internal sealed class FakeReceiptRenderer : IReceiptRenderer
+{
+    public static readonly byte[] Output = [0x25, 0x50, 0x44, 0x46, 0x2D, 0x52];
+
+    public List<ReceiptDocument> Rendered { get; } = [];
+
+    public byte[] Render(ReceiptDocument document)
+    {
+        Rendered.Add(document);
+
+        return Output;
     }
 }
 

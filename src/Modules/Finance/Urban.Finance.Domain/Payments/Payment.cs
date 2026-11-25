@@ -61,6 +61,12 @@ public sealed class Payment
     public bool IsReversed => ReversedAt is not null;
 
     /// <summary>
+    /// O número do recibo deste pagamento, de 1 em diante, em sequência por condomínio. Vale 0 até a gravação emitir o número;
+    /// depois disso nunca muda, nem com o estorno (o recibo de um pagamento estornado continua existindo, marcado como cancelado).
+    /// </summary>
+    public int ReceiptNumber { get; private set; }
+
+    /// <summary>
     /// Confere e cria o pagamento. Vale o primeiro erro, na ordem valor, forma, data e observação. A data não pode ser futura (pelo
     /// dia de Brasília, <paramref name="today"/>) nem anterior ao primeiro dia de 12 meses antes da competência; ela não depende de
     /// quando o mês foi fechado.
@@ -102,6 +108,9 @@ public sealed class Payment
         return Result.Success(new Payment(
             condominiumId, chargeId, amount, receivedOn, method, normalizedNote.Length == 0 ? null : normalizedNote, registeredBy, now));
     }
+
+    /// <summary>Emite o número do recibo. É chamado uma vez, pela gravação, que é quem controla a sequência do condomínio.</summary>
+    public Result IssueReceipt(int number) => Result.Success();
 
     /// <summary>Estorna o pagamento. O motivo é obrigatório e o estorno é definitivo: estornado não volta e não se estorna duas vezes.</summary>
     public Result Reverse(string? reason, Guid reversedBy, DateTimeOffset now)

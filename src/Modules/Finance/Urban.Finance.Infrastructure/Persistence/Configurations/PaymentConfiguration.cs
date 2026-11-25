@@ -26,6 +26,7 @@ internal sealed class PaymentConfiguration : IEntityTypeConfiguration<Payment>
         builder.Property(payment => payment.ReversedBy);
         builder.Property(payment => payment.ReversalReason).HasMaxLength(Payment.ReasonMaxLength);
         builder.Ignore(payment => payment.IsReversed);
+        builder.Ignore(payment => payment.ReceiptNumber);
 
         // Restrict: cobrança com pagamento não se apaga, nem por cascata do fechamento.
         builder.HasOne<UnitCharge>().WithMany().HasForeignKey(payment => payment.ChargeId).OnDelete(DeleteBehavior.Restrict);

@@ -43,6 +43,8 @@ internal sealed class FinanceTestKit
 
     public FakeInvoiceRenderer Renderer { get; } = new();
 
+    public FakeReceiptRenderer ReceiptRenderer { get; } = new();
+
     public FakeInvoiceDeliveries Deliveries { get; }
 
     public FakeInvoiceDeliveryDispatcher Dispatcher { get; } = new();
