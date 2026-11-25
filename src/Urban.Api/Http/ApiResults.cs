@@ -41,4 +41,17 @@ public static class ApiResults
 
         return Results.Accepted();
     }
+
+    /// <summary>Como <see cref="Accepted(Result, HttpResponse)"/>, mas o 202 leva uma resposta (quantos entraram na fila, para quem vai o e-mail).</summary>
+    public static IResult Accepted<T, TResponse>(Result<T> result, HttpResponse response, Func<T, TResponse> toResponse)
+    {
+        if (result.IsFailure)
+        {
+            return ErrorHttp.ToProblem(result.Error);
+        }
+
+        response.PreventCaching();
+
+        return Results.Accepted(value: toResponse(result.Value));
+    }
 }

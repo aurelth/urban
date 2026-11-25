@@ -42,6 +42,22 @@
             <span>{{ message }}</span>
           </p>
         }
+        @if (emailNotice(); as message) {
+          <p role="status" class="mb-4 flex items-start gap-2" data-testid="email-notice">
+            <span class="inline-flex text-success"
+              ><mat-icon svgIcon="check_circle" aria-hidden="true"
+            /></span>
+            <span>{{ message }}</span>
+          </p>
+        }
+        @if (emailError(); as message) {
+          <p role="alert" class="mb-4 flex items-start gap-2" data-testid="email-error">
+            <span class="inline-flex text-error"
+              ><mat-icon svgIcon="error" aria-hidden="true"
+            /></span>
+            <span class="text-error">{{ message }}</span>
+          </p>
+        }
         @if (downloads.error(); as message) {
           <p role="alert" class="mb-4 flex items-start gap-2" data-testid="receipt-error">
             <span class="inline-flex text-error"
@@ -118,27 +134,57 @@
                   }
                 </div>
 
-                <button
-                  mat-stroked-button
-                  type="button"
-                  class="mt-3"
-                  data-testid="download-receipt"
-                  [attr.aria-label]="'Baixar recibo ' + payment.receiptCode"
-                  [attr.aria-busy]="downloads.active() === payment.id"
-                  [disabled]="store.busy() || downloads.active() !== null"
-                  (click)="downloadReceipt(payment)"
-                >
-                  @if (downloads.active() === payment.id) {
-                    <mat-icon
-                      svgIcon="progress_activity"
-                      class="animate-spin motion-reduce:animate-none"
-                      aria-hidden="true"
-                    />
-                  } @else {
-                    <mat-icon svgIcon="download" aria-hidden="true" />
+                <div class="mt-3 flex flex-wrap gap-3">
+                  <button
+                    mat-stroked-button
+                    type="button"
+                    data-testid="download-receipt"
+                    [attr.aria-label]="'Baixar recibo ' + payment.receiptCode"
+                    [attr.aria-busy]="downloads.active() === payment.id"
+                    [disabled]="store.busy() || downloads.active() !== null || emailing() !== null"
+                    (click)="downloadReceipt(payment)"
+                  >
+                    @if (downloads.active() === payment.id) {
+                      <mat-icon
+                        svgIcon="progress_activity"
+                        class="animate-spin motion-reduce:animate-none"
+                        aria-hidden="true"
+                      />
+                    } @else {
+                      <mat-icon svgIcon="download" aria-hidden="true" />
+                    }
+                    Baixar recibo
+                  </button>
+
+                  @if (payment.reversedAt === null) {
+                    <button
+                      mat-stroked-button
+                      type="button"
+                      data-testid="email-receipt"
+                      [attr.aria-label]="'Enviar recibo ' + payment.receiptCode + ' por e-mail'"
+                      [attr.aria-busy]="emailing() === payment.id"
+                      [disabled]="
+                        store.busy() || downloads.active() !== null || emailing() !== null
+                      "
+                      (click)="emailReceipt(payment)"
+                    >
+                      @if (emailing() === payment.id) {
+                        <mat-icon
+                          svgIcon="progress_activity"
+                          class="animate-spin motion-reduce:animate-none"
+                          aria-hidden="true"
+                        />
+                      } @else {
+                        <mat-icon svgIcon="forward_to_inbox" aria-hidden="true" />
+                      }
+                      @if (emailing() === payment.id) {
+                        Enviando
+                      } @else {
+                        Enviar por e-mail
+                      }
+                    </button>
                   }
-                  Baixar recibo
-                </button>
+                </div>
 
                 @if (payment.reversedAt !== null) {
                   <p class="mt-3 mb-0 flex items-start gap-2 text-sm" data-testid="reversed">

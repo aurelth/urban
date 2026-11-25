@@ -69,14 +69,7 @@ public static class InvoiceDeliveryEndpoints
 
         Result<SendMonthInvoicesResult> result = await sender.Send(new SendMonthInvoicesCommand(month, userId), cancellationToken);
 
-        if (result.IsFailure)
-        {
-            return ErrorHttp.ToProblem(result.Error);
-        }
-
-        response.PreventCaching();
-
-        return Results.Accepted(value: InvoiceDeliveryMapper.ToResponse(result.Value));
+        return ApiResults.Accepted(result, response, InvoiceDeliveryMapper.ToResponse);
     }
 
     private static async Task<IResult> ResendAsync(Guid chargeId, ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken cancellationToken)

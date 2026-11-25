@@ -18,17 +18,18 @@ public static class InvoiceEmail
         Valor: {InvoiceText.Money(charge.Amount)}
         Vencimento: {InvoiceText.Date(charge.DueDate)}
 
-        {Contact(condominium.Manager)}
+        {Contact(condominium.Manager, "a fatura")}
 
         Esta mensagem é automática: não responda a este e-mail.
 
         Urban
         """;
 
-    private static string Contact(InvoiceManager? manager) => manager switch
+    /// <summary>A última frase dos e-mails de cobrança (fatura e recibo): a quem falar em caso de dúvida, com o telefone quando o síndico o tem.</summary>
+    internal static string Contact(InvoiceManager? manager, string about) => manager switch
     {
-        null => "Dúvidas sobre a fatura? Fale com o síndico do condomínio.",
-        { Phone: { Length: > 0 } phone } => $"Dúvidas sobre a fatura? Fale com o síndico, {manager.Name}, pelo telefone {phone}.",
-        _ => $"Dúvidas sobre a fatura? Fale com o síndico, {manager.Name}.",
+        null => $"Dúvidas sobre {about}? Fale com o síndico do condomínio.",
+        { Phone: { Length: > 0 } phone } => $"Dúvidas sobre {about}? Fale com o síndico, {manager.Name}, pelo telefone {phone}.",
+        _ => $"Dúvidas sobre {about}? Fale com o síndico, {manager.Name}.",
     };
 }
