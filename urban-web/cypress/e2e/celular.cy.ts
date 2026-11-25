@@ -12,7 +12,12 @@ import { READINGS_PATH, stubReadings } from '../support/leituras';
 import { INSTRUCTIONS_PATH, NO_INSTRUCTIONS, stubInstructions } from '../support/dados-pagamento';
 import { INVOICE_DELIVERIES_PATH, stubInvoiceDeliveries } from '../support/enviar-faturas';
 import { DELINQUENCY_PATH, stubDelinquency } from '../support/inadimplencia';
-import { PAYMENTS_PATH, stubPayments } from '../support/pagamentos';
+import {
+  PAYMENTS_PATH,
+  PAYMENT_ON_102,
+  stubChargePayments,
+  stubPayments,
+} from '../support/pagamentos';
 import { MY_DATA_PATH, stubMyRegistration } from '../support/meu-cadastro';
 import { MY_INVOICE_PATH, stubMyMonth } from '../support/minha-fatura';
 import { TODAY } from '../support/financeiro';
@@ -295,9 +300,32 @@ describe('Tela de celular (375 x 667)', () => {
 
     cy.contains('h1', 'Minha fatura').should('be.visible');
     cy.get('[data-testid="unit-card"]').should('have.length', 2);
+    cy.get('[data-testid="payment-item"]').should('have.length', 4);
     cy.get(
-      '[data-testid="previous-month"], [data-testid="next-month"], [data-testid="download-invoice"]',
+      '[data-testid="previous-month"], [data-testid="next-month"], [data-testid="download-invoice"], [data-testid="download-receipt"]',
     ).each(($button) => {
+      const { left, right } = $button[0].getBoundingClientRect();
+      expect(left).to.be.at.least(0);
+      expect(right).to.be.at.most(375);
+    });
+    cy.get('[data-testid="payment-item"]').each(($item) => {
+      const { left, right } = $item[0].getBoundingClientRect();
+      expect(left).to.be.at.least(0);
+      expect(right).to.be.at.most(375);
+    });
+    expectNoHorizontalScroll();
+  });
+
+  it('mostra o diálogo de pagamentos com o recibo sem rolagem horizontal, com os botões dentro da tela', () => {
+    stubSignedIn(MANAGER);
+    const charges = stubPayments();
+    stubChargePayments(charges[1], [{ ...PAYMENT_ON_102 }]);
+    cy.visit(PAYMENTS_PATH);
+
+    cy.get('button[aria-label="Ver pagamentos de Bloco A · 102"]').click();
+
+    cy.get('[data-testid="receipt-code"]').should('be.visible');
+    cy.get('urban-charge-payments-dialog button').each(($button) => {
       const { left, right } = $button[0].getBoundingClientRect();
       expect(left).to.be.at.least(0);
       expect(right).to.be.at.most(375);

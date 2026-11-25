@@ -48,7 +48,14 @@ public sealed class GetMyMonthQueryHandler(
                 month.Value.ToString(), today, MyMonthAccess.Unit, false, [.. dwelling.Units.Select(unit => UnitOf(unit, null))], null));
         }
 
-        Dictionary<Guid, MyChargeView> chargesByUnit = page.Items.ToDictionary(row => row.UnitId, row => ChargeOf(row, page.DueDate, today));
+        Dictionary<Guid, ChargeRow> rowsByUnit = page.Items.ToDictionary(row => row.UnitId);
+        List<ChargeRow> mine = [.. dwelling.Units.Select(unit => rowsByUnit.GetValueOrDefault(unit.UnitId)).OfType<ChargeRow>().DistinctBy(row => row.ChargeId)];
+
+        // Os pagamentos das cobranças da conta saem numa consulta só, não numa por unidade; sem cobrança nenhuma nem se pergunta.
+        ILookup<Guid, Payment> paymentsByCharge = mine.Count == 0
+            ? Enumerable.Empty<Payment>().ToLookup(payment => payment.ChargeId)
+            : (await payments.ListForChargesAsync([.. mine.Select(row => row.ChargeId)], cancellationToken)).ToLookup(payment => payment.ChargeId);
+        Dictionary<Guid, MyChargeView> chargesByUnit = mine.ToDictionary(row => row.UnitId, row => ChargeOf(row, page.DueDate, today, paymentsByCharge[row.ChargeId]));
         MonthView expenses = await MonthReader.ReadAsync(entries, closings, groups, month.Value, today, cancellationToken);
 
         return Result.Success(new MyMonthView(
@@ -64,12 +71,13 @@ public sealed class GetMyMonthQueryHandler(
 
     private static MyUnitView UnitOf(ResidentUnit unit, MyChargeView? charge) => new(unit.UnitId, unit.Block, unit.Number, charge);
 
-    private static MyChargeView ChargeOf(ChargeRow row, DateOnly dueDate, DateOnly today) => new(
+    private static MyChargeView ChargeOf(ChargeRow row, DateOnly dueDate, DateOnly today, IEnumerable<Payment> chargePayments) => new(
         row.ChargeId,
         dueDate,
         row.Amount,
         row.Paid,
         ChargeAccount.Balance(row.Amount, row.Paid),
         ChargeAccount.StatusOf(row.Amount, row.Paid, dueDate, today),
-        row.LastReceivedOn);
+        row.LastReceivedOn,
+        [.. chargePayments.Select(payment => new MyPaymentView(payment.Id, payment.Amount, payment.ReceivedOn, payment.Method, payment.ReceiptNumber, payment.IsReversed))]);
 }

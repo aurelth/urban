@@ -1,9 +1,11 @@
 import { HttpTestingController } from '@angular/common/http/testing';
 import { Injector } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { jest } from '@jest/globals';
 import { formatMoney } from '../../core/finance/money';
 import { ChargePayments } from '../../core/finance/payments.models';
 import { flushPromises } from '../../testing/async';
+import { FileSaver } from '../../shared/files/file-saver';
 import { problem } from '../../testing/auth.fixtures';
 import {
   configureDialogTest,
@@ -24,6 +26,7 @@ function money(amount: number): string {
 const TAG = 'urban-charge-payments-dialog';
 const URL = '/api/finance/charges/c1/payments';
 const REVERSE = '/api/finance/payments/p1/reverse';
+const RECEIPT = (paymentId: string): string => `/api/finance/payments/${paymentId}/receipt`;
 
 function testId(id: string): HTMLElement | null {
   return dialogOf(TAG).querySelector<HTMLElement>(`[data-testid="${id}"]`);
@@ -72,13 +75,23 @@ const TWO = chargePayments({
   balance: 300,
   status: 'partial',
   payments: [
-    payment({ id: 'p2', amount: 200, receivedOn: '2026-11-12', method: 'cash', note: 'No caixa' }),
+    payment({
+      id: 'p2',
+      amount: 200,
+      receivedOn: '2026-11-12',
+      method: 'cash',
+      note: 'No caixa',
+      receiptNumber: 3,
+      receiptCode: 'REC-000003',
+    }),
     payment({
       id: 'p1',
       amount: 500,
       receivedOn: '2026-11-10',
       method: 'pix',
       reversedAt: null,
+      receiptNumber: 2,
+      receiptCode: 'REC-000002',
     }),
     payment({
       id: 'p0',
@@ -87,6 +100,8 @@ const TWO = chargePayments({
       method: 'boleto',
       reversedAt: '2026-11-09T14:30:00Z',
       reversalReason: 'Lançado na unidade errada',
+      receiptNumber: 1,
+      receiptCode: 'REC-000001',
     }),
   ],
 });
@@ -172,6 +187,165 @@ describe('ChargePaymentsDialog', () => {
     await settle();
 
     expect(testId('not-found')?.textContent).toContain('Esta cobrança não existe mais');
+  });
+
+  describe('recibo', () => {
+    let save: jest.SpiedFunction<FileSaver['save']>;
+
+    beforeEach(() => {
+      save = jest.spyOn(FileSaver.prototype, 'save').mockImplementation(() => undefined);
+    });
+
+    afterEach(() => save.mockRestore());
+
+    function receiptButtons(): HTMLButtonElement[] {
+      return [
+        ...dialogOf(TAG).querySelectorAll<HTMLButtonElement>('[data-testid="download-receipt"]'),
+      ];
+    }
+
+    it('mostra o codigo do recibo de cada pagamento, e marca o cancelado do estornado', async () => {
+      await open(TWO);
+
+      expect(texts('receipt-code')).toEqual([
+        'Recibo REC-000003',
+        'Recibo REC-000002',
+        'Recibo REC-000001 · cancelado',
+      ]);
+    });
+
+    it('tem o botao Baixar recibo em todos os pagamentos, o estornado inclusive, com o codigo no rotulo', async () => {
+      await open(TWO);
+
+      const buttons = receiptButtons();
+      expect(
+        buttons.map((button) => (button.textContent ?? '').replace(/\s+/g, ' ').trim()),
+      ).toEqual(['Baixar recibo', 'Baixar recibo', 'Baixar recibo']);
+      expect(buttons.map((button) => button.getAttribute('aria-label'))).toEqual([
+        'Baixar recibo REC-000003',
+        'Baixar recibo REC-000002',
+        'Baixar recibo REC-000001',
+      ]);
+      expect(buttons[0].querySelector('mat-icon')?.getAttribute('data-mat-icon-name')).toBe(
+        'download',
+      );
+    });
+
+    it('baixa o PDF pela rota do sindico, salva com o nome da API e avisa', async () => {
+      const { http } = await open(TWO);
+
+      receiptButtons()[1].click();
+      const pdf = new Blob(['%PDF-1.7'], { type: 'application/pdf' });
+      http.expectOne({ method: 'GET', url: RECEIPT('p1') }).flush(pdf, {
+        headers: { 'Content-Disposition': "attachment; filename*=UTF-8''recibo-000002.pdf" },
+      });
+      await settle();
+
+      expect(save).toHaveBeenCalledTimes(1);
+      expect(save).toHaveBeenCalledWith(pdf, 'recibo-000002.pdf');
+      expect(texts('receipt-notice')).toEqual(['Recibo REC-000002 baixado']);
+      expect(testId('receipt-error')).toBeNull();
+    });
+
+    it('trava os botoes e mostra que esta baixando enquanto o PDF nao chega', async () => {
+      const { http } = await open(TWO);
+
+      receiptButtons()[0].click();
+      await settle();
+
+      const buttons = receiptButtons();
+      expect(buttons[0].getAttribute('aria-busy')).toBe('true');
+      expect(buttons[0].querySelector('mat-icon')?.getAttribute('data-mat-icon-name')).toBe(
+        'progress_activity',
+      );
+      expect(buttons.every((button) => button.disabled)).toBe(true);
+      http.expectOne({ method: 'GET', url: RECEIPT('p2') }).flush(new Blob(['%PDF-1.7']));
+      await settle();
+
+      expect(receiptButtons().every((button) => !button.disabled)).toBe(true);
+      expect(receiptButtons()[0].getAttribute('aria-busy')).toBe('false');
+    });
+
+    it('explica quando o pagamento nao existe mais, sem salvar nada', async () => {
+      const { http } = await open(TWO);
+
+      receiptButtons()[0].click();
+      http.expectOne({ method: 'GET', url: RECEIPT('p2') }).flush(
+        new Blob([JSON.stringify({ status: 404, code: 'finance.payment.not_found' })], {
+          type: 'application/problem+json',
+        }),
+        { status: 404, statusText: 'Not Found' },
+      );
+      await settle();
+
+      expect(save).not.toHaveBeenCalled();
+      expect(texts('receipt-error')).toEqual([
+        'Este pagamento não existe mais. Feche esta janela e atualize a lista',
+      ]);
+      expect(testId('receipt-error')?.getAttribute('role')).toBe('alert');
+      expect(testId('receipt-notice')).toBeNull();
+    });
+
+    it('explica o limite de requisicoes e a falta de conexao', async () => {
+      const { http } = await open(TWO);
+
+      receiptButtons()[0].click();
+      http.expectOne({ method: 'GET', url: RECEIPT('p2') }).flush(new Blob(['x']), {
+        status: 429,
+        statusText: 'Too Many Requests',
+        headers: { 'Retry-After': '20' },
+      });
+      await settle();
+      expect(texts('receipt-error')[0]).toContain('Aguarde 20 segundos');
+
+      receiptButtons()[0].click();
+      http.expectOne({ method: 'GET', url: RECEIPT('p2') }).error(new ProgressEvent('error'));
+      await settle();
+      expect(texts('receipt-error')[0]).toContain('Não foi possível conectar');
+    });
+
+    it('troca o erro pelo aviso de sucesso na proxima tentativa', async () => {
+      const { http } = await open(TWO);
+      receiptButtons()[0].click();
+      http
+        .expectOne({ method: 'GET', url: RECEIPT('p2') })
+        .flush(new Blob(['x']), { status: 500, statusText: 'Erro' });
+      await settle();
+      expect(testId('receipt-error')).not.toBeNull();
+
+      receiptButtons()[0].click();
+      http.expectOne({ method: 'GET', url: RECEIPT('p2') }).flush(new Blob(['%PDF-1.7']));
+      await settle();
+
+      expect(testId('receipt-error')).toBeNull();
+      expect(testId('receipt-notice')).not.toBeNull();
+    });
+
+    it('os avisos do recibo somem quando a pessoa comeca um estorno', async () => {
+      const { http } = await open(TWO);
+      receiptButtons()[0].click();
+      http.expectOne({ method: 'GET', url: RECEIPT('p2') }).flush(new Blob(['%PDF-1.7']));
+      await settle();
+      expect(testId('receipt-notice')).not.toBeNull();
+
+      dialogOf(TAG)
+        .querySelectorAll<HTMLButtonElement>('[data-testid="reverse-payment"]')[0]
+        .click();
+      await settle();
+
+      expect(testId('receipt-notice')).toBeNull();
+    });
+
+    it('baixar o recibo nao conta como mudanca: fechar responde falso', async () => {
+      const { http, result } = await open(TWO);
+      receiptButtons()[0].click();
+      http.expectOne({ method: 'GET', url: RECEIPT('p2') }).flush(new Blob(['%PDF-1.7']));
+      await settle();
+
+      testId('close')!.click();
+
+      await expect(result).resolves.toBe(false);
+    });
   });
 
   describe('estorno', () => {

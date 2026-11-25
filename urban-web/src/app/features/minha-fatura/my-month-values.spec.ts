@@ -1,4 +1,4 @@
-import { MY_INVOICE_MESSAGES, unitHeading } from './my-month-values';
+import { MY_INVOICE_MESSAGES, MY_RECEIPT_MESSAGES, unitHeading } from './my-month-values';
 
 describe('unitHeading', () => {
   it('chama a unidade sem bloco pelo número', () => {
@@ -14,6 +14,14 @@ describe('MY_INVOICE_MESSAGES', () => {
   it('explica que a fatura não está disponível, sem falar em lista de cobranças', () => {
     expect(MY_INVOICE_MESSAGES['finance.charge.not_found']).toBe(
       'Esta fatura não está disponível. Atualize a tela e tente de novo',
+    );
+  });
+});
+
+describe('MY_RECEIPT_MESSAGES', () => {
+  it('explica que o recibo não está disponível, sem falar em lista de pagamentos', () => {
+    expect(MY_RECEIPT_MESSAGES['finance.payment.not_found']).toBe(
+      'Este recibo não está disponível. Atualize a tela e tente de novo',
     );
   });
 });

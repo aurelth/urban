@@ -85,7 +85,7 @@
             <span>{{ message }}</span>
           </p>
         }
-        @if (invoiceError(); as message) {
+        @if (downloads.error(); as message) {
           <p role="alert" class="mb-4 flex items-start gap-2" data-testid="invoice-error">
             <span class="inline-flex text-error"
               ><mat-icon svgIcon="error" aria-hidden="true"
@@ -222,11 +222,11 @@
                           data-testid="download-invoice"
                           title="Baixar fatura em PDF"
                           [attr.aria-label]="'Baixar fatura de ' + unitLabel(item)"
-                          [attr.aria-busy]="downloading() === item.chargeId"
-                          [disabled]="store.busy() || downloading() !== null"
+                          [attr.aria-busy]="downloads.active() === item.chargeId"
+                          [disabled]="store.busy() || downloads.active() !== null"
                           (click)="downloadInvoice(item)"
                         >
-                          @if (downloading() === item.chargeId) {
+                          @if (downloads.active() === item.chargeId) {
                             <mat-icon
                               svgIcon="progress_activity"
                               class="animate-spin motion-reduce:animate-none"

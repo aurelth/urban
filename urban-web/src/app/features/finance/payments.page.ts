@@ -10,14 +10,13 @@ import { MatButton, MatIconButton } from '@angular/material/button';
 import { MatFormField, MatLabel } from '@angular/material/form-field';
 import { MatIcon } from '@angular/material/icon';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
 import { NOW } from '../../core/finance/clock';
 import { formatMoney } from '../../core/finance/money';
 import { addMonths, formatDate, isMonthInWindow, monthTitle } from '../../core/finance/month';
 import { InvoicesApi } from '../../core/finance/invoices.api';
 import { ChargeSummary, PaymentsStatusFilter } from '../../core/finance/payments.models';
-import { toApiProblem } from '../../core/http/api-problem';
 import { describeProblem } from '../../core/http/problem-message';
+import { FileDownloads } from '../../shared/files/file-downloads';
 import { FileSaver } from '../../shared/files/file-saver';
 import { MenuSelect } from '../../shared/ui/menu-select/menu-select';
 import { unitLabel } from '../units/unit-values';
@@ -49,15 +48,13 @@ export class PaymentsPage implements OnInit {
   private readonly now = inject(NOW);
   private readonly route = inject(ActivatedRoute);
   private readonly invoices = inject(InvoicesApi);
-  private readonly files = inject(FileSaver);
 
   protected readonly month = signal(
     initialMonth(this.route.snapshot.queryParamMap.get('mes'), this.now()),
   );
   protected readonly notice = signal<string | null>(null);
-  protected readonly invoiceError = signal<string | null>(null);
-  /** A cobrança cuja fatura está sendo baixada; só uma por vez. */
-  protected readonly downloading = signal<string | null>(null);
+  /** Só uma fatura por vez; a chave é o id da cobrança que está sendo baixada. */
+  protected readonly downloads = new FileDownloads(inject(FileSaver), INVOICE_MESSAGES);
 
   protected readonly title = monthTitle;
   protected readonly money = formatMoney;
@@ -130,26 +127,19 @@ export class PaymentsPage implements OnInit {
 
   protected async downloadInvoice(charge: ChargeSummary): Promise<void> {
     this.clearMessages();
-    this.downloading.set(charge.chargeId);
-    try {
-      const { blob, fileName } = await firstValueFrom(this.invoices.download(charge.chargeId));
-      this.files.save(blob, fileName);
+    if (await this.downloads.run(charge.chargeId, this.invoices.download(charge.chargeId))) {
       this.announce(`Fatura de ${unitLabel(charge)} baixada`);
-    } catch (error) {
-      this.invoiceError.set(describeProblem(toApiProblem(error), INVOICE_MESSAGES));
-    } finally {
-      this.downloading.set(null);
     }
   }
 
   private announce(message: string): void {
-    this.invoiceError.set(null);
+    this.downloads.clear();
     this.notice.set(message);
   }
 
   private clearMessages(): void {
     this.notice.set(null);
-    this.invoiceError.set(null);
+    this.downloads.clear();
   }
 
   private async show(month: string): Promise<void> {

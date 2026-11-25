@@ -34,6 +34,23 @@
           </p>
         }
 
+        @if (receiptNotice(); as message) {
+          <p role="status" class="mb-4 flex items-start gap-2" data-testid="receipt-notice">
+            <span class="inline-flex text-success"
+              ><mat-icon svgIcon="check_circle" aria-hidden="true"
+            /></span>
+            <span>{{ message }}</span>
+          </p>
+        }
+        @if (downloads.error(); as message) {
+          <p role="alert" class="mb-4 flex items-start gap-2" data-testid="receipt-error">
+            <span class="inline-flex text-error"
+              ><mat-icon svgIcon="error" aria-hidden="true"
+            /></span>
+            <span class="text-error">{{ message }}</span>
+          </p>
+        }
+
         <dl class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <div data-testid="summary-amount">
             <dt class="text-sm text-on-surface-variant">Valor</dt>
@@ -81,6 +98,11 @@
                       data-testid="payment-info"
                       >{{ info(payment) }}</span
                     >
+                    <span
+                      class="block text-sm text-on-surface-variant"
+                      data-testid="receipt-code"
+                      >{{ receiptText(payment) }}</span
+                    >
                   </div>
                   @if (payment.reversedAt === null && reversing() !== payment.id) {
                     <button
@@ -95,6 +117,28 @@
                     </button>
                   }
                 </div>
+
+                <button
+                  mat-stroked-button
+                  type="button"
+                  class="mt-3"
+                  data-testid="download-receipt"
+                  [attr.aria-label]="'Baixar recibo ' + payment.receiptCode"
+                  [attr.aria-busy]="downloads.active() === payment.id"
+                  [disabled]="store.busy() || downloads.active() !== null"
+                  (click)="downloadReceipt(payment)"
+                >
+                  @if (downloads.active() === payment.id) {
+                    <mat-icon
+                      svgIcon="progress_activity"
+                      class="animate-spin motion-reduce:animate-none"
+                      aria-hidden="true"
+                    />
+                  } @else {
+                    <mat-icon svgIcon="download" aria-hidden="true" />
+                  }
+                  Baixar recibo
+                </button>
 
                 @if (payment.reversedAt !== null) {
                   <p class="mt-3 mb-0 flex items-start gap-2 text-sm" data-testid="reversed">

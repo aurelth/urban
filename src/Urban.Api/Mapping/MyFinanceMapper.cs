@@ -1,6 +1,7 @@
 using System.Globalization;
 using Urban.Api.Endpoints;
 using Urban.Finance.Application.MyMonth;
+using Urban.Finance.Application.Receipts;
 
 namespace Urban.Api.Mapping;
 
@@ -28,7 +29,17 @@ public static class MyFinanceMapper
         charge.Paid,
         charge.Balance,
         PaymentMapper.StatusText(charge.Status),
-        charge.LastReceivedOn is { } received ? Format(received) : null);
+        charge.LastReceivedOn is { } received ? Format(received) : null,
+        [.. charge.Payments.Select(ToResponse)]);
+
+    private static MyPaymentResponse ToResponse(MyPaymentView payment) => new(
+        payment.PaymentId,
+        payment.Amount,
+        Format(payment.ReceivedOn),
+        PaymentMapper.MethodText(payment.Method),
+        payment.ReceiptNumber,
+        ReceiptText.Code(payment.ReceiptNumber),
+        payment.Reversed);
 
     private static string AccessName(MyMonthAccess access) => access switch
     {

@@ -482,6 +482,16 @@ internal sealed class FakePayments(FakeMonthClosings closings) : IPayments
     public Task<IReadOnlyList<Payment>> ListForChargeAsync(Guid chargeId, CancellationToken cancellationToken) =>
         Task.FromResult<IReadOnlyList<Payment>>([.. _store.Where(payment => payment.ChargeId == chargeId).Reverse()]);
 
+    /// <summary>Quantas vezes o morador pediu os pagamentos de várias cobranças, e de quais.</summary>
+    public List<IReadOnlyCollection<Guid>> ListForChargesCalls { get; } = [];
+
+    public Task<IReadOnlyList<Payment>> ListForChargesAsync(IReadOnlyCollection<Guid> chargeIds, CancellationToken cancellationToken)
+    {
+        ListForChargesCalls.Add(chargeIds);
+
+        return Task.FromResult<IReadOnlyList<Payment>>([.. _store.Where(payment => chargeIds.Contains(payment.ChargeId)).OrderBy(payment => payment.ReceiptNumber)]);
+    }
+
     public Task<Payment?> FindAsync(Guid paymentId, CancellationToken cancellationToken) =>
         Task.FromResult(_store.Find(payment => payment.Id == paymentId));
 

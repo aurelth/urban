@@ -10,8 +10,14 @@ public enum MyMonthAccess
     None,
 }
 
+/// <summary>Um pagamento da cobrança como o morador o vê: o valor, o dia, a forma e o recibo. Sem observação nem motivo do estorno, que ficam com o síndico.</summary>
+/// <param name="Reversed">Se o pagamento foi estornado; o recibo dele continua existindo, marcado como cancelado.</param>
+public sealed record MyPaymentView(Guid PaymentId, decimal Amount, DateOnly ReceivedOn, PaymentMethod Method, int ReceiptNumber, bool Reversed);
+
 /// <summary>A cobrança da unidade no mês, com a situação calculada hoje e o que já foi pago (sem estornos).</summary>
-public sealed record MyChargeView(Guid ChargeId, DateOnly DueDate, decimal Amount, decimal Paid, decimal Balance, ChargeStatus Status, DateOnly? LastReceivedOn);
+/// <param name="Payments">Todos os pagamentos da cobrança, estornados inclusive, do mais antigo para o mais novo.</param>
+public sealed record MyChargeView(
+    Guid ChargeId, DateOnly DueDate, decimal Amount, decimal Paid, decimal Balance, ChargeStatus Status, DateOnly? LastReceivedOn, IReadOnlyList<MyPaymentView> Payments);
 
 /// <param name="Charge">Nulo enquanto o mês não fechou, ou se a unidade não recebeu cobrança nele.</param>
 public sealed record MyUnitView(Guid UnitId, string? Block, string Number, MyChargeView? Charge);
