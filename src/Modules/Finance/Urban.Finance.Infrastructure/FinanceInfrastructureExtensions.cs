@@ -42,6 +42,7 @@ public static class FinanceInfrastructureExtensions
         services.AddSingleton<IReceiptRenderer, QuestPdfReceiptRenderer>();
         services.AddScoped<IInvoiceDeliveries, FinanceInvoiceDeliveries>();
         services.AddScoped<IInvoiceDeliveryDispatcher, HangfireInvoiceDeliveryDispatcher>();
+        services.AddScoped<IReceiptEmailDispatcher, HangfireReceiptEmailDispatcher>();
 
         return services;
     }

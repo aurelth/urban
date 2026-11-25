@@ -196,6 +196,8 @@ public sealed class ErrorHttpMappingTests
         { InvoiceDeliveryErrors.NoRecipient.Code, 422 },
         { InvoiceDeliveryErrors.AlreadyQueued.Code, 409 },
         { InvoiceDeliveryErrors.PageInvalid.Code, 400 },
+        { ReceiptDeliveryErrors.NoRecipient.Code, 422 },
+        { ReceiptDeliveryErrors.PaymentReversed.Code, 409 },
         { ConsumptionErrors.BandsInvalid.Code, 400 },
         { ConsumptionErrors.GasInvalid.Code, 400 },
         { ConsumptionErrors.SewagePercentInvalid.Code, 400 },

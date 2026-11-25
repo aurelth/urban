@@ -49,6 +49,8 @@ internal sealed class FinanceTestKit
 
     public FakeInvoiceDeliveryDispatcher Dispatcher { get; } = new();
 
+    public FakeReceiptEmailDispatcher ReceiptDispatcher { get; } = new();
+
     public FakeEmailSender Emails { get; } = new();
 
     public FakeApportionmentBasis Basis { get; } = new();

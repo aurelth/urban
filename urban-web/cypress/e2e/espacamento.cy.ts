@@ -38,6 +38,8 @@ import {
   PAYMENT_ON_102,
   stubChargePayments,
   stubPayments,
+  stubReceiptEmail,
+  stubReceiptEmailRejected,
   stubReceiptRejected,
 } from '../support/pagamentos';
 import { stubDashboard } from '../support/painel';
@@ -578,6 +580,24 @@ SCREENS.forEach(([where, width, height]) => {
 
       cy.get('[data-testid="download-receipt"]').click();
       cy.get('[data-testid="receipt-error"]').should('be.visible');
+      expectBreathingRoom();
+    });
+
+    it('não cola texto em container no diálogo de pagamentos com o aviso e o erro do envio do recibo por e-mail', () => {
+      stubSignedIn(MANAGER);
+      const charges = stubPayments();
+      stubChargePayments(charges[1], [{ ...PAYMENT_ON_102 }]);
+      stubReceiptEmail(PAYMENT_ON_102.id, 'Maria Souza');
+      cy.visit(PAYMENTS_PATH);
+
+      cy.get('button[aria-label="Ver pagamentos de Bloco A · 102"]').click();
+      cy.get('[data-testid="email-receipt"]').click();
+      cy.get('[data-testid="email-notice"]').should('be.visible');
+      expectBreathingRoom();
+
+      stubReceiptEmailRejected(PAYMENT_ON_102.id, 422, 'finance.receipt_delivery.no_recipient');
+      cy.get('[data-testid="email-receipt"]').click();
+      cy.get('[data-testid="email-error"]').should('be.visible');
       expectBreathingRoom();
     });
 

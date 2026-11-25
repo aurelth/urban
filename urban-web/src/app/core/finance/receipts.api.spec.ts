@@ -88,4 +88,47 @@ describe('ReceiptsApi', () => {
     http.expectOne(MANAGER).flush(new Blob(['%PDF-1.7']));
     await manager;
   });
+
+  describe('sendByEmail', () => {
+    const DELIVERIES = '/api/finance/payments/p1/receipt-deliveries';
+
+    it('pede o envio sem corpo e devolve quem vai receber', async () => {
+      const result = firstValueFrom(api.sendByEmail('p1'));
+
+      const request = http.expectOne(DELIVERIES);
+      expect(request.request.method).toBe('POST');
+      expect(request.request.body).toBeNull();
+      request.flush({ recipientName: 'Maria Souza' }, { status: 202, statusText: 'Accepted' });
+
+      await expect(result).resolves.toEqual({ recipientName: 'Maria Souza' });
+    });
+
+    it.each([
+      [422, 'finance.receipt_delivery.no_recipient'],
+      [409, 'finance.receipt_delivery.payment_reversed'],
+      [404, 'finance.payment.not_found'],
+    ])('devolve o codigo da API na recusa %i', async (status, code) => {
+      const result = firstValueFrom(api.sendByEmail('p1'));
+
+      http.expectOne(DELIVERIES).flush({ status, code }, { status, statusText: 'Erro' });
+
+      const error: unknown = await result.catch((failure: unknown) => failure);
+      expect(error).toBeInstanceOf(HttpErrorResponse);
+      expect(toApiProblem(error)).toMatchObject({ status, code });
+    });
+
+    it('mantem o Retry-After quando o limite de requisicoes e atingido', async () => {
+      const result = firstValueFrom(api.sendByEmail('p1'));
+
+      http
+        .expectOne(DELIVERIES)
+        .flush(
+          { status: 429, code: 'rate_limit.exceeded' },
+          { status: 429, statusText: 'Too Many Requests', headers: { 'Retry-After': '30' } },
+        );
+
+      const error: unknown = await result.catch((failure: unknown) => failure);
+      expect(toApiProblem(error)).toMatchObject({ status: 429, retryAfterSeconds: 30 });
+    });
+  });
 });

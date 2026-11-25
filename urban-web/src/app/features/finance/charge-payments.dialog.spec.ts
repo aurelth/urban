@@ -38,6 +38,10 @@ function texts(id: string): string[] {
   );
 }
 
+function receiptButtons(): HTMLButtonElement[] {
+  return [...dialogOf(TAG).querySelectorAll<HTMLButtonElement>('[data-testid="download-receipt"]')];
+}
+
 function summary(id: string): string[] {
   return [...testId(id)!.querySelectorAll('dt, dd')].map((element) =>
     (element.textContent ?? '').replace(/\s+/g, ' ').trim(),
@@ -198,12 +202,6 @@ describe('ChargePaymentsDialog', () => {
 
     afterEach(() => save.mockRestore());
 
-    function receiptButtons(): HTMLButtonElement[] {
-      return [
-        ...dialogOf(TAG).querySelectorAll<HTMLButtonElement>('[data-testid="download-receipt"]'),
-      ];
-    }
-
     it('mostra o codigo do recibo de cada pagamento, e marca o cancelado do estornado', async () => {
       await open(TWO);
 
@@ -345,6 +343,241 @@ describe('ChargePaymentsDialog', () => {
       testId('close')!.click();
 
       await expect(result).resolves.toBe(false);
+    });
+  });
+
+  describe('recibo por e-mail', () => {
+    const DELIVERIES = (paymentId: string): string =>
+      `/api/finance/payments/${paymentId}/receipt-deliveries`;
+
+    function emailButtons(): HTMLButtonElement[] {
+      return [
+        ...dialogOf(TAG).querySelectorAll<HTMLButtonElement>('[data-testid="email-receipt"]'),
+      ];
+    }
+
+    async function reject(
+      http: HttpTestingController,
+      paymentId: string,
+      status: number,
+      code: string,
+    ): Promise<void> {
+      http
+        .expectOne({ method: 'POST', url: DELIVERIES(paymentId) })
+        .flush(problem(status, code), { status, statusText: 'Erro' });
+      await settle();
+    }
+
+    it('oferece o envio em cada pagamento, menos no estornado', async () => {
+      await open(TWO);
+
+      const buttons = emailButtons();
+      expect(buttons).toHaveLength(2);
+      expect(
+        buttons.map((button) => (button.textContent ?? '').replace(/\s+/g, ' ').trim()),
+      ).toEqual(['Enviar por e-mail', 'Enviar por e-mail']);
+      expect(
+        buttons.map((button) =>
+          button.querySelector('mat-icon')?.getAttribute('data-mat-icon-name'),
+        ),
+      ).toEqual(['forward_to_inbox', 'forward_to_inbox']);
+      expect(buttons.map((button) => button.getAttribute('aria-label'))).toEqual([
+        'Enviar recibo REC-000003 por e-mail',
+        'Enviar recibo REC-000002 por e-mail',
+      ]);
+      const reversed = dialogOf(TAG).querySelectorAll('[data-testid="payment-item"]')[2];
+      expect(reversed.querySelector('[data-testid="email-receipt"]')).toBeNull();
+      expect(reversed.querySelector('[data-testid="download-receipt"]')).not.toBeNull();
+    });
+
+    it('pede o envio pela rota do pagamento, sem corpo, e avisa para quem vai', async () => {
+      const { http } = await open(TWO);
+
+      emailButtons()[1].click();
+      const request = http.expectOne({ method: 'POST', url: DELIVERIES('p1') });
+      expect(request.request.body).toBeNull();
+      request.flush({ recipientName: 'Maria Souza' }, { status: 202, statusText: 'Accepted' });
+      await settle();
+
+      expect(texts('email-notice')).toEqual(['Recibo REC-000002 enviado para Maria Souza']);
+      expect(testId('email-notice')?.getAttribute('role')).toBe('status');
+      expect(testId('email-notice')?.querySelector('.text-success')).not.toBeNull();
+      expect(testId('email-error')).toBeNull();
+      expect(testId('receipt-notice')).toBeNull();
+    });
+
+    it('trava os botoes e mostra que esta enviando enquanto a API nao responde', async () => {
+      const { http } = await open(TWO);
+
+      emailButtons()[0].click();
+      await settle();
+
+      const buttons = emailButtons();
+      expect(buttons[0].getAttribute('aria-busy')).toBe('true');
+      expect((buttons[0].textContent ?? '').replace(/\s+/g, ' ').trim()).toBe('Enviando');
+      expect(buttons[0].querySelector('mat-icon')?.getAttribute('data-mat-icon-name')).toBe(
+        'progress_activity',
+      );
+      expect(buttons[1].getAttribute('aria-busy')).toBe('false');
+      expect(buttons.every((button) => button.disabled)).toBe(true);
+      expect(receiptButtons().every((button) => button.disabled)).toBe(true);
+      http
+        .expectOne({ method: 'POST', url: DELIVERIES('p2') })
+        .flush({ recipientName: 'Maria Souza' }, { status: 202, statusText: 'Accepted' });
+      await settle();
+
+      expect(emailButtons().every((button) => !button.disabled)).toBe(true);
+      expect(receiptButtons().every((button) => !button.disabled)).toBe(true);
+      expect(emailButtons()[0].getAttribute('aria-busy')).toBe('false');
+    });
+
+    it('baixar o recibo trava tambem os botoes de enviar', async () => {
+      await open(TWO);
+
+      receiptButtons()[0].click();
+      await settle();
+
+      expect(emailButtons()).toHaveLength(2);
+      expect(emailButtons().every((button) => button.disabled)).toBe(true);
+      TestBed.inject(HttpTestingController)
+        .expectOne({ method: 'GET', url: RECEIPT('p2') })
+        .flush(new Blob(['%PDF-1.7']));
+      await settle();
+    });
+
+    it('explica que a unidade nao tem responsavel com e-mail, sem tratar como tela velha', async () => {
+      const { http, result } = await open(TWO);
+
+      emailButtons()[0].click();
+      await reject(http, 'p2', 422, 'finance.receipt_delivery.no_recipient');
+
+      expect(texts('email-error')).toEqual([
+        'A unidade não tem um responsável com e-mail cadastrado. Cadastre o e-mail do morador e tente de novo',
+      ]);
+      expect(testId('email-error')?.getAttribute('role')).toBe('alert');
+      expect(testId('email-notice')).toBeNull();
+      testId('close')!.click();
+      await expect(result).resolves.toBe(false);
+    });
+
+    it.each([
+      [
+        409,
+        'finance.receipt_delivery.payment_reversed',
+        'Este pagamento foi estornado e o recibo dele não é enviado por e-mail. Feche esta janela e atualize a lista',
+      ],
+      [
+        404,
+        'finance.payment.not_found',
+        'Este pagamento não existe mais. Feche esta janela e atualize a lista',
+      ],
+    ])(
+      'a recusa %i avisa que a lista esta velha e fechar responde verdadeiro',
+      async (status, code, text) => {
+        const { http, result } = await open(TWO);
+
+        emailButtons()[0].click();
+        await reject(http, 'p2', status, code);
+
+        expect(texts('email-error')).toEqual([text]);
+        testId('close')!.click();
+        await expect(result).resolves.toBe(true);
+      },
+    );
+
+    it('explica o limite de requisicoes e a falta de conexao', async () => {
+      const { http } = await open(TWO);
+
+      emailButtons()[0].click();
+      http.expectOne({ method: 'POST', url: DELIVERIES('p2') }).flush(null, {
+        status: 429,
+        statusText: 'Too Many Requests',
+        headers: { 'Retry-After': '20' },
+      });
+      await settle();
+      expect(texts('email-error')[0]).toContain('Aguarde 20 segundos');
+
+      emailButtons()[0].click();
+      http.expectOne({ method: 'POST', url: DELIVERIES('p2') }).error(new ProgressEvent('error'));
+      await settle();
+      expect(texts('email-error')[0]).toContain('Não foi possível conectar');
+    });
+
+    it('pode reenviar: o erro some e o aviso de sucesso aparece na proxima tentativa', async () => {
+      const { http } = await open(TWO);
+      emailButtons()[0].click();
+      await reject(http, 'p2', 422, 'finance.receipt_delivery.no_recipient');
+      expect(testId('email-error')).not.toBeNull();
+
+      emailButtons()[0].click();
+      http
+        .expectOne({ method: 'POST', url: DELIVERIES('p2') })
+        .flush({ recipientName: 'Maria Souza' }, { status: 202, statusText: 'Accepted' });
+      await settle();
+      emailButtons()[0].click();
+      http
+        .expectOne({ method: 'POST', url: DELIVERIES('p2') })
+        .flush({ recipientName: 'Maria Souza' }, { status: 202, statusText: 'Accepted' });
+      await settle();
+
+      expect(testId('email-error')).toBeNull();
+      expect(texts('email-notice')).toEqual(['Recibo REC-000003 enviado para Maria Souza']);
+    });
+
+    it('enviar por e-mail nao conta como mudanca: fechar responde falso', async () => {
+      const { http, result } = await open(TWO);
+      emailButtons()[0].click();
+      http
+        .expectOne({ method: 'POST', url: DELIVERIES('p2') })
+        .flush({ recipientName: 'Maria Souza' }, { status: 202, statusText: 'Accepted' });
+      await settle();
+
+      testId('close')!.click();
+
+      await expect(result).resolves.toBe(false);
+    });
+
+    it('os avisos do download e os do e-mail nao ficam juntos na tela', async () => {
+      const save = jest.spyOn(FileSaver.prototype, 'save').mockImplementation(() => undefined);
+      const { http } = await open(TWO);
+      emailButtons()[0].click();
+      http
+        .expectOne({ method: 'POST', url: DELIVERIES('p2') })
+        .flush({ recipientName: 'Maria Souza' }, { status: 202, statusText: 'Accepted' });
+      await settle();
+      expect(testId('email-notice')).not.toBeNull();
+
+      receiptButtons()[0].click();
+      http.expectOne({ method: 'GET', url: RECEIPT('p2') }).flush(new Blob(['%PDF-1.7']));
+      await settle();
+      expect(testId('email-notice')).toBeNull();
+      expect(testId('receipt-notice')).not.toBeNull();
+
+      emailButtons()[0].click();
+      await settle();
+      expect(testId('receipt-notice')).toBeNull();
+      http
+        .expectOne({ method: 'POST', url: DELIVERIES('p2') })
+        .flush({ recipientName: 'Maria Souza' }, { status: 202, statusText: 'Accepted' });
+      await settle();
+      save.mockRestore();
+    });
+
+    it('os avisos do e-mail somem quando a pessoa comeca um estorno', async () => {
+      const { http } = await open(TWO);
+      emailButtons()[0].click();
+      http
+        .expectOne({ method: 'POST', url: DELIVERIES('p2') })
+        .flush({ recipientName: 'Maria Souza' }, { status: 202, statusText: 'Accepted' });
+      await settle();
+      expect(testId('email-notice')).not.toBeNull();
+
+      dialogOf(TAG)
+        .querySelectorAll<HTMLButtonElement>('[data-testid="reverse-payment"]')[0]
+        .click();
+      await settle();
+
+      expect(testId('email-notice')).toBeNull();
     });
   });
 

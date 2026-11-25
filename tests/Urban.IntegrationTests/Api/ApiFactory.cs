@@ -113,6 +113,7 @@ public sealed class ApiFactory : WebApplicationFactory<Program>
                 services.Replace(ServiceDescriptor.Scoped<IEmailChangeDispatcher, InlineEmailChangeDispatcher>());
                 services.Replace(ServiceDescriptor.Scoped<ISecurityNoticeDispatcher, InlineSecurityNoticeDispatcher>());
                 services.Replace(ServiceDescriptor.Scoped<IInvoiceDeliveryDispatcher, InlineInvoiceDeliveryDispatcher>());
+                services.Replace(ServiceDescriptor.Scoped<IReceiptEmailDispatcher, InlineReceiptEmailDispatcher>());
                 services.Replace(ServiceDescriptor.Scoped<IAnnouncementMailDispatcher, InlineAnnouncementMailDispatcher>());
             }
         });

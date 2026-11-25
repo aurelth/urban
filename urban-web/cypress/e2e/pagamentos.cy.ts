@@ -9,6 +9,8 @@ import {
   stubPayments,
   stubPaymentsNotClosed,
   stubReceipt,
+  stubReceiptEmail,
+  stubReceiptEmailRejected,
   stubReceiptRejected,
 } from '../support/pagamentos';
 import { expectErrorsToStayInTheirOwnSpace } from '../support/layout';
@@ -286,6 +288,57 @@ describe('Pagamentos do mês', () => {
         'contain.text',
         'Este pagamento não existe mais',
       );
+    });
+
+    it('envia o recibo por e-mail pelo botão do pagamento e diz para quem vai', () => {
+      const charges = stubPayments();
+      stubChargePayments(charges[1], [{ ...PAYMENT_ON_102 }]);
+      stubReceiptEmail(PAYMENT_ON_102.id, 'Maria Souza');
+      cy.visit(PAYMENTS_PATH);
+
+      cy.get('button[aria-label="Ver pagamentos de Bloco A · 102"]').click();
+      cy.get('button[aria-label="Enviar recibo REC-000001 por e-mail"]').click();
+
+      cy.wait('@receiptEmail').its('request.method').should('eq', 'POST');
+      cy.get('[data-testid="email-notice"]').should(
+        'contain.text',
+        'Recibo REC-000001 enviado para Maria Souza',
+      );
+      cy.get('[data-testid="email-error"]').should('not.exist');
+    });
+
+    it('o pagamento estornado não tem o botão de enviar por e-mail', () => {
+      const charges = stubPayments();
+      stubChargePayments(charges[1], [
+        {
+          ...PAYMENT_ON_102,
+          reversedAt: '2026-11-12T14:00:00Z',
+          reversalReason: 'Lançado na unidade errada',
+        },
+      ]);
+      cy.visit(PAYMENTS_PATH);
+
+      cy.get('button[aria-label="Ver pagamentos de Bloco A · 102"]').click();
+
+      cy.get('[data-testid="download-receipt"]').should('exist');
+      cy.get('[data-testid="email-receipt"]').should('not.exist');
+    });
+
+    it('explica quando a unidade não tem responsável com e-mail, no próprio diálogo', () => {
+      const charges = stubPayments();
+      stubChargePayments(charges[1], [{ ...PAYMENT_ON_102 }]);
+      stubReceiptEmailRejected(PAYMENT_ON_102.id, 422, 'finance.receipt_delivery.no_recipient');
+      cy.visit(PAYMENTS_PATH);
+
+      cy.get('button[aria-label="Ver pagamentos de Bloco A · 102"]').click();
+      cy.get('[data-testid="email-receipt"]').click();
+
+      cy.wait('@receiptEmail');
+      cy.get('[data-testid="email-error"]').should(
+        'contain.text',
+        'A unidade não tem um responsável com e-mail cadastrado',
+      );
+      cy.get('[data-testid="email-notice"]').should('not.exist');
     });
   });
 });
