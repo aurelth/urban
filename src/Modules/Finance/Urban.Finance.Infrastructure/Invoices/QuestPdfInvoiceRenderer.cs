@@ -1,62 +1,28 @@
 using QuestPDF.Fluent;
-using QuestPDF.Helpers;
 using QuestPDF.Infrastructure;
 using Urban.Finance.Application.Abstractions;
 using Urban.Finance.Application.Invoices;
 using Urban.Finance.Domain.Closing;
 using Urban.SharedKernel.Contracts;
+using static Urban.Finance.Infrastructure.Pdf.PdfStyle;
 
 namespace Urban.Finance.Infrastructure.Invoices;
 
 /// <summary>
-/// Desenha a fatura em PDF com o QuestPDF. A fonte é a Lato que vem dentro do pacote e as fontes do sistema ficam desligadas: a
-/// imagem de produção (chiseled) não tem fontconfig nem fontes, e o PDF sai igual em qualquer máquina.
+/// Desenha a fatura em PDF com o QuestPDF. A página, as cores e a fonte são de <see cref="Pdf.PdfStyle"/>, que também serve ao recibo.
 /// </summary>
 public sealed class QuestPdfInvoiceRenderer : IInvoiceRenderer
 {
-    private const string FontFamily = "Lato";
-    private const string Ink = "#1C1C1E";
-    private const string Muted = "#65657A";
-    private const string Accent = "#5856D6";
-    private const string Line = "#E6E6EF";
     private const string NoReading = "—";
 
     /// <summary>Até quantas despesas um grupo é mantido inteiro na mesma página (uma página A4 comporta uns 25 itens).</summary>
     private const int KeepTogetherLimit = 18;
 
-    static QuestPdfInvoiceRenderer()
-    {
-        QuestPDF.Settings.License = LicenseType.Community;
-        QuestPDF.Settings.UseSystemFonts = false;
-    }
-
     public byte[] Render(InvoiceDocument document) =>
-        Document.Create(container => container.Page(page =>
-        {
-            page.Size(PageSizes.A4);
-            page.Margin(36);
-            page.DefaultTextStyle(style => style.FontFamily(FontFamily).FontSize(10).FontColor(Ink));
-            page.Header().Element(header => Header(header, document));
-            page.Content().PaddingTop(20).Element(content => Body(content, document));
-            page.Footer().Element(Footer);
-        })).GeneratePdf();
-
-    private static void Header(IContainer container, InvoiceDocument document) =>
-        container.PaddingBottom(14).BorderBottom(1).BorderColor(Line).Row(row =>
-        {
-            row.RelativeItem().Column(column =>
-            {
-                column.Item().Text(document.CondominiumName).FontSize(16).Bold();
-                column.Item().PaddingTop(2).Text($"CNPJ {document.CondominiumCnpj}").FontColor(Muted);
-                column.Item().Text(document.CondominiumAddress).FontColor(Muted);
-            });
-
-            row.ConstantItem(190).AlignRight().Column(column =>
-            {
-                column.Item().AlignRight().Text("Fatura").FontSize(16).Bold().FontColor(Accent);
-                column.Item().AlignRight().PaddingTop(2).Text(InvoiceText.Competence(document.Month)).FontColor(Muted);
-            });
-        });
+        Page(
+            header => Header(header, document.CondominiumName, document.CondominiumCnpj, document.CondominiumAddress, "Fatura", InvoiceText.Competence(document.Month)),
+            content => Body(content, document),
+            footer => Footer(footer, "Gerada pelo Urban. Confira o valor e o vencimento com o síndico."));
 
     private static void Body(IContainer container, InvoiceDocument document) =>
         container.Column(column =>
@@ -106,27 +72,6 @@ public sealed class QuestPdfInvoiceRenderer : IInvoiceRenderer
                 Field(column, "Emitida em", InvoiceText.Date(document.IssuedOn), alignRight: true);
                 Field(column, "Referência", document.Reference, alignRight: true);
             });
-        });
-
-    private static void Field(ColumnDescriptor column, string label, string value, bool emphasis = false, bool alignRight = false) =>
-        column.Item().PaddingBottom(6).Column(field =>
-        {
-            IContainer labelBox = field.Item();
-            IContainer valueBox = field.Item();
-
-            if (alignRight)
-            {
-                labelBox = labelBox.AlignRight();
-                valueBox = valueBox.AlignRight();
-            }
-
-            labelBox.Text(label).FontSize(8).FontColor(Muted);
-            TextSpanDescriptor text = valueBox.Text(value);
-
-            if (emphasis)
-            {
-                text.Bold().FontColor(Accent);
-            }
         });
 
     private static void Charges(IContainer container, InvoiceDocument document) =>
@@ -358,18 +303,4 @@ public sealed class QuestPdfInvoiceRenderer : IInvoiceRenderer
 
     private static IContainer Cell(IContainer container) =>
         container.BorderBottom(1).BorderColor(Line).PaddingVertical(6);
-
-    private static void Footer(IContainer container) =>
-        container.BorderTop(1).BorderColor(Line).PaddingTop(6).Row(row =>
-        {
-            row.RelativeItem().Text("Gerada pelo Urban. Confira o valor e o vencimento com o síndico.").FontSize(8).FontColor(Muted);
-            row.ConstantItem(80).AlignRight().Text(text =>
-            {
-                text.DefaultTextStyle(style => style.FontSize(8).FontColor(Muted));
-                text.Span("Página ");
-                text.CurrentPageNumber();
-                text.Span(" de ");
-                text.TotalPages();
-            });
-        });
 }

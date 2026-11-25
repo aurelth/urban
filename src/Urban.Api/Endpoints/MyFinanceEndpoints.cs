@@ -4,6 +4,7 @@ using Urban.Api.Http;
 using Urban.Api.Mapping;
 using Urban.Finance.Application.Invoices;
 using Urban.Finance.Application.MyMonth;
+using Urban.Finance.Application.Receipts;
 using Urban.SharedKernel;
 
 namespace Urban.Api.Endpoints;
@@ -56,6 +57,14 @@ public static class MyFinanceEndpoints
             .Produces(StatusCodes.Status200OK, contentType: "application/pdf")
             .WithErrors(StatusCodes.Status404NotFound);
 
+        me.MapGet("/payments/{paymentId:guid}/receipt", DownloadReceiptAsync)
+            .RequireRateLimiting(RateLimitPolicies.Invoice)
+            .WithName("DownloadMyReceipt")
+            .WithSummary("Baixa o recibo em PDF de um pagamento da própria unidade")
+            .WithDescription(ReceiptDescription.Resident)
+            .Produces(StatusCodes.Status200OK, contentType: "application/pdf")
+            .WithErrors(StatusCodes.Status404NotFound);
+
         return app;
     }
 
@@ -100,5 +109,15 @@ public static class MyFinanceEndpoints
         response.PreventCaching();
 
         return Results.File(result.Value.Content, "application/pdf", result.Value.FileName);
+    }
+
+    private static async Task<IResult> DownloadReceiptAsync(Guid paymentId, ClaimsPrincipal user, HttpResponse response, ISender sender, CancellationToken cancellationToken)
+    {
+        if (!MemberAccess.TryRead(user, out Guid userId, out IResult? refusal))
+        {
+            return refusal;
+        }
+
+        return ReceiptFiles.ToResult(await sender.Send(new GetReceiptQuery(paymentId, userId), cancellationToken), response);
     }
 }

@@ -110,7 +110,22 @@ public sealed class Payment
     }
 
     /// <summary>Emite o número do recibo. É chamado uma vez, pela gravação, que é quem controla a sequência do condomínio.</summary>
-    public Result IssueReceipt(int number) => Result.Success();
+    public Result IssueReceipt(int number)
+    {
+        if (ReceiptNumber != 0)
+        {
+            return Result.Failure(PaymentErrors.ReceiptAlreadyIssued);
+        }
+
+        if (number < 1)
+        {
+            return Result.Failure(PaymentErrors.ReceiptNumberInvalid);
+        }
+
+        ReceiptNumber = number;
+
+        return Result.Success();
+    }
 
     /// <summary>Estorna o pagamento. O motivo é obrigatório e o estorno é definitivo: estornado não volta e não se estorna duas vezes.</summary>
     public Result Reverse(string? reason, Guid reversedBy, DateTimeOffset now)
