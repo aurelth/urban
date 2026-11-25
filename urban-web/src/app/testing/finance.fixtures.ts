@@ -255,6 +255,8 @@ export function payment(overrides: Partial<Payment> = {}): Payment {
     registeredAt: '2026-11-10T15:30:00Z',
     reversedAt: null,
     reversalReason: null,
+    receiptNumber: 1,
+    receiptCode: 'REC-000001',
     ...overrides,
   };
 }

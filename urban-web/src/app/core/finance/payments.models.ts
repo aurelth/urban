@@ -39,6 +39,10 @@ export interface Payment {
   /** Preenchido quando o pagamento foi estornado: ele continua na lista, mas deixa de contar. */
   readonly reversedAt: string | null;
   readonly reversalReason: string | null;
+  /** O número do recibo deste pagamento, em sequência por condomínio. */
+  readonly receiptNumber: number;
+  /** O número como se fala dele, "REC-000123". */
+  readonly receiptCode: string;
 }
 
 export interface ChargePayments {

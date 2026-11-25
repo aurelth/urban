@@ -25,6 +25,12 @@ public interface IPayments
     /// <summary>Todos os pagamentos da cobrança, os estornados também, do mais novo para o mais antigo.</summary>
     Task<IReadOnlyList<Payment>> ListForChargeAsync(Guid chargeId, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// Os pagamentos de várias cobranças de uma vez, estornados inclusive, do recibo mais antigo para o mais novo (o número do recibo
+    /// segue a ordem em que foram registrados). Uma consulta só, para a tela do morador não perguntar cobrança por cobrança.
+    /// </summary>
+    Task<IReadOnlyList<Payment>> ListForChargesAsync(IReadOnlyCollection<Guid> chargeIds, CancellationToken cancellationToken);
+
     Task<Payment?> FindAsync(Guid paymentId, CancellationToken cancellationToken);
 
     /// <summary>

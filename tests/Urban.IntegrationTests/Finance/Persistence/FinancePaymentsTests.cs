@@ -217,6 +217,57 @@ public class FinancePaymentsTests(FinancePostgresFixture postgres)
         (await _kit.Payments(Guid.CreateVersion7()).ListForChargeAsync(charge.Id, default)).Should().BeEmpty();
     }
 
+    // ---- Lista de várias cobranças ----
+
+    [Fact]
+    public async Task ListForCharges_ReturnsThePaymentsOfAllTheCharges_OldestReceiptFirst_ReversedIncluded()
+    {
+        MonthClosing closing = await _kit.StoreClosingAsync(October);
+        Payment first = await StorePaymentAsync(Big(closing), 100m);
+        Payment second = await StorePaymentAsync(Small(closing), 10m);
+        Payment third = await StorePaymentAsync(Big(closing), 50m);
+        Payment loaded = (await _kit.Payments().FindAsync(second.Id, default))!;
+        loaded.Reverse("Erro", Guid.CreateVersion7(), FinanceStoreKit.Now);
+        await _kit.Payments().ReverseAsync(loaded, default);
+
+        IReadOnlyList<Payment> payments = await _kit.Payments().ListForChargesAsync([Big(closing).Id, Small(closing).Id], default);
+
+        payments.Select(payment => payment.Id).Should().Equal(first.Id, second.Id, third.Id);
+        payments.Select(payment => payment.ReceiptNumber).Should().Equal(1, 2, 3);
+        payments.Select(payment => payment.IsReversed).Should().Equal(false, true, false);
+    }
+
+    [Fact]
+    public async Task ListForCharges_OnlyReturnsTheChargesAsked()
+    {
+        MonthClosing closing = await _kit.StoreClosingAsync(October);
+        Payment onBig = await StorePaymentAsync(Big(closing), 100m);
+        await StorePaymentAsync(Small(closing), 10m);
+
+        IReadOnlyList<Payment> payments = await _kit.Payments().ListForChargesAsync([Big(closing).Id], default);
+
+        payments.Select(payment => payment.Id).Should().Equal(onBig.Id);
+    }
+
+    [Fact]
+    public async Task ListForCharges_WithoutIds_OrWithUnknownIds_IsEmpty()
+    {
+        MonthClosing closing = await _kit.StoreClosingAsync(October);
+        await StorePaymentAsync(Big(closing), 100m);
+
+        (await _kit.Payments().ListForChargesAsync([], default)).Should().BeEmpty();
+        (await _kit.Payments().ListForChargesAsync([Guid.CreateVersion7()], default)).Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ListForCharges_OfAnotherCondominium_IsEmpty()
+    {
+        UnitCharge charge = Big(await _kit.StoreClosingAsync(October));
+        await StorePaymentAsync(charge, 100m);
+
+        (await _kit.Payments(Guid.CreateVersion7()).ListForChargesAsync([charge.Id], default)).Should().BeEmpty();
+    }
+
     // ---- Existe pagamento no fechamento ----
 
     [Fact]

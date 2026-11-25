@@ -160,7 +160,7 @@ public class GetMyMonthQueryHandlerTests
         view.Closed.Should().BeTrue();
         MyUnitView unit = view.Units.Should().ContainSingle().Subject;
         (unit.UnitId, unit.Block, unit.Number).Should().Be((Unit101.UnitId, null, "101"));
-        unit.Charge.Should().Be(new MyChargeView(first.Id, new DateOnly(2026, 11, 10), 600m, 0m, 600m, ChargeStatus.Open, null));
+        unit.Charge.Should().BeEquivalentTo(new MyChargeView(first.Id, new DateOnly(2026, 11, 10), 600m, 0m, 600m, ChargeStatus.Open, null, []));
     }
 
     [Fact]
@@ -287,6 +287,112 @@ public class GetMyMonthQueryHandlerTests
         october.Amount.Should().Be(600m);
         september.Amount.Should().Be(300m);
         september.DueDate.Should().Be(new DateOnly(2026, 10, 10));
+    }
+
+    // ---- Os pagamentos e os recibos ----
+
+    [Fact]
+    public async Task TheChargeLists_ItsPayments_WithTheReceipt_OldestFirst()
+    {
+        (UnitCharge first, _) = CloseOctober(new DateOnly(2026, 11, 10));
+        Payment earlier = Pay(first, 200m, new DateOnly(2026, 11, 3));
+        Payment later = Pay(first, 100m, new DateOnly(2026, 11, 5));
+        _kit.Housing.Lives(Resident, Unit101);
+
+        IReadOnlyList<MyPaymentView> payments = (await Get()).Value.Units.Single().Charge!.Payments;
+
+        payments.Should().Equal(
+            new MyPaymentView(earlier.Id, 200m, new DateOnly(2026, 11, 3), PaymentMethod.Pix, 1, false),
+            new MyPaymentView(later.Id, 100m, new DateOnly(2026, 11, 5), PaymentMethod.Pix, 2, false));
+    }
+
+    [Fact]
+    public async Task AChargeWithoutPayments_HasAnEmptyList()
+    {
+        CloseOctober();
+        _kit.Housing.Lives(Resident, Unit101);
+
+        (await Get()).Value.Units.Single().Charge!.Payments.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task AReversedPayment_StaysInTheList_MarkedAsReversed_AndNoLongerCounts()
+    {
+        (UnitCharge first, _) = CloseOctober(new DateOnly(2026, 11, 10));
+        Payment wrong = Pay(first, 600m);
+        wrong.Reverse("Unidade errada", Manager, FinanceTestKit.Now);
+        Payment right = Pay(first, 200m);
+        _kit.Housing.Lives(Resident, Unit101);
+
+        MyChargeView charge = (await Get()).Value.Units.Single().Charge!;
+
+        charge.Payments.Select(payment => (payment.PaymentId, payment.ReceiptNumber, payment.Reversed)).Should().Equal((wrong.Id, 1, true), (right.Id, 2, false));
+        charge.Paid.Should().Be(200m);
+    }
+
+    [Fact]
+    public async Task ThePaymentsOfOtherUnits_NeverAppearInTheListOfTheResident()
+    {
+        (UnitCharge first, UnitCharge second) = CloseOctober();
+        Payment mine = Pay(first, 100m);
+        Pay(second, 400m);
+        _kit.Housing.Lives(Resident, Unit101);
+
+        MyChargeView charge = (await Get()).Value.Units.Single().Charge!;
+
+        charge.Payments.Select(payment => payment.PaymentId).Should().Equal(mine.Id);
+    }
+
+    [Fact]
+    public async Task TheReceiptNumbers_AreTheOnesOfTheCondominiumSequence_NotRestartedPerUnit()
+    {
+        (UnitCharge first, UnitCharge second) = CloseOctober();
+        Pay(first, 100m);
+        Pay(second, 400m);
+        Payment third = Pay(first, 50m);
+        _kit.Housing.Lives(Resident, Unit101);
+
+        IReadOnlyList<MyPaymentView> payments = (await Get()).Value.Units.Single().Charge!.Payments;
+
+        payments.Select(payment => payment.ReceiptNumber).Should().Equal(1, 3);
+        payments[1].PaymentId.Should().Be(third.Id);
+    }
+
+    [Fact]
+    public async Task ThePaymentsOfAllTheUnitsOfTheResident_AreReadInASingleCall_OnlyForHisCharges()
+    {
+        (UnitCharge first, UnitCharge second) = CloseOctober();
+        Pay(first, 100m);
+        Pay(second, 400m);
+        _kit.Housing.Lives(Resident, Unit101, Unit102);
+
+        List<MyUnitView> units = [.. (await Get()).Value.Units];
+
+        _kit.Payments.ListForChargesCalls.Should().ContainSingle().Which.Should().BeEquivalentTo([first.Id, second.Id]);
+        units.Select(unit => unit.Charge!.Payments.Single().Amount).Should().Equal(100m, 400m);
+    }
+
+    [Fact]
+    public async Task ThePaymentsAreOnlyAskedAbout_TheChargesOfTheUnitsOfTheResident()
+    {
+        (UnitCharge first, UnitCharge second) = CloseOctober();
+        Pay(second, 400m);
+        _kit.Housing.Lives(Resident, Unit101);
+
+        await Get();
+
+        _kit.Payments.ListForChargesCalls.Should().ContainSingle().Which.Should().BeEquivalentTo([first.Id]).And.NotContain(second.Id);
+    }
+
+    [Fact]
+    public async Task WithoutAnyCharge_NoPaymentIsAskedFor()
+    {
+        _kit.Housing.Lives(Resident, Unit101);
+
+        await Get("2026-12");
+        await Get("2026-10", Guid.CreateVersion7());
+
+        _kit.Payments.ListForChargesCalls.Should().BeEmpty();
     }
 
     // ---- Mês aberto ----

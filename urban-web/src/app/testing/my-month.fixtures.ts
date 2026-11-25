@@ -3,6 +3,7 @@ import {
   MyExpenseGroup,
   MyExpenses,
   MyMonth,
+  MyPayment,
   MyUnit,
 } from '../core/finance/my-month.models';
 
@@ -22,6 +23,20 @@ export function myCharge(overrides: Partial<MyCharge> = {}): MyCharge {
     balance: 800,
     status: 'open',
     lastReceivedOn: null,
+    payments: [],
+    ...overrides,
+  };
+}
+
+export function myPayment(overrides: Partial<MyPayment> = {}): MyPayment {
+  return {
+    paymentId: nextId('0073'),
+    amount: 300,
+    receivedOn: '2026-11-05',
+    method: 'pix',
+    receiptNumber: 1,
+    receiptCode: 'REC-000001',
+    reversed: false,
     ...overrides,
   };
 }

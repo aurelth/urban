@@ -189,6 +189,7 @@ public sealed class MyFinanceEndpointsTests(ApiFixture fixture) : IDisposable
         charge.GetProperty("balance").GetDecimal().Should().Be(600m);
         charge.GetProperty("status").GetString().Should().Be("open");
         charge.GetProperty("lastReceivedOn").ValueKind.Should().Be(JsonValueKind.Null);
+        charge.GetProperty("payments").GetArrayLength().Should().Be(0);
         JsonElement expenses = body.GetProperty("expenses");
         expenses.GetProperty("total").GetDecimal().Should().Be(1000m);
         JsonElement group = expenses.GetProperty("groups").EnumerateArray().Single();
@@ -210,7 +211,81 @@ public sealed class MyFinanceEndpointsTests(ApiFixture fixture) : IDisposable
         body.EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo("month", "asOf", "access", "closed", "units", "expenses");
         body.GetProperty("expenses").EnumerateObject().Select(property => property.Name).Should().BeEquivalentTo("total", "groups");
         body.GetProperty("units")[0].GetProperty("charge").EnumerateObject().Select(property => property.Name)
-            .Should().BeEquivalentTo("chargeId", "dueDate", "amount", "paid", "balance", "status", "lastReceivedOn");
+            .Should().BeEquivalentTo("chargeId", "dueDate", "amount", "paid", "balance", "status", "lastReceivedOn", "payments");
+    }
+
+    [Fact]
+    public async Task The_payments_of_the_charge_carry_the_receipt_and_nothing_the_manager_keeps_to_himself()
+    {
+        (ManagerSession manager, Dictionary<string, Guid> units) = await ClosedMonthAsync("2099-12-10");
+        string token = await ResidentTokenAsync(manager, units["101"]);
+        Guid charge = await ChargeOfAsync(manager, Month(0), units["101"]);
+        Guid first = await PayAsync(manager, charge, 200m, note: "Anotação do síndico");
+        Guid second = await PayAsync(manager, charge, 100m);
+
+        HttpResponseMessage response = await _client.SendJsonAsync(HttpMethod.Get, MonthRoute(Month(0)), token);
+
+        string json = await response.Content.ReadAsStringAsync(Ct);
+        json.Should().NotContain("Anotação do síndico");
+        JsonElement payments = JsonDocument.Parse(json).RootElement.GetProperty("units")[0].GetProperty("charge").GetProperty("payments");
+        payments.GetArrayLength().Should().Be(2);
+        payments[0].EnumerateObject().Select(property => property.Name)
+            .Should().BeEquivalentTo("paymentId", "amount", "receivedOn", "method", "receiptNumber", "receiptCode", "reversed");
+        payments[0].GetProperty("paymentId").GetGuid().Should().Be(first);
+        payments[0].GetProperty("amount").GetDecimal().Should().Be(200m);
+        payments[0].GetProperty("receivedOn").GetString().Should().Be(ClosedMonthKit.Today());
+        payments[0].GetProperty("method").GetString().Should().Be("pix");
+        payments[0].GetProperty("receiptNumber").GetInt32().Should().Be(1);
+        payments[0].GetProperty("receiptCode").GetString().Should().Be("REC-000001");
+        payments[0].GetProperty("reversed").GetBoolean().Should().BeFalse();
+        payments[1].GetProperty("paymentId").GetGuid().Should().Be(second);
+        payments[1].GetProperty("receiptCode").GetString().Should().Be("REC-000002");
+    }
+
+    [Fact]
+    public async Task A_reversed_payment_stays_in_the_list_marked_as_reversed_and_its_receipt_can_still_be_downloaded()
+    {
+        (ManagerSession manager, Dictionary<string, Guid> units) = await ClosedMonthAsync("2099-12-10");
+        string token = await ResidentTokenAsync(manager, units["101"]);
+        Guid charge = await ChargeOfAsync(manager, Month(0), units["101"]);
+        Guid payment = await PayAsync(manager, charge, 200m);
+        HttpResponseMessage reversal = await _client.SendJsonAsync(
+            HttpMethod.Post, $"/api/finance/payments/{payment}/reverse", manager.AccessToken, new JsonObject { ["reason"] = "Pagamento duplicado" });
+        reversal.StatusCode.Should().Be(HttpStatusCode.NoContent);
+
+        JsonElement body = await ReadAsync(await _client.SendJsonAsync(HttpMethod.Get, MonthRoute(Month(0)), token));
+        HttpResponseMessage receipt = await _client.SendJsonAsync(HttpMethod.Get, $"{Finance}/payments/{payment}/receipt", token);
+
+        JsonElement chargeBody = body.GetProperty("units")[0].GetProperty("charge");
+        chargeBody.GetProperty("paid").GetDecimal().Should().Be(0m);
+        chargeBody.GetProperty("payments").EnumerateArray().Single().GetProperty("reversed").GetBoolean().Should().BeTrue();
+        chargeBody.GetProperty("payments")[0].GetProperty("paymentId").GetGuid().Should().Be(payment);
+        body.GetRawText().Should().NotContain("Pagamento duplicado", "o motivo do estorno fica com o síndico");
+        receipt.StatusCode.Should().Be(HttpStatusCode.OK, await receipt.Content.ReadAsStringAsync(Ct));
+        Encoding.ASCII.GetString(await receipt.Content.ReadAsByteArrayAsync(Ct), 0, 5).Should().Be("%PDF-");
+    }
+
+    [Fact]
+    public async Task Every_payment_of_the_list_has_a_receipt_the_resident_can_download()
+    {
+        (ManagerSession manager, Dictionary<string, Guid> units) = await ClosedMonthAsync("2099-12-10");
+        string token = await ResidentTokenAsync(manager, units["101"]);
+        Guid charge = await ChargeOfAsync(manager, Month(0), units["101"]);
+        await PayAsync(manager, charge, 200m);
+        await PayAsync(manager, charge, 100m);
+
+        JsonElement body = await ReadAsync(await _client.SendJsonAsync(HttpMethod.Get, MonthRoute(Month(0)), token));
+
+        JsonElement payments = body.GetProperty("units")[0].GetProperty("charge").GetProperty("payments");
+        payments.GetArrayLength().Should().Be(2);
+
+        foreach (JsonElement item in payments.EnumerateArray())
+        {
+            HttpResponseMessage receipt = await _client.SendJsonAsync(HttpMethod.Get, $"{Finance}/payments/{item.GetProperty("paymentId").GetGuid()}/receipt", token);
+
+            receipt.StatusCode.Should().Be(HttpStatusCode.OK, await receipt.Content.ReadAsStringAsync(Ct));
+            receipt.Content.Headers.ContentDisposition!.FileNameStar.Should().Be($"recibo-{item.GetProperty("receiptNumber").GetInt32():D6}.pdf");
+        }
     }
 
     [Fact]
@@ -218,14 +293,18 @@ public sealed class MyFinanceEndpointsTests(ApiFixture fixture) : IDisposable
     {
         (ManagerSession manager, Dictionary<string, Guid> units) = await ClosedMonthAsync("2099-12-10");
         string token = await ResidentTokenAsync(manager, units["102"]);
-        await PayAsync(manager, await ChargeOfAsync(manager, Month(0), units["101"]), 600m);
+        Guid neighbourPayment = await PayAsync(manager, await ChargeOfAsync(manager, Month(0), units["101"]), 600m);
 
-        JsonElement body = await ReadAsync(await _client.SendJsonAsync(HttpMethod.Get, MonthRoute(Month(0)), token));
+        HttpResponseMessage response = await _client.SendJsonAsync(HttpMethod.Get, MonthRoute(Month(0)), token);
+        string json = await response.Content.ReadAsStringAsync(Ct);
+        json.Should().NotContain(neighbourPayment.ToString());
+        JsonElement body = JsonDocument.Parse(json).RootElement;
 
         JsonElement unit = body.GetProperty("units").EnumerateArray().Single();
         unit.GetProperty("number").GetString().Should().Be("102");
         unit.GetProperty("charge").GetProperty("amount").GetDecimal().Should().Be(400m);
         unit.GetProperty("charge").GetProperty("status").GetString().Should().Be("open");
+        unit.GetProperty("charge").GetProperty("payments").GetArrayLength().Should().Be(0);
     }
 
     [Fact]
@@ -431,13 +510,13 @@ public sealed class MyFinanceEndpointsTests(ApiFixture fixture) : IDisposable
         return body.GetProperty("items").EnumerateArray().Single(item => item.GetProperty("unitId").GetGuid() == unitId).GetProperty("chargeId").GetGuid();
     }
 
-    private async Task<Guid> PayAsync(ManagerSession manager, Guid chargeId, decimal amount)
+    private async Task<Guid> PayAsync(ManagerSession manager, Guid chargeId, decimal amount, string? note = null)
     {
         HttpResponseMessage response = await _client.SendJsonAsync(
             HttpMethod.Post,
             $"/api/finance/charges/{chargeId}/payments",
             manager.AccessToken,
-            new JsonObject { ["amount"] = amount, ["receivedOn"] = ClosedMonthKit.Today(), ["method"] = "pix" });
+            new JsonObject { ["amount"] = amount, ["receivedOn"] = ClosedMonthKit.Today(), ["method"] = "pix", ["note"] = note });
         response.StatusCode.Should().Be(HttpStatusCode.Created, await response.Content.ReadAsStringAsync(Ct));
 
         return (await response.Content.ReadFromJsonAsync<JsonElement>(Ct)).GetProperty("id").GetGuid();

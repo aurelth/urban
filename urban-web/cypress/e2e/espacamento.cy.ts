@@ -38,13 +38,16 @@ import {
   PAYMENT_ON_102,
   stubChargePayments,
   stubPayments,
+  stubReceiptRejected,
 } from '../support/pagamentos';
 import { stubDashboard } from '../support/painel';
 import {
+  FIRST_PAYMENT_ID,
   MY_INVOICE_PATH,
   OVERDUE_CHARGE_ID,
   stubMyInvoiceRejected,
   stubMyMonth,
+  stubMyReceiptRejected,
 } from '../support/minha-fatura';
 import { MONTH_DASHBOARD_PATH, stubMonthDashboard } from '../support/painel-financeiro';
 import { stubMural } from '../support/mural';
@@ -488,7 +491,12 @@ SCREENS.forEach(([where, width, height]) => {
       expectBreathingRoom();
 
       cy.get('[data-testid="download-invoice"]').first().click();
-      cy.get('[data-testid="invoice-error"]').should('be.visible');
+      cy.get('[data-testid="download-error"]').should('be.visible');
+      expectBreathingRoom();
+
+      stubMyReceiptRejected(FIRST_PAYMENT_ID, 404, 'finance.payment.not_found');
+      cy.get('button[aria-label="Baixar recibo REC-000001"]').click();
+      cy.get('[data-testid="download-error"]').should('contain.text', 'Este recibo');
       expectBreathingRoom();
 
       cy.get('[data-testid="next-month"]').click();
@@ -554,6 +562,22 @@ SCREENS.forEach(([where, width, height]) => {
 
       cy.get('button[aria-label="Ver pagamentos de Bloco A · 102"]').click();
       cy.get('[data-testid="reverse-payment"]').click();
+      expectBreathingRoom();
+    });
+
+    it('não cola texto em container no diálogo de pagamentos com o recibo, nem com o erro do download', () => {
+      stubSignedIn(MANAGER);
+      const charges = stubPayments();
+      stubChargePayments(charges[1], [{ ...PAYMENT_ON_102 }]);
+      stubReceiptRejected(PAYMENT_ON_102.id, 404, 'finance.payment.not_found');
+      cy.visit(PAYMENTS_PATH);
+
+      cy.get('button[aria-label="Ver pagamentos de Bloco A · 102"]').click();
+      cy.get('[data-testid="receipt-code"]').should('be.visible');
+      expectBreathingRoom();
+
+      cy.get('[data-testid="download-receipt"]').click();
+      cy.get('[data-testid="receipt-error"]').should('be.visible');
       expectBreathingRoom();
     });
 

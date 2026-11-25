@@ -16,6 +16,12 @@ const WORKS = {
 export const OVERDUE_CHARGE_ID = '0199dddd-0070-7000-8000-000000000001';
 export const PAID_CHARGE_ID = '0199dddd-0070-7000-8000-000000000002';
 
+/** Os pagamentos de novembro: a 101 tem dois e um estornado (recibo cancelado), o A-102 tem um. */
+export const FIRST_PAYMENT_ID = '0199dddd-0073-7000-8000-000000000001';
+export const SECOND_PAYMENT_ID = '0199dddd-0073-7000-8000-000000000002';
+export const REVERSED_PAYMENT_ID = '0199dddd-0073-7000-8000-000000000004';
+export const PAID_PAYMENT_ID = '0199dddd-0073-7000-8000-000000000003';
+
 /** Novembro: fechado, com duas unidades da pessoa: a 101 atrasada e o A-102 paga. */
 export const NOVEMBER_MINE = {
   month: '2026-11',
@@ -35,6 +41,35 @@ export const NOVEMBER_MINE = {
         balance: 500,
         status: 'overdue',
         lastReceivedOn: '2026-11-05',
+        payments: [
+          {
+            paymentId: FIRST_PAYMENT_ID,
+            amount: 200,
+            receivedOn: '2026-11-03',
+            method: 'pix',
+            receiptNumber: 1,
+            receiptCode: 'REC-000001',
+            reversed: false,
+          },
+          {
+            paymentId: SECOND_PAYMENT_ID,
+            amount: 100,
+            receivedOn: '2026-11-05',
+            method: 'cash',
+            receiptNumber: 2,
+            receiptCode: 'REC-000002',
+            reversed: false,
+          },
+          {
+            paymentId: REVERSED_PAYMENT_ID,
+            amount: 80,
+            receivedOn: '2026-11-06',
+            method: 'boleto',
+            receiptNumber: 4,
+            receiptCode: 'REC-000004',
+            reversed: true,
+          },
+        ],
       },
     },
     {
@@ -49,6 +84,17 @@ export const NOVEMBER_MINE = {
         balance: 0,
         status: 'paid',
         lastReceivedOn: '2026-11-08',
+        payments: [
+          {
+            paymentId: PAID_PAYMENT_ID,
+            amount: 650.5,
+            receivedOn: '2026-11-08',
+            method: 'transfer',
+            receiptNumber: 3,
+            receiptCode: 'REC-000003',
+            reversed: false,
+          },
+        ],
       },
     },
   ],
@@ -118,6 +164,27 @@ export function stubMyInvoiceRejected(chargeId: string, status: number, code: st
     headers: { 'content-type': 'application/problem+json' },
     body: JSON.stringify({ status, code, detail: 'Detalhe da API' }),
   }).as('myInvoice');
+}
+
+/** O download do recibo do próprio pagamento (GET): um PDF mínimo com o nome sugerido pela API. */
+export function stubMyReceipt(paymentId: string, fileName: string): void {
+  cy.intercept('GET', `/api/finance/me/payments/${paymentId}/receipt`, {
+    statusCode: 200,
+    headers: {
+      'content-type': 'application/pdf',
+      'content-disposition': `attachment; filename=${fileName}; filename*=UTF-8''${fileName}`,
+    },
+    body: '%PDF-1.7\n% recibo de teste do Urban\n',
+  }).as('myReceipt');
+}
+
+/** A API recusa o recibo com um problema (404, 429...): o corpo chega como arquivo, como na API de verdade. */
+export function stubMyReceiptRejected(paymentId: string, status: number, code: string): void {
+  cy.intercept('GET', `/api/finance/me/payments/${paymentId}/receipt`, {
+    statusCode: status,
+    headers: { 'content-type': 'application/problem+json' },
+    body: JSON.stringify({ status, code, detail: 'Detalhe da API' }),
+  }).as('myReceipt');
 }
 
 /** Como a conta mora no condomínio: o que o menu do síndico pergunta para decidir se mostra "Minha fatura". */

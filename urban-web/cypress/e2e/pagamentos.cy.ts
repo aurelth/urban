@@ -8,6 +8,8 @@ import {
   stubPaymentRegistration,
   stubPayments,
   stubPaymentsNotClosed,
+  stubReceipt,
+  stubReceiptRejected,
 } from '../support/pagamentos';
 import { expectErrorsToStayInTheirOwnSpace } from '../support/layout';
 import { DESKTOP } from '../support/navegacao';
@@ -227,6 +229,63 @@ describe('Pagamentos do mês', () => {
         'Informe o motivo do estorno',
       );
       expectErrorsToStayInTheirOwnSpace('urban-charge-payments-dialog');
+    });
+  });
+
+  describe('recibo', () => {
+    it('mostra o código do recibo de cada pagamento e baixa o PDF pela rota do síndico', () => {
+      const charges = stubPayments();
+      stubChargePayments(charges[1], [{ ...PAYMENT_ON_102 }]);
+      stubReceipt(PAYMENT_ON_102.id, 'recibo-000001.pdf');
+      cy.visit(PAYMENTS_PATH);
+
+      cy.get('button[aria-label="Ver pagamentos de Bloco A · 102"]').click();
+      cy.get('[data-testid="receipt-code"]').should('contain.text', 'Recibo REC-000001');
+      cy.get('button[aria-label="Baixar recibo REC-000001"]').click();
+
+      cy.wait('@receipt')
+        .its('request.url')
+        .should('include', `/api/finance/payments/${PAYMENT_ON_102.id}/receipt`);
+      cy.get('[data-testid="receipt-notice"]').should('contain.text', 'Recibo REC-000001 baixado');
+    });
+
+    it('o pagamento estornado mostra o recibo cancelado e ainda deixa baixá-lo', () => {
+      const charges = stubPayments();
+      stubChargePayments(charges[1], [
+        {
+          ...PAYMENT_ON_102,
+          reversedAt: '2026-11-12T14:00:00Z',
+          reversalReason: 'Lançado na unidade errada',
+        },
+      ]);
+      stubReceipt(PAYMENT_ON_102.id, 'recibo-000001.pdf');
+      cy.visit(PAYMENTS_PATH);
+
+      cy.get('button[aria-label="Ver pagamentos de Bloco A · 102"]').click();
+
+      cy.get('[data-testid="receipt-code"]').should(
+        'contain.text',
+        'Recibo REC-000001 · cancelado',
+      );
+      cy.get('[data-testid="download-receipt"]').click();
+      cy.wait('@receipt');
+      cy.get('[data-testid="receipt-notice"]').should('exist');
+    });
+
+    it('explica quando a API recusa o recibo, no próprio diálogo', () => {
+      const charges = stubPayments();
+      stubChargePayments(charges[1], [{ ...PAYMENT_ON_102 }]);
+      stubReceiptRejected(PAYMENT_ON_102.id, 404, 'finance.payment.not_found');
+      cy.visit(PAYMENTS_PATH);
+
+      cy.get('button[aria-label="Ver pagamentos de Bloco A · 102"]').click();
+      cy.get('[data-testid="download-receipt"]').click();
+
+      cy.wait('@receipt');
+      cy.get('[data-testid="receipt-error"]').should(
+        'contain.text',
+        'Este pagamento não existe mais',
+      );
     });
   });
 });

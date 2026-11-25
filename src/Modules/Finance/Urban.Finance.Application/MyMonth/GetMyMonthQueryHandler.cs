@@ -71,5 +71,6 @@ public sealed class GetMyMonthQueryHandler(
         row.Paid,
         ChargeAccount.Balance(row.Amount, row.Paid),
         ChargeAccount.StatusOf(row.Amount, row.Paid, dueDate, today),
-        row.LastReceivedOn);
+        row.LastReceivedOn,
+        []);
 }

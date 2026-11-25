@@ -22,6 +22,7 @@ import {
   myExpenseGroup,
   myExpenses,
   myMonth,
+  myPayment,
   myUnit,
 } from '../../testing/my-month.fixtures';
 import { MyMonthPage } from './my-month.page';
@@ -35,6 +36,7 @@ const RESIDENT: CurrentUser = { ...REGISTERED_MANAGER, role: 'Resident' };
 
 const PATH = (month: string): string => `/api/finance/me/months/${month}`;
 const INVOICE = (chargeId: string): string => `/api/finance/me/charges/${chargeId}/invoice`;
+const RECEIPT = (paymentId: string): string => `/api/finance/me/payments/${paymentId}/receipt`;
 
 const ORDINARY = myExpenseGroup({ groupId: 'g1', groupName: 'Despesas ordinárias', total: 1800 });
 const WORKS = myExpenseGroup({ groupId: 'g2', groupName: 'Obras', total: 1200 });
@@ -67,6 +69,42 @@ const PAID_UNIT = myUnit({
     status: 'paid',
     lastReceivedOn: '2026-11-08',
   }),
+});
+
+const PAID_IN_TWO = myPayment({
+  paymentId: 'p1',
+  amount: 200,
+  receivedOn: '2026-11-03',
+  method: 'pix',
+  receiptNumber: 1,
+  receiptCode: 'REC-000001',
+});
+const REVERSED_ONE = myPayment({
+  paymentId: 'p2',
+  amount: 100,
+  receivedOn: '2026-11-05',
+  method: 'cash',
+  receiptNumber: 2,
+  receiptCode: 'REC-000002',
+  reversed: true,
+});
+const WITH_PAYMENTS_UNIT = myUnit({
+  unitId: 'u3',
+  block: null,
+  number: '103',
+  charge: myCharge({
+    chargeId: 'c3',
+    amount: 800,
+    paid: 200,
+    balance: 600,
+    status: 'partial',
+    lastReceivedOn: '2026-11-03',
+    payments: [PAID_IN_TWO, REVERSED_ONE],
+  }),
+});
+const WITH_PAYMENTS = myMonth({
+  units: [WITH_PAYMENTS_UNIT],
+  expenses: myExpenses({ groups: [ORDINARY] }),
 });
 
 const CLOSED = myMonth({
@@ -413,7 +451,7 @@ describe('MyMonthPage', () => {
       expect(plain(testId(html, 'notice')?.textContent)).toBe(
         'Fatura de Bloco A · Unidade 102 baixada',
       );
-      expect(testId(html, 'invoice-error')).toBeNull();
+      expect(testId(html, 'download-error')).toBeNull();
     });
 
     it('trava os botões e mostra que está baixando enquanto o PDF não chega', async () => {
@@ -450,7 +488,7 @@ describe('MyMonthPage', () => {
       await settle(fixture);
 
       expect(save).not.toHaveBeenCalled();
-      expect(plain(testId(html, 'invoice-error')?.textContent)).toContain(
+      expect(plain(testId(html, 'download-error')?.textContent)).toContain(
         'Esta fatura não está disponível',
       );
       expect(testId(html, 'notice')).toBeNull();
@@ -466,12 +504,12 @@ describe('MyMonthPage', () => {
         headers: { 'Retry-After': '20' },
       });
       await settle(fixture);
-      expect(plain(testId(html, 'invoice-error')?.textContent)).toContain('Aguarde 20 segundos');
+      expect(plain(testId(html, 'download-error')?.textContent)).toContain('Aguarde 20 segundos');
 
       click(testId(cards(html)[0], 'download-invoice'));
       http.expectOne(INVOICE('c1')).error(new ProgressEvent('error'));
       await settle(fixture);
-      expect(plain(testId(html, 'invoice-error')?.textContent)).toContain(
+      expect(plain(testId(html, 'download-error')?.textContent)).toContain(
         'Não foi possível conectar',
       );
     });
@@ -481,13 +519,13 @@ describe('MyMonthPage', () => {
       click(testId(cards(html)[0], 'download-invoice'));
       http.expectOne(INVOICE('c1')).flush(new Blob(['x']), { status: 500, statusText: 'Erro' });
       await settle(fixture);
-      expect(testId(html, 'invoice-error')).not.toBeNull();
+      expect(testId(html, 'download-error')).not.toBeNull();
 
       click(testId(cards(html)[0], 'download-invoice'));
       http.expectOne(INVOICE('c1')).flush(new Blob(['%PDF-1.7']));
       await settle(fixture);
 
-      expect(testId(html, 'invoice-error')).toBeNull();
+      expect(testId(html, 'download-error')).toBeNull();
       expect(testId(html, 'notice')).not.toBeNull();
     });
 
@@ -502,8 +540,181 @@ describe('MyMonthPage', () => {
       request(http, '2026-10').flush(myMonth({ month: '2026-10' }));
       await settle(fixture);
 
-      expect(testId(html, 'invoice-error')).toBeNull();
+      expect(testId(html, 'download-error')).toBeNull();
       expect(testId(html, 'notice')).toBeNull();
+    });
+  });
+
+  describe('pagamentos e recibos', () => {
+    let save: jest.SpiedFunction<FileSaver['save']>;
+
+    beforeEach(() => {
+      save = jest.spyOn(FileSaver.prototype, 'save').mockImplementation(() => undefined);
+    });
+
+    afterEach(() => save.mockRestore());
+
+    function items(card: HTMLElement): HTMLElement[] {
+      return [...card.querySelectorAll<HTMLElement>('[data-testid="payment-item"]')];
+    }
+
+    function receiptButton(item: HTMLElement): HTMLButtonElement {
+      return testId(item, 'download-receipt') as HTMLButtonElement;
+    }
+
+    it('lista os pagamentos da cobranca, do mais antigo ao mais novo, com valor, dia, forma e recibo', async () => {
+      const { html } = await setup(WITH_PAYMENTS);
+      const list = items(cards(html)[0]);
+
+      expect(list).toHaveLength(2);
+      expect(list.map((item) => plain(testId(item, 'payment-amount')?.textContent))).toEqual([
+        money(200),
+        money(100),
+      ]);
+      expect(list.map((item) => plain(testId(item, 'payment-info')?.textContent))).toEqual([
+        '03/11/2026 · Pix',
+        '05/11/2026 · Dinheiro',
+      ]);
+      expect(list.map((item) => plain(testId(item, 'receipt-code')?.textContent))).toEqual([
+        'Recibo REC-000001',
+        'Recibo REC-000002 · cancelado',
+      ]);
+    });
+
+    it('titula a lista como Pagamentos', async () => {
+      const { html } = await setup(WITH_PAYMENTS);
+
+      expect(plain(testId(cards(html)[0], 'payments-heading')?.textContent)).toBe('Pagamentos');
+    });
+
+    it('sem pagamentos nao mostra a lista nem o titulo', async () => {
+      const { html } = await setup();
+
+      expect(testId(cards(html)[0], 'payments')).toBeNull();
+      expect(testId(cards(html)[0], 'payments-heading')).toBeNull();
+      expect(testId(cards(html)[0], 'download-receipt')).toBeNull();
+    });
+
+    it('marca o pagamento estornado com texto, icone e cor de atencao, e risca o valor', async () => {
+      const { html } = await setup(WITH_PAYMENTS);
+      const [normal, reversed] = items(cards(html)[0]);
+
+      expect(testId(normal, 'reversed')).toBeNull();
+      const mark = testId(reversed, 'reversed');
+      expect(plain(mark?.textContent)).toBe('Pagamento estornado');
+      expect(iconOf(mark)).toBe('block');
+      expect(mark?.classList.contains('text-warning')).toBe(true);
+      expect(testId(reversed, 'payment-amount')?.classList.contains('line-through')).toBe(true);
+      expect(testId(normal, 'payment-amount')?.classList.contains('line-through')).toBe(false);
+    });
+
+    it('nao mostra o motivo do estorno nem observacao do sindico', async () => {
+      const { html } = await setup(WITH_PAYMENTS);
+
+      expect(html.textContent).not.toMatch(/motivo|observa/i);
+    });
+
+    it('tem o botao Baixar recibo em cada pagamento, o estornado inclusive, com o codigo no rotulo', async () => {
+      const { html } = await setup(WITH_PAYMENTS);
+      const buttons = items(cards(html)[0]).map(receiptButton);
+
+      expect(buttons.map((button) => plain(button.textContent))).toEqual([
+        'Baixar recibo',
+        'Baixar recibo',
+      ]);
+      expect(buttons.map((button) => button.getAttribute('aria-label'))).toEqual([
+        'Baixar recibo REC-000001',
+        'Baixar recibo REC-000002',
+      ]);
+      expect(iconOf(buttons[0])).toBe('download');
+    });
+
+    it('baixa o PDF pela rota do morador, salva com o nome da API e avisa', async () => {
+      const { fixture, html, http } = await setup(WITH_PAYMENTS);
+
+      click(receiptButton(items(cards(html)[0])[1]));
+      const pdf = new Blob(['%PDF-1.7'], { type: 'application/pdf' });
+      http.expectOne(RECEIPT('p2')).flush(pdf, {
+        headers: { 'Content-Disposition': "attachment; filename*=UTF-8''recibo-000002.pdf" },
+      });
+      await settle(fixture);
+
+      expect(save).toHaveBeenCalledTimes(1);
+      expect(save).toHaveBeenCalledWith(pdf, 'recibo-000002.pdf');
+      expect(plain(testId(html, 'notice')?.textContent)).toBe('Recibo REC-000002 baixado');
+      expect(testId(html, 'download-error')).toBeNull();
+    });
+
+    it('trava todos os botoes de download e mostra que esta baixando enquanto o PDF nao chega', async () => {
+      const { fixture, html, http } = await setup(WITH_PAYMENTS);
+
+      click(receiptButton(items(cards(html)[0])[0]));
+      await settle(fixture);
+
+      const [first, second] = items(cards(html)[0]).map(receiptButton);
+      expect(iconOf(first)).toBe('progress_activity');
+      expect(first.getAttribute('aria-busy')).toBe('true');
+      expect(first.disabled).toBe(true);
+      expect(second.disabled).toBe(true);
+      expect((testId(cards(html)[0], 'download-invoice') as HTMLButtonElement).disabled).toBe(true);
+      http.expectOne(RECEIPT('p1')).flush(new Blob(['%PDF-1.7']));
+      await settle(fixture);
+
+      expect(receiptButton(items(cards(html)[0])[1]).disabled).toBe(false);
+      expect(iconOf(receiptButton(items(cards(html)[0])[0]))).toBe('download');
+    });
+
+    it('explica quando o recibo nao esta disponivel, sem salvar nada', async () => {
+      const { fixture, html, http } = await setup(WITH_PAYMENTS);
+
+      click(receiptButton(items(cards(html)[0])[0]));
+      http.expectOne(RECEIPT('p1')).flush(
+        new Blob([JSON.stringify({ status: 404, code: 'finance.payment.not_found' })], {
+          type: 'application/problem+json',
+        }),
+        { status: 404, statusText: 'Not Found' },
+      );
+      await settle(fixture);
+
+      expect(save).not.toHaveBeenCalled();
+      expect(plain(testId(html, 'download-error')?.textContent)).toContain(
+        'Este recibo não está disponível',
+      );
+      expect(testId(html, 'notice')).toBeNull();
+    });
+
+    it('um download de fatura e um de recibo dividem o mesmo aviso: o ultimo vale', async () => {
+      const { fixture, html, http } = await setup(WITH_PAYMENTS);
+      click(testId(cards(html)[0], 'download-invoice'));
+      http.expectOne(INVOICE('c3')).flush(new Blob(['%PDF-1.7']));
+      await settle(fixture);
+      expect(plain(testId(html, 'notice')?.textContent)).toBe('Fatura de Unidade 103 baixada');
+
+      click(receiptButton(items(cards(html)[0])[0]));
+      http.expectOne(RECEIPT('p1')).flush(new Blob(['%PDF-1.7']));
+      await settle(fixture);
+
+      expect(plain(testId(html, 'notice')?.textContent)).toBe('Recibo REC-000001 baixado');
+    });
+
+    it('cada unidade lista so os pagamentos da propria cobranca', async () => {
+      const second = myUnit({
+        unitId: 'u4',
+        block: 'A',
+        number: '104',
+        charge: myCharge({
+          chargeId: 'c4',
+          payments: [myPayment({ paymentId: 'p9', receiptNumber: 9, receiptCode: 'REC-000009' })],
+        }),
+      });
+      const { html } = await setup(
+        myMonth({ units: [WITH_PAYMENTS_UNIT, second], expenses: myExpenses() }),
+      );
+
+      expect(items(cards(html)[0])).toHaveLength(2);
+      expect(
+        items(cards(html)[1]).map((item) => plain(testId(item, 'receipt-code')?.textContent)),
+      ).toEqual(['Recibo REC-000009']);
     });
   });
 

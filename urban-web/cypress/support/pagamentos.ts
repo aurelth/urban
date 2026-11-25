@@ -26,6 +26,8 @@ export interface StubPayment {
   registeredAt: string;
   reversedAt: string | null;
   reversalReason: string | null;
+  receiptNumber: number;
+  receiptCode: string;
 }
 
 export const CHARGE_101: StubCharge = {
@@ -74,7 +76,30 @@ export const PAYMENT_ON_102: StubPayment = {
   registeredAt: '2026-11-10T15:30:00Z',
   reversedAt: null,
   reversalReason: null,
+  receiptNumber: 1,
+  receiptCode: 'REC-000001',
 };
+
+/** O recibo de um pagamento (GET): um PDF mínimo com o nome sugerido pela API, como o `Results.File` do .NET faz. */
+export function stubReceipt(paymentId: string, fileName: string): void {
+  cy.intercept('GET', `/api/finance/payments/${paymentId}/receipt`, {
+    statusCode: 200,
+    headers: {
+      'content-type': 'application/pdf',
+      'content-disposition': `attachment; filename=${fileName}; filename*=UTF-8''${fileName}`,
+    },
+    body: '%PDF-1.7\n% recibo de teste do Urban\n',
+  }).as('receipt');
+}
+
+/** A API recusa o recibo com um problema (404, 429...): o corpo chega como arquivo, como na API de verdade. */
+export function stubReceiptRejected(paymentId: string, status: number, code: string): void {
+  cy.intercept('GET', `/api/finance/payments/${paymentId}/receipt`, {
+    statusCode: status,
+    headers: { 'content-type': 'application/problem+json' },
+    body: JSON.stringify({ status, code, detail: 'Detalhe da API' }),
+  }).as('receipt');
+}
 
 /**
  * As cobranças do mês (GET), com o filtro de situação e a paginação que a API faz. Devolve a lista viva: o registro de

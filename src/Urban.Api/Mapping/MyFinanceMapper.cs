@@ -28,7 +28,8 @@ public static class MyFinanceMapper
         charge.Paid,
         charge.Balance,
         PaymentMapper.StatusText(charge.Status),
-        charge.LastReceivedOn is { } received ? Format(received) : null);
+        charge.LastReceivedOn is { } received ? Format(received) : null,
+        []);
 
     private static string AccessName(MyMonthAccess access) => access switch
     {
