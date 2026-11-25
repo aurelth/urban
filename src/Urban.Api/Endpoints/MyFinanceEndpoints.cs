@@ -29,6 +29,8 @@ public static class MyFinanceEndpoints
                 "O mês vai como AAAA-MM (400 se não for) e pode estar aberto, fechado ou nunca ter sido aberto: não gera nada e não responde 409. "
                 + "Quem é lido vem do token, nunca da rota: units traz as unidades em que a conta mora hoje como proprietária ou inquilina, cada uma com a sua cobrança "
                 + "(vencimento, valor, pago sem estornos, o que falta, situação open, partial, paid ou overdue e o dia do último pagamento), que é nula enquanto o mês não fechou. "
+                + "Cada cobrança traz payments: os pagamentos dela, estornados inclusive, do mais antigo ao mais novo, cada um com o valor, o dia, a forma, o número do recibo (receiptNumber e receiptCode, \"REC-000123\") "
+                + "e reversed; o recibo de cada um se baixa em GET /api/finance/me/payments/{paymentId}/receipt. Observação e motivo do estorno ficam com o síndico e não aparecem aqui. "
                 + "expenses traz o total das despesas do mês e o de cada grupo, sem fornecedor, observação nem descrição dos lançamentos, e só vem em mês fechado. "
                 + "access diz como a conta mora: unit, dependent (só como dependente: não há cobrança própria, só o aviso) ou none (sem unidade; é o caso do síndico que não mora no condomínio). "
                 + "Nada do que o prédio recebeu nem de quem está atrasado aparece aqui. A situação é calculada a cada leitura, com o dia de hoje em Brasília (asOf). A resposta nunca é guardada em cache. " + RateLimitText)

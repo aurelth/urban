@@ -18,7 +18,10 @@ import {
 import { MatIcon } from '@angular/material/icon';
 import { formatDate } from '../../core/finance/month';
 import { Payment } from '../../core/finance/payments.models';
+import { ReceiptsApi } from '../../core/finance/receipts.api';
 import { describeProblem } from '../../core/http/problem-message';
+import { FileDownloads } from '../../shared/files/file-downloads';
+import { FileSaver } from '../../shared/files/file-saver';
 import { requiredText } from '../../shared/forms/required-text.validator';
 import { trimmedLength } from '../../shared/forms/text-length.validator';
 import { TextField } from '../../shared/ui/text-field/text.field';
@@ -26,8 +29,9 @@ import { formatRequestedAt } from '../admin/registration-requests/requested-at';
 import { formatMoney } from '../../core/finance/money';
 import { ChargePaymentsStore } from './charge-payments.store';
 import { openFinanceDialog } from './finance.dialog';
-import { chargeStatusView, methodLabel } from './payments-values';
+import { chargeStatusView, methodLabel, receiptLabel } from './payments-values';
 import { REVERSE_PAYMENT_MESSAGES } from './payments.messages';
+import { RECEIPT_MESSAGES } from './receipt.messages';
 
 export interface ChargePaymentsDialogConfig {
   readonly chargeId: string;
@@ -40,8 +44,8 @@ const STALE_STATUSES: readonly number[] = [404, 409];
 
 /**
  * Os pagamentos de uma cobrança, do mais novo para o mais antigo, estornados inclusive. Cada pagamento ativo tem "Estornar",
- * que abre no próprio item o motivo (obrigatório). Fecha respondendo verdadeiro quando algo mudou, para a lista do mês ser
- * lida de novo.
+ * que abre no próprio item o motivo (obrigatório), e todo pagamento, o estornado também, tem "Baixar recibo". Fecha
+ * respondendo verdadeiro quando algo mudou (baixar um recibo não muda nada), para a lista do mês ser lida de novo.
  */
 @Component({
   selector: 'urban-charge-payments-dialog',
@@ -62,6 +66,8 @@ export class ChargePaymentsDialog implements OnInit {
   protected readonly config = inject<ChargePaymentsDialogConfig>(MAT_DIALOG_DATA);
   protected readonly ref = inject<MatDialogRef<ChargePaymentsDialog, boolean>>(MatDialogRef);
   protected readonly store = inject(ChargePaymentsStore);
+  private readonly receipts = inject(ReceiptsApi);
+  protected readonly downloads = new FileDownloads(inject(FileSaver), RECEIPT_MESSAGES);
 
   protected readonly form = inject(NonNullableFormBuilder).group({
     reason: ['', [requiredText, trimmedLength(1, REASON_MAX_LENGTH)]],
@@ -70,6 +76,7 @@ export class ChargePaymentsDialog implements OnInit {
   protected readonly reversing = signal<string | null>(null);
   protected readonly reverseError = signal<string | null>(null);
   protected readonly notice = signal<string | null>(null);
+  protected readonly receiptNotice = signal<string | null>(null);
   protected readonly changed = signal(false);
 
   protected readonly money = formatMoney;
@@ -88,15 +95,29 @@ export class ChargePaymentsDialog implements OnInit {
     return this.store.load(this.config.chargeId);
   }
 
+  protected receiptText(payment: Payment): string {
+    return receiptLabel(payment.receiptCode, payment.reversedAt !== null);
+  }
+
   protected info(payment: Payment): string {
     return [formatDate(payment.receivedOn), methodLabel(payment.method), payment.note]
       .filter((part) => part !== null)
       .join(' · ');
   }
 
+  protected async downloadReceipt(payment: Payment): Promise<void> {
+    this.receiptNotice.set(null);
+    this.notice.set(null);
+    if (await this.downloads.run(payment.id, this.receipts.download(payment.id))) {
+      this.receiptNotice.set(`Recibo ${payment.receiptCode} baixado`);
+    }
+  }
+
   protected startReversal(payment: Payment): void {
     this.form.reset();
     this.notice.set(null);
+    this.receiptNotice.set(null);
+    this.downloads.clear();
     this.reverseError.set(null);
     this.reversing.set(payment.id);
   }

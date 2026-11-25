@@ -26,8 +26,22 @@ public sealed class FinancePayments(FinanceDbContext db) : IPayments
             .ThenByDescending(payment => payment.Id)
             .ToListAsync(cancellationToken);
 
-    public Task<IReadOnlyList<Payment>> ListForChargesAsync(IReadOnlyCollection<Guid> chargeIds, CancellationToken cancellationToken) =>
-        Task.FromResult<IReadOnlyList<Payment>>([]);
+    public async Task<IReadOnlyList<Payment>> ListForChargesAsync(IReadOnlyCollection<Guid> chargeIds, CancellationToken cancellationToken)
+    {
+        if (chargeIds.Count == 0)
+        {
+            return [];
+        }
+
+        Guid[] ids = [.. chargeIds];
+
+        return await db.Payments
+            .AsNoTracking()
+            .Where(payment => ids.Contains(payment.ChargeId))
+            .OrderBy(payment => payment.ReceiptNumber)
+            .ThenBy(payment => payment.Id)
+            .ToListAsync(cancellationToken);
+    }
 
     public async Task<Payment?> FindAsync(Guid paymentId, CancellationToken cancellationToken) =>
         await db.Payments.AsNoTracking().SingleOrDefaultAsync(payment => payment.Id == paymentId, cancellationToken);

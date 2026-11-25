@@ -37,6 +37,11 @@ export function methodLabel(method: PaymentMethod): string {
   return PAYMENT_METHODS.find((option) => option.value === method)?.label ?? method;
 }
 
+/** "Recibo REC-000123", com " · cancelado" quando o pagamento foi estornado (o recibo continua, marcado). */
+export function receiptLabel(code: string, reversed: boolean): string {
+  return reversed ? `Recibo ${code} · cancelado` : `Recibo ${code}`;
+}
+
 export const STATUS_FILTERS: readonly (SelectOption & { readonly value: PaymentsStatusFilter })[] =
   [
     { value: 'all', label: 'Todas as situações' },

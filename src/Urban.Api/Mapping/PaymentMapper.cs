@@ -80,7 +80,7 @@ public static class PaymentMapper
 
     private static string Format(DateOnly date) => date.ToString(DateFormat, CultureInfo.InvariantCulture);
 
-    private static string MethodText(PaymentMethod method) => method switch
+    public static string MethodText(PaymentMethod method) => method switch
     {
         PaymentMethod.Pix => "pix",
         PaymentMethod.Boleto => "boleto",

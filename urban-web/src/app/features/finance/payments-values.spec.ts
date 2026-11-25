@@ -1,5 +1,6 @@
 import { chargeSummary, monthPayments } from '../../testing/finance.fixtures';
 import {
+  receiptLabel,
   PAYMENT_METHODS,
   STATUS_FILTERS,
   chargeStatusView,
@@ -32,6 +33,16 @@ describe('PAYMENT_METHODS', () => {
   it('traduz a forma para o texto da tela', () => {
     expect(methodLabel('transfer')).toBe('Transferência');
     expect(methodLabel('cash')).toBe('Dinheiro');
+  });
+});
+
+describe('receiptLabel', () => {
+  it('diz o recibo pelo codigo', () => {
+    expect(receiptLabel('REC-000123', false)).toBe('Recibo REC-000123');
+  });
+
+  it('marca o recibo do pagamento estornado como cancelado', () => {
+    expect(receiptLabel('REC-000123', true)).toBe('Recibo REC-000123 · cancelado');
   });
 });
 
